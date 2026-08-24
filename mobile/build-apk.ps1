@@ -577,7 +577,15 @@ try {
     }
 
     if (Test-Path -LiteralPath $deliveryApk -PathType Leaf) {
-        [System.IO.File]::Replace($stagedApk, $deliveryApk, $backupApk, $true)
+        for ($attempt = 1; $attempt -le 20; $attempt++) {
+            try {
+                [System.IO.File]::Replace($stagedApk, $deliveryApk, $backupApk, $true)
+                break
+            } catch [System.IO.IOException] {
+                if ($attempt -eq 20) { throw }
+                Start-Sleep -Milliseconds 250
+            }
+        }
         $deliveryWasReplaced = $true
     } else {
         [System.IO.File]::Move($stagedApk, $deliveryApk)
