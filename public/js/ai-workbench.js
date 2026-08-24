@@ -864,6 +864,7 @@ async function aiHandleConfigSyncRequest(request = {}) {
   const preview = request.preview && typeof request.preview === 'object' ? request.preview : {};
   const previewText = [preview.baseUrl, preview.chatModel, preview.imageModel, preview.videoModel].filter(Boolean).join(' · ');
   const actor = String(request.displayName || request.username || '房间成员');
+  void window.SyncWatchDesktop?.showNotification?.({ title: 'SyncWatch AI 配置申请', body: `${actor} 请求向您同步 AI 配置。` }).catch(() => {});
   const accepted = await showAppConfirm(`${actor} 希望向您同步完整 AI 配置${previewText ? `：${previewText}` : ''}。同意后服务器才会在内存中转交包含 API 密钥的配置，密钥会保存到当前设备并始终遮罩，服务器不持久化。`, {
     title: 'AI 完整配置同步请求', confirmText: '同意并安全接收', cancelText: '拒绝'
   });

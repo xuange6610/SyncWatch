@@ -24,7 +24,7 @@
 | `scripts/` | macOS 构建、Cloudflare 工具准备、清理和发布辅助脚本 | 按平台文档调用 |
 | `server/` | HTTP API、Socket.IO、认证、房间、媒体、AI 和公网隧道 | 后端功能主要在这里 |
 | `tests/` | 集成、前端契约、桌面成品、Android、隧道和发布验收 | 每次功能变更都应补充或运行相关测试 |
-| `release/` | 本地发布成品目录，按平台分类；已被 Git 忽略 | 不提交到源码仓库，通过 GitHub Releases 分发 |
+| `dist/` | 唯一正式构建成品目录；已被 Git 忽略 | 完整版本必须直接包含固定 28 个文件 |
 
 ## 根目录规范文件
 
@@ -73,5 +73,5 @@
 
 - 修改 `public/` 或 `server/` 后运行 `npm test` 和相关专项测试。
 - 修改 `docs/`、README 或许可证后运行 `npm run test:repo`。
-- 不提交 `release/`、`output/`、`.env`、密钥、APK 签名文件和真实用户数据。
+- 不提交 `dist/`、`release/`、`output/`、`.env`、密钥、APK 签名文件和真实用户数据。
 - 提交信息使用简短动词，例如 `完善管理中心文档`、`修复移动端灯箱布局`。

@@ -160,6 +160,21 @@ async function run() {
   assert.ok(playing[1] < 10, '时钟偏差不应让观众跳到片尾');
   console.log('✓ 双窗口真实 MP4 播放同步，时钟偏差不会造成跳播');
 
+  const bufferingGuard = await viewer.webContents.executeJavaScript(`(() => {
+    const before = videoPlayer.currentTime;
+    state.localBuffering = true; state.bufferedAheadSeconds = 0;
+    state.expectedSeek = null; state.syncSeekCooldownUntil = 0;
+    adaptiveSynchronize({ ...state.room.playback, currentTime: before + 4, updatedAt: estimatedServerNow() }, true);
+    const result = { before, after: videoPlayer.currentTime, expectedSeek: state.expectedSeek, notice: elements.syncNotice.textContent };
+    state.localBuffering = false;
+    return result;
+  })()`, true);
+  assert.equal(bufferingGuard.expectedSeek, null, JSON.stringify(bufferingGuard));
+  assert.ok(Math.abs(bufferingGuard.after - bufferingGuard.before) < .5, JSON.stringify(bufferingGuard));
+  assert.match(bufferingGuard.notice, /正在缓冲，暂停定位/);
+  await viewer.webContents.executeJavaScript(`refreshRoom()`, true);
+  console.log('✓ 观众本机缓冲时不会反复强制定位并重置 Range 请求');
+
   await host.webContents.executeJavaScript(`(() => {
     state.lastPlaybackProgress = Number.POSITIVE_INFINITY;
     state.mediaFailed = true;

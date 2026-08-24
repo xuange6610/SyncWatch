@@ -6,6 +6,10 @@ const os = require('os');
 const http = require('http');
 const path = require('path');
 const { createStandaloneTunnelManager, extractPublicUrl, connectorRegistered, sanitizeEnvironment, requestPublicConfig, connectionStrategies } = require('../server/standalone-tunnel');
+const standaloneSource = fs.readFileSync(path.resolve(__dirname, '..', 'server', 'standalone-tunnel.js'), 'utf8');
+assert.match(standaloneSource, /state: 'verifying', verificationStartedAt: Date\.now\(\)/);
+assert.match(standaloneSource, /operationStartedAt/);
+assert.match(standaloneSource, /attempt: attempt \+ 1, maxAttempts:/);
 const { cloudflaredRuntime, ensureCloudflaredBinary } = require('../server/cloudflared-installer');
 
 assert.equal(extractPublicUrl('INF https://api.trycloudflare.com/provision https://bright-river-123.trycloudflare.com'), 'https://bright-river-123.trycloudflare.com');

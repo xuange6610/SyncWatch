@@ -16,15 +16,15 @@ async function main() {
   fs.writeFileSync(emptyArtifact, '');
   fs.writeFileSync(disguisedArtifact, 'not a ZIP');
   const files = {
-    serverX64: path.join(artifactsDir, 'SyncWatch同步观影-服务器-v2.1.9-x64.zip'),
-    serverArm64: path.join(artifactsDir, 'SyncWatch同步观影-服务器-v2.1.9-arm64.dmg'),
-    clientX64: path.join(artifactsDir, 'SyncWatch同步观影-客户端-v2.1.9-x64.dmg'),
-    clientArm64: path.join(artifactsDir, 'SyncWatch同步观影-客户端-v2.1.9-arm64.zip')
+    serverX64: path.join(artifactsDir, 'SyncWatch同步观影-服务器-v2.2.0-x64.zip'),
+    serverArm64: path.join(artifactsDir, 'SyncWatch同步观影-服务器-v2.2.0-arm64.dmg'),
+    clientX64: path.join(artifactsDir, 'SyncWatch同步观影-客户端-v2.2.0-x64.dmg'),
+    clientArm64: path.join(artifactsDir, 'SyncWatch同步观影-客户端-v2.2.0-arm64.zip')
   };
   for (const [name, filename] of Object.entries(files)) fs.writeFileSync(filename, `syncwatch-${name}`);
 
   const discovered = macDistribution.createMacDistribution({
-    kind: 'server', version: 'v2.1.9', roots: [artifactsDir], includeDefaultRoots: false,
+    kind: 'server', version: 'v2.2.0', roots: [artifactsDir], includeDefaultRoots: false,
     env: { SYNCWATCH_MAC_SERVER_ARM64_URL: 'https://downloads.example.test/server-arm64.dmg' }
   });
   assert.deepEqual(macDistribution.availableMacArchitectures(discovered), ['arm64', 'x64']);
@@ -35,7 +35,7 @@ async function main() {
   assert.equal(macDistribution.selectMacArtifact({ query: { arch: 'x64', format: 'dmg' }, headers: {} }, discovered), null);
 
   const rejectedLocalArtifacts = macDistribution.createMacDistribution({
-    kind: 'server', version: 'v2.1.9', roots: [], includeDefaultRoots: false, env: {},
+    kind: 'server', version: 'v2.2.0', roots: [], includeDefaultRoots: false, env: {},
     configured: {
       x64: { dmg: { path: emptyArtifact } },
       arm64: { zip: { path: disguisedArtifact } }
@@ -54,7 +54,7 @@ async function main() {
     arm64: { dmg: '', zip: files.clientArm64 }
   });
   const bridged = macDistribution.createMacDistribution({
-    kind: 'client', version: 'v2.1.9', legacyPaths: normalizedBridge,
+    kind: 'client', version: 'v2.2.0', legacyPaths: normalizedBridge,
     roots: [], includeDefaultRoots: false, env: {}
   });
   assert.deepEqual(macDistribution.macDownloadSummary(bridged), [
@@ -72,7 +72,7 @@ async function main() {
       ffprobePath: '', ffmpegPath: '',
       discoverDefaultMacArtifacts: false,
       macDistributionRoots: [artifactsDir],
-      macClientDownloadUrls: { arm64: { dmg: 'https://downloads.example.test/SyncWatch同步观影-客户端-v2.1.9-arm64.dmg' } }
+      macClientDownloadUrls: { arm64: { dmg: 'https://downloads.example.test/SyncWatch同步观影-客户端-v2.2.0-arm64.dmg' } }
     });
     const baseUrl = `http://127.0.0.1:${server.port}`;
     const configResponse = await fetch(`${baseUrl}/api/public-config`);

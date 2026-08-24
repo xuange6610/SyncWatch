@@ -75,8 +75,8 @@ function assertCompatibleOutput(filename) {
   assert.ok(video, '兼容版缺少视频流');
   assert.equal(video.codec_name, 'h264');
   assert.equal(video.pix_fmt, 'yuv420p');
-  assert.ok(video.width <= 1280, `兼容版宽度不应超过 1280，实际为 ${video.width}`);
-  assert.ok(video.height <= 720, `兼容版高度不应超过 720，实际为 ${video.height}`);
+  assert.ok(video.width <= 854, `流畅版宽度不应超过 854，实际为 ${video.width}`);
+  assert.ok(video.height <= 480, `流畅版高度不应超过 480，实际为 ${video.height}`);
   assert.ok(audio, '带音轨的源影片转换后应保留音轨');
   assert.equal(audio.codec_name, 'aac');
   return { video, audio };
@@ -267,6 +267,7 @@ async function assertRangeResponse(session, mediaUrl, range, expectedStart, expe
 
 function createSamples(rootDir) {
   const nativeSample = path.join(rootDir, '测试影片.mp4');
+  const highBitrateSample = path.join(rootDir, '高码率-H264.mp4');
   const hevc4kSample = path.join(rootDir, '4K-HEVC-10bit.mp4');
   const h264TenBitSample = path.join(rootDir, 'H264-10bit.mp4');
 
@@ -274,6 +275,12 @@ function createSamples(rootDir) {
     '-f', 'lavfi', '-i', 'color=c=blue:s=640x360:r=25:d=4',
     '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4',
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', nativeSample
+  ]);
+  runFfmpeg('生成高码率 H.264 样片', [
+    '-f', 'lavfi', '-i', 'testsrc2=s=640x360:r=25:d=4',
+    '-f', 'lavfi', '-i', 'sine=frequency=480:duration=4',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-b:v', '4M', '-minrate', '4M', '-maxrate', '4M', '-bufsize', '8M',
+    '-c:a', 'aac', '-shortest', highBitrateSample
   ]);
   runFfmpeg('生成 4K HEVC 10-bit 样片', [
     '-f', 'lavfi', '-i', 'testsrc2=s=3840x2160:r=12:d=4',
@@ -300,7 +307,7 @@ function createSamples(rootDir) {
   assert.equal(h264TenBitInput.video.pix_fmt, 'yuv420p10le');
   assert.equal(h264TenBitInput.audio.codec_name, 'aac');
 
-  return { nativeSample, hevc4kSample, h264TenBitSample };
+  return { nativeSample, highBitrateSample, hevc4kSample, h264TenBitSample };
 }
 
 async function testPrimaryMediaFlow(rootDir, serverDataDir, samples) {
@@ -321,6 +328,19 @@ async function testPrimaryMediaFlow(rootDir, serverDataDir, samples) {
     const thumbnail = await fetch(`${session.baseUrl}${nativeFile.thumbnailUrl}`, { headers: session.headers });
     assert.equal(thumbnail.status, 200);
     assert.match(thumbnail.headers.get('content-type') || '', /image\/jpeg/);
+    const thumbnailPath = path.join(serverDataDir, 'thumbnails', path.basename(nativeFile.thumbnailUrl));
+    assert.ok(fs.statSync(thumbnailPath).size > 0, '缩略图文件必须非空');
+    fs.unlinkSync(thumbnailPath);
+    await stopServer(session);
+    session = await launchServer(serverDataDir);
+    const rebuiltThumbnailFile = await waitForFile(session, nativeFile.id, (file) => {
+      if (!file.thumbnailUrl || !fs.existsSync(thumbnailPath)) return false;
+      return fs.statSync(thumbnailPath).size > 0 ? file : false;
+    }, { timeoutMs: 30000, label: '等待缺失缩略图自动重建' });
+    const rebuiltThumbnail = await fetch(`${session.baseUrl}${rebuiltThumbnailFile.thumbnailUrl}`, { headers: session.headers });
+    assert.equal(rebuiltThumbnail.status, 200);
+    assert.match(rebuiltThumbnail.headers.get('content-type') || '', /image\/jpeg/);
+    console.log('✓ 已有影片缩略图丢失后会在重启时自动补建');
     const hlsPlaylist = '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:4\n#EXTINF:4.0,\nsegment-000.ts\n#EXT-X-ENDLIST\n';
     const hlsUpload = await uploadFile(session, 'playlist.m3u8', Buffer.from(hlsPlaylist, 'utf8'), 'application/vnd.apple.mpegurl');
     const hlsFile = await waitForFile(session, hlsUpload.id, (file) => file.category === 'video' && file.compatibility?.status === 'native', { label: '等待 HLS 播放列表状态' });
@@ -332,6 +352,17 @@ async function testPrimaryMediaFlow(rootDir, serverDataDir, samples) {
     console.log('✓ HLS m3u8 播放列表可上传、直出并跳过错误的单文件转码');
     console.log('✓ ffprobe 能读取媒体参数，ffmpeg 能生成缩略图');
 
+    const highBitrateUpload = await uploadFile(session, '高码率-H264.mp4', samples.highBitrateSample);
+    const highBitrateFile = await waitForFile(session, highBitrateUpload.id, (file) => (
+      file.metadata?.videoCodec === 'H264' && file.compatibility?.required && file.compatibility?.ready
+    ), { timeoutMs: 120000, intervalMs: 100, label: '等待高码率 H.264 流畅版' });
+    const highBitratePath = path.join(session.server.compatibleMediaDir, highBitrateFile.compatibility.fileName);
+    const highBitrateOutput = assertCompatibleOutput(highBitratePath);
+    const outputDuration = Number(highBitrateOutput.video.duration || probeMedia(highBitratePath).format?.duration) || 4;
+    const outputMbps = fs.statSync(highBitratePath).size * 8 / outputDuration / 1_000_000;
+    assert.ok(outputMbps < 1.35, `流畅版平均总码率应低于 1.35 Mbps，实际为 ${outputMbps.toFixed(2)} Mbps`);
+    console.log('✓ 可解码但高码率的 H.264 也会生成低带宽流畅版');
+
     const hevcUpload = await uploadFile(session, '4K-HEVC-10bit.mp4', samples.hevc4kSample);
     hevcFile = await waitForFile(session, hevcUpload.id, (file) => (
       file.metadata?.videoCodec === 'HEVC' && file.compatibility?.required && file.compatibility?.ready
@@ -342,14 +373,14 @@ async function testPrimaryMediaFlow(rootDir, serverDataDir, samples) {
     assert.equal(hevcFile.metadata.bitDepth, 10);
     assert.equal(hevcFile.compatibility.required, true);
     assert.equal(hevcFile.compatibility.ready, true, hevcFile.compatibility.error);
-    assert.equal(hevcFile.compatibility.maxWidth, 1280);
-    assert.equal(hevcFile.compatibility.maxHeight, 720);
+    assert.equal(hevcFile.compatibility.maxWidth, 854);
+    assert.equal(hevcFile.compatibility.maxHeight, 480);
     assert.match(hevcFile.url, /^\/compatible-media\/[a-f0-9-]+\.mp4$/i);
 
     compatiblePath = path.join(session.server.compatibleMediaDir, hevcFile.compatibility.fileName);
     const compatibleStreams = assertCompatibleOutput(compatiblePath);
-    assert.equal(compatibleStreams.video.width, 1280);
-    assert.equal(compatibleStreams.video.height, 720);
+    assert.ok(compatibleStreams.video.width <= 854);
+    assert.equal(compatibleStreams.video.height, 480);
 
     const compatibleSize = fs.statSync(compatiblePath).size;
     await assertRangeResponse(session, hevcFile.url, 'bytes=0-4095', 0, 4095, compatibleSize);
@@ -364,7 +395,7 @@ async function testPrimaryMediaFlow(rootDir, serverDataDir, samples) {
 
     const selection = await ack(session.socket, 'select-file', { fileId: hevcFile.id });
     assert.equal(selection.success, true, selection.error);
-    console.log('✓ 4K HEVC Main10 真正降为 1280×720 H.264/yuv420p + AAC，并完整支持 HTTP Range');
+    console.log('✓ 4K HEVC Main10 真正降为 480P H.264/yuv420p + AAC，并完整支持 HTTP Range');
 
     const h264TenBitUpload = await uploadFile(session, 'H264-10bit.mp4', samples.h264TenBitSample);
     const h264TenBitFile = await waitForFile(session, h264TenBitUpload.id, (file) => (

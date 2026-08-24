@@ -34,7 +34,7 @@ $version = [string]$package.version
 if ([string]::IsNullOrWhiteSpace($version)) { throw 'package.json does not contain a version.' }
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    $OutputDirectory = Join-Path $PSScriptRoot 'release\server-deployment'
+    $OutputDirectory = Join-Path $PSScriptRoot '.build\server-deployment'
 }
 $outputRoot = [IO.Path]::GetFullPath($OutputDirectory)
 $workspaceRoot = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
@@ -44,10 +44,11 @@ if (-not $outputRoot.StartsWith($workspacePrefix, [StringComparison]::OrdinalIgn
 }
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
-$clientArtifact = Join-Path $PSScriptRoot 'release\windows-client\SyncWatch同步观影-Client-v2.1.9.exe'
+$clientArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe'
 if (-not (Test-Path -LiteralPath $clientArtifact -PathType Leaf)) {
-    throw 'Missing separate Windows client artifact. Build release\windows-client\SyncWatch同步观影-Client-v2.1.9.exe first.'
+    throw 'Missing separate Windows client artifact in root dist/. Build the Experience client first.'
 }
+$androidArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Android-v2.2.0-universal.apk'
 
 $deploymentGuidePath = 'docs\server-deployment-guide.md'
 $architectureGuidePath = 'docs\architecture.md'
@@ -61,7 +62,7 @@ $requiredFiles = @(
     'scripts\collect-macos-distribution.ps1',
     $standaloneReadmePath, $deploymentGuidePath, $architectureGuidePath, $macosGuidePath,
     'server\index.js', 'server\ai-relay.js', 'server\macos-distribution.js', 'public\index.html', 'public\js\app.js', 'public\css\style.css',
-    'mobile\SyncWatch同步观影-v2.1.9.apk',
+    'dist\SyncWatch-Android-v2.2.0-universal.apk',
     'tests\standalone-package-smoke.js',
     'node_modules\compression\package.json', 'node_modules\express\package.json', 'node_modules\multer\package.json',
     'node_modules\nodemailer\package.json', 'node_modules\socket.io\package.json',
@@ -148,8 +149,8 @@ try {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'vendor\cloudflared.exe') -Destination (Join-Path $stage 'vendor\cloudflared.exe') -Force
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'public') -Destination (Join-Path $stage 'public') -Recurse
     New-Item -ItemType Directory -Path (Join-Path $stage 'mobile') -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'mobile\SyncWatch同步观影-v2.1.9.apk') -Destination (Join-Path $stage 'mobile\SyncWatch同步观影-v2.1.9.apk')
-    Copy-Item -LiteralPath $clientArtifact -Destination (Join-Path $stage 'SyncWatch同步观影-Client-v2.1.9.exe')
+    Copy-Item -LiteralPath $androidArtifact -Destination (Join-Path $stage 'mobile\SyncWatch同步观影-v2.2.0.apk')
+    Copy-Item -LiteralPath $clientArtifact -Destination (Join-Path $stage 'SyncWatch同步观影-Client-v2.2.0.exe')
     $macDirectory = Join-Path $stage 'mac'
     & (Join-Path $PSScriptRoot 'scripts\collect-macos-distribution.ps1') -SourceRoot $PSScriptRoot -Destination $macDirectory -Version $version
 
@@ -205,7 +206,7 @@ try {
             "$folderName/server/index.js", "$folderName/server/ai-relay.js", "$folderName/server/macos-distribution.js", "$folderName/server/standalone-tunnel.js", "$folderName/public/index.html",
             "$folderName/vendor/cloudflared.exe",
             "$folderName/scripts/collect-macos-distribution.ps1",
-            "$folderName/mobile/SyncWatch同步观影-v2.1.9.apk", "$folderName/SyncWatch同步观影-Client-v2.1.9.exe", "$folderName/server-standalone.js",
+            "$folderName/mobile/SyncWatch同步观影-v2.2.0.apk", "$folderName/SyncWatch同步观影-Client-v2.2.0.exe", "$folderName/server-standalone.js",
             "$folderName/README.md", "$folderName/docs/server-deployment-guide.md", "$folderName/docs/architecture.md", "$folderName/docs/macos-build.md", "$folderName/mac-distribution.example.json",
             "$folderName/node_modules/compression/package.json", "$folderName/node_modules/express/package.json", "$folderName/node_modules/nodemailer/package.json",
             "$folderName/node_modules/ffmpeg-static/package.json", "$folderName/node_modules/ffprobe-static/package.json",
@@ -226,7 +227,7 @@ try {
                 throw "Package contains dependency test residue: $entry"
             }
             if ($entry.EndsWith('.exe', [StringComparison]::OrdinalIgnoreCase) -and
-                $entry -ne "$folderName/SyncWatch同步观影-Client-v2.1.9.exe" -and
+                $entry -ne "$folderName/SyncWatch同步观影-Client-v2.2.0.exe" -and
                 $entry -ne "$folderName/vendor/cloudflared.exe" -and
                 $entry -notmatch '/node_modules/(?:ffmpeg-static/ffmpeg\.exe|ffprobe-static/bin/win32/(?:ia32|x64)/ffprobe\.exe)$') {
                 throw "Package contains an unexpected executable: $entry"

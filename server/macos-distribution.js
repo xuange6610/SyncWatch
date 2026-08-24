@@ -8,11 +8,11 @@ const MAC_FORMATS = ['dmg', 'zip'];
 const MAC_KINDS = ['server', 'client'];
 
 function releaseVersion(value) {
-  const normalized = String(value || '2.1.9').trim().replace(/^v/i, '');
-  return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized) ? normalized : '2.1.9';
+  const normalized = String(value || '2.2.0').trim().replace(/^v/i, '');
+  return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized) ? normalized : '2.2.0';
 }
 
-function macArtifactFilename(kind, architecture, format, version = '2.1.9') {
+function macArtifactFilename(kind, architecture, format, version = '2.2.0') {
   const label = kind === 'server' ? '服务器' : '客户端';
   if (!MAC_ARCHITECTURES.includes(architecture)) throw new Error(`不支持的 macOS 架构：${architecture}`);
   if (!MAC_FORMATS.includes(format)) throw new Error(`不支持的 macOS 产物格式：${format}`);
@@ -56,7 +56,7 @@ function defaultMacDistributionRoots(extraRoots = [], includeDefaults = true) {
   ]);
   return uniqueRoots(includeDefaults ? [
     ...bases.flatMap((base) => [path.join(base, 'mac'), base]),
-    path.join(projectRoot, 'dist-mac-server'), path.join(projectRoot, 'dist-mac-client')
+    path.join(projectRoot, 'dist')
   ] : bases.flatMap((base) => [path.join(base, 'mac'), base]));
 }
 
@@ -181,14 +181,14 @@ function addReleaseBaseUrl(distribution, kind, value, version) {
   }
   for (const architecture of MAC_ARCHITECTURES) {
     for (const format of MAC_FORMATS) {
-      const filename = macArtifactFilename(kind, architecture, format, version);
+      const filename = `SyncWatch-${kind === 'server' ? 'Server' : 'Client'}-macOS-v${releaseVersion(version)}-${architecture}.${format}`;
       addArtifact(distribution, architecture, format, new URL(encodeURIComponent(filename), base).toString(), { filename });
     }
   }
 }
 
 function createMacDistribution({
-  kind, version = '2.1.9', legacyPaths = {}, configured = {}, roots = [],
+  kind, version = '2.2.0', legacyPaths = {}, configured = {}, roots = [],
   manifestPaths = [], env = process.env, includeDefaultRoots = true
 } = {}) {
   if (!MAC_KINDS.includes(kind)) throw new Error(`不支持的 macOS 产物类型：${kind}`);
@@ -201,7 +201,9 @@ function createMacDistribution({
     for (const architecture of MAC_ARCHITECTURES) {
       for (const format of MAC_FORMATS) {
         const filename = macArtifactFilename(kind, architecture, format, normalizedVersion);
+        const publicFilename = `SyncWatch-${kind === 'server' ? 'Server' : 'Client'}-macOS-v${normalizedVersion}-${architecture}.${format}`;
         addArtifact(distribution, architecture, format, path.join(root, filename), { filename });
+        addArtifact(distribution, architecture, format, path.join(root, publicFilename), { filename });
       }
     }
   }

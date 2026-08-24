@@ -97,7 +97,6 @@ async function main() {
     }, 30000);
     assert.equal(memberQuotaReached.success, false);
     assert.equal(memberQuotaReached.code, 'ROOM_QUOTA_REACHED');
-    const finalMemberProfile = await profile(member);
 
     const policyOwner = await connect(baseUrl, '203.0.113.13'); sockets.push(policyOwner);
     const policyOwnerRegistration = await ack(policyOwner, 'user-register', {
@@ -117,6 +116,10 @@ async function main() {
     assert.equal(deniedGuestLogin.success, false);
     assert.equal(deniedGuestLogin.code, 'GUESTS_DISABLED',
       '游客获得普通成员权限后，房主的“禁止游客进入”开关仍必须按身份生效');
+    const guestsEnabled = await ack(policyOwner, 'owner-action', { action: 'allow-guests', enabled: true });
+    assert.equal(guestsEnabled.success, true, guestsEnabled.error);
+    const registeredMemberLogin = await ack(member, 'room-switch', { roomId: policyRoom.room.id });
+    assert.equal(registeredMemberLogin.success, true, registeredMemberLogin.error);
 
     const guest = await connect(baseUrl, '203.0.113.11'); sockets.push(guest);
     const guestLogin = await ack(guest, 'guest-login', { deviceId: 'guest-device' });
@@ -131,8 +134,9 @@ async function main() {
       '游客与刚注册普通用户应获得相同建房额度');
     assert.equal(initialGuestProfile.ownedRoomCount, initialMemberProfile.ownedRoomCount,
       '临时登录房间不应占用游客或普通用户的正式房间额度');
-    assert.deepEqual(guestLogin.permissions, memberLogin.permissions,
-      '游客与刚注册普通用户在各自临时房间中应获得同一权限组能力');
+    assert.deepEqual(guestLogin.permissions, registeredMemberLogin.permissions,
+      '游客登录后应获得与加入他人房间的注册账号相同的普通成员权限');
+    assert.equal(guestLogin.capabilities.owner, false, '游客临时房不得通过房主身份获得管理特权');
     assert.deepEqual(
       Object.keys(initialGuestProfile).sort(),
       Object.keys(initialMemberProfile).sort(),
@@ -142,46 +146,42 @@ async function main() {
     const guestRoom = await ack(guest, 'room-create', {
       customRoomId: 'GUESTROOM', roomName: 'Guest room', deviceId: 'guest-device'
     }, 30000);
-    assert.equal(guestRoom.success, true, guestRoom.error);
-    assert.equal(guestRoom.room.id, 'GUESTROOM');
+    assert.equal(guestRoom.success, false);
+    assert.equal(guestRoom.code, 'GUEST_REGISTRATION_REQUIRED');
 
     await new Promise((resolve) => setImmediate(resolve));
     const finalGuestProfile = await profile(guest);
     assert.equal(finalGuestProfile.guest, true, '建房不能把游客隐式转换为正式账号');
-    assert.equal(finalGuestProfile.roomQuota, finalMemberProfile.roomQuota);
-    assert.equal(finalGuestProfile.ownedRoomCount, finalMemberProfile.ownedRoomCount);
-    assert.ok(finalGuestProfile.recentRooms.some((room) => room.id === 'GUESTROOM' && room.owned),
-      '游客创建的正式房间应与普通用户一样进入“我的房间”列表');
+    assert.equal(finalGuestProfile.roomQuota, initialMemberProfile.roomQuota);
+    assert.equal(finalGuestProfile.ownedRoomCount, 0);
 
     const guestQuotaReached = await ack(guest, 'room-create', {
       customRoomId: 'GUESTROOM2', roomName: 'Second guest room', deviceId: 'guest-device'
     }, 30000);
     assert.equal(guestQuotaReached.success, false);
-    assert.equal(guestQuotaReached.code, memberQuotaReached.code,
-      '游客应与新普通用户遵循同一建房额度限制');
+    assert.equal(guestQuotaReached.code, 'GUEST_REGISTRATION_REQUIRED');
 
     const guestQuotaRequest = await ack(guest, 'room-quota-request', {
       requestedQuota: 2, reason: 'guest parity lifecycle test'
     });
-    assert.equal(guestQuotaRequest.success, true, guestQuotaRequest.error);
-    assert.equal(guestQuotaRequest.request.username, guestUsername);
+    assert.equal(guestQuotaRequest.success, false);
+    assert.equal(guestQuotaRequest.code, 'GUEST_REGISTRATION_REQUIRED');
 
     const persistedWhileOnline = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8'));
     assert.equal(persistedWhileOnline.accounts[guestUsername].roomCreationBlocked, false);
     assert.equal(persistedWhileOnline.accounts[guestUsername].roomQuota, 1);
-    assert.ok(persistedWhileOnline.rooms.GUESTROOM, '游客在线期间创建的正式房间必须保留');
+    assert.equal(persistedWhileOnline.rooms.GUESTROOM, undefined);
 
-    const loggedOut = await logout(baseUrl, guestRoom.token);
+    const loggedOut = await logout(baseUrl, guestLogin.token);
     assert.equal(loggedOut.success, true, loggedOut.error);
     await waitFor(() => {
       const persisted = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8'));
       return !persisted.accounts[guestUsername]
-        && !persisted.rooms.GUESTROOM
         && !persisted.rooms[guestTemporaryRoomId]
         && !persisted.admin.roomQuotaRequests.some((request) => request.username === guestUsername);
     }, '游客退出后清除账号及其临时/正式房间');
 
-    console.log('guest/member permission and room quota parity regression passed');
+    console.log('guest login is capped to ordinary-member permissions regression passed');
   } finally {
     for (const socket of sockets) socket.disconnect();
     await server?.close().catch(() => {});

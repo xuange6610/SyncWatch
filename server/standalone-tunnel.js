@@ -318,6 +318,7 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
       try { processHandle.kill(); } catch (_) {}
       return { success: false, error: ready.error || '公网隧道启动失败', process: processHandle, startedAt, output };
     }
+    current = { ...current, state: 'verifying', verificationStartedAt: Date.now(), error: '公网地址已生成，正在验证可访问性…' };
     let verified = false;
     let latencyMs = null;
     for (let index = 0; index < 4; index += 1) {
@@ -342,9 +343,10 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
     };
     await stop();
     const startGeneration = ++generation;
+    const operationStartedAt = Date.now();
     desired = { ...options };
     if (!resolveBinary(resolvedRoot, resolvedData)) {
-      current = { ...current, state: 'downloading', mode: options.mode, publicUrl: '', verified: false, error: '' };
+      current = { ...current, state: 'downloading', mode: options.mode, publicUrl: '', verified: false, error: '', operationStartedAt };
       try {
         await installCloudflared({ dataDir: resolvedData });
       } catch (error) {
@@ -353,7 +355,7 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
         throw new Error(current.error);
       }
     }
-    current = { ...current, state: 'diagnosing', mode: options.mode, publicUrl: '', verified: false, bypassProxy: options.bypassProxy, error: '', reconnectCount: 0 };
+    current = { ...current, state: 'diagnosing', mode: options.mode, publicUrl: '', verified: false, bypassProxy: options.bypassProxy, error: '', reconnectCount: 0, operationStartedAt };
     let preflight = { physicalIpv4: networkAddress(), edgeAddresses: [], failureCode: '' };
     if (options.autoDiagnose) {
       try { preflight = await runPreflight(options.bypassProxy); } catch (error) { preflight = { ...preflight, error: error.message, failureCode: 'PREFLIGHT_FAILED' }; }
@@ -364,6 +366,7 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
       if (startGeneration !== generation) throw new Error('公网隧道启动已取消');
       let result;
       const strategy = strategies[attempt] || {};
+      current = { ...current, state: attempt === 0 ? 'starting' : 'reconnecting', attempt: attempt + 1, maxAttempts: Math.min(MAX_ATTEMPTS, strategies.length), strategy: strategy.id, strategyLabel: strategy.label || strategy.id, error: attempt === 0 ? '正在启动公网连接器…' : '正在切换备用连接方式…' };
       try { result = await launch(options, attempt, strategy); }
       catch (error) { result = { success: false, error: error.message || '公网隧道启动失败' }; }
       if (result.success) {
@@ -431,9 +434,9 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
       .map(([name]) => name);
     const failureCode = current.failureCode || preflight.failureCode || '';
     const recommendations = [];
-    if (failureCode === 'VPN_TUN_FAKE_IP' || preflight.fakeIpDns || tunAdapters.length) recommendations.push('检测到 VPN/TUN 或 Fake-IP DNS。已自动使用物理网卡和 DoH Cloudflare 边缘地址；仍失败时请在 VPN 分流中将 cloudflared.exe、trycloudflare.com 和 argotunnel.com 设为直连。');
+    if (failureCode === 'VPN_TUN_FAKE_IP' || preflight.fakeIpDns || tunAdapters.length) recommendations.push('检测到 VPN/TUN 或 Fake-IP DNS。浏览器可联网但物理网卡直连超时时，请先取消“绕过系统代理”；必须直连时再将 cloudflared.exe、trycloudflare.com 和 argotunnel.com 设为直连。');
     if (failureCode === 'EDGE_PORT_7844_BLOCKED' || failureCode === 'QUICK_API_TIMEOUT') recommendations.push('请允许 cloudflared 出站访问 TCP 443、TCP 7844 和 UDP 7844；程序会自动降级 HTTP/2。');
-    if (!bypassProxy) recommendations.push('建议开启绕过系统代理，避免代理软件或 TUN 接管 cloudflared。');
+    if (!bypassProxy && !preflight.fakeIpDns && !tunAdapters.length) recommendations.push('建议开启绕过系统代理，避免代理软件接管 cloudflared。');
     recommendations.push('临时 trycloudflare.com 地址没有 uptime 保证；长期 4K 播放建议使用固定 Tunnel 令牌和自有域名。');
     return {
       state: current.state, bypassProxy: Boolean(bypassProxy), binary: resolveBinary(resolvedRoot, resolvedData),

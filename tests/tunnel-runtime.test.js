@@ -153,7 +153,7 @@ assert.equal(_test.tunnelProbeTransport('', {}), 'electron-system-network',
   'an unbound/system fallback probe must honor the operating-system proxy and TUN route');
 assert.equal(_test.tunnelProbeTransport('', { HTTPS_PROXY: 'http://127.0.0.1:7890' }), 'environment-proxy',
   'an unbound/system fallback probe must honor the proxy inherited by cloudflared');
-assert.deepEqual(_test.parseTunnelProbeResponse(200, JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.1.9' })), {
+assert.deepEqual(_test.parseTunnelProbeResponse(200, JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.0' })), {
   ok: true, statusCode: 200
 });
 assert.equal(_test.parseTunnelProbeResponse(530, 'Cloudflare error code: 1033').cloudflareErrorCode, 1033);
@@ -163,6 +163,10 @@ assert.match(source, /net\.fetch\(url, request\)/,
   'system-network tunnel verification must use Electron net.fetch so Windows proxy/PAC is honored');
 assert.match(source, /strategy\.bypassProxy[^\n]+bypassProxy/,
   'each launch attempt must honor the strategy-specific proxy mode');
+assert.match(source, /if \(!verified && index \+ 1 < strategies\.length\)[\s\S]*?terminateProcess\(tunnelProcess\)[\s\S]*?continue;/,
+  'an unreachable public URL must advance to the next connection strategy instead of stalling');
+assert.match(source, /!startupPreflight\.checks\.apiTcpPhysical\?\.ok && !startupPreflight\.checks\.edgeTcp\?\.ok[\s\S]*?strategies\.sort/,
+  'when only the system route works, it must be attempted before known-dead physical routes');
 assert.equal(_test.classifyTunnelFailure('TLS handshake with edge error: read tcp 198.18.0.1:1234->198.18.0.59:7844: i/o timeout').code, 'VPN_TUN_FAKE_IP');
 assert.equal(_test.classifyTunnelFailure('dial tcp 203.0.113.8:7844: i/o timeout').code, 'EDGE_PORT_7844_BLOCKED');
 const waitingForConnector = _test.applyTunnelHealthProbe(
@@ -205,6 +209,12 @@ assert.match(source, /autoDiagnose: value\.autoDiagnose !== false/);
 assert.match(source, /if \(autoDiagnose\)[\s\S]*?runTunnelPreflight\(\{ bypassProxy: Boolean\(bypassProxy\) \}\)/);
 assert.match(rendererSource, /next\.health === 'degraded' \? ' · 公网探测波动，连接器仍在运行'/);
 assert.match(rendererSource, /\['downloading', 'diagnosing', 'starting', 'verifying', 'reconnecting'\]\.includes\(next\.state\)/);
+assert.match(rendererSource, /function renderTunnelProgress/);
+assert.match(rendererSource, /预计剩余/);
+assert.match(rendererSource, /next\.state === 'running' && next\.verified === true/);
+assert.doesNotMatch(rendererSource.match(/async function startTunnel[\s\S]*?\n}/)?.[0] || '', /公网访问已开启/,
+  'POST 返回 verifying 时不得提前提示公网已开启');
+assert.match(source, /operationStartedAt/);
 
 process.on('exit', () => {
   try { fs.rmSync(temporaryRoot, { recursive: true, force: true }); } catch (_) {}

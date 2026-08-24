@@ -30,15 +30,23 @@ async function connect(baseUrl) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-tunnel-public-url-'));
   let server; let socket;
   let tunnelState = { state: 'stopped', publicUrl: '' };
+  let startupSettings = { autoStartTunnel: false, mode: 'quick', publicUrl: '', bypassProxy: true, autoDiagnose: true };
+  let lastStartOptions = null;
   const tunnelManager = {
     status: async () => ({ ...tunnelState }),
-    startupSettings: async () => ({ autoStartTunnel: false, mode: 'quick', publicUrl: '', bypassProxy: true, autoDiagnose: true }),
+    startupSettings: async () => ({ ...startupSettings }),
+    saveStartupSettings: async (input = {}) => (startupSettings = { ...startupSettings, ...input }),
+    start: async (options = {}) => {
+      lastStartOptions = { ...options };
+      return (tunnelState = { state: 'running', publicUrl: 'https://new-address.trycloudflare.com', verified: true, bypassProxy: options.bypassProxy });
+    },
     stop: async () => (tunnelState = { state: 'stopped', publicUrl: '' })
   };
   try {
     server = await startSyncWatchServer({
       host: '127.0.0.1', port: 0, dataDir: root, discovery: false,
-      publicDir: path.resolve(__dirname, '..', 'public'), hostControlToken: 'stale-url-host', tunnelManager
+      publicDir: path.resolve(__dirname, '..', 'public'), hostControlToken: 'stale-url-host', tunnelManager,
+      publicUrl: 'https://configured.example.com'
     });
     const baseUrl = `http://127.0.0.1:${server.port}`;
     socket = await connect(baseUrl);
@@ -48,6 +56,24 @@ async function connect(baseUrl) {
       const accepted = await ack(socket, 'agreement-accept', { accepted: true, version: login.agreement.version });
       assert.equal(accepted.success, true, accepted.error);
     }
+
+    const configuredConfig = await (await fetch(`${baseUrl}/api/public-config`)).json();
+    assert.equal(configuredConfig.publicAddress, 'https://configured.example.com',
+      '没有活动 Tunnel 时应使用已配置的公网根地址');
+
+    const startResponse = await fetch(`${baseUrl}/api/host/tunnel/start`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${login.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'quick', bypassProxy: false, confirmUnprotectedRooms: true })
+    });
+    const started = await startResponse.json();
+    assert.equal(startResponse.status, 200, started.error);
+    assert.equal(lastStartOptions.bypassProxy, false);
+    const persistedStartup = await (await fetch(`${baseUrl}/api/host/tunnel/startup`, {
+      headers: { Authorization: `Bearer ${login.token}` }
+    })).json();
+    assert.equal(persistedStartup.settings.bypassProxy, false,
+      'starting cloudflared must persist the unchecked proxy-bypass preference');
 
     tunnelState = { state: 'running', publicUrl: 'https://old-address.trycloudflare.com', verified: true };
     let config = await (await fetch(`${baseUrl}/api/public-config`)).json();
@@ -62,21 +88,21 @@ async function connect(baseUrl) {
     // without a successful probe is not yet safe to advertise or share.
     tunnelState = { state: 'running', publicUrl: 'https://unverified-running.trycloudflare.com' };
     config = await (await fetch(`${baseUrl}/api/public-config`)).json();
-    assert.equal(config.publicAddress, '');
+    assert.equal(config.publicAddress, 'https://configured.example.com');
 
     // A reconnecting Quick Tunnel has no usable address. The previous URL must
-    // be removed from allowed hosts and public sharing immediately.
+    // be removed from allowed hosts and sharing must fall back to the configured origin.
     tunnelState = { state: 'reconnecting', publicUrl: '' };
     config = await (await fetch(`${baseUrl}/api/public-config`)).json();
-    assert.equal(config.publicAddress, '');
+    assert.equal(config.publicAddress, 'https://configured.example.com');
 
     tunnelState = { state: 'error', publicUrl: 'https://stale-address.trycloudflare.com', verified: false };
     config = await (await fetch(`${baseUrl}/api/public-config`)).json();
-    assert.equal(config.publicAddress, '');
+    assert.equal(config.publicAddress, 'https://configured.example.com');
 
     tunnelState = { state: 'verifying', publicUrl: 'https://unverified-address.trycloudflare.com', verified: false };
     config = await (await fetch(`${baseUrl}/api/public-config`)).json();
-    assert.equal(config.publicAddress, '');
+    assert.equal(config.publicAddress, 'https://configured.example.com');
 
     tunnelState = { state: 'running', publicUrl: 'https://new-address.trycloudflare.com', verified: true };
     config = await (await fetch(`${baseUrl}/api/public-config`)).json();

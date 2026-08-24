@@ -146,28 +146,31 @@ async function main() {
   const token = hostToken();
   const tunnelManager = createStandaloneTunnelManager({ rootDir: ROOT_DIR, dataDir: DATA_DIR, getPort: () => controller?.port || port });
   // Keep the standalone server aligned with the packaged Android artifact.
-  const androidApkPath = path.join(ROOT_DIR, 'mobile', 'SyncWatch同步观影-v2.1.9.apk');
+  const androidApkPath = path.join(ROOT_DIR, 'dist', 'SyncWatch-Android-v2.2.0-universal.apk');
   const clientDownloadCandidates = [
-    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.1.9.exe'),
-    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.1.9.exe')
+    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe'),
+    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.0.exe'),
+    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.0.exe')
   ];
   const clientDownloadPath = clientDownloadCandidates.find((candidate) => fs.existsSync(candidate)) || '';
   const macArtifactCandidates = (prefix) => ({
     x64: [
+      path.join(ROOT_DIR, 'dist', `${prefix}-x64.dmg`),
       path.join(ROOT_DIR, `${prefix}-x64.dmg`),
       path.join(ROOT_DIR, 'mac', `${prefix}-x64.dmg`)
     ].find((candidate) => fs.existsSync(candidate)) || '',
     arm64: [
+      path.join(ROOT_DIR, 'dist', `${prefix}-arm64.dmg`),
       path.join(ROOT_DIR, `${prefix}-arm64.dmg`),
       path.join(ROOT_DIR, 'mac', `${prefix}-arm64.dmg`)
     ].find((candidate) => fs.existsSync(candidate)) || ''
   });
-  const macServerDownloadPaths = macArtifactCandidates('SyncWatch同步观影-服务器-v2.1.9');
-  const macClientDownloadPaths = macArtifactCandidates('SyncWatch同步观影-客户端-v2.1.9');
+  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.0');
+  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.0');
   const controller = await startSyncWatchServer({
     host: '0.0.0.0', port, strictPort: false, portFallbackCount: 20, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
     hostControlToken: token, allowedHosts, publicUrl, androidApkPath, clientDownloadPath, tunnelManager,
-    macServerDownloadPaths, macClientDownloadPaths, macDistributionRoots: [ROOT_DIR, path.join(ROOT_DIR, 'mac')]
+    macServerDownloadPaths, macClientDownloadPaths, macDistributionRoots: [path.join(ROOT_DIR, 'dist'), ROOT_DIR, path.join(ROOT_DIR, 'mac')]
   });
   const local = `http://127.0.0.1:${controller.port}`;
   const accessUrls = [...new Set([publicUrl, ...controller.addresses, local].filter(Boolean))];
@@ -222,4 +225,3 @@ if (require.main === module) {
 }
 
 module.exports = { main, _test: { validPort, normalizePublicUrl, normalizeSettings, publicBaseUrl } };
-

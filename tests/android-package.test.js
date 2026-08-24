@@ -13,7 +13,7 @@ const mobileRoot = path.join(repositoryRoot, 'mobile');
 const appRoot = path.join(mobileRoot, 'app');
 const sourceOnly = process.argv.includes('--source-only');
 const explicitApk = process.argv.find((argument) => /\.apk$/i.test(argument));
-const apkPath = path.resolve(explicitApk || path.join(mobileRoot, 'SyncWatch同步观影-v2.1.9.apk'));
+const apkPath = path.resolve(explicitApk || path.join(repositoryRoot, 'dist', 'SyncWatch-Android-v2.2.0-universal.apk'));
 
 const NODE_MOBILE = Object.freeze({
   version: '18.20.4',
@@ -96,6 +96,10 @@ function verifySources() {
   assert.match(buildScript, /real release keystore is required/i);
   assert.match(buildScript, /was not signed by the configured release keystore/i);
   assert.match(buildScript, /Assert-ApkPayload/);
+  assert.match(buildScript, /\.\.\\dist[\s\S]{0,160}SyncWatch-Android-v2\.2\.0-universal\.apk/,
+    'the signed APK must publish directly to the root dist directory');
+  assert.doesNotMatch(buildScript, /SyncWatch同步观影-v2\.2\.0\.apk/,
+    'the Android build must not keep a duplicate delivery APK under mobile');
 
   const mobileServerSource = expectedMobileServerSource().toString('utf8');
   assert.doesNotMatch(mobileServerSource, /\\p\{Script=Han\}/,
@@ -159,7 +163,7 @@ function verifySources() {
     'attempting to start an unavailable Android tunnel must fail explicitly');
   assert.match(service, /hostControlToken:hostToken,tunnelManager,androidApkPath/,
     'the Android bootstrap must pass its explicit tunnel capability to the shared server');
-  assert.match(service, /androidApkPath:path\.join\(dataRoot,'SyncWatch同步观影-v2\.1\.9\.apk'\)/,
+  assert.match(service, /androidApkPath:path\.join\(dataRoot,'SyncWatch同步观影-v2\.2\.0\.apk'\)/,
     'the Android bootstrap must point download metadata at the current APK');
   assert.doesNotMatch(service, /v2\.1\.7/, 'the Android bootstrap must not retain the previous APK version');
   const activity = read('mobile/app/src/main/java/com/xuan/syncwatch/MainActivity.java');

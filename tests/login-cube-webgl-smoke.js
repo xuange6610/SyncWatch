@@ -171,7 +171,7 @@ async function run() {
   assert.equal(configured.loginCube.displayMode, 'model');
 
   window = new BrowserWindow({
-    width: 720, height: 720, x: -10000, y: -10000, show: false, skipTaskbar: true,
+    width: 960, height: 720, x: -10000, y: -10000, show: false, skipTaskbar: true,
     webPreferences: {
       nodeIntegration: false, contextIsolation: true, sandbox: true,
       backgroundThrottling: false
@@ -187,6 +187,8 @@ async function run() {
     && state.loginCubeModelRoot?.children?.length
     && elements.loginCubeScene.classList.contains('has-loaded-model')
   )`, 'the uploaded GLB to render');
+  await waitFor(`elements.loginCubeScene.clientWidth >= 300 && elements.loginCubeScene.clientHeight >= 300`, 'the login cube layout');
+  await waitFor(`state.loginCubeModelRenderer.getContext().drawingBufferWidth >= 300`, 'the WebGL renderer resize');
 
   const first = await sampleFrame();
   assert.ok(first && first.width >= 300 && first.height >= 300, JSON.stringify(first));

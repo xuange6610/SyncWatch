@@ -6,8 +6,8 @@
   "compression": "maximum",
   "electronLanguages": ["zh-CN"],
   "removePackageScripts": true,
-  "artifactName": "SyncWatch同步观影-客户端-v2.1.9-${arch}.${ext}",
-  "directories": { "output": "dist-mac-client" },
+  "artifactName": "SyncWatch-Client-macOS-v2.2.0-${arch}.${ext}",
+  "directories": { "output": "dist" },
   "files": [
     "electron-client.js",
     "electron-client-preload.js",
@@ -34,5 +34,5 @@
       "NSScreenCaptureUsageDescription": "SyncWatch同步观影 需要屏幕录制权限用于共享桌面画面与声音。"
     }
   },
-  "extraMetadata": { "main": "electron-client.js", "name": "syncwatch-client", "version": "2.1.9", "description": "SyncWatch同步观影" }
+  "extraMetadata": { "main": "electron-client.js", "name": "syncwatch-client", "version": "2.2.0", "description": "SyncWatch同步观影" }
 }

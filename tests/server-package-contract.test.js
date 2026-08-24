@@ -40,7 +40,7 @@ assert.match(buildScript, /scripts\\collect-macos-distribution\.ps1/);
 assert.match(buildScript, /-SourceRoot\s+\$PSScriptRoot\s+-Destination\s+\$macDirectory\s+-Version\s+\$version/);
 assert.match(buildScript, /server\\standalone-tunnel\.js/);
 assert.match(buildScript, /vendor\\cloudflared\.exe/);
-assert.match(buildScript, /Join-Path\s+\$PSScriptRoot\s+['"]release\\windows-client\\SyncWatch同步观影-Client-v2\.1\.8\.exe['"]/);
+assert.match(buildScript, /Join-Path\s+\$PSScriptRoot\s+['"]dist\\SyncWatch-Experience-Client-Portable-v2\.2\.0-x64\.exe['"]/);
 assert.doesNotMatch(buildScript, /Join-Path\s+\$PSScriptRoot\s+['"]SyncWatch同步观影-Client-v2\.1\.8\.exe['"]/, 
   'the server package must never fall back to a stale root-level client EXE');
 
@@ -77,10 +77,10 @@ try {
   const destination = path.join(tempRoot, 'valid-stage', 'mac');
   const serverZip = artifactName(example.server.x64.zip);
   const clientDmg = artifactName(example.client.arm64.dmg);
-  fs.mkdirSync(path.join(source, 'dist-mac-client'), { recursive: true });
+  fs.mkdirSync(path.join(source, 'dist'), { recursive: true });
   fs.writeFileSync(path.join(source, 'mac', serverZip), 'server-zip');
-  fs.writeFileSync(path.join(source, 'dist-mac-client', clientDmg), 'client-dmg');
-  fs.writeFileSync(path.join(source, 'mac', 'SyncWatch同步观影-unrelated-v2.1.9-x64.zip'), 'unrelated');
+  fs.writeFileSync(path.join(source, 'dist', clientDmg), 'client-dmg');
+  fs.writeFileSync(path.join(source, 'mac', 'SyncWatch同步观影-unrelated-v2.2.0-x64.zip'), 'unrelated');
   fs.writeFileSync(path.join(source, 'mac', 'private-key.pem'), 'must-not-leak');
   fs.writeFileSync(path.join(source, 'mac', 'mac-distribution.json'), JSON.stringify({
     manifestVersion: 1,
@@ -99,7 +99,8 @@ try {
   assert.match(`${empty.stdout}\n${empty.stderr}`, /artifact is empty/i);
 
   const conflictSource = prepareSource(tempRoot, 'conflict-source');
-  fs.writeFileSync(path.join(conflictSource, serverZip), 'older-build');
+  fs.mkdirSync(path.join(conflictSource, 'dist'), { recursive: true });
+  fs.writeFileSync(path.join(conflictSource, 'dist', serverZip), 'older-build');
   fs.writeFileSync(path.join(conflictSource, 'mac', serverZip), 'newer-build');
   const conflict = collect(conflictSource, path.join(tempRoot, 'conflict-stage', 'mac'));
   assert.notEqual(conflict.status, 0, 'different artifacts with the same release name must fail packaging');

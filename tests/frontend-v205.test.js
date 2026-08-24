@@ -65,4 +65,4 @@ assert.match(app, /passwordMeta\.changedAt/,
 assert.doesNotMatch(app, /account\.passwordHash|account\.password\b/,
   'browser code must not render server-side password material');
 
-console.log('Frontend v2.1.9 account management, auth gate, tutorial, audit, deletion, and responsive header contracts passed.');
+console.log('Frontend v2.2.0 account management, auth gate, tutorial, audit, deletion, and responsive header contracts passed.');

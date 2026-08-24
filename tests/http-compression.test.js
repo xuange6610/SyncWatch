@@ -66,7 +66,7 @@ async function main() {
     const publicConfig = await request(baseUrl, '/api/public-config', { 'Accept-Encoding': 'gzip' });
     assert.equal(publicConfig.status, 200);
     assert.equal(publicConfig.headers['content-encoding'], 'gzip');
-    assert.equal(JSON.parse(decodedBody(publicConfig).toString('utf8')).version, 'v2.1.9');
+    assert.equal(JSON.parse(decodedBody(publicConfig).toString('utf8')).version, 'v2.2.0');
 
     const localPlaybackConfig = JSON.parse(decodedBody(publicConfig).toString('utf8'));
     assert.equal(localPlaybackConfig.defaultPlaybackQuality, 'original');

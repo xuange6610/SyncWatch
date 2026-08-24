@@ -6,8 +6,8 @@
   "compression": "maximum",
   "electronLanguages": ["zh-CN"],
   "removePackageScripts": true,
-  "artifactName": "SyncWatch同步观影-完整版-v2.1.9-${arch}.${ext}",
-  "directories": { "output": "dist-mac-full" },
+  "artifactName": "SyncWatch-Full-Offline-macOS-v2.2.0-${arch}.${ext}",
+  "directories": { "output": "dist" },
   "files": [
     "electron-pink.js",
     "electron-main-preload.js",
@@ -26,9 +26,9 @@
   "extraResources": [
     { "from": "vendor/cloudflared-darwin-x64", "to": "vendor/cloudflared-darwin-x64" },
     { "from": "vendor/cloudflared-darwin-arm64", "to": "vendor/cloudflared-darwin-arm64" },
-    { "from": "release/offline-bundle/windows", "to": "offline-downloads/windows" },
-    { "from": "release/offline-bundle/android", "to": "offline-downloads/android" },
-    { "from": "release/offline-bundle/mac", "to": "offline-downloads/mac" }
+    { "from": ".build/offline-bundle/windows", "to": "offline-downloads/windows" },
+    { "from": ".build/offline-bundle/android", "to": "offline-downloads/android" },
+    { "from": ".build/offline-bundle/mac", "to": "offline-downloads/mac" }
   ],
   "mac": {
     "target": ["dmg", "zip"],

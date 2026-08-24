@@ -35,7 +35,7 @@ assert.ok(windowsBuildHasUtf8Bom || !/[^\x00-\x7f]/.test(windowsBuild),
   'a BOM-less Windows PowerShell build script must not contain non-ASCII literals');
 assert.match(windowsBuild, /Get-Content[^\r\n]+-Encoding UTF8[^\r\n]+package\.json/,
   'the Windows build must decode package.json explicitly as UTF-8');
-assert.match(windowsBuild, /\$expectedProductName\s*=\s*\[string\]\$buildManifest\.build\.productName/,
+assert.match(windowsBuild, /\$expectedProductName\s*=\s*\[string\]\$manifest\.build\.productName/,
   'the Windows build must derive its localized executable name from package.json');
 
 // Windows/macOS metadata, Electron runtime identity, window titles and tray
@@ -46,6 +46,7 @@ for (const config of [
   macClientConfig, macServerConfig, macFullConfig
 ]) {
   assert.equal(config.productName, DESKTOP_NAME);
+  assert.equal(config.directories.output, 'dist', 'every formal Electron artifact must output to root dist');
 }
 assert.equal(manifest.description, DESKTOP_NAME);
 assert.equal(manifest.build.win.executableName, DESKTOP_NAME);
@@ -98,11 +99,10 @@ for (const value of [...mainFiles, ...mainUnpacked, ...mainResources]) {
   assert.doesNotMatch(value, /(^|[\\/])(?:mobile|mac)(?:[\\/]|$)|SyncWatch同步观影-Client-v2\.1\.7\.exe/i,
     `main desktop package embeds a separately released payload: ${value}`);
 }
-assert.match(windowsBuild, /release[\\/]windows-server/i);
-assert.match(windowsBuild, /release[\\/]windows-client/i);
-assert.match(windowsBuild, /release[\\/]android/i);
-assert.match(windowsBuild, /release[\\/]macos/i);
-assert.match(windowsBuild, /release[\\/]server-deployment/i);
+assert.doesNotMatch(windowsBuild, /release[\\/](?:windows|android|macos|server-deployment)/i,
+  'formal build assets must not be published to split release directories');
+assert.match(windowsBuild, /Join-Path\s+\$PSScriptRoot\s+['"]dist['"]/);
+assert.match(windowsBuild, /Join-Path\s+\$PSScriptRoot\s+['"]\.build['"]/);
 assert.doesNotMatch(windowsBuild, /win-unpacked\\resources\\mac/);
 assert.doesNotMatch(windowsBuild, /app\.asar\.unpacked\\mobile/);
 for (const [label, config] of [
@@ -111,23 +111,23 @@ for (const [label, config] of [
   ['macOS Full', macFullConfig]
 ]) {
   const resources = (config.extraResources || []).map((entry) => `${entry.from || ''} -> ${entry.to || ''}`);
-  for (const directory of ['release/offline-bundle/windows', 'release/offline-bundle/android', 'release/offline-bundle/mac']) {
+  for (const directory of ['.build/offline-bundle/windows', '.build/offline-bundle/android', '.build/offline-bundle/mac']) {
     assert.ok(resources.some((entry) => entry.includes(directory)), `${label} must embed ${directory}`);
   }
 }
-assert.equal(fullInstallerConfig.nsis.artifactName, 'SyncWatch-v2.1.9-Full-Offline-Installer-${arch}.exe');
-assert.equal(fullPortableConfig.portable.artifactName, 'SyncWatch-v2.1.9-Full-Offline-Portable-${arch}.exe');
-assert.equal(macFullConfig.artifactName, 'SyncWatch同步观影-完整版-v2.1.9-${arch}.${ext}');
+assert.equal(fullInstallerConfig.nsis.artifactName, 'SyncWatch-v2.2.0-Full-Offline-Installer-${arch}.exe');
+assert.equal(fullPortableConfig.portable.artifactName, 'SyncWatch-v2.2.0-Full-Offline-Portable-${arch}.exe');
+assert.equal(manifest.build.portable.artifactName, 'SyncWatch-Standard-Server-Portable-v2.2.0-${arch}.exe');
+assert.equal(clientConfig.portable.artifactName, 'SyncWatch-Experience-Client-Portable-v2.2.0-${arch}.exe');
+assert.equal(macClientConfig.artifactName, 'SyncWatch-Client-macOS-v2.2.0-${arch}.${ext}');
+assert.equal(macServerConfig.artifactName, 'SyncWatch-Server-macOS-v2.2.0-${arch}.${ext}');
+assert.equal(macFullConfig.artifactName, 'SyncWatch-Full-Offline-macOS-v2.2.0-${arch}.${ext}');
 assert.match(electronServer, /offline-downloads['"], ['"]windows/);
 assert.match(electronServer, /offline-downloads['"], ['"]android/);
 assert.match(electronServer, /offline-downloads['"], ['"]mac/);
 
-// The deployable server ZIP remains a separate offline artifact and is still
-// built after the two Windows executables have passed their own checks.
-assert.match(windowsBuild, /build-server-package\.ps1/);
 assert.doesNotMatch(windowsBuild, /SyncWatch同步观影-Client-v2\.1\.7\.exe/);
-assert.match(windowsBuild, /SyncWatch同步观影-Client-v2\.1\.9\.exe/);
-assert.match(windowsBuild, /SyncWatch同步观影-Server-v/i);
+assert.match(windowsBuild, /SyncWatch-Experience-Client-Portable-v2\.2\.0-x64\.exe/);
 
 // GitHub strips some non-ASCII characters from uploaded asset names. Keep the
 // public macOS names ASCII and role-specific so client/server jobs cannot
@@ -141,16 +141,16 @@ for (const arch of ['x64', 'arm64']) {
 assert.match(macReleaseWorkflow, /release_role="Client"/);
 assert.match(macReleaseWorkflow, /release_role="Server"/);
 for (const publicName of [
-  'SyncWatch-Experience-Client-Portable-v2.1.9-x64.exe',
-  'SyncWatch-Standard-Server-Portable-v2.1.9-x64.exe',
-  'SyncWatch-v2.1.9-Full-Offline-Installer-x64.exe',
-  'SyncWatch-v2.1.9-Full-Offline-Portable-x64.exe'
+  'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe',
+  'SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe',
+  'SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe',
+  'SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe'
 ]) {
   assert.match(windowsReleaseWorkflow, new RegExp(publicName.replaceAll('.', '\\.')),
     `Windows release workflow must publish the tiered asset ${publicName}`);
 }
-assert.match(windowsReleaseWorkflow, /gh release upload[^\r\n]+release\/windows-full-portable\/\*\.exe/,
-  'Windows release upload must include the standalone Full Offline EXE directory');
+assert.match(windowsReleaseWorkflow, /dist\/\*\.exe|dist\\\*\.exe/,
+  'Windows release workflow must collect EXE assets from root dist');
 for (const arch of ['x64', 'arm64']) {
   for (const extension of ['dmg', 'zip']) {
     assert.match(macReleaseWorkflow,

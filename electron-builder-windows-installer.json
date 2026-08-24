@@ -6,7 +6,7 @@
   "compression": "maximum",
   "electronLanguages": ["zh-CN"],
   "removePackageScripts": true,
-  "directories": { "output": "dist-installer" },
+  "directories": { "output": "dist" },
   "files": [
     "electron-pink.js",
     "electron-main-preload.js",
@@ -24,9 +24,9 @@
   ],
   "extraResources": [
     { "from": "vendor/cloudflared.exe", "to": "vendor/cloudflared.exe" },
-    { "from": "release/offline-bundle/windows", "to": "offline-downloads/windows" },
-    { "from": "release/offline-bundle/android", "to": "offline-downloads/android" },
-    { "from": "release/offline-bundle/mac", "to": "offline-downloads/mac" }
+    { "from": ".build/offline-bundle/windows", "to": "offline-downloads/windows" },
+    { "from": ".build/offline-bundle/android", "to": "offline-downloads/android" },
+    { "from": ".build/offline-bundle/mac", "to": "offline-downloads/mac" }
   ],
   "win": {
     "target": [{ "target": "nsis", "arch": ["x64"] }],
@@ -43,6 +43,6 @@
     "shortcutName": "SyncWatch同步观影",
     "runAfterFinish": true,
     "deleteAppDataOnUninstall": false,
-    "artifactName": "SyncWatch-v2.1.9-Full-Offline-Installer-${arch}.exe"
+    "artifactName": "SyncWatch-v2.2.0-Full-Offline-Installer-${arch}.exe"
   }
 }

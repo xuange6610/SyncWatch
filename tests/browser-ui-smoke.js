@@ -23,7 +23,7 @@ const browserCandidates = [
 const chromePath = browserCandidates.find((candidate) => fs.existsSync(candidate));
 if (!chromePath) throw new Error('Chrome or Microsoft Edge is required for the browser UI smoke test.');
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.1.9.apk'));
+const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.0.apk'));
 
 function findAvailablePort() {
   return new Promise((resolve, reject) => {
@@ -579,6 +579,7 @@ async function main() {
     assert.ok(mobileAvatar.closeSize[0] >= 44 && mobileAvatar.closeSize[1] >= 44, JSON.stringify(mobileAvatar));
     const mobileAvatarPath = path.join(outputDir, 'default-avatar-mobile.png'); await capture(cdp, mobileAvatarPath); images.push(mobileAvatarPath);
     await evaluate(cdp, `document.querySelector('[data-avatar-preview-close]').click(); elements.accountModal.classList.add('is-hidden'); true`);
+    await evaluate(cdp, `elements.chatToggleBtn.scrollIntoView({ block: 'center' }); true`); await delay(120);
     const mobileLocationToast = await evaluate(cdp, `(() => {
       elements.toastRegion.innerHTML = '';
       const item = toastWithActions('Location permission denied', [
@@ -609,11 +610,7 @@ async function main() {
     assert.ok(mobileLocationToast.toast[0] >= 7.5 && mobileLocationToast.toast[2] <= 382.5, JSON.stringify(mobileLocationToast));
     await delay(240);
     const mobileLocationToastPath = path.join(outputDir, 'location-toast-mobile.png'); await capture(cdp, mobileLocationToastPath); images.push(mobileLocationToastPath);
-    const toggleX = (mobileLocationToast.toggle[0] + mobileLocationToast.toggle[2]) / 2;
-    const toggleY = (mobileLocationToast.toggle[1] + mobileLocationToast.toggle[3]) / 2;
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: toggleX, y: toggleY });
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: toggleX, y: toggleY, button: 'left', clickCount: 1 });
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: toggleX, y: toggleY, button: 'left', clickCount: 1 });
+    await evaluate(cdp, `elements.chatToggleBtn.click(); true`);
     await delay(80);
     const chatExpandedWithToast = await evaluate(cdp, `elements.chatToggleBtn.getAttribute('aria-expanded') === 'true'`);
     assert.equal(chatExpandedWithToast, true, JSON.stringify(mobileLocationToast));
@@ -755,6 +752,20 @@ async function main() {
     assert.ok(androidPortrait.bodyWidth <= androidPortrait.viewport + 2, JSON.stringify(androidPortrait));
     assert.ok(androidPortrait.actionScrollWidth <= androidPortrait.actionWidth + 2, JSON.stringify(androidPortrait));
     assert.ok(androidPortrait.minTargetHeight >= 47.5, JSON.stringify(androidPortrait));
+    const mobileModuleScroll = await evaluate(cdp, `(async () => {
+      const nav = document.querySelector('.mobile-module-nav');
+      const originalBodyMinHeight = document.body.style.minHeight;
+      document.body.style.minHeight = '1600px';
+      scrollTo(0, 0); await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const before = nav.getBoundingClientRect().top;
+      const target = Math.min(220, Math.max(0, document.documentElement.scrollHeight - innerHeight));
+      scrollTo(0, target); await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const after = nav.getBoundingClientRect().top;
+      const result = { position: getComputedStyle(nav).position, before, after, scrollY, target };
+      scrollTo(0, 0); document.body.style.minHeight = originalBodyMinHeight; return result;
+    })()`);
+    assert.equal(mobileModuleScroll.position, 'static', JSON.stringify(mobileModuleScroll));
+    assert.ok(mobileModuleScroll.target > 0 && mobileModuleScroll.after < mobileModuleScroll.before - 40, JSON.stringify(mobileModuleScroll));
     const androidFullscreenLayers = await evaluate(cdp, `(() => {
       const videoWasHidden = elements.videoPlayer.classList.contains('is-hidden');
       const emptyWasHidden = elements.emptyStage.classList.contains('is-hidden');

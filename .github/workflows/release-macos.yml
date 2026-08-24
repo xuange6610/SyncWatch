@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing v-prefixed release tag (for example v2.1.9)
+        description: Existing v-prefixed release tag (for example v2.2.0)
         required: true
-        default: v2.1.9
+        default: v2.2.0
 
 permissions:
   contents: write
@@ -26,7 +26,7 @@ jobs:
         kind: [client, server]
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      VERSION: "2.1.9"
+      VERSION: "2.2.0"
     steps:
       - name: Checkout release source
         uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
         run: |
           tag='${{ inputs.tag }}'
           if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release workflow requires a v-prefixed SemVer tag such as v2.1.9; received '$tag'" >&2
+            echo "Release workflow requires a v-prefixed SemVer tag such as v2.2.0; received '$tag'" >&2
             exit 1
           fi
 
@@ -77,17 +77,15 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${{ matrix.kind }}" == "client" ]]; then
-            label="客户端"
-            folder="dist-mac-client"
+            release_role="Client"
           else
-            label="服务器"
-            folder="dist-mac-server"
+            release_role="Server"
           fi
           old_ascii="tang""jingxuan"
           old_name="唐""靖轩"
           for arch in x64 arm64; do
-            dmg="$folder/SyncWatch同步观影-${label}-v${VERSION}-${arch}.dmg"
-            zip="$folder/SyncWatch同步观影-${label}-v${VERSION}-${arch}.zip"
+            dmg="dist/SyncWatch-${release_role}-macOS-v${VERSION}-${arch}.dmg"
+            zip="dist/SyncWatch-${release_role}-macOS-v${VERSION}-${arch}.zip"
             test -s "$dmg"
             test -s "$zip"
             ! grep -aEqi "${old_ascii}|${old_name}" "$dmg"
@@ -101,29 +99,16 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ matrix.kind }}" == "client" ]]; then
-            label="客户端"
             release_role="Client"
-            folder="dist-mac-client"
           else
-            label="服务器"
             release_role="Server"
-            folder="dist-mac-server"
           fi
 
-          release_dir="release-macos-${{ matrix.kind }}"
-          mkdir -p "$release_dir"
-          for arch in x64 arm64; do
-            cp "$folder/SyncWatch同步观影-${label}-v${VERSION}-${arch}.dmg" \
-              "$release_dir/SyncWatch-${release_role}-macOS-v${VERSION}-${arch}.dmg"
-            cp "$folder/SyncWatch同步观影-${label}-v${VERSION}-${arch}.zip" \
-              "$release_dir/SyncWatch-${release_role}-macOS-v${VERSION}-${arch}.zip"
-          done
-
           gh release upload "${{ inputs.tag }}" \
-            "$release_dir/SyncWatch-${release_role}-macOS-v${VERSION}-x64.dmg" \
-            "$release_dir/SyncWatch-${release_role}-macOS-v${VERSION}-x64.zip" \
-            "$release_dir/SyncWatch-${release_role}-macOS-v${VERSION}-arm64.dmg" \
-            "$release_dir/SyncWatch-${release_role}-macOS-v${VERSION}-arm64.zip" \
+            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-x64.dmg" \
+            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-x64.zip" \
+            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-arm64.dmg" \
+            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-arm64.zip" \
             --clobber
 
   full:
@@ -137,7 +122,7 @@ jobs:
         arch: [x64, arm64]
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      VERSION: "2.1.9"
+      VERSION: "2.2.0"
     steps:
       - name: Checkout release source
         uses: actions/checkout@v4
@@ -148,7 +133,7 @@ jobs:
         run: |
           tag='${{ inputs.tag }}'
           if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release workflow requires a v-prefixed SemVer tag such as v2.1.9; received '$tag'" >&2
+            echo "Release workflow requires a v-prefixed SemVer tag such as v2.2.0; received '$tag'" >&2
             exit 1
           fi
 
@@ -170,7 +155,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p vendor release/offline-bundle/{windows,android,mac}
+          mkdir -p vendor .build/offline-bundle/{windows,android,mac}
 
           curl -fL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz -C vendor
           mv vendor/cloudflared vendor/cloudflared-darwin-x64
@@ -178,22 +163,12 @@ jobs:
           mv vendor/cloudflared vendor/cloudflared-darwin-arm64
           chmod 755 vendor/cloudflared-darwin-x64 vendor/cloudflared-darwin-arm64
 
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Experience-Client-Portable-v2.1.9-x64.exe' --dir release/offline-bundle/windows --clobber
-          mv release/offline-bundle/windows/SyncWatch-Experience-Client-Portable-v2.1.9-x64.exe \
-            release/offline-bundle/windows/SyncWatch同步观影-Client-v2.1.9.exe
+          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe' --dir .build/offline-bundle/windows --clobber
 
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Android-v2.1.9-universal.apk' --dir release/offline-bundle/android --clobber
-          mv release/offline-bundle/android/SyncWatch-Android-v2.1.9-universal.apk \
-            release/offline-bundle/android/SyncWatch同步观影-v2.1.9.apk
+          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Android-v2.2.0-universal.apk' --dir .build/offline-bundle/android --clobber
 
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Server-macOS-v2.1.9-*.zip' --dir release/offline-bundle/mac --clobber
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Client-macOS-v2.1.9-*.zip' --dir release/offline-bundle/mac --clobber
-          for arch in x64 arm64; do
-            mv "release/offline-bundle/mac/SyncWatch-Server-macOS-v2.1.9-${arch}.zip" \
-              "release/offline-bundle/mac/SyncWatch同步观影-服务器-v2.1.9-${arch}.zip"
-            mv "release/offline-bundle/mac/SyncWatch-Client-macOS-v2.1.9-${arch}.zip" \
-              "release/offline-bundle/mac/SyncWatch同步观影-客户端-v2.1.9-${arch}.zip"
-          done
+          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Server-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
+          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Client-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
           node scripts/verify-full-offline-bundle.js
 
       - name: Build Full Offline DMG and ZIP
@@ -209,20 +184,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release_dir="release-macos-full-${{ matrix.arch }}"
-          mkdir -p "$release_dir"
           old_ascii="tang""jingxuan"
           old_name="唐""靖轩"
           for extension in dmg zip; do
-            source="dist-mac-full/SyncWatch同步观影-完整版-v${VERSION}-${{ matrix.arch }}.${extension}"
-            target="$release_dir/SyncWatch-Full-Offline-macOS-v${VERSION}-${{ matrix.arch }}.${extension}"
+            source="dist/SyncWatch-Full-Offline-macOS-v${VERSION}-${{ matrix.arch }}.${extension}"
             test -s "$source"
             size="$(stat -f %z "$source")"
             test "$size" -ge 1073741824
             test "$size" -lt 2147483648
             ! grep -aEqi "${old_ascii}|${old_name}" "$source"
-            cp "$source" "$target"
-            shasum -a 256 "$target"
+            shasum -a 256 "$source"
           done
 
       - name: Upload Full Offline packages
@@ -230,16 +201,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          release_dir="release-macos-full-${{ matrix.arch }}"
           if [[ "${{ matrix.arch }}" == "x64" ]]; then
             files=(
-              "$release_dir/SyncWatch-Full-Offline-macOS-v${VERSION}-x64.dmg"
-              "$release_dir/SyncWatch-Full-Offline-macOS-v${VERSION}-x64.zip"
+              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-x64.dmg"
+              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-x64.zip"
             )
           else
             files=(
-              "$release_dir/SyncWatch-Full-Offline-macOS-v${VERSION}-arm64.dmg"
-              "$release_dir/SyncWatch-Full-Offline-macOS-v${VERSION}-arm64.zip"
+              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-arm64.dmg"
+              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-arm64.zip"
             )
           fi
           gh release upload "${{ inputs.tag }}" "${files[@]}" --clobber

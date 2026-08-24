@@ -17,7 +17,7 @@ $example = Get-Content -Raw -Encoding UTF8 -LiteralPath $examplePath | ConvertFr
 if ([int]$example.manifestVersion -ne 1) { throw 'Unsupported macOS distribution example manifest version.' }
 
 $allowedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-$expectedPattern = '^SyncWatch同步观影-.+-v' + [Regex]::Escape($Version) + '-(x64|arm64)\.(dmg|zip)$'
+$expectedPattern = '^SyncWatch-(Server|Client)-macOS-v' + [Regex]::Escape($Version) + '-(x64|arm64)\.(dmg|zip)$'
 foreach ($kind in @('server', 'client')) {
     $kindConfig = $example.$kind
     foreach ($architecture in @('x64', 'arm64')) {
@@ -52,9 +52,7 @@ function Get-Sha256([string]$Path) {
 }
 
 $candidateRoots = @(
-    $source,
-    (Join-Path $source 'dist-mac-server'),
-    (Join-Path $source 'dist-mac-client'),
+    (Join-Path $source 'dist'),
     (Join-Path $source 'mac')
 )
 foreach ($root in $candidateRoots) {

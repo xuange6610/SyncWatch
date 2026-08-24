@@ -11,6 +11,7 @@ const LOGIN_CUBE_FACE_DEFAULTS = Object.freeze([
 ]);
 const SYNCWATCH_SUPPORT_EMAIL = '2590813506@qq.com';
 const PLAYBACK_RATE_PROMPT_KEY = 'syncwatchPlaybackRatePrompt';
+const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
 const hostTokenFromHash = new URLSearchParams(location.hash.slice(1)).get('host') || '';
 let windowHostToken = hostTokenFromHash;
 try {
@@ -21,7 +22,7 @@ try {
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.1.9', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', experiencePerMinute: 1, passwordPolicy: { mode: 'unrestricted', minLength: 6, maxLength: 72, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.0', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', experiencePerMinute: 1, passwordPolicy: { mode: 'unrestricted', minLength: 6, maxLength: 72, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
   expectedSeek: null, expectedPlaybackEvent: null, expectedVolume: null, mediaGeneration: 0,
@@ -58,11 +59,12 @@ const state = {
   fullscreenHideTimer: null, fullscreenRevealTimer: null, f11PromptTimer: null, f11PromptEndsAt: 0, playbackRatePromptTimer: null, lastShownPlaybackRate: 0, appliedPlaybackRate: null, pseudoFullscreen: false, fullscreenMessageId: '', chatContextMessageId: '',
   chatContextMenuHomeParent: null, chatContextMenuHomeNextSibling: null, lightsInFlight: false, roomSwitchSuccessTimer: null,
   tunnelPollTimer: null, tunnelPollInFlight: false, tunnelPollGeneration: 0, tunnelLastStatus: null, tunnelStopRequested: false,
+  tunnelOperationStartedAt: 0, tunnelProgressDismissed: false, tunnelProgressHideTimer: null,
   operationHistory: [], operationHistoryBefore: '', operationHistoryHasMore: false, operationHistoryLoading: false,
   operationHistoryQuery: '', operationHistoryScope: '', selectedOperations: new Set(), returnToManagementAfterChild: false,
   managementOnlyAuth: false,
   managementSection: 'server', managementHomeParent: null, managementHomeNextSibling: null, adminRefreshTimer: null, adminRefreshInFlight: false,
-  controlRequest: null, controlSuppressions: {}, lanRooms: [], onlineRooms: [], lanScanResolver: null,
+  controlRequest: null, controlSuppressions: {}, lanRooms: [], selectedLanRooms: new Set(), onlineRooms: [], lanScanResolver: null,
   screenPeers: new Map(), remoteScreenPeer: null, remoteScreenStream: null, screenSignalQueues: new Map(),
   screenAudioContext: null, screenAudioNextTime: 0, screenAudioSequence: 0, screenAudioQueue: [], screenAudioLastSequence: 0, screenAudioLastSequenceAt: 0, screenAudioProcessor: null, screenAudioSource: null,
   screenAudioSink: null, screenPlaybackAudioContext: null,
@@ -105,7 +107,7 @@ const state = {
   playerSeekDragging: false, playerSeekTarget: null, lastCommittedSeek: null,
   roomEntryNotice: null, roomEntryNoticeTimer: null, roomEntryNoticeEndsAt: 0,
   clipboardPasteFallbacks: new WeakMap(), switchOwnedRoomsLoading: false, switchOwnedRoomSnapshot: [], selectedSwitchOwnedRooms: new Set(),
-  loginRoomSnapshot: [], selectedLoginRooms: new Set(), loginRoomQuota: 1, loginOwnedRoomCount: 0, macDownloadKind: 'client',
+  loginRoomSnapshot: [], selectedLoginRooms: new Set(), loginRoomQuota: 1, loginOwnedRoomCount: 0, loginRoomPromptActive: false, macDownloadKind: 'client',
   applicationRefreshInFlight: false, modalLayerCounter: 500,
   loginCubeRotationX: -12, loginCubeRotationY: 28, loginCubeDragging: false, loginCubePointerId: null,
   loginCubeLastX: 0, loginCubeLastY: 0, loginCubeLastPointerAt: 0, loginCubeVelocityX: 0, loginCubeVelocityY: 0,
@@ -242,10 +244,10 @@ localStorage.setItem('syncwatchDeviceId', deviceId);
 
 const elements = {};
 const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop
-  loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn adminContactBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
- loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn createRoomBtn defaultAdminLoginHint
+  loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn loginHostShortcuts adminContactBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
+ loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
-filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText
+ filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
  fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText
  playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
  playerContainer emptyStage emptyStageHint videoPlayer imageViewer documentViewer textViewer sharedWebViewer sharedWebEmpty downloadViewer downloadTitle downloadLink screenShareCanvas screenShareVideo screenShareStatus syncNotice resumePlaybackBtn danmakuContainer reactionLayer friendVideoNoticeLayer playerInfo playerResolution playerCodec hardwareDecode
@@ -253,17 +255,17 @@ filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFi
  chatPanel chatHistory chatForm chatInput privateRecipient voiceBtn voiceFileInput chatImageInput chatImageBtn chatEmojiBtn chatEmojiBar chatEmojiCollapseBtn loadHistoryBtn chatToggleBtn chatViewFilterBtn chatViewFilters chatViewChannel chatViewUser chatViewUserMode chatViewQuery chatViewResetBtn reactionBar userList userCount roomCode roomScheme roomShareUrl applyShareDomainBtn copyShareLinkBtn copyRoomCodeBtn copyLanAddressBtn copyPublicAddressBtn resetShareAddressBtn showQrBtn qrBox currentRoomBanner globalRoomSearch
  liveVoiceBar liveVoiceStatus voiceRoomBtn voicePrivateBtn voiceMuteBtn voiceLeaveBtn voiceAudioDock voiceDockToggleBtn liveVoiceFloating voiceFloatingStatus voiceFloatingMuteBtn voicePushToTalkBtn voiceFloatingLeaveBtn voiceFloatingCollapseBtn collapseMembersBtn
   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicAudio
-  usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
+  usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
   mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible saveNoticePreferenceSettingsBtn loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
  roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn uploadLimitMb uploadTimeLimit saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSendNotice savePermissionsBtn
  permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
  pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus accountAdminList refreshAccountsBtn accountViewMode registrationRequestList refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
-  passwordPolicyCard passwordPolicyMode passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminUnlimitedDevices savePasswordPolicyBtn passwordPolicyStatus blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
+  passwordPolicyCard passwordPolicyMode passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
  toastRegion clearAllToastsBtn reconnectOverlay reconnectMessage reconnectRetryBtn closeReconnectOverlayBtn accountModal closeAccountBtn accountNav accountContent theater guestConvertBtn guestConvertModal closeGuestConvertBtn guestConvertForm guestConvertUsername guestConvertPassword guestConvertPasswordConfirm guestConvertEmail guestConvertEmailCode sendGuestConvertEmailCodeBtn guestConvertStatus
  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn downloadMacServerMainBtn downloadMacClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
-  managementHubModal closeManagementHubBtn managementContentHost switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomList closeRoomSwitchSuccessBtn
+  managementHubModal closeManagementHubBtn managementContentHost switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
   fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn macDownloadModal closeMacDownloadBtn macDownloadTitle macDownloadHint macDownloadArch macDownloadFormat macDownloadAvailability macDownloadStatus confirmMacDownloadBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
@@ -271,7 +273,7 @@ filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFi
 dataBackupCard dataBackupScope exportDataBtn importDataBtn importDataInput dataBackupStatus dataBackupProgress dataBackupProgressLabel dataBackupProgressPercent dataBackupProgressBar dataBackupProgressDetail
 webShareModal closeWebShareBtn webUrlInput pasteWebUrlBtn openWebUrlBtn shareWebUrlBtn probeWebUrlBtn shareWebWindowBtn webShareStatus webProbeResults webShareEmpty webFrame
  themeModal closeThemeBtn resetThemeBtn syncThemeBtn themeSyncTargets themeSyncAll themeSyncSelected themeSyncMemberList themeGrid themeFontSearch themeFontSelect applyThemeFontBtn resetThemeFontBtn themeFontStatus copyrightNotice newRoomId
- myRoomsModal closeMyRoomsBtn myRoomsList accountOverviewModal closeAccountOverviewBtn accountOverviewSearch accountOverviewPresence accountOverviewSort accountOverviewCount accountOverviewList openAccountOverviewBtn accountAuditLogModal closeAccountAuditLogBtn refreshAccountAuditLogsBtn accountAuditLogSearch accountAuditLogType accountAuditLogSelectAll deleteSelectedAccountAuditLogsBtn accountAuditLogList memberProfileModal closeMemberProfileBtn memberProfileContent locationAuthorizationsModal closeLocationAuthorizationsBtn refreshLocationAuthorizationsBtn locationAuthorizationsList viewLocationAuthorizationsBtn adminContactModal closeAdminContactBtn adminContactTitle adminContactNoteDisplay adminContactList tunnelTutorialModal closeTunnelTutorialBtn uploadLimitTutorialModal closeUploadLimitTutorialBtn uploadLimitTutorialActionBtn noticeModal closeNoticeBtn noticeForm noticeText noticeFont noticeDuration noticeFontSize noticeColor noticeScopeGroup noticeScope openPermissionsFromNoticeBtn conversionProgressModal closeConversionProgressBtn refreshConversionProgressBtn conversionProgressSummary mediaProcessingAdminControls mediaProcessingConcurrency saveMediaProcessingBtn openConvertedMediaFolderBtn mediaProcessingControlStatus mediaProcessingSearch mediaProcessingSelectAll mediaProcessingDeleteSource deleteSelectedMediaProcessingBtn conversionProgressList agreementModal agreementTitle agreementVersion agreementText agreementCheck acceptAgreementBtn declineAgreementBtn ownerExitModal ownerExitTitle desktopCloseModal desktopCloseStatus screenNoticeOverlay screenNoticeSender screenNoticeText closeScreenNoticeBtn roomSwitchSuccessOverlay roomSwitchSuccessText
+ myRoomsModal closeMyRoomsBtn myRoomsTitle myRoomsHint myRoomsList loginRoomReminderControls loginRoomReminderPreference loginTemporaryRoomBtn accountOverviewModal closeAccountOverviewBtn accountOverviewSearch accountOverviewPresence accountOverviewSort accountOverviewCount accountOverviewList openAccountOverviewBtn accountAuditLogModal closeAccountAuditLogBtn refreshAccountAuditLogsBtn accountAuditLogSearch accountAuditLogType accountAuditLogSelectAll deleteSelectedAccountAuditLogsBtn accountAuditLogList memberProfileModal closeMemberProfileBtn memberProfileContent locationAuthorizationsModal closeLocationAuthorizationsBtn refreshLocationAuthorizationsBtn locationAuthorizationsList viewLocationAuthorizationsBtn adminContactModal closeAdminContactBtn adminContactTitle adminContactNoteDisplay adminContactList tunnelTutorialModal closeTunnelTutorialBtn uploadLimitTutorialModal closeUploadLimitTutorialBtn uploadLimitTutorialActionBtn noticeModal closeNoticeBtn noticeForm noticeText noticeFont noticeDuration noticeFontSize noticeColor noticeScopeGroup noticeScope openPermissionsFromNoticeBtn conversionProgressModal closeConversionProgressBtn refreshConversionProgressBtn conversionProgressSummary mediaProcessingAdminControls mediaCompatibilityAutoConvert mediaProcessingConcurrency saveMediaProcessingBtn openConvertedMediaFolderBtn mediaProcessingControlStatus mediaProcessingSearch mediaProcessingSelectAll mediaProcessingDeleteSource deleteSelectedMediaProcessingBtn conversionProgressList agreementModal agreementTitle agreementVersion agreementText agreementCheck acceptAgreementBtn declineAgreementBtn ownerExitModal ownerExitTitle desktopCloseModal desktopCloseStatus screenNoticeOverlay screenNoticeSender screenNoticeText closeScreenNoticeBtn roomSwitchSuccessOverlay roomSwitchSuccessText
 appDialog appDialogCloseBtn appDialogForm appDialogTitle appDialogDescription appDialogInputGroup appDialogInputLabel appDialogInput appDialogPasswordToggle appDialogSelectGroup appDialogSelectLabel appDialogSelect appDialogConfirmGroup appDialogConfirmLabel appDialogConfirmInput appDialogConfirmPasswordToggle appDialogError appDialogFillRiskBtn appDialogBackBtn appDialogCancelBtn appDialogConfirmBtn`.split(/\s+/);
 for (const id of ids) elements[id] = document.getElementById(id);
 // This setting was added after the main element registry; keep the optional
@@ -1268,6 +1270,10 @@ function bindUiEvents() {
   elements.toggleRegPasswordBtn?.addEventListener('click', () => toggleFieldVisibility(elements.regPassword, elements.toggleRegPasswordBtn, '设置密码'));
   elements.toggleRegPasswordConfirmBtn?.addEventListener('click', () => toggleFieldVisibility(elements.regPasswordConfirm, elements.toggleRegPasswordConfirmBtn, '确认密码'));
   elements.copyDeviceIpBtn?.addEventListener('click', copyCurrentDeviceIp);
+  elements.fillDefaultAdminCredentialsBtn?.addEventListener('click', () => {
+    elements.username.value = 'admin'; elements.password.value = 'admin888';
+    setLoginStatus('已填入首次登录账号和密码，请选择房间或直接进入管理中心', true);
+  });
   elements.onlineRoomSelect?.addEventListener('change', selectOnlineRoom);
   elements.refreshOnlineRoomsBtn?.addEventListener('click', refreshOnlineRooms);
   elements.myRoomsLoginBtn?.addEventListener('click', loadMyRoomsBeforeLogin);
@@ -1457,6 +1463,12 @@ function bindUiEvents() {
   elements.showQrBtn.addEventListener('click', showQr);
   elements.accountMenuBtn.addEventListener('click', (event) => {
     event.stopPropagation();
+    if (document.body.classList.contains('android-client') || window.matchMedia('(max-width: 540px)').matches) {
+      toggleMobileActionMenu(false);
+      elements.accountDropdown.classList.add('is-hidden');
+      void openAccount('home');
+      return;
+    }
     const opening = elements.accountDropdown.classList.contains('is-hidden');
     elements.accountDropdown.classList.toggle('is-hidden', !opening);
     if (opening) positionAccountDropdown();
@@ -1688,7 +1700,8 @@ function bindUiEvents() {
   elements.videoPlayer.addEventListener('progress', updatePlayerBufferState);
   elements.videoPlayer.addEventListener('enterpictureinpicture', () => { state.floatingPlayerActive = true; });
   elements.videoPlayer.addEventListener('leavepictureinpicture', () => { state.floatingPlayerActive = false; });
-  elements.videoPlayer.addEventListener('dblclick', (event) => { event.preventDefault(); togglePlayerFullscreen(); });
+  elements.playerContainer.addEventListener('dblclick', handlePlayerDoubleClick);
+  elements.playerContainer.addEventListener('pointerup', handlePlayerDoubleTap);
   elements.roomIdInput?.addEventListener('input', () => { state.roomIdTouched = true; scheduleRoomInfoLookup(); });
   elements.username?.addEventListener('input', handleLoginUsernameInput);
   elements.createRoomBtn?.addEventListener('click', openCreateRoom);
@@ -1707,6 +1720,9 @@ function bindUiEvents() {
   elements.closeLanScanBtn?.addEventListener('click', () => elements.lanScanModal.classList.add('is-hidden'));
   elements.refreshLanScanBtn?.addEventListener('click', scanLanRooms);
   elements.lanRoomList?.addEventListener('click', handleLanRoomAction);
+  elements.lanRoomList?.addEventListener('change', handleLanRoomSelection);
+  elements.lanScanSelectAll?.addEventListener('change', toggleAllLanRooms);
+  elements.deleteSelectedLanRoomsBtn?.addEventListener('click', deleteSelectedLanRooms);
   elements.managementHubBtn?.addEventListener('click', () => openManagementHub('server'));
   elements.closeManagementHubBtn?.addEventListener('click', closeManagementHub);
   document.querySelectorAll('[data-management-section]').forEach((button) => button.addEventListener('click', () => showManagementSection(button.dataset.managementSection)));
@@ -1776,6 +1792,11 @@ function bindUiEvents() {
   elements.chatClearUserBtn?.addEventListener('click', clearUserChat);
   elements.chatClearAllBtn?.addEventListener('click', clearAllChat);
   elements.persistentRequestCenter?.addEventListener('click', handlePersistentRequestAction);
+  elements.closeTunnelProgressBtn?.addEventListener('click', () => {
+    state.tunnelProgressDismissed = true;
+    elements.tunnelProgress?.classList.add('is-hidden');
+    document.body.classList.remove('tunnel-task-visible');
+  });
   elements.chatHistory.addEventListener('contextmenu', openChatContextMenu);
   elements.fullscreenChatHistory?.addEventListener('contextmenu', openChatContextMenu);
   elements.chatContextDeleteBtn?.addEventListener('click', deleteContextChatMessage);
@@ -1785,6 +1806,7 @@ function bindUiEvents() {
   elements.refreshServerLogsBtn?.addEventListener('click', loadServerLogs);
   elements.serverLogCategory?.addEventListener('change', loadServerLogs);
   elements.serverLogLevel?.addEventListener('change', loadServerLogs);
+  elements.serverLogAccountQuery?.addEventListener('input', debounce(loadServerLogs, 220));
   elements.serverLogQuery?.addEventListener('input', debounce(loadServerLogs, 220));
   elements.fullscreenExitBtn?.addEventListener('click', togglePlayerFullscreen);
   elements.closeF11PromptBtn?.addEventListener('click', () => closeF11Prompt(false));
@@ -1834,9 +1856,14 @@ function bindUiEvents() {
   elements.deleteSelectedMediaProcessingBtn?.addEventListener('click', deleteSelectedMediaProcessingTasks);
   elements.saveMediaProcessingBtn?.addEventListener('click', saveMediaProcessingConcurrency);
   elements.openConvertedMediaFolderBtn?.addEventListener('click', openConvertedMediaFolder);
-  elements.closeMyRoomsBtn?.addEventListener('click', () => elements.myRoomsModal.classList.add('is-hidden'));
+  elements.closeMyRoomsBtn?.addEventListener('click', () => {
+    state.loginRoomPromptActive = false;
+    elements.myRoomsModal.classList.add('is-hidden');
+  });
   elements.myRoomsList?.addEventListener('click', handleMyRoomsSelection);
   elements.myRoomsList?.addEventListener('change', handleLoginRoomSelection);
+  elements.loginTemporaryRoomBtn?.addEventListener('click', enterTemporaryRoomFromReminder);
+  elements.fileList?.addEventListener('error', handleFileThumbnailError, true);
   elements.closeAdminContactBtn?.addEventListener('click', () => elements.adminContactModal.classList.add('is-hidden'));
   elements.closeTunnelTutorialBtn?.addEventListener('click', () => elements.tunnelTutorialModal?.classList.add('is-hidden'));
   elements.adminContactList?.addEventListener('click', handleAdminContactAction);
@@ -2659,22 +2686,88 @@ function renderLoginRoomList() {
   }).join('')}`;
 }
 
-async function loadMyRoomsBeforeLogin() {
+function loginRoomReminderKey(username) {
+  return `${LOGIN_ROOM_REMINDER_KEY_PREFIX}${encodeURIComponent(String(username || '').trim().toLocaleLowerCase())}`;
+}
+
+function readLoginRoomReminder(username) {
+  try {
+    return JSON.parse(localStorage.getItem(loginRoomReminderKey(username)) || '{}');
+  } catch (_) { return {}; }
+}
+
+function loginRoomReminderEnabled(username) {
+  const preference = readLoginRoomReminder(username);
+  return preference.disabled !== true && Math.max(0, Number(preference.until) || 0) <= Date.now();
+}
+
+function saveLoginRoomReminderPreference(username, choice = 'next') {
+  const key = loginRoomReminderKey(username);
+  try {
+    if (choice === 'next') return localStorage.removeItem(key);
+    if (choice === 'never') return localStorage.setItem(key, JSON.stringify({ disabled: true, until: 0 }));
+    const durations = { hour: 60 * 60 * 1000, day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000, month: 30 * 24 * 60 * 60 * 1000 };
+    localStorage.setItem(key, JSON.stringify({ disabled: false, until: Date.now() + (durations[choice] || 0) }));
+  } catch (_) {}
+}
+
+function setLoginRoomPromptMode(prompt) {
+  state.loginRoomPromptActive = Boolean(prompt);
+  if (elements.myRoomsTitle) elements.myRoomsTitle.textContent = prompt ? '选择要进入的房间' : '我的房间';
+  if (elements.myRoomsHint) elements.myRoomsHint.textContent = prompt
+    ? '您没有填写房间号。请选择账号已有房间，或明确进入临时房间。'
+    : '验证账号密码后显示您拥有和连接过的房间。';
+  elements.loginRoomReminderControls?.classList.toggle('is-hidden', !prompt);
+  if (prompt && elements.loginRoomReminderPreference) elements.loginRoomReminderPreference.value = 'next';
+}
+
+async function requestLoginRooms() {
   const username = elements.username.value.trim();
   const password = elements.password.value;
-  if (!username || !password) return setLoginStatus('请先输入账号和密码，再查看房间记录');
+  if (!username || !password) return { success: false, error: '请先输入账号和密码，再查看房间记录' };
+  return emitAck('account-room-list', { username, password }, 30000);
+}
+
+function applyLoginRooms(result, { prompt = false } = {}) {
+  state.loginRoomSnapshot = Array.isArray(result.rooms) ? result.rooms : [];
+  state.selectedLoginRooms.clear();
+  state.loginRoomQuota = Number(result.roomQuota) || 1;
+  state.loginOwnedRoomCount = Number(result.ownedRoomCount) || 0;
+  setLoginRoomPromptMode(prompt);
+  renderLoginRoomList();
+  elements.myRoomsModal.classList.remove('is-hidden');
+}
+
+async function loadMyRoomsBeforeLogin() {
   elements.myRoomsLoginBtn.disabled = true;
   try {
-    const result = await emitAck('account-room-list', { username, password }, 30000);
+    const result = await requestLoginRooms();
     if (!result.success) return setLoginStatus(loginErrorMessage(result));
-    state.loginRoomSnapshot = Array.isArray(result.rooms) ? result.rooms : [];
-    state.selectedLoginRooms.clear();
-    state.loginRoomQuota = Number(result.roomQuota) || 1;
-    state.loginOwnedRoomCount = Number(result.ownedRoomCount) || 0;
-    renderLoginRoomList();
-    elements.myRoomsModal.classList.remove('is-hidden');
+    applyLoginRooms(result);
   } catch (error) { setLoginStatus(localizedError(error, '读取房间记录失败')); }
   finally { elements.myRoomsLoginBtn.disabled = false; }
+}
+
+async function maybeShowLoginRoomReminder() {
+  const username = elements.username.value.trim();
+  if (!username || !loginRoomReminderEnabled(username)) return false;
+  setLoginStatus('正在读取账号房间…', true);
+  const result = await requestLoginRooms();
+  if (!result.success) {
+    setLoginStatus(loginErrorMessage(result));
+    return true;
+  }
+  if (!Array.isArray(result.rooms) || !result.rooms.length) return false;
+  applyLoginRooms(result, { prompt: true });
+  setLoginStatus('请选择已有房间，或进入临时房间');
+  return true;
+}
+
+async function enterTemporaryRoomFromReminder() {
+  saveLoginRoomReminderPreference(elements.username.value, elements.loginRoomReminderPreference?.value || 'next');
+  state.loginRoomPromptActive = false;
+  elements.myRoomsModal.classList.add('is-hidden');
+  await submitAccountLogin();
 }
 
 function handleLoginRoomSelection(event) {
@@ -2720,20 +2813,28 @@ function handleMyRoomsSelection(event) {
   }
   const button = event.target.closest('[data-my-room]');
   if (!button || button.disabled) return;
+  const promptActive = state.loginRoomPromptActive;
+  const selectedRoom = state.loginRoomSnapshot.find((room) => room.id === button.dataset.myRoom);
   state.roomIdTouched = true;
   elements.roomIdInput.value = button.dataset.myRoom || '';
   elements.myRoomsModal.classList.add('is-hidden');
-  elements.loginRoomPassword.focus();
-  void loadRoomInfo();
+  if (promptActive) saveLoginRoomReminderPreference(elements.username.value, elements.loginRoomReminderPreference?.value || 'next');
+  state.loginRoomPromptActive = false;
+  if (promptActive && (!selectedRoom?.passwordRequired || selectedRoom.accessRemembered)) void submitAccountLogin();
+  else {
+    elements.loginRoomPassword.focus();
+    void loadRoomInfo();
+  }
 }
 
 async function loginAsServerAdmin() {
+  const passwordless = state.publicConfig.serverHostPasswordlessAvailable === true;
   const password = elements.password.value;
-  if (!password) return setLoginStatus('请输入服务器管理员密码');
+  if (!passwordless && !password) return setLoginStatus('请输入服务器管理员密码');
   elements.serverAdminLoginBtn.disabled = true;
-  setLoginStatus('正在验证服务器超级管理员…', true);
+  setLoginStatus(passwordless ? '正在从本机进入服务器管理中心…' : '正在验证服务器超级管理员…', true);
   try {
-    const result = await emitAck('host-admin-login', { adminPassword: password, roomId: String(elements.roomIdInput?.value || '').trim().toUpperCase(), ...deviceInfo() }, 30000);
+    const result = await emitAck('host-admin-login', { passwordless, adminPassword: password, roomId: String(elements.roomIdInput?.value || '').trim().toUpperCase(), ...deviceInfo() }, 30000);
     if (!result.success) {
       const message = loginErrorMessage(result, '账号登录失败，请检查账号、密码和服务器地址');
       setLoginStatus(message);
@@ -3189,10 +3290,24 @@ async function recoverPasswordByEmail() {
 }
 
 async function login(event) {
-  event.preventDefault(); setLoginStatus('正在登录…', true);
+  event.preventDefault();
+  const roomId = String(elements.roomIdInput?.value || '').trim().toUpperCase();
+  if (roomId && !/^[A-Z0-9]{4,32}$/.test(roomId)) return setLoginStatus('请输入正确的房间号（4-32 位大写字母或数字）');
+  try {
+    if (!roomId && await maybeShowLoginRoomReminder()) return;
+    await submitAccountLogin();
+  } catch (error) {
+    const message = `登录初始化失败：${localizedError(error, '请检查服务器连接')}`;
+    setLoginStatus(message);
+    toast(message, 'error', 7000);
+    if (state.token) queueSessionResume(false);
+  }
+}
+
+async function submitAccountLogin() {
+  setLoginStatus('正在登录…', true);
   try {
     const roomId = String(elements.roomIdInput?.value || '').trim().toUpperCase();
-    if (roomId && !/^[A-Z0-9]{4,32}$/.test(roomId)) return setLoginStatus('请输入正确的房间号（4-32 位大写字母或数字）');
     const result = await emitAck('user-login', {
       username: elements.username.value.trim(), password: elements.password.value, roomId,
       roomPassword: elements.loginRoomPassword?.value || elements.loginAccessPassword?.value || '', ...deviceInfo()
@@ -3331,6 +3446,10 @@ async function convertGuestAccount(event) {
 }
 
 async function openCreateRoom() {
+  if (state.authenticated && state.user?.guest) {
+    toast('游客使用普通成员权限；请先注册为正式账号再创建房间', 'error', 6500);
+    return openGuestConversion();
+  }
   if (!state.authenticated && (!elements.username.value.trim() || !elements.password.value)) return setLoginStatus('请先填写账号和登录密码，再创建房间');
   if (state.authenticated) await refreshProfile();
   elements.newRoomName.value = state.user ? `${state.user.displayName || state.user.username} 的房间` : `${elements.username.value.trim()} 的房间`;
@@ -3714,14 +3833,15 @@ async function openLanScan() {
 
 async function scanLanRooms() {
   elements.lanRoomList.innerHTML = '<p class="muted">正在扫描所有公开房间…</p>';
+  state.selectedLanRooms.clear();
   const discoveries = [];
   try {
     const onlineResponse = await fetchWithTimeout('/api/online-rooms', {}, 6000);
-    if (onlineResponse.ok) discoveries.push(await onlineResponse.json());
+    if (onlineResponse.ok) discoveries.push({ ...await onlineResponse.json(), localServer: true });
   } catch (_) {}
   try {
     const response = await fetchWithTimeout('/api/lan-rooms', {}, 6000);
-    if (response.ok) discoveries.push(await response.json());
+    if (response.ok) discoveries.push({ ...await response.json(), localServer: true });
   } catch (_) {}
   const bridge = window.SyncWatchAndroid;
   if (bridge && typeof bridge.scanLanRooms === 'function') {
@@ -3753,16 +3873,54 @@ function normalizeLanDiscoveries(discoveries) {
     const addresses = Array.isArray(discovery.addresses) ? discovery.addresses : discovery.address ? [discovery.address] : [location.origin];
     for (const room of Array.isArray(discovery.rooms) ? discovery.rooms : []) {
       const id = String(room.id || '').toUpperCase(); if (!/^[A-Z0-9]{4,32}$/.test(id)) continue;
-      const address = String(addresses[0] || location.origin).replace(/\/$/, '');
-      rooms.set(`${address}|${id}`, { ...room, id, address, server: discovery.server || '' });
+      const localServer = discovery.localServer === true;
+      const address = localServer ? location.origin : String(addresses[0] || location.origin).replace(/\/$/, '');
+      rooms.set(`${localServer ? 'local' : address}|${id}`, { ...room, id, address, localServer, server: discovery.server || '' });
     }
   }
   return [...rooms.values()].sort((left, right) => Number(right.online || 0) - Number(left.online || 0));
 }
 
 function renderLanRooms() {
-  if (!state.lanRooms.length) { elements.lanRoomList.innerHTML = '<p class="muted">没有发现公开房间。服务器离线或房间已被封禁时不会出现在扫描结果中。</p>'; return; }
-  elements.lanRoomList.innerHTML = state.lanRooms.map((room) => `<div class="history-row" data-lan-room="${escapeHtml(room.id)}" data-lan-address="${escapeHtml(room.address)}"><div><strong><span class="room-type-badge ${room.temporary ? 'temporary' : 'formal'}">${room.temporary ? '临时房间' : '正式房间'}</span> ${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><p>${escapeHtml(room.server || room.address)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需要密码' : ''}</p></div><button data-lan-action="join" type="button">加入</button></div>`).join('');
+  const canDelete = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
+  elements.lanScanSelectAll?.closest('.lan-scan-toolbar')?.classList.toggle('is-hidden', !canDelete);
+  if (!state.lanRooms.length) { elements.lanRoomList.innerHTML = '<p class="muted">没有发现公开房间。服务器离线或房间已被封禁时不会出现在扫描结果中。</p>'; updateLanRoomSelection(); return; }
+  elements.lanRoomList.innerHTML = state.lanRooms.map((room) => `<div class="history-row" data-lan-room="${escapeHtml(room.id)}" data-lan-address="${escapeHtml(room.address)}">${canDelete && room.localServer ? `<label class="check-line"><input data-lan-room-select type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedLanRooms.has(room.id) ? 'checked' : ''}><span class="visually-hidden">选择房间 ${escapeHtml(room.id)}</span></label>` : ''}<div><strong><span class="room-type-badge ${room.temporary ? 'temporary' : 'formal'}">${room.temporary ? '临时房间' : '正式房间'}</span> ${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><p>${escapeHtml(room.server || room.address)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需要密码' : ''}</p></div><button data-lan-action="join" type="button">加入</button></div>`).join('');
+  updateLanRoomSelection();
+}
+
+function updateLanRoomSelection() {
+  const inputs = [...(elements.lanRoomList?.querySelectorAll('[data-lan-room-select]') || [])];
+  if (elements.lanScanSelectAll) {
+    elements.lanScanSelectAll.checked = Boolean(inputs.length && inputs.every((input) => input.checked));
+    elements.lanScanSelectAll.indeterminate = inputs.some((input) => input.checked) && !inputs.every((input) => input.checked);
+  }
+  if (elements.deleteSelectedLanRoomsBtn) elements.deleteSelectedLanRoomsBtn.disabled = state.selectedLanRooms.size === 0;
+}
+
+function handleLanRoomSelection(event) {
+  const input = event.target.closest('[data-lan-room-select]');
+  if (!input) return;
+  if (input.checked) state.selectedLanRooms.add(input.value); else state.selectedLanRooms.delete(input.value);
+  updateLanRoomSelection();
+}
+
+function toggleAllLanRooms() {
+  elements.lanRoomList?.querySelectorAll('[data-lan-room-select]').forEach((input) => {
+    input.checked = elements.lanScanSelectAll.checked;
+    if (input.checked) state.selectedLanRooms.add(input.value); else state.selectedLanRooms.delete(input.value);
+  });
+  updateLanRoomSelection();
+}
+
+async function deleteSelectedLanRooms() {
+  const roomIds = [...state.selectedLanRooms];
+  if (!roomIds.length) return toast('请先选择要删除的房间', 'error');
+  const confirmation = await showRiskConfirmation('永久删除扫描到的房间', `将永久删除 ${roomIds.length} 个房间及其中的影片、聊天、队列和历史记录。`);
+  if (confirmation === null) return;
+  const result = await adminAction('delete-rooms', { roomIds, confirmation });
+  toast(result.message || result.error, result.success ? 'success' : 'error', 8000);
+  if (result.success) await scanLanRooms();
 }
 
 function handleLanRoomAction(event) {
@@ -3892,7 +4050,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   elements.accountName.textContent = state.user.displayName || state.user.username;
   elements.logoutBtn.classList.toggle('is-hidden', managementOnly);
   updateGuestConversionAccess();
-  elements.newRoomBtn?.classList.remove('is-hidden'); elements.switchRoomBtn?.classList.remove('is-hidden'); elements.lanScanBtn?.classList.remove('is-hidden'); elements.webShareBtn?.classList.remove('is-hidden');
+  elements.newRoomBtn?.classList.toggle('is-hidden', Boolean(state.user?.guest)); elements.switchRoomBtn?.classList.remove('is-hidden'); elements.lanScanBtn?.classList.remove('is-hidden'); elements.webShareBtn?.classList.remove('is-hidden');
   elements.androidApkBtn?.classList.toggle('is-hidden', state.publicConfig.downloadButtonsVisible === false || !state.publicConfig.androidApkAvailable);
   elements.hostTunnelCard.classList.toggle('is-hidden', !(state.capabilities.serverHost || state.capabilities.superAdmin));
   elements.ownerControls.classList.toggle('is-hidden', !(state.capabilities.owner || state.capabilities.superAdmin));
@@ -4134,7 +4292,7 @@ async function handleDesktopCloseChoice(event) {
   const button = event.target.closest('[data-desktop-close]');
   if (!button || !state.desktopClosePending) return;
   const choice = button.dataset.desktopClose;
-  if (!['minimize', 'quit', 'restart', 'cancel'].includes(choice)) return;
+  if (!['minimize', 'quit', 'restart', 'new-server', 'cancel'].includes(choice)) return;
   state.desktopClosePending = false;
   elements.desktopCloseModal.classList.add('is-hidden');
   const result = await window.SyncWatchDesktop?.completeCloseChoice?.(choice);
@@ -4229,10 +4387,10 @@ async function loadPublicConfig(silent = false) {
 }
 
 function applyPublicConfig() {
-  elements.versionText.textContent = state.publicConfig.version || 'v2.1.9';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.2.0';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.1.9'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.0'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -4254,11 +4412,15 @@ function applyPublicConfig() {
   elements.androidApkBtn?.classList.toggle('is-hidden', !showDownloads || !state.authenticated || !state.publicConfig.androidApkAvailable);
   elements.aiWorkbenchBtn?.classList.toggle('is-hidden', !state.authenticated);
   elements.serverAdminLoginBtn?.classList.toggle('is-hidden', !state.publicConfig.serverHostLoginAvailable || state.authenticated);
+  if (elements.serverAdminLoginBtn) elements.serverAdminLoginBtn.textContent = state.publicConfig.serverHostPasswordlessAvailable
+    ? '本机免密进入管理中心' : '超级管理员登录';
   const canManageServer = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
   const serverMenu = Boolean(state.publicConfig.serverHostLoginAvailable || state.hostToken || canManageServer);
   elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', state.authenticated && !canManageServer);
   elements.resetAdminPasswordBtn?.classList.toggle('is-hidden', !serverMenu);
   elements.restartServerBtn?.classList.toggle('is-hidden', !canManageServer);
+  elements.loginHostShortcuts?.classList.toggle('is-hidden', ![elements.serverAdminLoginBtn, elements.resetAdminPasswordBtn, elements.restartServerBtn]
+    .some((button) => button && !button.classList.contains('is-hidden')));
   elements.downloadClientBtn?.classList.toggle('is-hidden', !showDownloads || state.authenticated);
   if (elements.downloadClientBtn) {
     elements.downloadClientBtn.title = state.publicConfig.clientDownloadAvailable ? '下载 Windows 服务器客户端' : '当前服务器尚未提供 Windows 客户端文件';
@@ -4408,6 +4570,7 @@ function enqueueThemeSyncRequest(request = {}) {
   if (!UI_THEMES.some(([id]) => id === themeId) || !request.id) return;
   if (state.themeSyncQueue.some((entry) => entry.id === request.id)) return;
   state.themeSyncQueue.push(request);
+  void window.SyncWatchDesktop?.showNotification?.({ title: 'SyncWatch 界面同步申请', body: `${request.requestedByName || request.requestedBy || '管理员'} 请求同步界面风格。` }).catch(() => {});
   processThemeSyncQueue();
 }
 
@@ -4567,8 +4730,13 @@ function handleWebProbeAction(event) {
 }
 
 async function shareCurrentWebWindow() {
+  try {
+    const url = normalizedWebUrl(elements.webUrlInput.value);
+    elements.webUrlInput.value = url;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } catch (_) {}
   elements.webShareModal.classList.add('is-hidden');
-  toast('请在系统选择器中选中刚打开的网页标签页或软件窗口，并勾选共享音频。');
+  toast('请在系统选择器中选择刚打开的网页标签页或软件窗口；需要声音时勾选共享音频。');
   await toggleScreenShare();
 }
 
@@ -4729,7 +4897,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.1.9.apk';
+    link.download = 'SyncWatch同步观影-v2.2.0.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -4746,7 +4914,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch同步观影-v2.1.9.apk';
+    link.href = url; link.download = 'SyncWatch同步观影-v2.2.0.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -4966,7 +5134,7 @@ function renderFileCard(file) {
     const quality = metadata.height ? `${metadata.height}P` : ({ video: '视频', audio: '音频', subtitle: '字幕', document: '文档' }[file.category] || '文件');
     const codec = metadata.videoCodec || metadata.audioCodec || '';
     const duration = metadata.duration ? formatTime(metadata.duration) : '';
-    const thumbnail = file.thumbnailUrl ? `<img class="file-thumb" src="${escapeHtml(file.thumbnailUrl)}" alt="">` : `<div class="file-thumb">${fileIcon(file.category)}</div>`;
+    const thumbnail = file.thumbnailUrl ? `<img class="file-thumb" src="${escapeHtml(file.thumbnailUrl)}" alt="${escapeHtml(file.originalName)} 缩略图">` : `<div class="file-thumb">${fileIcon(file.category)}</div>`;
     const manageable = state.capabilities.owner || state.permissions.delete || file.uploadedBy === state.user?.username;
     const timed = isTimedFile(file); const approved = file.status === 'approved';
     const processing = compatibility.required && !compatibility.ready && ['queued', 'converting'].includes(compatibility.status);
@@ -4985,7 +5153,9 @@ function renderFileCard(file) {
             ? '<span title="点击播放可重新尝试生成">兼容版失败</span>'
             : compatibility.status === 'unavailable'
               ? '<span title="当前服务器没有媒体转码组件，远端设备必须支持原始编码">依赖设备解码</span>'
-              : '<span title="服务器已排队生成 H.264/AAC 公网兼容版">兼容版排队中</span>'
+              : compatibility.status === 'manual'
+                ? '<span title="自动转换已关闭，点击播放时会按需生成">按需兼容</span>'
+                : '<span title="服务器已排队生成 H.264/AAC 公网兼容版">兼容版排队中</span>'
       : '';
     const processingProgress = processing ? `<div class="file-processing" role="status"><div><span style="width:${Math.max(0, Math.min(100, Number(compatibility.progress) || 0))}%"></span></div><small>${compatibility.status === 'converting' ? `正在转换 ${Math.max(0, Number(compatibility.progress) || 0)}%` : '等待转换'} · 完成前暂不可操作</small></div>` : '';
     return `<article class="file-card ${file.status === 'pending' ? 'pending' : ''} ${processing ? 'processing' : ''} ${state.currentFile?.id === file.id ? 'active' : ''}" data-file-id="${file.id}">
@@ -4993,6 +5163,16 @@ function renderFileCard(file) {
       <div class="file-meta"><span>${formatSize(file.size)}</span><span>${duration}</span><span>分类 ${escapeHtml(file.collection || '未分类')}</span><span>上传者 ${escapeHtml(file.uploadedByName || file.uploadedBy)}</span></div>
       <div class="file-tags"><span>${quality}</span>${codec ? `<span>${escapeHtml(codec)}</span>` : ''}${compatibilityTag}${metadata.language ? `<span>${escapeHtml(localizedMediaLanguage(metadata.language))}</span>` : ''}${file.status === 'pending' ? '<span>待审核</span>' : ''}</div>${processingProgress}</div>
       <div class="file-actions">${primaryActions}<button data-file-action="favorite" ${processing ? 'disabled' : ''}>收藏</button>${manageable ? `<button data-file-action="rename" ${processing ? 'disabled' : ''}>重命名</button><button data-file-action="category" ${processing ? 'disabled' : ''}>分类</button><button data-file-action="delete" ${processing ? 'disabled' : ''}>删除</button>` : ''}</div></article>`;
+}
+
+function handleFileThumbnailError(event) {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.matches('.file-thumb')) return;
+  const file = state.files.get(image.closest('[data-file-id]')?.dataset.fileId);
+  const fallback = document.createElement('div');
+  fallback.className = 'file-thumb';
+  fallback.textContent = fileIcon(file?.category || 'video');
+  image.replaceWith(fallback);
 }
 
 async function handleFileAction(event) {
@@ -5302,7 +5482,7 @@ async function batchDeleteManagedVideos() {
 
 function exportVideoManagement() {
   const files = manageableMediaFiles().map((file) => ({ id: file.id, originalName: file.originalName, collection: fileCollectionName(file), note: file.note || '', uploadedAt: file.uploadedAt, size: file.size }));
-  downloadJsonFile(`SyncWatch同步观影-影片管理-${new Date().toISOString().slice(0, 10)}.json`, { version: '2.1.9', type: 'syncwatch-media-management', files });
+  downloadJsonFile(`SyncWatch同步观影-影片管理-${new Date().toISOString().slice(0, 10)}.json`, { version: '2.2.0', type: 'syncwatch-media-management', files });
 }
 
 async function importVideoManagement() {
@@ -5535,8 +5715,13 @@ function addPersistentRequest(request) {
     : '';
   const id = String(request.id || request.requestId || registrationId || `${request.kind || 'request'}-${Date.now()}`);
   if (state.dismissedPersistentRequests.has(id)) return;
+  const isNew = !state.persistentRequests.has(id);
   state.persistentRequests.set(id, { ...request, id });
   renderPersistentRequests();
+  if (isNew && !request.own) {
+    const actor = request.displayName || request.username || request.from || request.requestedBy || '成员';
+    void window.SyncWatchDesktop?.showNotification?.({ title: 'SyncWatch 新申请', body: `${actor} 发来需要处理的申请，请打开服务器窗口查看。` }).catch(() => {});
+  }
 }
 
 function removePersistentRequest(id, rememberDismissal = false) {
@@ -5892,15 +6077,18 @@ function updateRoomHeader() {
   elements.userCountCard.textContent = onlineCount; elements.controlLockBtn.textContent = state.room.controlLocked ? '🔒 已锁定' : '🔓 已开放'; elements.volumeSyncToggle.checked = Boolean(state.room.volumeSync);
 }
 
-function updateControlAccess() {
-  const canControl = canControlPlayback(); const timedMedia = isActiveTimedMedia(); const localSharing = hasLocalScreenCapture(); const sharingAllowed = canShareScreen();
-  const playing = Boolean(state.room?.playback?.isPlaying);
+function syncPlayPauseButton(playing) {
   if (elements.playPauseBtn) {
     elements.playPauseBtn.textContent = playing ? '⏸' : '▶';
     elements.playPauseBtn.title = playing ? '同步暂停' : '同步播放';
     elements.playPauseBtn.setAttribute('aria-label', elements.playPauseBtn.title);
     elements.playPauseBtn.setAttribute('aria-pressed', String(playing));
   }
+}
+
+function updateControlAccess() {
+  const canControl = canControlPlayback(); const timedMedia = isActiveTimedMedia(); const localSharing = hasLocalScreenCapture(); const sharingAllowed = canShareScreen();
+  syncPlayPauseButton(Boolean(state.room?.playback?.isPlaying));
   document.querySelectorAll('.control-button').forEach((button) => {
     button.disabled = !timedMedia || state.screenShareActive;
     button.classList.toggle('is-hidden', !canControl);
@@ -6350,6 +6538,7 @@ function adaptiveSynchronize(playback, force = false) {
     && pendingSeek.expires >= syncNow && Math.abs(target - pendingSeek.target) < .8);
   const seekSuppressed = seekInFlight || state.syncSeekCooldownUntil > syncNow;
   const baseRate = Math.max(.5, Math.min(3, Number(accepted.playbackRate) || 1));
+  const locallyBuffering = state.localBuffering || elements.videoPlayer.readyState < 3;
   state.syncPercent = Math.max(0, Math.round(100 - difference * 22));
   if (state.room?.volumeSync && (Math.abs(elements.videoPlayer.volume - accepted.volume) > .005 || elements.videoPlayer.muted !== accepted.muted)) setProgrammaticVolume(accepted.volume, accepted.muted);
   if (accepted.stalled) {
@@ -6369,7 +6558,10 @@ function adaptiveSynchronize(playback, force = false) {
     setProgrammaticPlaying(false, accepted.revision);
     if (!state.autoplayBlocked) elements.syncNotice.classList.add('is-hidden');
   } else {
-    if ((force && difference > .12) || difference > 1.25) {
+    if (locallyBuffering) {
+      elements.videoPlayer.playbackRate = baseRate;
+      showSyncNotice(`网络较慢，正在缓冲，暂停定位（落后 ${difference.toFixed(1)} 秒）…`, 'drift');
+    } else if ((force && difference > .12) || difference > 1.25) {
       if (!seekSuppressed) {
         setProgrammaticTime(target, accepted.revision);
         state.syncSeekCooldownUntil = syncNow + 1800;
@@ -6384,7 +6576,7 @@ function adaptiveSynchronize(playback, force = false) {
     }
     setProgrammaticPlaying(true, accepted.revision);
   }
-  elements.syncStatus.textContent = `${state.syncPercent}%`; state.applyingPlayback = false;
+  elements.syncStatus.textContent = locallyBuffering && accepted.isPlaying ? '缓冲中' : `${state.syncPercent}%`; state.applyingPlayback = false;
 }
 
 function applyPendingPlayback(force = false) {
@@ -6392,7 +6584,7 @@ function applyPendingPlayback(force = false) {
   state.pendingPlayback = null; adaptiveSynchronize(pending.playback, force || pending.force);
 }
 
-function applyPlaybackCommand(command) { adaptiveSynchronize(command, command?.action !== 'volume'); }
+function applyPlaybackCommand(command) { adaptiveSynchronize(command, !['volume', 'rate', 'speed', 'playback-rate'].includes(command?.action)); }
 
 function consumeExpectedPlaybackEvent(playing) {
   const expected = state.expectedPlaybackEvent;
@@ -6535,12 +6727,21 @@ async function changePlaybackRate() {
 
 async function sendPlayback(action, currentTime, volume = elements.videoPlayer.volume, muted = elements.videoPlayer.muted, playbackRate = state.room?.playback?.playbackRate || 1) {
   if (!state.socketAuthenticated || !isActiveTimedMedia() || state.screenShareActive || !canControlPlayback()) return { success: false, skipped: true };
+  const previousPlaying = state.room?.playback?.isPlaying;
+  if (state.room?.playback && ['play', 'pause'].includes(action)) {
+    state.room.playback.isPlaying = action === 'play';
+    syncPlayPauseButton(state.room.playback.isPlaying);
+  }
   const attempts = action === 'seek' ? 2 : 1;
   let lastError = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       const result = await emitAck('playback-command', { action, currentTime, volume, muted, playbackRate });
-      if (!result.success) { toast(result.error, 'error'); adaptiveSynchronize(state.room?.playback, true); }
+      if (!result.success) {
+        if (state.room?.playback && ['play', 'pause'].includes(action)) state.room.playback.isPlaying = previousPlaying;
+        syncPlayPauseButton(Boolean(previousPlaying));
+        toast(result.error, 'error'); adaptiveSynchronize(state.room?.playback, true);
+      }
       return result;
     } catch (error) {
       lastError = error;
@@ -6550,6 +6751,8 @@ async function sendPlayback(action, currentTime, volume = elements.videoPlayer.v
       }
     }
   }
+  if (state.room?.playback && ['play', 'pause'].includes(action)) state.room.playback.isPlaying = previousPlaying;
+  syncPlayPauseButton(Boolean(previousPlaying));
   toast(localizedError(lastError, '恢复连接失败，请稍后重试'), 'error');
   setReconnectState(true);
   return { success: false, transportError: true };
@@ -6620,6 +6823,7 @@ function showControlRequest(user = {}) {
   const username = String(user.username || '');
   const suppressedUntil = Number(state.controlSuppressions[controlSuppressionKey(username)] || 0);
   if (suppressedUntil > Date.now()) return;
+  void window.SyncWatchDesktop?.showNotification?.({ title: 'SyncWatch 控制权申请', body: `${user.displayName || username || '成员'} 申请服务器控制权。` }).catch(() => {});
   state.controlRequest = user;
   elements.controlRequestTitle.textContent = `${user.displayName || username || '成员'} 申请服务器控制权`;
   elements.controlRequestDetail.textContent = '申请会覆盖在共享画面上；可设置暂时不再提示此成员。';
@@ -7802,6 +8006,31 @@ function handleFullscreenStageClick(event) {
   if (elements.playerContainer.classList.contains('controls-visible')) hideFullscreenControls(true); else showFullscreenControls();
 }
 
+let lastPlayerTap = null;
+function playerTapIsInteractive(target) {
+  return Boolean(target?.closest?.('button, input, select, textarea, a, iframe, audio, #playerProgressBar, #fullscreenOverlay'));
+}
+function handlePlayerDoubleClick(event) {
+  if (playerTapIsInteractive(event.target)) return;
+  event.preventDefault();
+  if (isPlayerFullscreen()) showFullscreenControls();
+  else void togglePlayerFullscreen();
+}
+function handlePlayerDoubleTap(event) {
+  if (!['touch', 'pen'].includes(event.pointerType) || !event.isPrimary || playerTapIsInteractive(event.target)) {
+    lastPlayerTap = null;
+    return;
+  }
+  const current = { at: performance.now(), x: event.clientX, y: event.clientY };
+  const previous = lastPlayerTap;
+  lastPlayerTap = current;
+  if (!previous || current.at - previous.at > 320 || Math.hypot(current.x - previous.x, current.y - previous.y) > 48) return;
+  lastPlayerTap = null;
+  event.preventDefault();
+  if (isPlayerFullscreen()) showFullscreenControls();
+  else void togglePlayerFullscreen();
+}
+
 function showFullscreenControls() {
   if (!isPlayerFullscreen()) return;
   elements.playerContainer.classList.add('controls-visible'); clearTimeout(state.fullscreenHideTimer);
@@ -7878,7 +8107,7 @@ function updateLiveVoiceUi(message = '') {
 function applyLiveVoiceCollapsed() {
   elements.liveVoiceBar?.classList.toggle('is-collapsed', state.liveVoiceCollapsed);
   if (elements.voiceDockToggleBtn) {
-    elements.voiceDockToggleBtn.textContent = state.liveVoiceCollapsed ? '⌄' : '⌃';
+    elements.voiceDockToggleBtn.textContent = state.liveVoiceCollapsed ? '展开语音' : '收起语音';
     elements.voiceDockToggleBtn.title = state.liveVoiceCollapsed ? '展开实时语音' : '折叠实时语音';
     elements.voiceDockToggleBtn.setAttribute('aria-expanded', String(!state.liveVoiceCollapsed));
   }
@@ -7971,6 +8200,7 @@ async function callFriendVoice(username) {
 }
 
 async function handleIncomingVoiceCall(call = {}) {
+  void window.SyncWatchDesktop?.showNotification?.({ title: 'SyncWatch 实时语音邀请', body: `${call.callerName || call.callerUsername || '成员'} 邀请您进行一对一实时语音。` }).catch(() => {});
   if (!call.id || activeAppDialog) {
     if (call.id) {
       state.socket.emit('voice-call-response', { callId: call.id, accepted: false }, () => {});
@@ -8838,11 +9068,14 @@ async function startBrowserScreenShare() {
       if (state.localCapture === stream) stopLocalCapture(true);
       else stream?.getTracks().forEach((track) => track.stop());
     }, { once: true });
+    // Viewers can answer before the start acknowledgement returns. Publish
+    // the stream first so their WebRTC offer always receives a real track.
+    state.localCapture = stream;
     const result = await emitAck('screen-share-start', { settings: state.desktopShareSettings });
     if (!result.success) throw new Error(result.error || '服务器拒绝屏幕共享');
     serverStarted = true;
     if (captureTrack.readyState === 'ended') throw new Error('屏幕捕获已由用户停止');
-    state.localCapture = stream; elements.screenShareBtn.textContent = '停止共享';
+    elements.screenShareBtn.textContent = '停止共享';
     showScreenShare({ active: true, socketId: state.socket.id, username: state.user?.username || '我' });
     startBrowserAudioRelay(stream);
     await startFrameCapture(stream);
@@ -9401,13 +9634,14 @@ function applyMediaProcessingStatus(status) {
   state.mediaProcessingStatus = status;
   const canConfigure = Boolean(status.canConfigure);
   elements.mediaProcessingAdminControls?.classList.toggle('is-hidden', !canConfigure);
+  if (elements.mediaCompatibilityAutoConvert) elements.mediaCompatibilityAutoConvert.checked = status.autoConvert !== false;
   if (elements.mediaProcessingConcurrency && Number(status.concurrency) >= 1) elements.mediaProcessingConcurrency.value = String(Math.max(1, Math.min(8, Number(status.concurrency))));
   if (elements.openConvertedMediaFolderBtn) {
     const available = canConfigure && Boolean(window.SyncWatchDesktop?.openConvertedMediaFolder);
     elements.openConvertedMediaFolderBtn.classList.toggle('is-hidden', !available);
   }
   if (elements.mediaProcessingControlStatus) {
-    elements.mediaProcessingControlStatus.textContent = `当前 ${Number(status.active) || 0} 个转换中，队列等待 ${Number(status.waiting) || 0} 个 · 同时处理上限 ${Number(status.concurrency) || 3}`;
+    elements.mediaProcessingControlStatus.textContent = `${status.autoConvert === false ? '上传后自动转换已关闭，播放时仍可按需转换' : '上传后自动处理不兼容视频'} · 当前 ${Number(status.active) || 0} 个转换中，队列等待 ${Number(status.waiting) || 0} 个 · 同时处理上限 ${Number(status.concurrency) || 3}`;
   }
   renderConversionProgress();
 }
@@ -9445,16 +9679,17 @@ function renderConversionProgress() {
     elements.mediaProcessingSelectAll.indeterminate = selectableTasks.some((task) => state.selectedMediaProcessingTasks.has(task.id)) && !elements.mediaProcessingSelectAll.checked;
   }
   if (elements.deleteSelectedMediaProcessingBtn) elements.deleteSelectedMediaProcessingBtn.disabled = state.selectedMediaProcessingTasks.size === 0;
-  const statusLabels = { native: '原文件可直接播放', queued: '等待转换', converting: '正在转换', ready: '兼容版已完成', failed: '转换失败', unavailable: '服务器无转换组件' };
+  const statusLabels = { native: '原文件可直接播放', manual: '播放时按需转换', queued: '等待转换', converting: '正在转换', ready: '兼容版已完成', failed: '转换失败', unavailable: '服务器无转换组件' };
   elements.conversionProgressList.innerHTML = tasks.length ? tasks.map((task) => {
     const compatibility = task.compatibility || {};
     const progress = compatibility.required ? Math.max(0, Math.min(100, Number(compatibility.progress) || 0)) : 100;
     const details = compatibility.status === 'converting'
       ? `速度 ${Number(compatibility.speedRatio || 0).toFixed(2)} 倍速 · 已用 ${formatEta(compatibility.elapsedSeconds)} · 预计剩余 ${formatEta(compatibility.etaSeconds)}`
-      : compatibility.error || (compatibility.ready ? `兼容文件 ${formatSize(compatibility.size || 0)}` : '等待服务器测试');
+      : compatibility.error || (compatibility.ready ? `兼容文件 ${formatSize(compatibility.size || 0)}` : compatibility.status === 'manual' ? '自动转换已关闭，点击播放后会优先处理' : '等待服务器测试');
     const room = task.roomId ? ` · 房间 ${escapeHtml(task.roomId)}` : '';
     const canDismiss = mediaProcessingTaskCanDismiss(task);
-    return `<div class="conversion-row" data-media-processing-task="${escapeHtml(task.id)}"><header><label class="conversion-task-select"><input type="checkbox" data-media-processing-select="${escapeHtml(task.id)}" ${state.selectedMediaProcessingTasks.has(task.id) ? 'checked' : ''} ${canDismiss ? '' : 'disabled'}><span>选择</span></label><strong title="${escapeHtml(task.originalName || '未命名影片')}">${escapeHtml(task.originalName || '未命名影片')}</strong><span>${escapeHtml(statusLabels[compatibility.status] || '检测中')}${room}</span></header><progress max="100" value="${progress}"></progress><small>${Math.round(progress)}% · ${escapeHtml(details)}${canDismiss ? '' : ' · 转换完成后可清理记录'}</small><button class="conversion-delete-button danger-text-button" data-media-processing-action="delete" type="button" ${canDismiss ? '' : 'disabled'}>删除记录</button></div>`;
+    const canStop = ['queued', 'converting'].includes(compatibility.status);
+    return `<div class="conversion-row" data-media-processing-task="${escapeHtml(task.id)}"><header><label class="conversion-task-select"><input type="checkbox" data-media-processing-select="${escapeHtml(task.id)}" ${state.selectedMediaProcessingTasks.has(task.id) ? 'checked' : ''} ${canDismiss ? '' : 'disabled'}><span>选择</span></label><strong title="${escapeHtml(task.originalName || '未命名影片')}">${escapeHtml(task.originalName || '未命名影片')}</strong><span>${escapeHtml(statusLabels[compatibility.status] || '检测中')}${room}</span></header><progress max="100" value="${progress}"></progress><small>${Math.round(progress)}% · ${escapeHtml(details)}${canDismiss || canStop ? '' : ' · 转换完成后可清理记录'}</small><div class="conversion-row-actions">${canStop ? '<button class="danger-button" data-media-processing-action="stop" type="button">强行停止</button>' : ''}<button class="conversion-delete-button danger-text-button" data-media-processing-action="delete" type="button" ${canDismiss ? '' : 'disabled'}>删除记录</button></div></div>`;
   }).join('') : '<p class="muted">当前没有符合条件的媒体任务。</p>';
 }
 
@@ -9504,7 +9739,22 @@ async function handleMediaProcessingAction(event) {
   const button = event.target.closest('[data-media-processing-action]'); if (!button) return;
   const taskId = button.closest('[data-media-processing-task]')?.dataset.mediaProcessingTask;
   const task = (state.mediaProcessingStatus?.tasks || []).find((item) => item.id === taskId);
-  if (!task || button.dataset.mediaProcessingAction !== 'delete') return;
+  if (!task) return;
+  if (button.dataset.mediaProcessingAction === 'stop') {
+    if (!await showAppConfirm(`确定强行停止“${task.originalName || '未命名影片'}”的转换吗？源视频会保留，之后点击播放可以重新处理。`, { title: '停止媒体转换', confirmText: '强行停止', danger: true })) return;
+    button.disabled = true; button.textContent = '正在停止…';
+    try {
+      const result = await emitAck('media-processing-cancel', { taskId }, 30000);
+      if (result.status) applyMediaProcessingStatus(result.status);
+      toast(result.message || result.error || '停止转换失败', result.success ? 'success' : 'error');
+      if (!result.success) { button.disabled = false; button.textContent = '强行停止'; }
+    } catch (error) {
+      button.disabled = false; button.textContent = '强行停止';
+      toast(`停止转换失败：${localizedError(error, '请稍后重试')}`, 'error');
+    }
+    return;
+  }
+  if (button.dataset.mediaProcessingAction !== 'delete') return;
   const deleteSource = elements.mediaProcessingDeleteSource?.checked === true;
   if (await deleteMediaProcessingTask(task)) {
     await refreshMediaProcessingStatus(); renderFiles();
@@ -9537,9 +9787,10 @@ async function deleteSelectedMediaProcessingTasks() {
 
 async function saveMediaProcessingConcurrency() {
   const concurrency = Math.max(1, Math.min(8, Math.floor(Number(elements.mediaProcessingConcurrency?.value) || 3)));
-  const result = await adminAction('set-media-processing', { concurrency });
+  const autoConvert = elements.mediaCompatibilityAutoConvert?.checked !== false;
+  const result = await adminAction('set-media-processing', { concurrency, autoConvert });
   toast(result.message || result.error || '媒体处理设置失败', result.success ? 'success' : 'error', 6000);
-  if (result.success) applyMediaProcessingStatus(result.status || { ...(state.mediaProcessingStatus || {}), concurrency });
+  if (result.success) applyMediaProcessingStatus(result.status || { ...(state.mediaProcessingStatus || {}), concurrency, autoConvert });
 }
 
 async function openConvertedMediaFolder() {
@@ -9760,7 +10011,7 @@ function handleMediaError() {
       ? `服务器生成公网兼容版失败：${compatibility.error || '请重新点击播放重试'}。`
       : compatibility.status === 'unavailable'
         ? `${compatibility.error || '当前服务器未内置媒体转码器，远端设备需要自行支持原始视频编码'}。建议上传 H.264/AAC MP4 兼容版。`
-        : '服务器正在生成 720P H.264/AAC 公网兼容版，完成后影片库会自动刷新。'
+        : '服务器正在生成 480P 低码率 H.264/AAC 流畅版，完成后影片库会自动刷新。'
     : ['MKV', 'AVI', 'MOV', 'FLAC'].includes(extension)
       ? `当前浏览器可能不支持 ${extension} 内的音视频编码，请等待服务器生成公网兼容版。`
       : '请检查服务器网络、登录状态和 HTTP Range 支持，或确认文件完整。';
@@ -9782,7 +10033,7 @@ async function updatePlayerInfo(file) {
   try {
     const codec = usingSmooth ? 'avc1.640029' : /265|HEVC/i.test(metadata.videoCodec) ? 'hvc1.2.4.L153.B0' : 'avc1.42E01E';
     const contentType = usingSmooth ? 'video/mp4' : file.mimeType;
-    const info = await navigator.mediaCapabilities.decodingInfo({ type: 'file', video: { contentType: `${contentType}; codecs="${codec}"`, width: width || 1920, height: height || 1080, bitrate: usingSmooth ? 3500000 : 8000000, framerate: 30 } });
+    const info = await navigator.mediaCapabilities.decodingInfo({ type: 'file', video: { contentType: `${contentType}; codecs="${codec}"`, width: width || 1920, height: height || 1080, bitrate: usingSmooth ? 900000 : 8000000, framerate: 30 } });
     if (generation !== state.mediaGeneration || state.currentFile?.id !== fileId) return;
     elements.hardwareDecode.textContent = !info.supported ? '解码：浏览器不支持' : `图形处理器解码：${info.powerEfficient ? '开启' : info.smooth ? '可播放' : '性能可能不足'}`;
   } catch (_) { if (generation === state.mediaGeneration && state.currentFile?.id === fileId) elements.hardwareDecode.textContent = '图形处理器解码：未确认'; }
@@ -10065,6 +10316,7 @@ function switchSideTab(tab) {
   document.querySelectorAll('.tab-button[data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab)); elements.usersTab.classList.toggle('is-hidden', tab !== 'users'); elements.adminTab.classList.toggle('is-hidden', tab !== 'admin');
 }
 function setMobileModuleActive(module) {
+  if (elements.theater) elements.theater.dataset.mobileModuleActive = module;
   document.querySelectorAll('[data-mobile-module]').forEach((button) => {
     button.classList.toggle('active', button.dataset.mobileModule === module);
   });
@@ -10091,7 +10343,7 @@ function openMobileModule(module) {
     elements.chatPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  elements.playerContainer?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  elements.theater?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function toggleMobilePanel(panel) {
@@ -10225,7 +10477,7 @@ async function loadAdminSettings({ silent = false } = {}) {
     elements.passwordPolicyMin.value = passwordPolicy.minLength;
     elements.passwordPolicyMax.value = passwordPolicy.maxLength;
     elements.passwordPolicyExpiryDays.value = Number(passwordPolicy.expiryDays) || 0;
-    elements.adminUnlimitedDevices.checked = result.admin.adminUnlimitedDevices !== false;
+    elements.adminMaxConcurrentSessions.value = Math.max(1, Math.min(20, Number(result.admin.adminMaxConcurrentSessions) || 5));
     elements.passwordPolicyStatus.textContent = Number(passwordPolicy.expiryDays) > 0
       ? `当前规则已用于注册、改密与管理员重置；密码每 ${passwordPolicy.expiryDays} 天需要修改`
       : '当前规则已用于注册、改密与管理员重置；定期修改已关闭';
@@ -10244,7 +10496,7 @@ async function loadAdminSettings({ silent = false } = {}) {
     elements.adminContactWechat.value = contact.wechat || ''; elements.adminContactEmail.value = contact.email || '';
     elements.adminContactPhone.value = contact.phone || ''; elements.adminContactNote.value = contact.note || '';
     const agreement = result.admin.legalAgreement || state.publicConfig.legalAgreement || {};
-    elements.legalAgreementVersion.value = agreement.version || '2.1.9'; elements.legalAgreementTitle.value = agreement.title || '';
+    elements.legalAgreementVersion.value = agreement.version || '2.2.0'; elements.legalAgreementTitle.value = agreement.title || '';
     elements.legalAgreementText.value = agreement.text || '';
     const marquee = result.admin.marqueeNotice || {};
     elements.marqueeEnabled.checked = Boolean(marquee.enabled);
@@ -10292,13 +10544,13 @@ async function loadServerLogs() {
   if (!state.adminSettings?.serverAdmin && !state.capabilities.superAdmin && !state.capabilities.serverHost) return;
   const result = await emitAck('server-logs', {
     adminPassword: elements.adminPassword?.value || '',
-    category: elements.serverLogCategory?.value || '', level: elements.serverLogLevel?.value || '',
+    accountQuery: elements.serverLogAccountQuery?.value || '', category: elements.serverLogCategory?.value || '', level: elements.serverLogLevel?.value || '',
     query: elements.serverLogQuery?.value || '', limit: 300
   }, 20000);
   if (!result.success) { if (elements.serverLogList) elements.serverLogList.innerHTML = `<p class="muted">${escapeHtml(result.error || '日志读取失败')}</p>`; return; }
   elements.serverLogsCard?.classList.remove('is-hidden');
   const logs = Array.isArray(result.logs) ? result.logs : [];
-  elements.serverLogList.innerHTML = logs.length ? logs.map((entry) => `<article class="history-row"><div><strong>${escapeHtml(entry.summary || entry.action || '服务器事件')}</strong><p>${escapeHtml(entry.category || 'server')} · ${escapeHtml(entry.level || 'info')} · ${escapeHtml(entry.actorName || entry.actor || 'system')} · ${escapeHtml(entry.roomId || '')}</p><small>${formatDate(entry.timestamp)}${entry.reversible ? ' · 可回溯' : ' · 不可回溯'}</small></div></article>`).join('') : '<p class="muted">没有符合条件的日志</p>';
+  elements.serverLogList.innerHTML = logs.length ? logs.map((entry) => { const actor = entry.actorName && entry.actor && entry.actorName !== entry.actor ? `${entry.actorName}（${entry.actor}）` : entry.actorName || entry.actor || 'system'; return `<article class="history-row"><div><strong>${escapeHtml(entry.summary || entry.action || '服务器事件')}</strong><p>${escapeHtml(entry.category || 'server')} · ${escapeHtml(entry.level || 'info')} · ${escapeHtml(actor)} · ${escapeHtml(entry.roomId || '')}</p><small>${formatDate(entry.timestamp)}${entry.reversible ? ' · 可回溯' : ' · 不可回溯'}</small></div></article>`; }).join('') : '<p class="muted">没有符合条件的日志</p>';
 }
 
 function initializeMailTemplatePresets() {
@@ -10884,11 +11136,11 @@ async function savePasswordPolicy() {
     expiryDays: Number(elements.passwordPolicyExpiryDays.value)
   });
   if (!result.success) return toast(result.error, 'error');
-  const deviceResult = await adminAction('set-admin-multi-device', { enabled: elements.adminUnlimitedDevices.checked });
+  const deviceResult = await adminAction('set-admin-session-limit', { limit: Number(elements.adminMaxConcurrentSessions.value) });
   if (!deviceResult.success) return toast(deviceResult.error, 'error');
   state.publicConfig.passwordPolicy = result.passwordPolicy;
   state.adminSettings.passwordPolicy = result.passwordPolicy;
-  state.adminSettings.adminUnlimitedDevices = deviceResult.enabled;
+  state.adminSettings.adminMaxConcurrentSessions = deviceResult.limit;
   const expiryText = Number(result.passwordPolicy.expiryDays) > 0 ? `密码每 ${result.passwordPolicy.expiryDays} 天需要修改` : '定期修改已关闭';
   elements.passwordPolicyStatus.textContent = `${result.message}；${expiryText}；${deviceResult.message}`;
   applyPublicConfig(); toast('密码与登录策略已保存', 'success');
@@ -11041,7 +11293,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.1.9-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.0-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
@@ -12015,7 +12267,9 @@ function renderTunnelStatus(status = {}, { notifyUnexpected = true } = {}) {
   };
   if (next.state === 'running' && next.verified === true && String(next.publicUrl || '').trim()) {
     const latency = Number.isFinite(Number(next.latencyMs)) ? ` · 延迟 ${Math.max(0, Math.round(Number(next.latencyMs)))}ms` : '';
-    const direct = next.bypassProxy ? ` · 已绕过代理${next.bindAddress ? `（绑定 ${next.bindAddress}）` : ''}` : '';
+    const direct = next.activeNetworkMode === 'direct'
+      ? ` · 已绕过代理${next.bindAddress ? `（绑定 ${next.bindAddress}）` : ''}`
+      : next.bypassProxy && next.activeNetworkMode === 'system' ? ' · 直连不可用，已自动回退系统网络' : '';
     const health = next.health === 'degraded' ? ' · 公网探测波动，连接器仍在运行' : '';
     elements.tunnelStatus.textContent = `已开启：${next.publicUrl}${latency}${direct}${health}`;
   }
@@ -12037,7 +12291,50 @@ function renderTunnelStatus(status = {}, { notifyUnexpected = true } = {}) {
   if (notifyUnexpected && !state.tunnelStopRequested && previous?.state === 'running' && next.state !== 'running') {
     toast(next.state === 'error' ? `公网隧道意外退出：${tunnelError || '未知原因'}` : '公网隧道已意外停止', 'error', 9000);
   }
+  renderTunnelProgress(next, previous);
   state.tunnelLastStatus = next;
+}
+
+function renderTunnelProgress(next = {}, previous = null) {
+  if (!elements.tunnelProgress) return;
+  const busyStates = ['downloading', 'diagnosing', 'starting', 'reconnecting', 'verifying'];
+  const busy = busyStates.includes(next.state);
+  const previousBusy = busyStates.includes(previous?.state);
+  const ready = next.state === 'running' && next.verified === true && Boolean(next.publicUrl);
+  const failed = next.state === 'error';
+  if (busy && !previousBusy) {
+    state.tunnelProgressDismissed = false;
+    state.tunnelOperationStartedAt = Number(next.operationStartedAt) || Date.now();
+    clearTimeout(state.tunnelProgressHideTimer);
+  } else if (Number(next.operationStartedAt) > 0) state.tunnelOperationStartedAt = Number(next.operationStartedAt);
+  const visible = !state.tunnelProgressDismissed && (busy || failed || (ready && previousBusy));
+  elements.tunnelProgress.classList.toggle('is-hidden', !visible);
+  document.body.classList.toggle('tunnel-task-visible', visible);
+  if (!visible) return;
+  const phases = {
+    downloading: [1, '下载并校验组件'], diagnosing: [2, '检查网络与出口'], starting: [3, '启动公网连接器'],
+    reconnecting: [3, '切换备用连接方式'], verifying: [4, '验证公网地址'], running: [5, '公网访问已就绪'], error: [Math.max(1, Number(elements.tunnelProgressBar?.value) || 1), '公网访问启动失败']
+  };
+  const [step, label] = phases[next.state] || [1, '准备中'];
+  const elapsedSeconds = Math.max(0, (Date.now() - (state.tunnelOperationStartedAt || Date.now())) / 1000);
+  let eta = '--';
+  if (Number(next.nextRetryAt) > Date.now()) eta = formatEta((Number(next.nextRetryAt) - Date.now()) / 1000);
+  else if (next.state === 'verifying' && Number(next.verificationStartedAt) > 0) eta = formatEta(Math.max(0, 60 - (Date.now() - Number(next.verificationStartedAt)) / 1000));
+  elements.tunnelProgressTitle.textContent = next.mode === 'named' ? '开启稳定公网访问' : '开启临时公网访问';
+  elements.tunnelProgressPhase.textContent = label;
+  elements.tunnelProgressBar.value = step;
+  elements.tunnelProgressStep.textContent = `${step}/5${Number(next.attempt) ? ` · 尝试 ${next.attempt}/${next.maxAttempts || '?'}` : ''}`;
+  elements.tunnelProgressTime.textContent = `已用 ${formatEta(elapsedSeconds)} · 预计剩余 ${eta}`;
+  elements.tunnelProgressDetail.textContent = [next.strategyLabel, next.error].filter(Boolean).join(' · ') || `${label}，关闭本提示不会停止后台任务。`;
+  if (ready && previousBusy) {
+    const passwordHint = state.adminSettings?.requireRoomPasswordForPublicAccess ? '，房间密码强制策略已启用' : '';
+    toast(`公网访问已开启${passwordHint}。`, 'success', 7000);
+    clearTimeout(state.tunnelProgressHideTimer);
+    state.tunnelProgressHideTimer = setTimeout(() => {
+      elements.tunnelProgress?.classList.add('is-hidden');
+      document.body.classList.remove('tunnel-task-visible');
+    }, 3000);
+  }
 }
 
 async function pollTunnelStatus(generation = state.tunnelPollGeneration) {
@@ -12055,26 +12352,32 @@ async function pollTunnelStatus(generation = state.tunnelPollGeneration) {
 }
 
 function startTunnelPolling() {
-  stopTunnelPolling();
+  clearInterval(state.tunnelPollTimer); state.tunnelPollTimer = null;
+  state.tunnelPollGeneration += 1; state.tunnelPollInFlight = false;
   if (!state.authenticated || !(state.capabilities.serverHost || state.capabilities.superAdmin)) return;
   const generation = state.tunnelPollGeneration;
   void pollTunnelStatus(generation);
-  state.tunnelPollTimer = setInterval(() => void pollTunnelStatus(generation), 5000);
+  state.tunnelPollTimer = setInterval(() => void pollTunnelStatus(generation), 1500);
 }
 
 function stopTunnelPolling() {
   clearInterval(state.tunnelPollTimer); state.tunnelPollTimer = null;
   state.tunnelPollGeneration += 1; state.tunnelPollInFlight = false; state.tunnelLastStatus = null; state.tunnelStopRequested = false;
+  clearTimeout(state.tunnelProgressHideTimer); state.tunnelOperationStartedAt = 0; state.tunnelProgressDismissed = false;
+  elements.tunnelProgress?.classList.add('is-hidden'); document.body.classList.remove('tunnel-task-visible');
 }
 
 async function startTunnel(confirmUnprotectedRooms = false) {
   if (typeof confirmUnprotectedRooms !== 'boolean') confirmUnprotectedRooms = false;
+  state.tunnelProgressDismissed = false; state.tunnelOperationStartedAt = Date.now();
   renderTunnelStatus({ state: 'starting' }, { notifyUnexpected: false });
   try {
-    const response = await fetchWithTimeout('/api/host/tunnel/start', {
+    const request = fetchWithTimeout('/api/host/tunnel/start', {
       method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ mode: elements.tunnelMode.value, token: elements.tunnelToken.value, publicUrl: elements.tunnelPublicUrl.value, bypassProxy: elements.tunnelBypassProxy?.checked === true, autoDiagnose: elements.tunnelAutoDiagnose?.checked !== false, confirmUnprotectedRooms })
     }, 120000);
+    startTunnelPolling();
+    const response = await request;
     const result = await response.json();
     if (!response.ok && result.code === 'PUBLIC_ROOMS_UNPROTECTED' && result.requiresConfirmation && !confirmUnprotectedRooms) {
       renderTunnelStatus({ state: 'stopped' }, { notifyUnexpected: false });
@@ -12086,10 +12389,14 @@ async function startTunnel(confirmUnprotectedRooms = false) {
       return;
     }
     if (!response.ok) throw new Error(result.error);
-    renderTunnelStatus(result.status || { state: 'running' }, { notifyUnexpected: false }); elements.tunnelToken.value = ''; startTunnelPolling();
-    const passwordHint = state.adminSettings?.requireRoomPasswordForPublicAccess ? '，房间密码强制策略已启用' : '';
-    toast(`公网访问已开启${passwordHint}。`, 'success', 7000);
-  } catch (error) { const message = localizedError(error, '公网服务启动失败，请检查令牌和网络'); renderTunnelStatus({ state: 'error', error: message }, { notifyUnexpected: false }); toast(message, 'error'); }
+    renderTunnelStatus(result.status || { state: 'running' }, { notifyUnexpected: false }); elements.tunnelToken.value = '';
+  } catch (error) {
+    await pollTunnelStatus(state.tunnelPollGeneration);
+    if (['downloading', 'diagnosing', 'starting', 'verifying', 'reconnecting'].includes(state.tunnelLastStatus?.state)) {
+      return toast('启动请求等待超时，但后台仍在继续；请查看顶部实时进度。', '', 8000);
+    }
+    const message = localizedError(error, '公网服务启动失败，请检查令牌和网络'); renderTunnelStatus({ state: 'error', error: message }, { notifyUnexpected: false }); toast(message, 'error');
+  }
 }
 async function repairTunnelNetwork() {
   if (!state.adminSettings?.serverAdmin) return toast('请先验证服务器管理员密码并加载设置', 'error');
@@ -12406,6 +12713,14 @@ function renderAccountPage(page) {
   if (page === 'security') {
     const preferences = state.profile.notificationPreferences || state.profile.notificationSettings || { registrationNotices: true, allNotifications: true };
     elements.accountContent.insertAdjacentHTML('afterbegin', `<div class="settings-card notification-preferences-card"><h3>通知偏好</h3><p>普通通知可以关闭；申请、好友消息和安全提示仍会保留。关闭全部通知需要输入文字确认。</p><div class="manage-actions"><button data-profile-action="save-notification-preferences" data-registration-notices="0" class="secondary-button" type="button" ${preferences.registrationNotices === false ? 'disabled' : ''}>关闭新账号注册提醒</button><button data-profile-action="save-notification-preferences" data-registration-notices="1" class="secondary-button" type="button" ${preferences.registrationNotices === false ? '' : 'disabled'}>开启新账号注册提醒</button><button data-profile-action="save-notification-preferences" data-disable-all="1" class="danger-button" type="button" ${preferences.allNotifications === false ? 'disabled' : ''}>关闭全部普通通知</button><button data-profile-action="save-notification-preferences" data-disable-all="0" class="primary-button" type="button" ${preferences.allNotifications !== false ? 'disabled' : ''}>恢复普通通知</button></div></div>`);
+    const roomReminder = readLoginRoomReminder(p.username);
+    const roomReminderOn = loginRoomReminderEnabled(p.username);
+    const roomReminderStatus = roomReminder.disabled
+      ? '已关闭。未填写房间号时会直接进入临时房间。'
+      : Number(roomReminder.until) > Date.now()
+        ? `已暂停至 ${formatDate(new Date(Number(roomReminder.until)).toISOString())}。`
+        : '已开启。未填写房间号时会先显示该账号可进入的房间。';
+    elements.accountContent.insertAdjacentHTML('afterbegin', `<div class="settings-card"><h3>登录房间提醒</h3><p>${roomReminderStatus}</p><button data-profile-action="toggle-login-room-reminder" data-enabled="${roomReminderOn ? '1' : '0'}" class="${roomReminderOn ? 'secondary-button' : 'primary-button'}" type="button">${roomReminderOn ? '关闭登录房间提醒' : '开启登录房间提醒'}</button><small class="form-hint">此设置保存在当前设备；提醒窗口也可选择暂停 1 小时、1 天、1 周或 30 天。</small></div>`);
   }
   decorateLevelRuleHelp(elements.accountContent);
 }
@@ -12877,6 +13192,13 @@ async function handleAccountAction(event) {
   if (action === 'enable-location-prompt') { enableLocationPrompt(); renderAccountPage('security'); return; }
   if (action === 'request-location') { enableLocationPrompt(); await reportMemberLocation({ interactive: true }); renderAccountPage('security'); return; }
   if (action === 'revoke-location') { await revokeMemberLocation(); renderAccountPage('security'); return; }
+  if (action === 'toggle-login-room-reminder') {
+    const username = state.profile?.username || state.user?.username || '';
+    saveLoginRoomReminderPreference(username, button.dataset.enabled === '1' ? 'never' : 'next');
+    toast(button.dataset.enabled === '1' ? '已关闭登录房间提醒' : '已开启登录房间提醒', 'success');
+    renderAccountPage('security');
+    return;
+  }
   if (action === 'save-notification-preferences') {
     const disableAll = button.dataset.disableAll === '1';
     let confirmation = '';
@@ -12900,7 +13222,7 @@ async function handleAccountAction(event) {
     localStorage.removeItem('syncwatchControlSuppressions'); localStorage.removeItem('syncwatchF11Prompt'); localStorage.removeItem(PLAYBACK_RATE_PROMPT_KEY);
     for (let index = localStorage.length - 1; index >= 0; index -= 1) {
       const key = localStorage.key(index);
-      if (key?.startsWith('syncwatchIgnoreTemporary:') || key?.startsWith('syncwatchRoomEntryNotice:')) localStorage.removeItem(key);
+      if (key?.startsWith('syncwatchIgnoreTemporary:') || key?.startsWith('syncwatchRoomEntryNotice:') || key?.startsWith(LOGIN_ROOM_REMINDER_KEY_PREFIX)) localStorage.removeItem(key);
     }
     toast('已恢复所有可以关闭的提示', 'success'); renderAccountPage('security'); return;
   }
@@ -13151,7 +13473,7 @@ async function profileDeleteSelected(kind) {
 
 function exportProfileCollection(kind) {
   const p = state.profile || {}; const data = kind === 'room' ? p.recentRooms : kind === 'favorites' ? p.favoriteFiles : kind === 'history' ? p.history : p.myFiles;
-  downloadJsonFile(`SyncWatch同步观影-${kind}-${new Date().toISOString().slice(0, 10)}.json`, { type: `syncwatch-profile-${kind}`, version: '2.1.9', data, meta: { favoriteMeta: p.favoriteMeta, roomMeta: p.roomMeta } });
+  downloadJsonFile(`SyncWatch同步观影-${kind}-${new Date().toISOString().slice(0, 10)}.json`, { type: `syncwatch-profile-${kind}`, version: '2.2.0', data, meta: { favoriteMeta: p.favoriteMeta, roomMeta: p.roomMeta } });
 }
 
 async function importProfileCollection(kind, file) {

@@ -57,6 +57,7 @@ app.whenReady().then(async () => {
     return {
       visible: !modal.classList.contains('is-hidden'),
       buttons: modal.querySelectorAll('[data-desktop-close]').length,
+      newServer: modal.querySelector('[data-desktop-close="new-server"]')?.textContent.includes('打开新的服务器'),
       background: style.backgroundColor,
       borderColor: style.borderTopColor,
       textColor: style.color,
@@ -66,7 +67,8 @@ app.whenReady().then(async () => {
     };
   })()`, true);
   assert.equal(result.visible, true);
-  assert.equal(result.buttons, 4);
+  assert.equal(result.buttons, 5);
+  assert.equal(result.newServer, true);
   assert.notEqual(result.background, 'rgb(255, 255, 255)');
   assert.equal(result.theme, 'silver-screen');
   assert.ok(contrastRatio(result.minimizeDescriptionColor, result.minimizeBackground) >= 4.5,

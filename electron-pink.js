@@ -25,7 +25,7 @@ const zlib = require('zlib');
 const { fetch: undiciFetch, EnvHttpProxyAgent } = require('undici');
 const {
   app, BrowserWindow, Menu, Tray, clipboard, dialog, shell, ipcMain,
-  desktopCapturer, session, screen, net
+  desktopCapturer, session, screen, net, Notification
 } = require('electron');
 
 const { APP_VERSION, startSyncWatchServer, resolveDefaultDataDir } = require('./server');
@@ -122,14 +122,16 @@ function resolveMacDownloadPaths(kind, {
   const label = kind === 'server' ? '服务器' : '客户端';
   const releaseVersion = String(version || APP_VERSION).replace(/^v/i, '');
   const siblingDirectory = portableExecutableDir || (portableExecutableFile ? path.dirname(portableExecutableFile) : '');
-  const roots = [...new Set([
-    resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'mac') : '',
-    resourcesPath ? path.join(resourcesPath, 'mac') : '', siblingDirectory ? path.join(siblingDirectory, 'mac') : '',
-    siblingDirectory, developmentDirectory ? path.join(developmentDirectory, 'mac') : '', developmentDirectory
-  ].filter(Boolean))];
+  const roots = [...new Set((isPackaged
+    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'mac') : '', resourcesPath ? path.join(resourcesPath, 'mac') : '']
+    : [siblingDirectory ? path.join(siblingDirectory, 'mac') : '', siblingDirectory, developmentDirectory ? path.join(developmentDirectory, 'mac') : '', developmentDirectory]
+  ).filter(Boolean))];
   const find = (architecture, format) => {
-    const filename = `SyncWatch同步观影-${label}-v${releaseVersion}-${architecture}.${format}`;
-    return roots.map((root) => path.join(root, filename)).find((candidate) => {
+    const filenames = [
+      `SyncWatch-${kind === 'server' ? 'Server' : 'Client'}-macOS-v${releaseVersion}-${architecture}.${format}`,
+      `SyncWatch同步观影-${label}-v${releaseVersion}-${architecture}.${format}`
+    ];
+    return roots.flatMap((root) => filenames.map((filename) => path.join(root, filename))).find((candidate) => {
       try {
         const stats = fs.statSync(candidate);
         return stats.isFile() && stats.size > 0;
@@ -143,9 +145,8 @@ function resolveMacDownloadPaths(kind, {
 }
 
 function resolveClientDownloadPath({ isPackaged = false, resourcesPath = '', portableExecutableDir = '', portableExecutableFile = '', developmentClientPath = '' } = {}) {
-  const siblingDirectory = portableExecutableDir || (portableExecutableFile ? path.dirname(portableExecutableFile) : '');
   const candidates = isPackaged
-    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', 'SyncWatch同步观影-Client-v2.1.9.exe') : '', resourcesPath ? path.join(resourcesPath, 'client', 'SyncWatch同步观影-Client-v2.1.9.exe') : '', siblingDirectory ? path.join(siblingDirectory, 'SyncWatch同步观影-Client-v2.1.9.exe') : '']
+    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe') : '', resourcesPath ? path.join(resourcesPath, 'client', 'SyncWatch同步观影-Client-v2.2.0.exe') : '']
     : [developmentClientPath];
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
@@ -348,6 +349,21 @@ function relaunchCurrentExecutable() {
   app.exit(0);
 }
 
+function launchAdditionalServer() {
+  const portableFile = process.env.PORTABLE_EXECUTABLE_FILE;
+  const executable = portableFile && fs.existsSync(portableFile) ? portableFile : process.execPath;
+  const instanceRoot = path.join(DEFAULT_DATA_DIR, 'additional-servers', `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`);
+  const args = process.argv.slice(1)
+    .filter((argument) => !/^--squirrel/i.test(String(argument)) && !String(argument).startsWith('--user-data-dir'))
+    .concat(`--user-data-dir=${path.join(instanceRoot, 'electron-profile')}`);
+  fs.mkdirSync(instanceRoot, { recursive: true });
+  const child = spawn(executable, args, {
+    detached: true, stdio: 'ignore', windowsHide: true,
+    env: { ...process.env, SYNCWATCH_DATA_DIR: instanceRoot, SYNCWATCH_HOST_TOKEN: crypto.randomBytes(32).toString('hex') }
+  });
+  child.unref();
+}
+
 function normalizePublicUrl(value) {
   if (value === undefined || value === '') return '';
   if (typeof value !== 'string') throw new Error('publicUrl 必须是字符串');
@@ -392,7 +408,34 @@ function normalizeServerSettings(input = {}) {
   if (port === null) throw new Error('server-config.json 的 port 必须是 1-65535 之间的整数');
   const publicUrl = normalizePublicUrl(input.publicUrl);
   const allowedHosts = normalizeAllowedHosts(input.allowedHosts);
-  return { port, publicUrl, allowedHosts, autostart: input.autostart === true };
+  const networkInterface = String(input.networkInterface || 'auto').trim() || 'auto';
+  if (networkInterface.length > 120 || /[\x00-\x1f]/.test(networkInterface)) throw new Error('网卡名称无效');
+  return { port, networkInterface, publicUrl, allowedHosts, autostart: input.autostart === true };
+}
+
+function selectableNetworkAdapters(interfaces = os.networkInterfaces() || {}) {
+  const physical = new Set(physicalNetworkCandidates(interfaces).accepted.map((entry) => entry.address));
+  const adapters = [];
+  for (const [name, entries] of Object.entries(interfaces || {})) {
+    for (const entry of entries || []) {
+      const address = String(entry?.address || '');
+      if (entry?.internal || (entry?.family !== 'IPv4' && entry?.family !== 4)
+        || !address || /^(?:0\.0\.0\.0|127\.|169\.254\.)/.test(address)) continue;
+      adapters.push({ name, address, physical: physical.has(address) });
+    }
+  }
+  return adapters.sort((left, right) => Number(right.physical) - Number(left.physical)
+    || left.name.localeCompare(right.name, 'zh-CN') || left.address.localeCompare(right.address));
+}
+
+function resolveLanAddress(settings = {}, interfaces = os.networkInterfaces() || {}) {
+  const adapters = selectableNetworkAdapters(interfaces);
+  const requested = String(settings.networkInterface || 'auto').trim();
+  if (requested && requested !== 'auto') {
+    const matched = adapters.find((adapter) => adapter.name === requested);
+    if (matched) return matched.address;
+  }
+  return physicalNetworkCandidates(interfaces).selected?.address || adapters[0]?.address || '';
 }
 
 function loadServerSettings({ create = false } = {}) {
@@ -507,25 +550,38 @@ async function migrateLegacyData() {
 function iconPath() { return path.join(__dirname, 'assets', process.platform === 'darwin' ? 'app-icon.png' : 'app-icon.ico'); }
 
 function serverSettingsHtml() {
-  const port = serverController?.port || activeServerSettings?.port || DEFAULT_PORT;
+  const port = activeServerSettings?.port || DEFAULT_PORT;
+  const actualPort = serverController?.port || port;
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  const configuredInterface = String(activeServerSettings?.networkInterface || 'auto');
+  const adapters = selectableNetworkAdapters();
+  const resolvedAddress = resolveLanAddress(activeServerSettings || {});
+  const automaticAddress = resolveLanAddress({ networkInterface: 'auto' });
+  const networkOptions = [
+    `<option value="auto" ${configuredInterface === 'auto' ? 'selected' : ''}>自动选择（推荐：${escapeHtml(automaticAddress || '暂无可用 IPv4')}）</option>`,
+    ...adapters.map((adapter) => `<option value="${escapeHtml(adapter.name)}" ${configuredInterface === adapter.name ? 'selected' : ''}>${escapeHtml(adapter.name)} · ${escapeHtml(adapter.address)}${adapter.physical ? '' : ' · 虚拟/VPN'}</option>`)
+  ];
+  if (configuredInterface !== 'auto' && !adapters.some((adapter) => adapter.name === configuredInterface)) {
+    networkOptions.push(`<option value="${escapeHtml(configuredInterface)}" selected>${escapeHtml(configuredInterface)} · 当前不可用（启动时自动回退）</option>`);
+  }
   const publicUrl = String(activeServerSettings?.publicUrl || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const allowedHosts = (activeServerSettings?.allowedHosts || []).join('\n').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const autostart = activeServerSettings?.autostart === true;
   const root = APPLICATION_ROOT.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const data = (serverController?.dataDir || DEFAULT_DATA_DIR).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"><style>
-    *{box-sizing:border-box}body{margin:0;background:#140e1d;color:#f9edf7;font-family:"Microsoft YaHei",sans-serif}main{padding:26px;display:grid;gap:15px}h1{margin:0;font-size:21px}p{margin:0;color:#c9b6c9;font-size:12px;line-height:1.7}.card{display:grid;gap:11px;padding:15px;background:#ffffff09;border:1px solid #ffffff16;border-radius:12px}label{display:grid;gap:6px;font-size:12px}input,textarea{width:100%;padding:11px 12px;border:1px solid #ffffff20;border-radius:9px;background:#0d0913;color:#fff;font:14px "Microsoft YaHei",sans-serif}textarea{min-height:78px;resize:vertical}.check-line{display:flex;align-items:center;gap:8px;margin:2px 0}.check-line input[type="checkbox"]{width:18px;height:18px;margin:0;padding:0;flex:0 0 18px;accent-color:#d64f92}.hint{color:#aa98ad}.path{word-break:break-all;color:#e7b8d7}footer{display:flex;gap:9px;justify-content:flex-end}button{border:0;border-radius:9px;padding:10px 16px;color:#fff;background:#513b59;cursor:pointer}button.primary{background:#d64f92}#status{min-height:20px;color:#ffb6d6}
-  </style></head><body><main><div><h1>服务器启动设置</h1><p>修改后重启程序生效。端口必须为 1–65535，云服务器还需在防火墙放行同一端口。</p></div><form id="form" class="card"><label>监听端口<input id="port" type="number" min="1" max="65535" required value="${port}"></label><label>公网根地址（选填）<input id="publicUrl" type="url" value="${publicUrl}" placeholder="例如 https://movie.example.com"></label><p class="hint">使用第三方内网穿透或反向代理时填写完整公网根地址；程序会自动允许这个域名连接。</p><label>额外允许域名（选填，每行一个）<textarea id="allowedHosts" placeholder="例如 movie.example.com&#10;movie.example.com:8443">${allowedHosts}</textarea></label><label class="check-line"><input id="autostart" type="checkbox" ${autostart ? 'checked' : ''}> 随系统登录自动启动 SyncWatch同步观影</label><p class="hint">关闭后不会影响已经运行的服务器，仅取消下次登录系统时自动启动。</p><p>程序根目录：<span class="path">${root}</span></p><p>全部服务器数据与缓存：<span class="path">${data}</span></p><p id="status"></p><footer><button id="cancel" type="button">取消</button><button class="primary" type="submit">保存并重启</button></footer></form></main><script>
-    const form=document.getElementById('form'),port=document.getElementById('port'),publicUrl=document.getElementById('publicUrl'),allowedHosts=document.getElementById('allowedHosts'),autostart=document.getElementById('autostart'),status=document.getElementById('status');
+    *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:#d64f92 #211729}*::-webkit-scrollbar{width:9px;height:9px}*::-webkit-scrollbar-track{background:#211729}*::-webkit-scrollbar-thumb{min-height:34px;background:#b94380;border:2px solid #211729;border-radius:8px}*::-webkit-scrollbar-thumb:hover{background:#d64f92}body{margin:0;background:#140e1d;color:#f9edf7;font-family:"Microsoft YaHei",sans-serif}main{padding:26px;display:grid;gap:15px}h1{margin:0;font-size:21px}p{margin:0;color:#c9b6c9;font-size:12px;line-height:1.7}.card{display:grid;gap:11px;padding:15px;background:#ffffff09;border:1px solid #ffffff16;border-radius:12px}label{display:grid;gap:6px;font-size:12px}input,select,textarea{width:100%;padding:11px 12px;border:1px solid #ffffff20;border-radius:9px;background:#0d0913;color:#fff;font:14px "Microsoft YaHei",sans-serif}textarea{min-height:78px;resize:vertical}.check-line{display:flex;align-items:center;gap:8px;margin:2px 0}.check-line input[type="checkbox"]{width:18px;height:18px;margin:0;padding:0;flex:0 0 18px;accent-color:#d64f92}.hint{color:#aa98ad}details{padding:10px 12px;border:1px solid #ffffff16;border-radius:9px;background:#ffffff05;color:#c9b6c9;font-size:12px;line-height:1.7}summary{cursor:pointer;color:#e7b8d7;font-weight:700}code{color:#f3c5dd}.path{word-break:break-all;color:#e7b8d7}footer{display:flex;gap:9px;justify-content:flex-end}button{border:0;border-radius:9px;padding:10px 16px;color:#fff;background:#513b59;cursor:pointer}button.primary{background:#d64f92}#status{min-height:20px;color:#ffb6d6}
+  </style></head><body><main><div><h1>服务器启动设置</h1><p>默认端口为 5000。保存后程序会自动重启并生效；云服务器还需在防火墙放行同一端口。</p></div><form id="form" class="card"><label>监听端口<input id="port" type="number" min="1" max="65535" required value="${port}"></label><p class="hint">当前实际端口：${actualPort}。命令行 --port 或环境变量 PORT 会优先于此处设置。</p><label>开放的局域网网卡<select id="networkInterface">${networkOptions.join('')}</select></label><p class="hint">当前选中 IPv4：${escapeHtml(resolvedAddress || '暂无')}。“自动选择”优先有线/无线物理网卡；手动网卡断开后，下次启动会回退到自动选择。本机回环始终保留，不影响桌面界面和 Cloudflare。</p><label>公网根地址（选填）<input id="publicUrl" type="url" value="${publicUrl}" placeholder="例如 https://movie.example.com"></label><p class="hint">使用第三方内网穿透或反向代理时填写完整公网根地址；程序会自动允许这个域名并作为分享地址。</p><details><summary>公网根地址怎么填？</summary><ol><li>先在反向代理、内网穿透或 Cloudflare 配好指向本机端口（默认 5000）。</li><li>填写浏览器最终访问的站点根地址，例如 <code>https://watch.example.com</code>。</li><li>不要填写 <code>/room</code>、<code>?room=ADMIN</code>、#片段、用户名或密码。</li><li>若使用非默认端口，只有对外地址保留该端口时才写，例如 <code>https://watch.example.com:8443</code>。</li><li>保存重启后，先用手机流量打开 <code>/api/public-config</code> 检查；无法访问时检查 Windows/云服务器防火墙、路由器端口映射与代理回源端口。</li></ol></details><label>额外允许域名（选填，每行一个）<textarea id="allowedHosts" placeholder="例如 movie.example.com&#10;movie.example.com:8443">${allowedHosts}</textarea></label><label class="check-line"><input id="autostart" type="checkbox" ${autostart ? 'checked' : ''}> 随系统登录自动启动 SyncWatch同步观影</label><p class="hint">关闭后不会影响已经运行的服务器，仅取消下次登录系统时自动启动。</p><p>程序根目录：<span class="path">${root}</span></p><p>全部服务器数据与缓存：<span class="path">${data}</span></p><p id="status"></p><footer><button id="cancel" type="button">取消</button><button class="primary" type="submit">保存并自动重启</button></footer></form></main><script>
+    const form=document.getElementById('form'),port=document.getElementById('port'),networkInterface=document.getElementById('networkInterface'),publicUrl=document.getElementById('publicUrl'),allowedHosts=document.getElementById('allowedHosts'),autostart=document.getElementById('autostart'),status=document.getElementById('status');
     document.getElementById('cancel').addEventListener('click',()=>window.syncWatchServerSettings.close());
-    form.addEventListener('submit',async(event)=>{event.preventDefault();status.textContent='正在保存…';const result=await window.syncWatchServerSettings.saveSettings({port:Number(port.value),publicUrl:publicUrl.value,allowedHosts:allowedHosts.value,autostart:autostart.checked});status.textContent=result?.message||result?.error||'';});
+    form.addEventListener('submit',async(event)=>{event.preventDefault();status.textContent='正在保存…';const result=await window.syncWatchServerSettings.saveSettings({port:Number(port.value),networkInterface:networkInterface.value,publicUrl:publicUrl.value,allowedHosts:allowedHosts.value,autostart:autostart.checked});status.textContent=result?.message||result?.error||'';});
   </script></body></html>`;
 }
 
 function openServerSettings() {
   if (settingsWindow && !settingsWindow.isDestroyed()) { settingsWindow.show(); settingsWindow.focus(); return; }
   settingsWindow = new BrowserWindow({
-    width: 620, height: 650, minWidth: 520, minHeight: 560, parent: mainWindow || undefined, modal: Boolean(mainWindow),
+    width: 680, height: 780, minWidth: 560, minHeight: 620, parent: mainWindow || undefined, modal: Boolean(mainWindow),
     show: false, resizable: true, title: '服务器启动设置', icon: iconPath(), backgroundColor: '#140e1d',
     webPreferences: { preload: path.join(__dirname, 'electron-settings-preload.js'), nodeIntegration: false, contextIsolation: true, sandbox: true }
   });
@@ -546,6 +602,7 @@ ipcMain.handle('syncwatch-server-settings:save-port', async (event, payload = {}
   try {
     settings = normalizeServerSettings({
       ...previous, port,
+      networkInterface: payload.networkInterface === undefined ? previous.networkInterface : payload.networkInterface,
       publicUrl: payload.publicUrl === undefined ? previous.publicUrl : payload.publicUrl,
       allowedHosts: payload.allowedHosts === undefined ? previous.allowedHosts : payload.allowedHosts,
       autostart: payload.autostart === undefined ? previous.autostart : payload.autostart
@@ -555,17 +612,13 @@ ipcMain.handle('syncwatch-server-settings:save-port', async (event, payload = {}
   activeServerSettings = settings;
   applyAutostartSetting(settings.autostart);
   if (port === serverController?.port && JSON.stringify(settings) === JSON.stringify(previous)) return { success: true, message: '设置未变化，无需重启' };
-  const result = await dialog.showMessageBox(settingsWindow, {
-    type: 'question', title: '重启服务器', message: '服务器启动设置已保存', detail: '现在重启程序并应用新的端口或公网域名设置吗？',
-    buttons: ['立即重启', '稍后手动重启'], defaultId: 0, cancelId: 1, noLink: true
-  });
-  if (result.response === 0) {
-    shuttingDown = true;
-    const controller = serverController; serverController = null;
-    await controller?.close().catch(() => {});
-    relaunchCurrentExecutable();
-  }
-  return { success: true, message: '服务器启动设置已保存，下次启动生效' };
+  const controller = serverController;
+  try { await controller?.close(); }
+  catch (error) { return { success: false, error: userFacingDesktopError(error, '服务器未能安全停止，已取消自动重启', '保存后重启失败') }; }
+  serverController = null;
+  shuttingDown = true;
+  setTimeout(relaunchCurrentExecutable, 200);
+  return { success: true, message: '设置已保存，正在自动重启…' };
 });
 
 ipcMain.on('syncwatch-server-settings:close', (event) => {
@@ -615,16 +668,34 @@ ipcMain.handle('syncwatch:open-compatible-media-folder', async (event) => {
     return failure ? { success: false, error: failure } : { success: true };
   } catch (error) { return { success: false, error: error?.message || '无法打开转换文件目录' }; }
 });
+ipcMain.handle('syncwatch:show-notification', (event, payload = {}) => {
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return { success: false, error: '主窗口已关闭' };
+  if (!Notification.isSupported()) return { success: false, error: '当前系统不支持桌面通知' };
+  const title = String(payload.title || 'SyncWatch同步观影').trim().slice(0, 80);
+  const body = String(payload.body || '').trim().slice(0, 240);
+  if (!body) return { success: false, error: '通知内容为空' };
+  const notification = new Notification({ title, body, icon: iconPath() });
+  notification.on('click', () => {
+    if (mainWindow?.isMinimized()) mainWindow.restore();
+    mainWindow?.show(); mainWindow?.focus();
+  });
+  notification.show();
+  return { success: true };
+});
 ipcMain.handle('syncwatch:close-choice', async (event, requestedChoice) => {
   if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return { success: false, error: '主窗口已关闭' };
   const choice = String(requestedChoice || '').trim().toLowerCase();
-  if (!['minimize', 'quit', 'restart', 'cancel'].includes(choice)) return { success: false, error: '无效的关闭方式' };
+  if (!['minimize', 'quit', 'restart', 'new-server', 'cancel'].includes(choice)) return { success: false, error: '无效的关闭方式' };
   closeChoicePending = false;
   if (choice === 'minimize') {
     mainWindow.hide();
     tray?.displayBalloon?.({ title: `${APP_NAME}仍在运行`, content: '程序已最小化到托盘，服务器与房间保持在线。' });
   } else if (choice === 'quit') requestApplicationQuit();
   else if (choice === 'restart') await restartApplication();
+  else if (choice === 'new-server') {
+    try { launchAdditionalServer(); }
+    catch (error) { return { success: false, error: userFacingDesktopError(error, '无法打开新的服务器', '打开新服务器失败') }; }
+  }
   return { success: true, choice };
 });
 ipcMain.on('syncwatch:display-capture-fallback-ready', (event) => {
@@ -1152,7 +1223,7 @@ function tunnelRepairRecommendations({ failureCode = '', fakeIpDns = false, tunA
   if (failureCode === 'VPN_TUN_FAKE_IP' || fakeIpDns || tunAdapters.length) {
     recommendations.push({
       code: 'VPN_TUN_DIRECT_RULE', severity: 'warning', title: '让 cloudflared 进程真正绕过 VPN/TUN',
-      detail: `检测到${fakeIpDns ? ' Fake-IP DNS' : ''}${fakeIpDns && tunAdapters.length ? ' 和' : ''}${tunAdapters.length ? `虚拟网卡（${tunAdapters.join('、')}）` : ''}。清除代理变量无法覆盖内核 TUN 路由，请在 VPN/Clash 的进程分流中把 cloudflared 进程设为 DIRECT，并将 trycloudflare.com、argotunnel.com 设为直连；也可以暂时关闭 TUN 后重新开启公网访问。`
+      detail: `检测到${fakeIpDns ? ' Fake-IP DNS' : ''}${fakeIpDns && tunAdapters.length ? ' 和' : ''}${tunAdapters.length ? `虚拟网卡（${tunAdapters.join('、')}）` : ''}。如果浏览器可联网但物理网卡直连超时，请先取消勾选“绕过系统代理”；必须直连时，再把 cloudflared 进程和 trycloudflare.com、argotunnel.com 设为 DIRECT。`
     });
   }
   if (failureCode === 'QUICK_API_TIMEOUT' || failureCode === 'DNS_RESOLUTION_FAILED' || failureCode === 'VPN_TUN_FAKE_IP' || fakeIpDns) {
@@ -1167,7 +1238,7 @@ function tunnelRepairRecommendations({ failureCode = '', fakeIpDns = false, tunA
       detail: '允许 cloudflared 出站访问 TCP 443、TCP 7844 与 UDP 7844。路由器或运营商屏蔽 UDP 7844 时，SyncWatch同步观影 会自动降级到 HTTP/2。'
     });
   }
-  if (!bypassProxy) {
+  if (!bypassProxy && !fakeIpDns && !tunAdapters.length) {
     recommendations.push({
       code: 'ENABLE_PROXY_BYPASS', severity: 'info', title: '开启绕过系统代理',
       detail: '建议勾选“绕过系统代理启动 cloudflared”，避免 HTTP_PROXY/HTTPS_PROXY 环境变量把隧道送入延迟较高的代理节点。'
@@ -1737,6 +1808,7 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
       autoRestartAttempts = 0;
     }
     const startId = ++operationId;
+    const operationStartedAt = Date.now();
     const processToStop = child;
     child = null;
     pendingPublicUrl = '';
@@ -1750,8 +1822,8 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
       lastLogTail = '';
     }
     current = fs.existsSync(binary)
-      ? { state: 'stopped', mode: '', publicUrl: '', lastPublicUrl, error: '', latencyMs: null, reconnectCount: 0, lastCheckedAt: 0, bypassProxy: Boolean(bypassProxy) }
-      : { state: 'downloading', mode: '', publicUrl: '', lastPublicUrl, error: '', latencyMs: null, reconnectCount: 0, lastCheckedAt: 0, bypassProxy: Boolean(bypassProxy) };
+      ? { state: 'stopped', mode: '', publicUrl: '', lastPublicUrl, error: '', latencyMs: null, reconnectCount: 0, lastCheckedAt: 0, bypassProxy: Boolean(bypassProxy), operationStartedAt }
+      : { state: 'downloading', mode: '', publicUrl: '', lastPublicUrl, error: '', latencyMs: null, reconnectCount: 0, lastCheckedAt: 0, bypassProxy: Boolean(bypassProxy), operationStartedAt };
     try {
       await ensureBinary();
     } catch (error) {
@@ -1789,6 +1861,10 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
       bypassProxy: Boolean(bypassProxy), bindAddress,
       edgeAddresses: startupPreflight?.edgeAddresses || []
     });
+    if (bypassProxy && startupPreflight?.checks?.apiTcp?.ok
+      && !startupPreflight.checks.apiTcpPhysical?.ok && !startupPreflight.checks.edgeTcp?.ok) {
+      strategies.sort((left, right) => Number(left.bypassProxy !== false) - Number(right.bypassProxy !== false));
+    }
     let finalFailure = null;
     for (let index = 0; index < strategies.length; index += 1) {
       if (operationId !== startId) throw new Error('公网隧道启动已取消');
@@ -1843,6 +1919,29 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
         continue;
       }
       const verified = Boolean(verifiedResult?.ok);
+      if (!verified && index + 1 < strategies.length) {
+        child = null;
+        pendingPublicUrl = '';
+        try { await terminateProcess(tunnelProcess); }
+        catch (error) {
+          const detail = userFacingDesktopError(error, 'cloudflared 未能停止，已取消备用连接以避免遗留后台进程', '停止公网隧道进程失败');
+          current = { ...current, state: 'error', publicUrl: '', verified: false, error: detail };
+          throw new Error(detail);
+        }
+        const recorded = rememberAttempt({
+          strategy, startedAt: attempt.startedAt,
+          error: `公网地址未通过访问验证（${verifiedResult?.statusCode ? `HTTP ${verifiedResult.statusCode}` : '网络超时'}）`,
+          log: attempt.getLog()
+        });
+        finalFailure = { ...recorded.failure, detail: current.error };
+        current = {
+          ...current, state: 'reconnecting', publicUrl: '', verified: false,
+          error: `公网地址无法访问，正在切换到备用连接策略（${index + 2}/${strategies.length}）…`,
+          attempts: [...attemptHistory], lastLogTail
+        };
+        await new Promise((resolve) => setTimeout(resolve, tunnelRestartDelayMs(index, { baseDelayMs: 750, maxDelayMs: 5000 })));
+        continue;
+      }
       rememberAttempt({ strategy, startedAt: attempt.startedAt, success: true, log: attempt.getLog() });
       healthFailures = verified ? 0 : 1;
       const recoveryCount = automaticRecovery ? autoRestartAttempts : index;
@@ -1900,7 +1999,7 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
     const failureCode = current.failureCode || lastExit?.failureCode || preflight.failureCode || publicProbe.failureCode || '';
     const recommendations = tunnelRepairRecommendations({ failureCode, fakeIpDns, tunAdapters, bypassProxy: Boolean(bypassProxy) });
     const message = fakeIpDns && edgeAddresses?.length
-      ? `检测到 VPN/TUN Fake-IP DNS，已通过 DoH 获取 ${edgeAddresses.length} 个真实 Cloudflare Edge 并绑定物理网卡。`
+      ? `检测到 VPN/TUN Fake-IP DNS，已通过 DoH 获取 ${edgeAddresses.length} 个真实 Cloudflare Edge 并尝试绑定物理网卡。`
       : fakeIpDns
       ? '检测到 VPN/TUN Fake-IP DNS：当前解析可能仍经过代理内核，清除代理变量不能完全绕过。请按下方方案设置 cloudflared 进程与 Cloudflare 域名直连。'
       : bypassProxy
@@ -2195,11 +2294,12 @@ async function startApplication() {
   activeServerSettings = loadServerSettings({ create: !process.env.SYNCWATCH_DATA_DIR && commandLinePort() === '' && process.env.PORT === undefined });
   applyAutostartSetting(activeServerSettings.autostart);
   const startPort = resolvedStartPort(activeServerSettings);
+  const lanAddress = resolveLanAddress(activeServerSettings);
   const dataDir = process.env.SYNCWATCH_DATA_DIR || DEFAULT_DATA_DIR;
   const androidApkPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'offline-downloads', 'android', 'SyncWatch同步观影-v2.1.9.apk')
-    : path.join(__dirname, 'mobile', 'SyncWatch同步观影-v2.1.9.apk');
-  const developmentClientPath = path.join(__dirname, 'SyncWatch同步观影-Client-v2.1.9.exe');
+    ? path.join(process.resourcesPath, 'offline-downloads', 'android', 'SyncWatch-Android-v2.2.0-universal.apk')
+    : path.join(__dirname, 'dist', 'SyncWatch-Android-v2.2.0-universal.apk');
+  const developmentClientPath = path.join(__dirname, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe');
   const clientDownloadPath = resolveClientDownloadPath({
     isPackaged: app.isPackaged,
     resourcesPath: process.resourcesPath,
@@ -2211,13 +2311,13 @@ async function startApplication() {
     isPackaged: app.isPackaged, resourcesPath: process.resourcesPath,
     portableExecutableDir: process.env.PORTABLE_EXECUTABLE_DIR,
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
-    developmentDirectory: __dirname
+    developmentDirectory: path.join(__dirname, 'dist')
   });
   const macClientDownloadPaths = resolveMacDownloadPaths('client', {
     isPackaged: app.isPackaged, resourcesPath: process.resourcesPath,
     portableExecutableDir: process.env.PORTABLE_EXECUTABLE_DIR,
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
-    developmentDirectory: __dirname
+    developmentDirectory: path.join(__dirname, 'dist')
   });
   const configuredHosts = [...activeServerSettings.allowedHosts];
   if (activeServerSettings.publicUrl) {
@@ -2232,7 +2332,8 @@ async function startApplication() {
     }
   });
   serverController = await startSyncWatchServer({
-    host: '0.0.0.0', port: startPort, strictPort: false, dataDir, allowedHosts: configuredHosts, publicUrl: activeServerSettings.publicUrl,
+    host: '0.0.0.0', port: startPort, strictPort: false, dataDir, allowedHosts: configuredHosts,
+    publicUrl: activeServerSettings.publicUrl, lanAddress,
     publicDir: path.join(__dirname, 'public'), hostControlToken: HOST_CONTROL_TOKEN, tunnelManager, androidApkPath, clientDownloadPath,
     macServerDownloadPaths, macClientDownloadPaths,
     onFactoryResetRequested: factoryResetAndRestart, onRestartRequested: restartApplication
@@ -2278,6 +2379,7 @@ process.on('unhandledRejection', (error) => {
 
 module.exports = { _test: {
   validPort, normalizePublicUrl, normalizeAllowedHost, normalizeServerSettings, resolvedStartPort,
+  selectableNetworkAdapters, resolveLanAddress,
   resolveApplicationRoot, resolveClientDownloadPath, resolveMacDownloadPaths, tunnelCommandArgs, tunnelEnvironment,
   tunnelConnectionStrategies, classifyTunnelFailure, isTunnelFakeIp, tunnelRepairRecommendations,
   applyTunnelHealthProbe, tunnelProbeNeedsConnectorRestart, sanitizeTunnelLog, extractQuickTunnelPublicUrl, tunnelConnectorRegistered,

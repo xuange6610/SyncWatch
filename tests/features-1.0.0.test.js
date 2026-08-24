@@ -95,7 +95,7 @@ async function uploadVideo(baseUrl, token, filename) {
 }
 
 async function main() {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-features-v2.1.9-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-features-v2.2.0-'));
   const publicDir = path.resolve(__dirname, '..', 'public');
   const clients = [];
   let server;
@@ -487,7 +487,7 @@ async function main() {
     assert.equal(fs.readdirSync(path.join(dataDir, 'uploads')).length, 0);
     console.log('✓ 恢复出厂设置要求风险确认，并清空全部服务器数据与缓存');
 
-    console.log('\n全部 v2.1.9 功能检查通过。');
+    console.log('\n全部 v2.2.0 功能检查通过。');
   } finally {
     for (const client of clients) client.close();
     if (server) await server.close();
@@ -496,7 +496,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('\nv2.1.9 功能检查失败:', error);
+  console.error('\nv2.2.0 功能检查失败:', error);
   process.exitCode = 1;
 });
 

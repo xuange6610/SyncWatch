@@ -31,13 +31,13 @@ GitHub Release 是给普通用户下载成品的地方；仓库首页的 `Source
 在 Release 页面打开对应文件旁的 SHA-256 校验值，PowerShell 使用：
 
 ```powershell
-Get-FileHash .\SyncWatch-v2.1.9-Full-Offline-Installer-x64.exe -Algorithm SHA256
+Get-FileHash .\SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe -Algorithm SHA256
 ```
 
 Linux/macOS 使用：
 
 ```bash
-shasum -a 256 SyncWatch同步观影-v2.1.9.apk
+shasum -a 256 SyncWatch同步观影-v2.2.0.apk
 ```
 
 如果哈希不同、文件大小为 0，或者文件名中的版本与 Release 不一致，请删除文件并重新下载。

@@ -6,7 +6,7 @@
   "compression": "maximum",
   "electronLanguages": ["zh-CN"],
   "removePackageScripts": true,
-  "directories": { "output": "dist-client" },
+  "directories": { "output": "dist" },
   "files": [
     "electron-client.js",
     "electron-client-preload.js",
@@ -17,7 +17,7 @@
     "assets/app-icon.ico",
     "package.json"
   ],
-  "extraMetadata": { "main": "electron-client.js", "name": "syncwatch-client", "version": "2.1.9", "description": "SyncWatch同步观影" },
+  "extraMetadata": { "main": "electron-client.js", "name": "syncwatch-client", "version": "2.2.0", "description": "SyncWatch同步观影" },
   "win": {
     "target": [{ "target": "portable", "arch": ["x64"] }],
     "icon": "assets/app-icon.ico",
@@ -25,5 +25,5 @@
     "requestedExecutionLevel": "asInvoker",
     "signExecutable": false
   },
-  "portable": { "artifactName": "SyncWatch同步观影-Client-v2.1.9.exe" }
+  "portable": { "artifactName": "SyncWatch-Experience-Client-Portable-v2.2.0-${arch}.exe" }
 }

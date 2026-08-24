@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('SyncWatchDesktop', {
   setAudioMuted: (muted) => ipcRenderer.invoke('syncwatch:audio-muted', Boolean(muted)),
   listAudioSources: () => ipcRenderer.invoke('syncwatch:list-audio-sources'),
   openConvertedMediaFolder: () => ipcRenderer.invoke('syncwatch:open-compatible-media-folder'),
+  showNotification: (payload) => ipcRenderer.invoke('syncwatch:show-notification', {
+    title: String(payload?.title || ''), body: String(payload?.body || '')
+  }),
   onCloseRequested: (callback) => {
     if (typeof callback !== 'function') return () => {};
     const listener = () => callback();
@@ -14,7 +17,7 @@ contextBridge.exposeInMainWorld('SyncWatchDesktop', {
   },
   completeCloseChoice: (requestedChoice) => {
     const choice = String(requestedChoice || '').trim().toLowerCase();
-    if (!['minimize', 'quit', 'restart', 'cancel'].includes(choice)) return Promise.resolve({ success: false, error: '无效的关闭方式' });
+    if (!['minimize', 'quit', 'restart', 'new-server', 'cancel'].includes(choice)) return Promise.resolve({ success: false, error: '无效的关闭方式' });
     return ipcRenderer.invoke('syncwatch:close-choice', choice);
   },
   onDisplayCaptureFallbackRequested: (callback) => {

@@ -308,3 +308,23 @@
   .ai-model-control { grid-template-columns: minmax(150px, 1fr) minmax(130px, .7fr); }
   .ai-config-grid { grid-template-columns: repeat(2, minmax(170px, 1fr)); }
 }
+
+@media (max-width: 540px) {
+  .ai-workbench-header { min-height: 92px; gap: 6px; padding: max(9px, env(safe-area-inset-top)) 46px 8px 9px; }
+  .ai-workbench-header h2 { font-size: 18px; }
+  .ai-mode-switch button { min-height: 38px; padding: 7px 8px; }
+  .ai-workbench-layout { height: calc(100% - 92px); grid-template-rows: 76px minmax(0, 1fr); }
+  .ai-conversation-panel { grid-template-columns: 96px minmax(0, 1fr); grid-template-rows: 29px 33px; padding: 6px 7px; }
+  .ai-conversation-panel > .primary-button { min-height: 29px; padding: 4px 5px; font-size: 10px; }
+  .ai-conversation-item { width: 116px; min-width: 116px; min-height: 58px; padding: 7px; }
+  .ai-model-toolbar { grid-template-columns: minmax(0, 1fr) repeat(2, 44px); gap: 5px; padding: 6px 7px; }
+  .ai-model-control { grid-column: 1 / -1; grid-template-columns: 1fr; }
+  .ai-model-toolbar input, .ai-model-toolbar select { min-height: 40px; }
+  .ai-config-panel { padding: 10px 9px max(14px, env(safe-area-inset-bottom)); }
+  .ai-config-command-row { grid-template-columns: 1fr; }
+  .ai-config-command-row button, .ai-config-command-row button:first-child { grid-column: auto; min-height: 44px; }
+  .ai-composer textarea { min-height: 54px; }
+  .ai-composer-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ai-composer-actions > span { grid-column: 1 / -1; }
+  .ai-composer-actions button { min-width: 0; min-height: 44px; }
+}
