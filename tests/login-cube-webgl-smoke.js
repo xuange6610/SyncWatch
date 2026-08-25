@@ -13,6 +13,14 @@ const { startSyncWatchServer } = require('../server');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-login-cube-webgl-'));
 app.setPath('userData', path.join(dataDir, 'electron-profile'));
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+if (process.platform === 'linux') {
+  // GitHub-hosted Ubuntu runners expose no usable GPU. Keep this smoke test
+  // meaningful by forcing Chromium's software WebGL path instead of accepting
+  // a blocklisted context or skipping the render assertion entirely.
+  app.commandLine.appendSwitch('use-gl', 'swiftshader');
+  app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+  app.commandLine.appendSwitch('ignore-gpu-blocklist');
+}
 
 let controller;
 let window;
