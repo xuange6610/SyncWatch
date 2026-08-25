@@ -25,14 +25,14 @@ assert.ok(fs.existsSync(path.join(root, 'mobile/app/src/main/java/com/xuan/syncw
   'Android Java package must use com.xuan.syncwatch');
 
 if (process.argv.includes('--release')) {
-  const releaseRoot = path.join(root, 'release');
+  const releaseRoot = path.join(root, 'dist');
   const artifacts = fs.existsSync(releaseRoot)
     ? fs.readdirSync(releaseRoot, { recursive: true, withFileTypes: true })
       .filter((entry) => entry.isFile())
       .map((entry) => path.join(entry.parentPath, entry.name))
       .filter((file) => /\.(?:exe|apk|zip|dmg)$/i.test(file))
     : [];
-  assert.ok(artifacts.length > 0, 'no release artifacts found for privacy scan');
+  assert.ok(artifacts.length > 0, 'no dist artifacts found for privacy scan');
   for (const artifact of artifacts) {
     const bytes = fs.readFileSync(artifact);
     for (const value of forbidden) {

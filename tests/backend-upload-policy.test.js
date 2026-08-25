@@ -208,7 +208,7 @@ async function main() {
     await server.close(); server = null;
 
     const persisted = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8'));
-    assert.equal(persisted.version, 11);
+    assert.equal(persisted.version, 12);
     assert.ok(persisted.admin.allowedUploadCategories.includes('image'));
     assert.equal(persisted.admin.uploadPolicyRequests.find((entry) => entry.id === pendingDocument.request.id).status, 'pending');
 
@@ -234,7 +234,7 @@ async function main() {
     baseUrl = `http://127.0.0.1:${server.port}`;
     publicConfig = await (await fetch(`${baseUrl}/api/public-config`)).json();
     assert.deepEqual(publicConfig.allowedUploadCategories, ['video'], 'deleted data directory must restart from defaults');
-    assert.equal(JSON.parse(fs.readFileSync(path.join(copiedDir, 'config.json'), 'utf8')).version, 11);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(copiedDir, 'config.json'), 'utf8')).version, 12);
     member = await connect(baseUrl);
     const removedAccountLogin = await ack(member, 'user-login', { username: 'PolicyMember', password: '123456', roomId: publicConfig.roomId });
     assert.equal(removedAccountLogin.success, false, 'deleted data directory must not retain copied accounts');

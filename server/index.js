@@ -72,6 +72,8 @@ const AVATAR_LIMIT_BYTES = 5 * 1024 * 1024;
 const LOGIN_MUSIC_FILE_LIMIT_BYTES = 256 * 1024 * 1024;
 const LOGIN_MUSIC_TRACK_LIMIT = 200;
 const LOGIN_VIDEO_FILE_LIMIT_BYTES = 4 * 1024 * 1024 * 1024;
+const DOWNLOAD_ASSET_FILE_LIMIT_BYTES = 4 * 1024 * 1024 * 1024;
+const DOWNLOAD_ASSET_MIN_BYTES = 1024 * 1024;
 const SCREEN_FRAME_LIMIT_BYTES = 1500 * 1024;
 const SCREEN_AUDIO_LIMIT_BYTES = 256 * 1024;
 const MAX_MEDIA_STREAMS_PER_SESSION_FILE = 8;
@@ -82,6 +84,7 @@ const HARD_MEDIA_UPLOAD_LIMIT_BYTES = 32 * 1024 * 1024 * 1024;
 const DEFAULT_USER_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024 * 1024;
 const MAX_ROOM_STORAGE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024 * 1024;
 const SUBTITLE_LIMIT_BYTES = 10 * 1024 * 1024;
+const TEXT_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 const MEMBER_DISCONNECT_GRACE_MS = 10 * 1000;
@@ -322,6 +325,17 @@ const FILE_TYPES = new Map([
   ['.png', ['image', 'image/png']], ['.gif', ['image', 'image/gif']],
   ['.webp', ['image', 'image/webp']], ['.pdf', ['pdf', 'application/pdf']],
   ['.txt', ['text', 'text/plain; charset=utf-8']], ['.md', ['text', 'text/markdown; charset=utf-8']],
+  ['.markdown', ['text', 'text/markdown; charset=utf-8']], ['.log', ['text', 'text/plain; charset=utf-8']],
+  ['.csv', ['text', 'text/csv; charset=utf-8']], ['.tsv', ['text', 'text/tab-separated-values; charset=utf-8']],
+  ['.json', ['text', 'application/json; charset=utf-8']], ['.xml', ['text', 'application/xml; charset=utf-8']],
+  ['.yaml', ['text', 'application/yaml; charset=utf-8']], ['.yml', ['text', 'application/yaml; charset=utf-8']],
+  ['.ini', ['text', 'text/plain; charset=utf-8']], ['.cfg', ['text', 'text/plain; charset=utf-8']],
+  ['.conf', ['text', 'text/plain; charset=utf-8']], ['.properties', ['text', 'text/plain; charset=utf-8']],
+  ['.toml', ['text', 'application/toml; charset=utf-8']], ['.nfo', ['text', 'text/plain; charset=utf-8']],
+  ['.html', ['text', 'text/html; charset=utf-8']], ['.htm', ['text', 'text/html; charset=utf-8']],
+  ['.css', ['text', 'text/css; charset=utf-8']], ['.js', ['text', 'text/javascript; charset=utf-8']],
+  ['.tex', ['text', 'text/plain; charset=utf-8']], ['.rst', ['text', 'text/plain; charset=utf-8']],
+  ['.adoc', ['text', 'text/plain; charset=utf-8']],
   ['.doc', ['document', 'application/msword']],
   ['.docx', ['document', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']],
   ['.xls', ['document', 'application/vnd.ms-excel']],
@@ -338,6 +352,23 @@ function resolveFileType(originalName, mimeType = '') {
   const mime = String(mimeType || '').split(';')[0].trim().toLowerCase();
   if (VIDEO_MIME_FALLBACK.test(mime)) return ['video', mime || 'application/octet-stream'];
   return null;
+}
+
+function textUploadMimeAllowed(mimeType = '') {
+  const mime = String(mimeType || '').split(';')[0].trim().toLowerCase();
+  return !mime || mime === 'application/octet-stream' || mime.startsWith('text/') || new Set([
+    'application/json', 'application/xml', 'application/yaml', 'application/x-yaml', 'application/toml'
+  ]).has(mime);
+}
+
+function bufferLooksLikeText(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) return true;
+  const utf16Bom = (buffer[0] === 0xff && buffer[1] === 0xfe) || (buffer[0] === 0xfe && buffer[1] === 0xff);
+  if (utf16Bom) return buffer.length % 2 === 0;
+  if (buffer.includes(0)) return false;
+  let controls = 0;
+  for (const byte of buffer) if (byte < 32 && ![9, 10, 12, 13].includes(byte)) controls += 1;
+  return controls / buffer.length <= 0.02;
 }
 
 const UPLOAD_CATEGORIES = new Set([...FILE_TYPES.values()].map(([category]) => category));
@@ -1023,14 +1054,19 @@ function freshState() {
       accountNumberPolicy: normalizeAccountNumberPolicy(), verificationCodePolicy: normalizeVerificationCodePolicy(),
       requireRoomPasswordForPublicAccess: false,
       lanAccessEnabled: true,
+      localPasswordlessManagementEnabled: true,
+      localPasswordlessRoomEnabled: true,
       f11PromptEnabled: true,
       initialPasswordReminderEnabled: true,
       downloadButtonsVisible: true,
+      locationStatusNoticesEnabled: true,
+      locationAuthorizationRequestsEnabled: true,
       mediaCompatibilityAutoConvert: true,
       mediaCompatibilityConcurrency: DEFAULT_MEDIA_COMPATIBILITY_CONCURRENCY,
       experiencePerMinute: 1,
       defaultAccountPasswordHash: makePasswordHash('123456'),
       adminMaxConcurrentSessions: 5,
+      allowTextUploads: true,
       allowedUploadCategories: ['video'],
       blockedWords: [],
       registrationIpWhitelist: [], registrationAllowances: {}, registrationRequests: [], roomQuotaRequests: [], registrationAccountNoticeEnabled: true,
@@ -1069,6 +1105,7 @@ function migrateState(input) {
       registrationRequests: retainPersistentRequests(input.admin.registrationRequests)
         .map((entry) => ({ ...entry, requestedCount: registrationRequestCount(entry.requestedCount) })),
       registrationAccountNoticeEnabled: input.admin.registrationAccountNoticeEnabled !== false,
+      allowTextUploads: input.admin.allowTextUploads !== false,
       allowedUploadCategories: normalizeAllowedUploadCategories(input.admin.allowedUploadCategories),
       blockedWords: normalizeBlockedWords(input.admin.blockedWords),
       mail: normalizeMailSettings(input.admin.mail),
@@ -1088,9 +1125,13 @@ function migrateState(input) {
     next.admin.roomIdPolicy = normalizeRoomIdPolicy(input.admin.roomIdPolicy);
     next.admin.requireRoomPasswordForPublicAccess = input.admin.requireRoomPasswordForPublicAccess === true;
     next.admin.lanAccessEnabled = input.admin.lanAccessEnabled !== false;
+    next.admin.localPasswordlessManagementEnabled = input.admin.localPasswordlessManagementEnabled !== false;
+    next.admin.localPasswordlessRoomEnabled = input.admin.localPasswordlessRoomEnabled !== false;
     next.admin.f11PromptEnabled = input.admin.f11PromptEnabled !== false;
     next.admin.initialPasswordReminderEnabled = input.admin.initialPasswordReminderEnabled !== false;
     next.admin.downloadButtonsVisible = input.admin.downloadButtonsVisible !== false;
+    next.admin.locationStatusNoticesEnabled = input.admin.locationStatusNoticesEnabled !== false;
+    next.admin.locationAuthorizationRequestsEnabled = input.admin.locationAuthorizationRequestsEnabled !== false;
     next.admin.mediaCompatibilityAutoConvert = input.admin.mediaCompatibilityAutoConvert !== false;
     next.admin.mediaCompatibilityConcurrency = Math.max(1, Math.min(MAX_MEDIA_COMPATIBILITY_CONCURRENCY,
       Math.floor(Number(input.admin.mediaCompatibilityConcurrency) || DEFAULT_MEDIA_COMPATIBILITY_CONCURRENCY)));
@@ -1773,6 +1814,9 @@ async function startSyncWatchServer(options = {}) {
   const loginMusicDir = path.join(dataDir, 'login-music');
   const loginVideoDir = path.join(dataDir, 'login-video');
   const compatibleMediaDir = path.join(dataDir, 'compatible-media');
+  const downloadAssetsDir = path.join(dataDir, 'download-assets');
+  const downloadAssetTemporaryDir = path.join(downloadAssetsDir, '.temporary');
+  let latestReleaseCache = null;
   const stateFile = path.join(dataDir, 'config.json');
   const chatFile = path.join(dataDir, 'chat-history.jsonl');
   const trashDir = path.join(dataDir, 'trash');
@@ -1784,26 +1828,32 @@ async function startSyncWatchServer(options = {}) {
   const tunnelManager = options.tunnelManager || null;
   const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.0.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.0-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe');
+  const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
+  const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const macServerDownloadPaths = normalizeMacDownloadPaths(options.macServerDownloadPaths);
   const macClientDownloadPaths = normalizeMacDownloadPaths(options.macClientDownloadPaths);
   // Keep the legacy path options for existing callers, while discovering
   // sibling mac/ artifacts and optional HTTPS release URLs in one place. This
   // allows a Windows-hosted server to serve a real ZIP/DMG uploaded later,
   // without ever manufacturing a macOS installer.
-  const macDistributionRoots = options.macDistributionRoots || [];
+  const macDistributionRoots = [downloadAssetsDir, ...(options.macDistributionRoots || [])];
   const includeDefaultMacDistributionRoots = options.discoverDefaultMacArtifacts !== false;
-  const macServerDistribution = createMacDistribution({
-    kind: 'server', version: APP_VERSION, legacyPaths: macServerDownloadPaths,
-    configured: options.macServerDownloadUrls || options.macServerDownloads || {},
+  const createDownloadDistribution = (kind) => createMacDistribution({
+    kind, version: APP_VERSION, legacyPaths: kind === 'server' ? macServerDownloadPaths : macClientDownloadPaths,
+    configured: kind === 'server'
+      ? options.macServerDownloadUrls || options.macServerDownloads || {}
+      : options.macClientDownloadUrls || options.macClientDownloads || {},
     roots: macDistributionRoots, manifestPaths: options.macDistributionManifestPaths || [],
     env: options.macDistributionEnv || process.env, includeDefaultRoots: includeDefaultMacDistributionRoots
   });
-  const macClientDistribution = createMacDistribution({
-    kind: 'client', version: APP_VERSION, legacyPaths: macClientDownloadPaths,
-    configured: options.macClientDownloadUrls || options.macClientDownloads || {},
-    roots: macDistributionRoots, manifestPaths: options.macDistributionManifestPaths || [],
-    env: options.macDistributionEnv || process.env, includeDefaultRoots: includeDefaultMacDistributionRoots
-  });
+  let macServerDistribution = createDownloadDistribution('server');
+  let macClientDistribution = createDownloadDistribution('client');
+  const refreshMacDownloadDistributions = () => {
+    macServerDistribution = createDownloadDistribution('server');
+    macClientDistribution = createDownloadDistribution('client');
+  };
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
   const restartHandler = typeof options.onRestartRequested === 'function' ? options.onRestartRequested : null;
   const allowedSocketHosts = new Set((options.allowedHosts || []).map((entry) => String(entry).trim().toLowerCase()).filter(Boolean));
@@ -1963,7 +2013,10 @@ async function startSyncWatchServer(options = {}) {
   const dataDirectoryLock = acquireDataDirectoryLock(dataDir);
   try {
   const stateFileExisted = fs.existsSync(stateFile);
-  for (const dir of [uploadsDir, thumbnailsDir, subtitlesDir, voiceDir, chatImagesDir, avatarsDir, loginCubeDir, loginCubeModelDir, loginMusicDir, loginVideoDir, compatibleMediaDir, trashDir, secretsDir, adminSecretsDir]) fs.mkdirSync(dir, { recursive: true });
+  for (const dir of [uploadsDir, thumbnailsDir, subtitlesDir, voiceDir, chatImagesDir, avatarsDir, loginCubeDir, loginCubeModelDir, loginMusicDir, loginVideoDir, compatibleMediaDir, downloadAssetsDir, downloadAssetTemporaryDir, trashDir, secretsDir, adminSecretsDir]) fs.mkdirSync(dir, { recursive: true });
+  for (const entry of fs.readdirSync(downloadAssetTemporaryDir, { withFileTypes: true })) {
+    if (entry.isFile() && /^\.upload-[a-f0-9-]+\.tmp$/i.test(entry.name)) fs.rmSync(path.join(downloadAssetTemporaryDir, entry.name), { force: true });
+  }
   writeDataDirectoryGuide(dataDir);
   state = loadState(stateFile);
 
@@ -2420,6 +2473,15 @@ async function startSyncWatchServer(options = {}) {
   const activeSocketHandlers = new Set();
   const activeMediaResponseStreams = new Map();
   const roomRuntimes = new Map();
+  function normalizeTextReadingState(value = {}) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    return {
+      fileId: cleanText(source.fileId, 80), position: Math.max(0, Math.min(1, Number(source.position) || 0)),
+      page: Math.max(1, Math.min(1000000, Math.floor(Number(source.page) || 1))),
+      updatedAt: Math.max(0, Number(source.updatedAt) || Date.now()), changedBy: cleanUsername(source.changedBy),
+      revision: Math.max(0, Math.floor(Number(source.revision) || 0))
+    };
+  }
   function createRoomRuntime(roomIdValue = '') {
     const saved = roomConfig(roomIdValue)?.savedState || {};
     const savedPlayback = saved.playback && typeof saved.playback === 'object' ? saved.playback : {};
@@ -2432,6 +2494,7 @@ async function startSyncWatchServer(options = {}) {
           muted: Boolean(savedPlayback.muted), playbackRate: Math.max(0.5, Math.min(3, Number(savedPlayback.playbackRate ?? savedPlayback.rate ?? 1) || 1)),
           updatedAt: Date.now(), changedBy: cleanUsername(savedPlayback.changedBy) || null, revision: Math.max(0, Number(savedPlayback.revision) || 0)
         },
+        textReading: normalizeTextReadingState(saved.textReading),
         screenShare: { active: false, socketId: null, username: null },
         audioShare: { active: false, socketId: null, username: null, displayName: '', platform: 'system', sourceName: '', volume: 0.8 },
         webShare: { active: false, url: '', title: '', changedBy: '', updatedAt: 0 }
@@ -2492,6 +2555,7 @@ async function startSyncWatchServer(options = {}) {
         muted: Boolean(playback.muted), playbackRate: Math.max(0.5, Math.min(3, Number(playback.playbackRate ?? playback.rate ?? 1) || 1)),
         changedBy: cleanUsername(playback.changedBy) || null, revision: Math.max(0, Number(playback.revision) || 0)
       },
+      textReading: normalizeTextReadingState(runtime.roomState.textReading),
       savedAt: new Date().toISOString()
     };
   }
@@ -4162,7 +4226,7 @@ async function startSyncWatchServer(options = {}) {
       if (entry.name === lockName) continue;
       fs.rmSync(path.join(dataDir, entry.name), { recursive: true, force: true });
     }
-    for (const dir of [uploadsDir, thumbnailsDir, subtitlesDir, voiceDir, chatImagesDir, avatarsDir, loginCubeDir, loginCubeModelDir, loginMusicDir, loginVideoDir, compatibleMediaDir, trashDir, secretsDir]) fs.mkdirSync(dir, { recursive: true });
+    for (const dir of [uploadsDir, thumbnailsDir, subtitlesDir, voiceDir, chatImagesDir, avatarsDir, loginCubeDir, loginCubeModelDir, loginMusicDir, loginVideoDir, compatibleMediaDir, downloadAssetsDir, downloadAssetTemporaryDir, trashDir, secretsDir]) fs.mkdirSync(dir, { recursive: true });
     const resetState = freshState();
     for (const key of Object.keys(state)) delete state[key];
     Object.assign(state, resetState);
@@ -4774,6 +4838,15 @@ async function startSyncWatchServer(options = {}) {
     return playback;
   }
 
+  function resetTextReadingState(file, username, roomIdValue = currentRoomId()) {
+    const runtime = roomRuntime(roomIdValue);
+    runtime.roomState.textReading = normalizeTextReadingState({
+      fileId: file?.category === 'text' ? file.id : '', position: 0, page: 1,
+      updatedAt: Date.now(), changedBy: username, revision: Number(runtime.roomState.textReading?.revision || 0) + 1
+    });
+    return runtime.roomState.textReading;
+  }
+
   function freezePlaybackForOwnerDisconnect(user) {
     const room = roomConfig(user?.roomId);
     const runtime = roomRuntime(room.id);
@@ -4796,6 +4869,7 @@ async function startSyncWatchServer(options = {}) {
     return {
       ...room, passwordHash: undefined, permissions: undefined, permissionGroups: undefined, memberGroups: undefined, savedState: undefined,
       passwordRequired: Boolean(room.passwordHash), lightsOn: runtime.roomState.lightsOn, playback: playbackSnapshot(room.id),
+      textReading: normalizeTextReadingState(runtime.roomState.textReading),
       screenShare: { ...runtime.roomState.screenShare }, audioShare: { ...runtime.roomState.audioShare }, webShare: { ...runtime.roomState.webShare }, queue: [...room.queue], playbackMode: normalizePlaybackMode(room.playbackMode),
       online, storage, marqueeNotice: normalizeMarqueeNotice(state.admin.marqueeNotice), entryNotice: effectiveRoomEntryNotice(room.id),
       status: room.banned ? '已被服务器封禁' : room.closed ? '已关闭，等待重新进入' : online ? '同步正常' : '90 秒后自动关闭'
@@ -5362,6 +5436,12 @@ async function startSyncWatchServer(options = {}) {
           const monitor = new Transform({
             transform(chunk, encoding, done) {
               size += chunk.length;
+              const streamLimit = Math.max(0, Number(req.syncWatchStreamLimitBytes) || 0);
+              if (streamLimit && size > streamLimit) {
+                const error = new Error(req.syncWatchStreamLimitMessage || '上传文件超过允许大小');
+                error.code = req.syncWatchStreamLimitCode || 'LIMIT_FILE_SIZE';
+                return done(error);
+              }
               bytesSinceCheck += chunk.length;
               if (bytesSinceCheck >= diskCheckIntervalBytes) {
                 bytesSinceCheck = 0;
@@ -5588,6 +5668,145 @@ async function startSyncWatchServer(options = {}) {
     return serveMediaRange(req, res, target, video.mimeType || 'video/mp4');
   });
 
+  function downloadAssetDetails() {
+    const describe = (filename) => {
+      try {
+        const stats = fs.statSync(filename);
+        return stats.isFile() && stats.size > 0 ? {
+          available: true, filename: path.basename(filename), size: stats.size, updatedAt: stats.mtime.toISOString()
+        } : { available: false };
+      } catch (_) { return { available: false }; }
+    };
+    return {
+      windowsServer: describe(activeClientDownloadPath()),
+      androidClient: describe(activeAndroidApkPath()),
+      macServer: macDownloadSummary(macServerDistribution),
+      macClient: macDownloadSummary(macClientDistribution)
+    };
+  }
+
+  function downloadAssetPublicState() {
+    const details = downloadAssetDetails();
+    return {
+      androidApkAvailable: details.androidClient.available,
+      clientDownloadAvailable: details.windowsServer.available,
+      macServerDownloadArchitectures: availableMacArchitectures(macServerDistribution),
+      macClientDownloadArchitectures: availableMacArchitectures(macClientDistribution),
+      macServerDownloads: details.macServer,
+      macClientDownloads: details.macClient,
+      downloadAssetDetails: details
+    };
+  }
+
+  function downloadAssetUploadSpec(req, file = {}) {
+    const kind = cleanText(req.params?.kind, 40).toLowerCase();
+    const extension = path.extname(String(file.originalname || '')).toLowerCase();
+    if (kind === 'windows-server' && extension === '.exe') {
+      return { kind, extension, target: managedClientDownloadPath, label: 'Windows 服务器客户端' };
+    }
+    if (kind === 'android-client' && extension === '.apk') {
+      return { kind, extension, target: managedAndroidApkPath, label: 'Android 客户端' };
+    }
+    if (['macos-server', 'macos-client'].includes(kind) && ['.dmg', '.zip'].includes(extension)) {
+      const architecture = cleanText(req.query?.arch, 12).toLowerCase();
+      if (!['x64', 'arm64'].includes(architecture)) return null;
+      const label = kind === 'macos-server' ? '服务器' : '客户端';
+      return {
+        kind, extension, architecture, label: `macOS ${label}`,
+        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.0-${architecture}${extension}`)
+      };
+    }
+    return null;
+  }
+
+  function validateDownloadAssetFile(filename, spec) {
+    const stats = fs.statSync(filename);
+    if (!stats.isFile() || stats.size < DOWNLOAD_ASSET_MIN_BYTES) throw new Error('安装文件不完整，必须至少为 1 MB');
+    const handle = fs.openSync(filename, 'r');
+    try {
+      const first = Buffer.alloc(4); fs.readSync(handle, first, 0, first.length, 0);
+      if (spec.extension === '.exe' && first.subarray(0, 2).toString('ascii') !== 'MZ') throw new Error('EXE 文件头无效');
+      if (['.apk', '.zip'].includes(spec.extension) && first.subarray(0, 2).toString('ascii') !== 'PK') throw new Error('ZIP/APK 文件头无效');
+      if (spec.extension === '.dmg') {
+        const footer = Buffer.alloc(Math.min(512, stats.size));
+        fs.readSync(handle, footer, 0, footer.length, stats.size - footer.length);
+        if (!footer.includes(Buffer.from('koly'))) throw new Error('DMG 文件尾签名无效');
+      }
+    } finally { fs.closeSync(handle); }
+    return stats;
+  }
+
+  function replaceDownloadAsset(temporary, target) {
+    const backup = `${target}.previous-${process.pid}-${crypto.randomBytes(6).toString('hex')}.tmp`;
+    let backedUp = false;
+    try {
+      if (fs.existsSync(target)) { fs.renameSync(target, backup); backedUp = true; }
+      fs.renameSync(temporary, target);
+      if (backedUp) fs.rmSync(backup, { force: true });
+    } catch (error) {
+      if (!fs.existsSync(target) && backedUp && fs.existsSync(backup)) {
+        try { fs.renameSync(backup, target); } catch (_) {}
+      }
+      throw error;
+    } finally {
+      fs.rmSync(temporary, { force: true });
+      if (fs.existsSync(target)) fs.rmSync(backup, { force: true });
+    }
+  }
+
+  const downloadAssetUpload = multer({
+    storage: multer.diskStorage({
+      destination(req, file, callback) { callback(null, downloadAssetTemporaryDir); },
+      filename(req, file, callback) { callback(null, `.upload-${crypto.randomUUID()}.tmp`); }
+    }),
+    limits: { files: 1, fileSize: DOWNLOAD_ASSET_FILE_LIMIT_BYTES },
+    fileFilter(req, file, callback) {
+      const spec = downloadAssetUploadSpec(req, file);
+      if (spec) return callback(null, true);
+      const error = new Error('文件类型不受支持：Windows 仅允许 EXE，Android 仅允许 APK，macOS 仅允许 DMG/ZIP 并必须选择 x64 或 arm64');
+      error.statusCode = 415;
+      return callback(error);
+    }
+  });
+
+  app.post('/api/download-assets/:kind', requireSession, requireHost, httpRateLimit('download-asset-upload', 12, 60 * 60 * 1000), downloadAssetUpload.single('file'), (req, res) => {
+    const spec = downloadAssetUploadSpec(req, req.file);
+    if (!req.file?.path || !spec) return res.status(400).json({ success: false, error: '请选择有效的安装文件' });
+    try {
+      const stats = validateDownloadAssetFile(req.file.path, spec);
+      replaceDownloadAsset(req.file.path, spec.target);
+      if (spec.kind.startsWith('macos-')) refreshMacDownloadDistributions();
+      const downloads = downloadAssetPublicState();
+      io.emit('download-assets-updated', downloads);
+      recordOperation({ actor: req.syncWatchSession.username, action: 'download-asset-upload', summary: `更新${spec.label}下载文件：${path.basename(spec.target)}`, scope: 'server' });
+      return res.json({ success: true, filename: path.basename(spec.target), size: stats.size, downloads, message: `${spec.label}下载文件已更新` });
+    } catch (error) {
+      fs.rmSync(req.file.path, { force: true });
+      return res.status(400).json({ success: false, error: error.message || '安装文件校验失败' });
+    }
+  });
+
+  app.get('/api/releases/latest', httpRateLimit('latest-release', 20, 5 * 60 * 1000), async (req, res) => {
+    if (latestReleaseCache?.expiresAt > Date.now()) return res.json(latestReleaseCache.value);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch('https://api.github.com/repos/xuange6610/SyncWatch/releases/latest', {
+        signal: controller.signal,
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': `SyncWatch/${APP_VERSION} update-check` }
+      });
+      if (!response.ok) return res.status(502).json({ success: false, error: `GitHub 返回 ${response.status}` });
+      const release = await response.json();
+      const tagName = cleanText(release?.tag_name, 40);
+      if (!/^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(tagName)) return res.status(502).json({ success: false, error: 'GitHub Latest 版本号无效' });
+      const value = { success: true, tag_name: tagName, name: cleanText(release?.name, 120) };
+      latestReleaseCache = { value, expiresAt: Date.now() + 5 * 60 * 1000 };
+      return res.json(value);
+    } catch (error) {
+      return res.status(502).json({ success: false, error: error?.name === 'AbortError' ? '连接 GitHub 超时' : '无法连接 GitHub' });
+    } finally { clearTimeout(timeout); }
+  });
+
   app.get('/api/public-config', async (req, res) => {
     // Refresh tunnel state before publishing publicAddress. A Quick Tunnel
     // may exit between polling requests; stale URLs must never be advertised.
@@ -5600,17 +5819,23 @@ async function startSyncWatchServer(options = {}) {
     defaultRoomId: state.defaultRoomId, roomsEnabled: true,
     accessPasswordRequired: Boolean(roomConfig(state.defaultRoomId).passwordHash), defaultAdminPassword: Boolean(state.admin.mustChangePassword),
     maxUploadBytes: state.admin.uploadLimitBytes || DEFAULT_USER_UPLOAD_LIMIT_BYTES, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
-    allowedUploadCategories: allowedUploadCategories(),
+    allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false,
     supportedExtensions: [...FILE_TYPES.keys()].map((extension) => extension.slice(1)), port: actualPort, addresses: advertisedNetworkAddresses(), publicAddress: activeTunnelPublicUrl || configuredPublicUrl,
-    androidApkAvailable: fs.existsSync(androidApkPath), clientDownloadAvailable: Boolean(clientDownloadPath && fs.existsSync(clientDownloadPath)),
-    macServerDownloadArchitectures: availableMacArchitectures(macServerDistribution),
-    macClientDownloadArchitectures: availableMacArchitectures(macClientDistribution),
-    macServerDownloads: macDownloadSummary(macServerDistribution),
-    macClientDownloads: macDownloadSummary(macClientDistribution),
+    lanAccessEnabled: state.admin.lanAccessEnabled !== false,
+    ...downloadAssetPublicState(),
     serverHostLoginAvailable: Boolean(directLoopbackHostRequest(requestPeerAddress(req), req.headers)
       && (!hostControlToken || isHostToken(req.headers['x-syncwatch-host-token']))),
-    serverHostPasswordlessAvailable: Boolean(directLoopbackHostRequest(requestPeerAddress(req), req.headers)
-      && (!hostControlToken || isHostToken(req.headers['x-syncwatch-host-token']))),
+    serverHostPasswordlessManagementAvailable: Boolean(state.admin.localPasswordlessManagementEnabled !== false
+      && directLoopbackHostRequest(requestPeerAddress(req), req.headers)
+      && hostControlToken && isHostToken(req.headers['x-syncwatch-host-token'])),
+    serverHostPasswordlessRoomAvailable: Boolean(state.admin.localPasswordlessRoomEnabled !== false
+      && directLoopbackHostRequest(requestPeerAddress(req), req.headers)
+      && hostControlToken && isHostToken(req.headers['x-syncwatch-host-token'])),
+    // Compatibility alias for older clients. It represents only the
+    // management-only entry and cannot switch the server-side session mode.
+    serverHostPasswordlessAvailable: Boolean(state.admin.localPasswordlessManagementEnabled !== false
+      && directLoopbackHostRequest(requestPeerAddress(req), req.headers)
+      && hostControlToken && isHostToken(req.headers['x-syncwatch-host-token'])),
     passwordRecoveryAvailable: mailRecoveryAvailable('account') || mailRecoveryAvailable('admin'),
     accountPasswordRecoveryAvailable: mailRecoveryAvailable('account'), adminPasswordRecoveryAvailable: mailRecoveryAvailable('admin'),
     registrationEmailVerificationRequired: registrationEmailVerificationAvailable(), emailBindingAvailable: emailBindingAvailable(),
@@ -5622,6 +5847,8 @@ async function startSyncWatchServer(options = {}) {
     f11PromptEnabled: state.admin.f11PromptEnabled !== false,
     initialPasswordReminderEnabled: state.admin.initialPasswordReminderEnabled !== false,
     downloadButtonsVisible: state.admin.downloadButtonsVisible !== false,
+    locationStatusNoticesEnabled: state.admin.locationStatusNoticesEnabled !== false,
+    locationAuthorizationRequestsEnabled: state.admin.locationAuthorizationRequestsEnabled !== false,
     roomEntryNotice: normalizeRoomEntryNotice(state.admin.roomEntryNotice),
     defaultPlaybackQuality: (requestUsesForwardedHttps(req) || requestUsesPublicProxy(req) || requestUsesConfiguredPublicHost(req)) ? 'smooth' : 'original', branding: normalizeBranding(state.admin.branding), roomIdPolicy: normalizeRoomIdPolicy(state.admin.roomIdPolicy),
     clientIp: normalizeIp(getRequestIp(req))
@@ -5660,8 +5887,9 @@ async function startSyncWatchServer(options = {}) {
   }));
 
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
-    if (!clientDownloadPath || !fs.existsSync(clientDownloadPath)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, clientDownloadPath, 'SyncWatch同步观影-Client-v2.2.0.exe');
+    const target = activeClientDownloadPath();
+    if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
+    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe');
   });
 
   app.get('/api/macos-server-download', httpRateLimit('macos-server-download', 12, 60 * 60 * 1000), (req, res) => {
@@ -5770,8 +5998,9 @@ async function startSyncWatchServer(options = {}) {
   });
 
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
-    if (!fs.existsSync(androidApkPath)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, androidApkPath, 'SyncWatch同步观影-v2.2.0.apk');
+    const target = activeAndroidApkPath();
+    if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.0-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -5780,6 +6009,11 @@ async function startSyncWatchServer(options = {}) {
     if (!file || !canSeeFile(req.syncWatchSession, file)) return res.status(404).end();
     const availability = mediaFileAvailability(file);
     if (!availability.available) return sendUnavailableMedia(res, file);
+    if (file.category === 'text') {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+      return serveMediaRange(req, res, availability.target, 'text/plain; charset=utf-8');
+    }
     return serveMediaRange(req, res, availability.target, file.mimeType);
   };
   app.get('/media/:storedName', requireSession, mediaRoute);
@@ -6084,6 +6318,21 @@ async function startSyncWatchServer(options = {}) {
         const type = resolveFileType(file.originalname, file.mimetype);
         if (!type) return callback(new Error('不支持此文件格式'));
         const [category, defaultMime] = type;
+        if (category === 'text' && state.admin.allowTextUploads === false) {
+          const error = new Error('服务器已关闭文本文件上传');
+          error.code = 'TEXT_UPLOAD_DISABLED';
+          return callback(error);
+        }
+        if (category === 'text' && !textUploadMimeAllowed(file.mimetype)) {
+          const error = new Error('文本文件的扩展名与 MIME 类型不匹配');
+          error.code = 'INVALID_TEXT_CONTENT';
+          return callback(error);
+        }
+        if (category === 'text') {
+          request.syncWatchStreamLimitBytes = TEXT_UPLOAD_LIMIT_BYTES;
+          request.syncWatchStreamLimitCode = 'TEXT_FILE_TOO_LARGE';
+          request.syncWatchStreamLimitMessage = '单个文本文件不能超过 10MB';
+        }
         const uploadBan = mediaUploadBanFor(request.syncWatchSessionRoomId, file.originalname);
         if (uploadBan) {
           const error = new Error('该影片已被服务器管理员禁止上传');
@@ -6568,6 +6817,20 @@ async function startSyncWatchServer(options = {}) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(409).json({ success: false, error: '上传期间登录状态或权限已变化，请重新登录后再试' });
     }
+    if (category === 'text') {
+      if (state.admin.allowTextUploads === false) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(415).json({ success: false, code: 'TEXT_UPLOAD_DISABLED', error: '服务器已关闭文本文件上传' });
+      }
+      if (req.file.size > TEXT_UPLOAD_LIMIT_BYTES) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(413).json({ success: false, code: 'TEXT_FILE_TOO_LARGE', error: '单个文本文件不能超过 10MB' });
+      }
+      if (!bufferLooksLikeText(fs.readFileSync(req.file.path))) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(415).json({ success: false, code: 'INVALID_TEXT_CONTENT', error: '文件内容包含二进制数据，不能作为文本阅读' });
+      }
+    }
     if (category === 'subtitle' && req.file.size > SUBTITLE_LIMIT_BYTES) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(413).json({ success: false, error: '字幕文件不能超过 10MB' });
@@ -7043,17 +7306,20 @@ async function startSyncWatchServer(options = {}) {
     state.files = state.files.filter((entry) => entry.id !== file.id);
     sessionRoom.queue = sessionRoom.queue.filter((id) => id !== file.id);
     const reassociated = reassociateSubtitles(sessionRoomId);
+    let textReading = null;
     if (runtime.roomState.playback.fileId === file.id) {
       runtime.playbackGeneration += 1;
       runtime.roomState.playback = {
         fileId: null, isPlaying: false, stalled: false, currentTime: 0, volume: runtime.roomState.playback.volume, muted: Boolean(runtime.roomState.playback.muted), playbackRate: runtime.roomState.playback.playbackRate || 1,
         updatedAt: Date.now(), changedBy: null, revision: runtime.roomState.playback.revision + 1
       };
+      textReading = resetTextReadingState(null, username, sessionRoomId);
     }
     persist();
     const operation = recordOperation({ id: deletionId, roomId: sessionRoomId, actor: username, action: 'file-delete', summary: `删除文件：${file.originalName}`, undo: { kind: 'file-delete', file: fileSnapshot, artifacts, queueBefore, playbackBefore } });
     broadcastMediaMutation(sessionRoomId, operation, fileSnapshot, 'delete');
     io.to(roomChannel(sessionRoomId)).emit('file-deleted', file.id);
+    if (textReading) io.to(roomChannel(sessionRoomId)).emit('text-reading-state', textReading);
     for (const member of users.values()) {
       if (member.username === file.uploadedBy && member.roomId !== sessionRoomId) io.to(member.socketId).emit('file-deleted', file.id);
     }
@@ -7111,7 +7377,7 @@ async function startSyncWatchServer(options = {}) {
   function backupPathScope(relativePath) {
     const root = String(relativePath || '').split('/')[0];
     if (root === 'avatars') return 'accounts';
-    if (root === 'uploads' || root === 'compatible-media' || root === 'thumbnails' || root === 'subtitles' || root === 'trash') return 'media-index';
+    if (root === 'uploads' || root === 'compatible-media' || root === 'thumbnails' || root === 'subtitles' || root === 'trash' || root === 'download-assets') return 'media-index';
     if (root === 'chat-history.jsonl' || root === 'chat-images' || root === 'voice') return 'chat';
     return 'config';
   }
@@ -7371,7 +7637,7 @@ async function startSyncWatchServer(options = {}) {
         const source = path.join(stageDirectory, name); const target = path.join(dataDir, name);
         fs.renameSync(source, target); movedIn.push(name);
       }
-      for (const directory of [uploadsDir, thumbnailsDir, subtitlesDir, voiceDir, chatImagesDir, avatarsDir, loginCubeDir, loginCubeModelDir, loginMusicDir, loginVideoDir, compatibleMediaDir, trashDir, secretsDir, adminSecretsDir]) {
+      for (const directory of [uploadsDir, thumbnailsDir, subtitlesDir, voiceDir, chatImagesDir, avatarsDir, loginCubeDir, loginCubeModelDir, loginMusicDir, loginVideoDir, compatibleMediaDir, downloadAssetsDir, downloadAssetTemporaryDir, trashDir, secretsDir, adminSecretsDir]) {
         fs.mkdirSync(directory, { recursive: true });
       }
       const result = await afterInstall?.();
@@ -7805,7 +8071,9 @@ async function startSyncWatchServer(options = {}) {
       if (claimedRegistrationRequests.length) schedulePersist(0);
     }
     return {
-      success: true, token: session.token, expiresAt: session.expiresAt, user: publicUser(user), room: roomSnapshot(user.roomId), serverTime: Date.now(),
+      success: true, token: session.token, expiresAt: session.expiresAt,
+      sessionMode: session.sessionMode === 'management' ? 'management' : 'room',
+      user: publicUser(user), room: roomSnapshot(user.roomId), serverTime: Date.now(),
       permissions: permissionFor(user.username, user.roomId), capabilities: {
         serverHost: Boolean(session.isServerHost), owner: Boolean(session.isServerHost || user.username === roomConfig(user.roomId).ownerUsername),
         admin: isRoomAdmin(user), superAdmin: isSuperAdmin(user.username),
@@ -8445,9 +8713,10 @@ async function startSyncWatchServer(options = {}) {
       const directHostLogin = directHostRequest && (!hostControlToken || validHostToken);
       const serverHostLogin = Boolean(validHostToken || directHostLogin);
       if (!serverHostLogin) return finishHostLogin({ success: false, error: '此入口只允许在服务器设备上使用' });
-      if (payload.passwordless === true && !directHostLogin) return finishHostLogin({ success: false, error: '本机免密入口只允许服务器设备直接访问' });
-      if (!(payload.passwordless === true && directHostLogin)
-        && !await verifyAdminAsync(payload.adminPassword || payload.password || '')) return finishHostLogin({ success: false, error: '服务器管理员密码错误' });
+      // Passwordless access has two dedicated events below. Never let a
+      // client-controlled flag select the privilege/session mode here.
+      if (payload.passwordless === true) return finishHostLogin({ success: false, code: 'DEDICATED_PASSWORDLESS_EVENT_REQUIRED', error: '请使用本机免密管理或本机免密入房专用入口' });
+      if (!await verifyAdminAsync(payload.adminPassword || payload.password || '')) return finishHostLogin({ success: false, error: '服务器管理员密码错误' });
       const username = 'admin';
       const rawRoomId = cleanText(payload.roomId, 32).toUpperCase();
       const requestedRoomId = normalizeRoomId(rawRoomId);
@@ -8461,12 +8730,68 @@ async function startSyncWatchServer(options = {}) {
         return finishHostLogin(capacityError);
       }
       const token = crypto.randomBytes(32).toString('base64url');
-      const session = newSessionDetails({ token, username, roomId: room.id, socketId: socket.id, isServerHost: true, ipAddress: clientIp });
+      const session = newSessionDetails({ token, username, roomId: room.id, socketId: socket.id, isServerHost: true, sessionMode: 'management', ipAddress: clientIp });
       if (currentUser?.sessionToken) sessions.delete(currentUser.sessionToken);
       sessions.set(token, session);
       updateAccountLogin(username, payload, session);
       const user = attachUser(socket, session, payload);
       return finishHostLogin(authResult(session, user));
+    });
+
+    async function localPasswordlessHostLogin(mode, payload = {}, acknowledgement) {
+      const action = mode === 'management' ? 'host-passwordless-management-login' : 'host-passwordless-room-login';
+      const finish = (result) => {
+        recordAccountAudit({
+          category: 'login', action, result: result?.success ? 'success' : 'failure', username: 'admin',
+          ipAddress: clientIp, deviceName: payload.deviceName, platform: payload.platform, browser: payload.browser,
+          message: result?.success ? (mode === 'management' ? '本机免密进入管理中心' : '本机免密进入房间') : (result?.error || '本机免密登录失败')
+        });
+        return acknowledgement?.(result);
+      };
+      if (socketRateLimited(socket, action, 20, 5 * 60 * 1000, acknowledgement)) return;
+      const headers = socket.handshake?.headers || {};
+      const directRequest = directLoopbackHostRequest(socket.handshake?.address, headers);
+      const validHostToken = isHostToken(payload.hostToken);
+      if (!directRequest || !hostControlToken || !validHostToken) {
+        return finish({ success: false, code: 'LOCAL_PASSWORDLESS_FORBIDDEN', error: '本机免密入口只允许服务器设备通过回环地址直接访问' });
+      }
+      const enabled = mode === 'management'
+        ? state.admin.localPasswordlessManagementEnabled !== false
+        : state.admin.localPasswordlessRoomEnabled !== false;
+      if (!enabled) return finish({ success: false, code: 'LOCAL_PASSWORDLESS_DISABLED', error: mode === 'management' ? '服务器已关闭本机免密管理入口' : '服务器已关闭本机免密进入房间入口' });
+
+      const username = 'admin';
+      const rawRoomId = cleanText(payload.roomId, 32).toUpperCase();
+      const requestedRoomId = normalizeRoomId(rawRoomId);
+      if (rawRoomId && !requestedRoomId) return finish({ success: false, error: '房间号格式不正确' });
+      if (mode === 'room' && !requestedRoomId) return finish({ success: false, code: 'ROOM_REQUIRED', error: '请选择要进入的房间' });
+      const room = mode === 'management' ? createTemporaryRoom(username) : state.rooms[requestedRoomId];
+      if (!room || (mode === 'room' && !discoverableRoom(room))) return finish({ success: false, error: '房间号不存在或已存档' });
+      if (room.banned) return finish({ success: false, error: room.banReason ? `房间已被服务器封禁：${room.banReason}` : '房间已被服务器封禁' });
+      const currentUser = users.get(socket.id);
+      const capacityError = adminSessionCapacityError(username, currentUser?.sessionToken || '');
+      if (capacityError) {
+        if (room.temporary) void deleteTemporaryRoomIfEmpty(room.id);
+        return finish(capacityError);
+      }
+      const token = crypto.randomBytes(32).toString('base64url');
+      const session = newSessionDetails({
+        token, username, roomId: room.id, socketId: socket.id, isServerHost: true,
+        sessionMode: mode, localPasswordless: true, ipAddress: clientIp
+      });
+      if (currentUser?.sessionToken) sessions.delete(currentUser.sessionToken);
+      sessions.set(token, session);
+      updateAccountLogin(username, payload, session);
+      const user = attachUser(socket, session, payload);
+      return finish(authResult(session, user));
+    }
+
+    onSafe('host-passwordless-management-login', (payload = {}, acknowledgement) => {
+      return localPasswordlessHostLogin('management', payload, acknowledgement);
+    });
+
+    onSafe('host-passwordless-room-login', (payload = {}, acknowledgement) => {
+      return localPasswordlessHostLogin('room', payload, acknowledgement);
     });
 
     onSafe('guest-login', async (payload = {}, acknowledgement) => {
@@ -9250,7 +9575,7 @@ async function startSyncWatchServer(options = {}) {
         updatedAt: new Date().toISOString()
       };
       io.to(roomChannel(user.roomId)).emit('users-list', usersList(user.roomId));
-      if (source.status !== 'requested') {
+      if (source.status !== 'requested' && state.admin.locationStatusNoticesEnabled !== false) {
         const account = state.accounts[user.username];
         const status = validCoordinates ? 'authorized' : ['denied', 'revoked', 'suppressed', 'unavailable'].includes(source.status) ? source.status : 'failed';
         const event = {
@@ -9280,10 +9605,12 @@ async function startSyncWatchServer(options = {}) {
         username: user.username, displayName: account?.displayName || user.username, roomId: user.roomId,
         status: 'revoked', statusText: user.location.status, location: publicMemberLocation(user.location, true), updatedAt: user.location.updatedAt
       };
-      for (const member of users.values()) {
-        const memberSession = sessions.get(member.sessionToken);
-        if (memberSession?.isServerHost || isSuperAdmin(member.username) || (member.roomId === user.roomId && isRoomAdmin(member))) {
-          io.to(member.socketId).emit('member-location-status', event);
+      if (state.admin.locationStatusNoticesEnabled !== false) {
+        for (const member of users.values()) {
+          const memberSession = sessions.get(member.sessionToken);
+          if (memberSession?.isServerHost || isSuperAdmin(member.username) || (member.roomId === user.roomId && isRoomAdmin(member))) {
+            io.to(member.socketId).emit('member-location-status', event);
+          }
         }
       }
       recordOperation({ roomId: user.roomId, actor: user.username, action: 'location-revoked', summary: `${account?.displayName || user.username} 已撤销位置授权`, scope: 'server' });
@@ -9295,6 +9622,7 @@ async function startSyncWatchServer(options = {}) {
       const requesterSession = validSession(user.sessionToken, false);
       const serverAdministrator = Boolean(isSuperAdmin(user.username) || requesterSession?.isServerHost || requesterSession?.adminVerifiedAt);
       if (!serverAdministrator && !isRoomAdmin(user)) return acknowledgement?.({ success: false, error: '只有房主或房间管理员可以重新发起位置授权请求' });
+      if (state.admin.locationAuthorizationRequestsEnabled === false) return acknowledgement?.({ success: false, code: 'LOCATION_REQUESTS_DISABLED', error: '服务器已关闭位置授权提醒' });
       const requested = Array.isArray(payload.usernames) ? payload.usernames : [payload.username];
       const targetNames = [...new Set(requested.map((value) => cleanUsername(value)).filter(Boolean))].slice(0, 100);
       // The account console may target users in other rooms or offline users;
@@ -9433,8 +9761,10 @@ async function startSyncWatchServer(options = {}) {
         fileId: file.id, isPlaying: isPlayableFile(file), stalled: false, currentTime: 0, volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: roomState.playback.playbackRate || 1,
         updatedAt: Date.now(), changedBy: user.username, revision: roomState.playback.revision + 1
       };
+      const textReading = resetTextReadingState(file, user.username);
       if (isPlayableFile(file) && !state.queue.includes(file.id)) { state.queue.push(file.id); persist(); io.to(roomChannel()).emit('queue-state', state.queue); }
       io.to(roomChannel()).emit('playback-state', playbackSnapshot());
+      io.to(roomChannel()).emit('text-reading-state', textReading);
       const previousFile = findFile(previousFileId);
       const operation = recordOperation({ actor: user.username, action: 'select-file', summary: `选择播放：${file.originalName}`, undo: previousFileId ? { kind: 'select-file', beforeFileId: previousFileId, afterFileId: file.id } : null });
       const switchNotice = {
@@ -9501,10 +9831,12 @@ async function startSyncWatchServer(options = {}) {
           fileId: file.id, isPlaying: isPlayableFile(file), stalled: false, currentTime: 0, volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: roomState.playback.playbackRate || 1,
           updatedAt: Date.now(), changedBy: user.username, revision: roomState.playback.revision + 1
         };
+        const textReading = resetTextReadingState(file, user.username);
         if (isPlayableFile(file) && !state.queue.includes(file.id)) state.queue.push(file.id);
         persist();
         io.to(roomChannel()).emit('queue-state', state.queue);
         io.to(roomChannel()).emit('playback-state', playbackSnapshot());
+        io.to(roomChannel()).emit('text-reading-state', textReading);
         broadcastRoomNotice(user.roomId, `${state.accounts[user.username]?.displayName || user.username} 已同意 ${request.displayName} 的播放申请，正在播放《${file.originalName}》`, { kind: 'playback-request', actor: user.username });
       }
       const applicantMessage = approved
@@ -9578,6 +9910,32 @@ async function startSyncWatchServer(options = {}) {
       return acknowledgement?.({ success: true, accepted, themeId: request.themeId, themeName: request.themeName });
     });
 
+    onSafe('text-reading-update', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `text-reading:${socket.id}`, 40, 10 * 1000, acknowledgement)) return;
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      if (!canControl(user)) return acknowledgement?.({ success: false, error: state.room.controlLocked ? '房主已锁定阅读控制' : '请先申请控制权' });
+      const fileId = cleanText(payload.fileId, 80);
+      const file = findFile(fileId);
+      if (!file || file.category !== 'text' || file.status !== 'approved' || file.roomId !== user.roomId || roomState.playback.fileId !== fileId) {
+        return acknowledgement?.({ success: false, error: '请先打开当前房间的文本文件' });
+      }
+      const position = Number(payload.position);
+      const page = Number(payload.page);
+      if (!Number.isFinite(position) || position < 0 || position > 1 || !Number.isFinite(page) || page < 1 || page > 1000000) {
+        return acknowledgement?.({ success: false, error: '阅读位置无效' });
+      }
+      const runtime = roomRuntime(user.roomId);
+      runtime.roomState.textReading = normalizeTextReadingState({
+        fileId, position, page, updatedAt: Date.now(), changedBy: user.username,
+        revision: Number(runtime.roomState.textReading?.revision || 0) + 1
+      });
+      schedulePersist(300);
+      const snapshot = runtime.roomState.textReading;
+      io.to(roomChannel(user.roomId)).emit('text-reading-state', snapshot);
+      return acknowledgement?.({ success: true, textReading: snapshot });
+    });
+
     onSafe('playback-command', (payload = {}, acknowledgement) => {
       if (socketRateLimited(socket, `playback:${socket.id}`, 60, 10 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement);
@@ -9646,11 +10004,13 @@ async function startSyncWatchServer(options = {}) {
         volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: 1, updatedAt: Date.now(), changedBy: user.username,
         revision: roomState.playback.revision + 1
       };
+      const textReading = resetTextReadingState(null, user.username);
       roomState.webShare = { active: false, url: '', title: '', sharedBy: '', updatedAt: Date.now() };
       const screenShareStopped = stopScreenShare('', user.roomId);
       persist();
       recordOperation({ actor: user.username, action: 'clear-playback', summary: '清空当前播放画面', undo: { kind: 'clear-playback', before: previous } });
       io.to(roomChannel()).emit('playback-state', playbackSnapshot());
+      io.to(roomChannel()).emit('text-reading-state', textReading);
       io.to(roomChannel()).emit('web-share-state', { active: false, url: '', title: '', sharedBy: '', updatedAt: Date.now() });
       const actorName = state.accounts[user.username]?.displayName || user.username;
       const notice = broadcastRoomNotice(user.roomId, `${actorName} 清空了画面`, {
@@ -9934,6 +10294,7 @@ async function startSyncWatchServer(options = {}) {
         const token = crypto.randomBytes(32).toString('base64url');
         const replacement = newSessionDetails({
           token, username: user.username, roomId: currentSession.roomId || user.roomId, socketId: socket.id, isServerHost: Boolean(currentSession.isServerHost),
+          sessionMode: currentSession.sessionMode === 'management' ? 'management' : 'room', localPasswordless: Boolean(currentSession.localPasswordless),
           ipAddress: getSocketIp(socket), deviceId: currentSession.deviceId || user.deviceId || ''
         });
         sessions.set(token, replacement);
@@ -11080,7 +11441,11 @@ async function startSyncWatchServer(options = {}) {
         else {
           state.files.push(undo.file);
           state.queue = (undo.queueBefore || []).filter((id) => state.files.some((file) => file.id === id && file.roomId === currentRoomId()));
-          if (undo.playbackBefore) roomState.playback = { ...undo.playbackBefore, updatedAt: Date.now(), revision: roomState.playback.revision + 1 };
+          if (undo.playbackBefore) {
+            roomState.playback = { ...undo.playbackBefore, updatedAt: Date.now(), revision: roomState.playback.revision + 1 };
+            const textReading = resetTextReadingState(undo.file, user.username);
+            io.to(roomChannel()).emit('text-reading-state', textReading);
+          }
           if (mediaMetadataNeedsAnalysis(undo.file) && ffprobePath && fs.existsSync(ffprobePath)) enqueueMediaAnalysis(undo.file);
           else enqueueMediaCompatibility(undo.file, { retry: true });
           emitFileToVisible('file-uploaded', undo.file); io.to(roomChannel()).emit('queue-state', state.queue); io.to(roomChannel()).emit('playback-state', playbackSnapshot());
@@ -11189,7 +11554,9 @@ async function startSyncWatchServer(options = {}) {
         else {
           roomRuntime().playbackGeneration += 1;
           roomState.playback = { fileId: previous.id, isPlaying: false, stalled: false, currentTime: 0, volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: roomState.playback.playbackRate || 1, updatedAt: Date.now(), changedBy: user.username, revision: roomState.playback.revision + 1 };
+          const textReading = resetTextReadingState(previous, user.username);
           io.to(roomChannel()).emit('playback-state', playbackSnapshot());
+          io.to(roomChannel()).emit('text-reading-state', textReading);
         }
       } else changed = false;
       if (!changed) return acknowledgement?.({ success: false, error: '当前数据已发生后续变化，为避免覆盖新操作，本次回溯已取消' });
@@ -11227,8 +11594,8 @@ async function startSyncWatchServer(options = {}) {
         'delete-account', 'force-display-name', 'set-account-remark', 'unban', 'ban-user', 'approve-registration-request', 'deny-registration-request',
         'add-registration-whitelist', 'remove-registration-whitelist', 'set-branding', 'set-super-admin', 'set-room-creation-block',
         'set-account-level', 'set-room-ban', 'batch-room-action', 'delete-room', 'delete-rooms', 'factory-reset', 'set-password-policy', 'set-admin-contact',
-        'set-legal-agreement', 'set-admin-session-limit', 'set-account-room-quota', 'resolve-room-quota-request', 'rename-room', 'set-marquee-notice', 'set-account-tier', 'save-account-tier', 'delete-account-tier', 'set-room-id-policy', 'set-public-password-policy',
-        'set-upload-policy', 'resolve-upload-policy-request', 'set-experience-policy', 'set-default-account-password', 'batch-account-action', 'set-account-email', 'set-registration-account-notice',
+        'set-legal-agreement', 'set-admin-session-limit', 'set-local-passwordless-access', 'set-account-room-quota', 'resolve-room-quota-request', 'rename-room', 'set-marquee-notice', 'set-account-tier', 'save-account-tier', 'delete-account-tier', 'set-room-id-policy', 'set-public-password-policy',
+        'set-upload-policy', 'set-text-upload-policy', 'resolve-upload-policy-request', 'set-experience-policy', 'set-default-account-password', 'batch-account-action', 'set-account-email', 'set-registration-account-notice',
         'set-blocked-words', 'set-lan-access', 'set-media-processing', 'set-login-cube-settings', 'set-login-cube-image', 'restart-server', 'get-account-audit-logs', 'delete-account-audit-logs',
         'set-account-number-policy', 'set-account-number', 'get-verification-codes', 'delete-verification-codes', 'set-verification-code-policy', 'unblock-verification-device', 'set-login-music', 'delete-login-music', 'set-login-video', 'delete-login-video', 'set-notice-preferences',
         'delete-room-files', 'set-media-upload-ban'
@@ -11248,11 +11615,13 @@ async function startSyncWatchServer(options = {}) {
       if (action === 'get-settings') return acknowledgement?.({ success: true, admin: {
         serverAdmin, superAdmin, roomOwner, roomAdministrator, canManageSuperAdmins: user.username === 'admin',
         uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
-        allowedUploadCategories: allowedUploadCategories(), blockedWords: serverAdmin ? normalizeBlockedWords(state.admin.blockedWords) : [], roomStorageLimitBytes: Math.max(0, Number(state.room.storageLimitBytes) || 0),
+        allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false, blockedWords: serverAdmin ? normalizeBlockedWords(state.admin.blockedWords) : [], roomStorageLimitBytes: Math.max(0, Number(state.room.storageLimitBytes) || 0),
         branding: normalizeBranding(state.admin.branding), loginCube: normalizeLoginCubeSettings(state.admin.loginCube), loginMusic: normalizeLoginMusic(state.admin.loginMusic), loginVideo: normalizeLoginVideo(state.admin.loginVideo), marqueeNotice: normalizeMarqueeNotice(state.admin.marqueeNotice),
         f11PromptEnabled: state.admin.f11PromptEnabled !== false,
         initialPasswordReminderEnabled: state.admin.initialPasswordReminderEnabled !== false,
         downloadButtonsVisible: state.admin.downloadButtonsVisible !== false,
+        locationStatusNoticesEnabled: state.admin.locationStatusNoticesEnabled !== false,
+        locationAuthorizationRequestsEnabled: state.admin.locationAuthorizationRequestsEnabled !== false,
         roomEntryNotice: normalizeRoomEntryNotice(state.admin.roomEntryNotice),
         roomEntryNoticeTargets: Object.values(state.rooms)
           .filter((entry) => visibleRoom(entry) && (serverAdmin || entry.ownerUsername === user.username))
@@ -11265,6 +11634,8 @@ async function startSyncWatchServer(options = {}) {
         passwordPolicy: normalizePasswordPolicy(state.admin.passwordPolicy), roomIdPolicy: normalizeRoomIdPolicy(state.admin.roomIdPolicy), accountNumberPolicy: normalizeAccountNumberPolicy(state.admin.accountNumberPolicy), verificationCodePolicy: normalizeVerificationCodePolicy(state.admin.verificationCodePolicy), adminMaxConcurrentSessions: adminSessionLimit(),
         requireRoomPasswordForPublicAccess: state.admin.requireRoomPasswordForPublicAccess === true,
         lanAccessEnabled: state.admin.lanAccessEnabled !== false,
+        localPasswordlessManagementEnabled: state.admin.localPasswordlessManagementEnabled !== false,
+        localPasswordlessRoomEnabled: state.admin.localPasswordlessRoomEnabled !== false,
         mediaCompatibilityAutoConvert: state.admin.mediaCompatibilityAutoConvert !== false,
         mediaCompatibilityConcurrency: mediaCompatibilityConcurrency(),
         mail: serverAdmin ? publicMailSettings() : { enabled: mailRecoveryAvailable('account') || mailRecoveryAvailable('admin'), configured: mailRecoveryAvailable('account') || mailRecoveryAvailable('admin'), user: '', fromName: '' },
@@ -11620,6 +11991,21 @@ async function startSyncWatchServer(options = {}) {
         persist();
         return acknowledgement?.({ success: true, limit: adminSessionLimit(), message: `admin 最多允许 ${adminSessionLimit()} 个会话同时登录` });
       }
+      if (action === 'set-local-passwordless-access') {
+        state.admin.localPasswordlessManagementEnabled = payload.managementEnabled !== false;
+        state.admin.localPasswordlessRoomEnabled = payload.roomEnabled !== false;
+        persist();
+        const policy = {
+          localPasswordlessManagementEnabled: state.admin.localPasswordlessManagementEnabled,
+          localPasswordlessRoomEnabled: state.admin.localPasswordlessRoomEnabled
+        };
+        io.emit('server-policy-updated', policy);
+        recordOperation({
+          actor: user.username, action: 'set-local-passwordless-access', scope: 'server',
+          summary: `本机免密入口：管理中心${policy.localPasswordlessManagementEnabled ? '开启' : '关闭'}，进入房间${policy.localPasswordlessRoomEnabled ? '开启' : '关闭'}`
+        });
+        return acknowledgement?.({ success: true, ...policy, message: '本机免密入口设置已保存' });
+      }
       if (action === 'set-account-room-quota') {
         const username = cleanUsername(payload.username);
         const account = state.accounts[username];
@@ -11752,6 +12138,13 @@ async function startSyncWatchServer(options = {}) {
         io.emit('upload-policy-updated', { allowedUploadCategories: allowed });
         return acknowledgement?.({ success: true, allowedUploadCategories: allowed, message: '上传文件类型规则已保存并同步' });
       }
+      if (action === 'set-text-upload-policy') {
+        state.admin.allowTextUploads = payload.allowTextUploads !== false;
+        persist();
+        recordOperation({ actor: user.username, action: 'text-upload-policy', summary: state.admin.allowTextUploads ? '允许上传文本文件' : '关闭文本文件上传', scope: 'server' });
+        io.emit('text-upload-policy-updated', { allowTextUploads: state.admin.allowTextUploads });
+        return acknowledgement?.({ success: true, allowTextUploads: state.admin.allowTextUploads, message: state.admin.allowTextUploads ? '已允许上传安全文本文件' : '已关闭文本文件上传' });
+      }
       if (action === 'resolve-upload-policy-request') {
         const request = state.admin.uploadPolicyRequests.find((entry) => entry.id === cleanText(payload.requestId, 80));
         if (!request || request.status !== 'pending') return acknowledgement?.({ success: false, error: '文件类型申请不存在或已处理' });
@@ -11876,6 +12269,8 @@ async function startSyncWatchServer(options = {}) {
               muted: Boolean(runtime.roomState.playback.muted), playbackRate: runtime.roomState.playback.playbackRate || 1,
               updatedAt: Date.now(), changedBy: null, revision: runtime.roomState.playback.revision + 1
             };
+            const textReading = resetTextReadingState(null, user.username, targetRoomId);
+            io.to(roomChannel(targetRoomId)).emit('text-reading-state', textReading);
           }
           const operation = recordOperation({ id: deletionId, roomId: targetRoomId, actor: user.username, action: 'file-delete-admin', summary: `删除文件：${file.originalName}`, undo: { kind: 'file-delete', file: fileSnapshot, artifacts, queueBefore, playbackBefore } });
           broadcastMediaMutation(targetRoomId, operation, fileSnapshot, 'delete');
@@ -12396,11 +12791,19 @@ async function startSyncWatchServer(options = {}) {
         state.admin.f11PromptEnabled = payload.f11PromptEnabled !== false;
         state.admin.initialPasswordReminderEnabled = payload.initialPasswordReminderEnabled !== false;
         state.admin.downloadButtonsVisible = payload.downloadButtonsVisible !== false;
+        if (Object.prototype.hasOwnProperty.call(payload, 'locationStatusNoticesEnabled')) {
+          state.admin.locationStatusNoticesEnabled = payload.locationStatusNoticesEnabled !== false;
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'locationAuthorizationRequestsEnabled')) {
+          state.admin.locationAuthorizationRequestsEnabled = payload.locationAuthorizationRequestsEnabled !== false;
+        }
         persist();
         const preferences = {
           f11PromptEnabled: state.admin.f11PromptEnabled,
           initialPasswordReminderEnabled: state.admin.initialPasswordReminderEnabled,
-          downloadButtonsVisible: state.admin.downloadButtonsVisible
+          downloadButtonsVisible: state.admin.downloadButtonsVisible,
+          locationStatusNoticesEnabled: state.admin.locationStatusNoticesEnabled,
+          locationAuthorizationRequestsEnabled: state.admin.locationAuthorizationRequestsEnabled
         };
         io.emit('notice-preferences-updated', preferences);
         recordOperation({ actor: user.username, action: 'notice-preferences', summary: '更新登录和全屏提醒设置', scope: 'server' });
@@ -12906,6 +13309,12 @@ async function startSyncWatchServer(options = {}) {
         allowedUploadCategories: allowedUploadCategories(), error: error.message
       });
     }
+    if (['TEXT_UPLOAD_DISABLED', 'INVALID_TEXT_CONTENT'].includes(error?.code)) {
+      return res.status(415).json({ success: false, code: error.code, error: error.message });
+    }
+    if (error?.code === 'TEXT_FILE_TOO_LARGE') {
+      return res.status(413).json({ success: false, code: error.code, error: error.message });
+    }
     if (error?.code === 'MEDIA_UPLOAD_BANNED') {
       return res.status(403).json({
         success: false, code: error.code, originalName: normalizeOriginalName(error.originalName),
@@ -12916,6 +13325,7 @@ async function startSyncWatchServer(options = {}) {
       return res.status(415).json({ success: false, error: error.message || '文件格式不受支持' });
     }
     if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      if (req.path.startsWith('/api/download-assets/')) return res.status(413).json({ success: false, error: '安装文件不能超过 4 GB' });
       if (req.path === '/api/login-cube-model') return res.status(413).json({ success: false, error: '自定义 GLB 模型不能超过 25 MB' });
       if (req.path === '/api/voice') return res.status(413).json({ success: false, error: '语音文件不能超过 25MB' });
       const effectiveLimit = uploadPolicyExempt(req.syncWatchSession)

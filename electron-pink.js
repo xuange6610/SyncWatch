@@ -25,17 +25,25 @@ const zlib = require('zlib');
 const { fetch: undiciFetch, EnvHttpProxyAgent } = require('undici');
 const {
   app, BrowserWindow, Menu, Tray, clipboard, dialog, shell, ipcMain,
-  desktopCapturer, session, screen, net, Notification
+  desktopCapturer, session, screen, net, Notification, nativeTheme
 } = require('electron');
 
 const { APP_VERSION, startSyncWatchServer, resolveDefaultDataDir } = require('./server');
 
 const APP_NAME = 'SyncWatch同步观影';
 app.setName(APP_NAME);
+nativeTheme.themeSource = 'dark';
 if (process.platform === 'win32') app.setAppUserModelId('com.xuan.syncwatch.server');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const COPYRIGHT = '版权所有 © xuan';
+const HELP_LINKS = Object.freeze({
+  author: 'https://github.com/xuange6610',
+  project: 'https://github.com/xuange6610/SyncWatch',
+  latest: 'https://github.com/xuange6610/SyncWatch/releases/latest',
+  wiki: 'https://github.com/xuange6610/SyncWatch/wiki'
+});
+const HELP_LINK_ALLOWLIST = new Set(Object.values(HELP_LINKS));
 const SMOKE_MODE = process.env.SYNCWATCH_SMOKE_MODE === '1';
 // Allow the server launcher to inject a fresh owner token for portable deployments;
 // interactive desktop launches still receive a cryptographically random token.
@@ -718,6 +726,18 @@ function trustedExternalUrl(value) {
     const url = new URL(String(value));
     return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password ? url.toString() : '';
   } catch (_) { return ''; }
+}
+
+async function openHelpLink(key) {
+  const value = HELP_LINKS[String(key || '')];
+  if (!value || !HELP_LINK_ALLOWLIST.has(value)) return { success: false, error: '帮助链接不在允许列表中' };
+  let url;
+  try { url = new URL(value); } catch (_) { return { success: false, error: '帮助链接无效' }; }
+  if (url.protocol !== 'https:' || url.username || url.password || url.hostname !== 'github.com') {
+    return { success: false, error: '帮助链接不安全' };
+  }
+  await shell.openExternal(url.toString());
+  return { success: true };
 }
 
 async function downloadFile(url, destination) {
@@ -2135,10 +2155,16 @@ async function showRuntimeInformation() {
   });
 }
 
+function copyLanAddress() {
+  const url = primaryLanUrl();
+  clipboard.writeText(url);
+  if (Notification.isSupported()) new Notification({ title: APP_NAME, body: `已复制局域网地址：${url}`, icon: iconPath() }).show();
+}
+
 function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: '系统', submenu: [
-      { label: '复制局域网地址', accelerator: 'Ctrl+L', click: () => clipboard.writeText(primaryLanUrl()) },
+      { label: '复制局域网地址', accelerator: 'Ctrl+L', click: copyLanAddress },
       { label: '在默认浏览器中打开', click: () => shell.openExternal(primaryLanUrl()) },
       { label: '打开数据目录', submenu: dataDirectoryMenuItems() },
       { label: `服务器启动设置（当前端口 ${serverController.port}）`, click: openServerSettings },
@@ -2149,7 +2175,14 @@ function buildMenu() {
       { label: '应用全屏', accelerator: 'F11', click: () => mainWindow?.setFullScreen(!mainWindow.isFullScreen()) },
       { label: '重置缩放', accelerator: 'Ctrl+0', click: () => mainWindow?.webContents.setZoomFactor(1) }
     ] },
-    { label: '帮助', submenu: [{ label: '运行信息', click: showRuntimeInformation }] }
+    { label: '帮助', submenu: [
+      { label: '运行信息', click: showRuntimeInformation },
+      { type: 'separator' },
+      { label: '作者 GitHub', click: () => void openHelpLink('author') },
+      { label: 'SyncWatch 项目主页', click: () => void openHelpLink('project') },
+      { label: 'Latest 最新版下载', click: () => void openHelpLink('latest') },
+      { label: '项目 Wiki', click: () => void openHelpLink('wiki') }
+    ] }
   ]));
 }
 
@@ -2162,7 +2195,7 @@ function dataDirectoryMenuItems() {
   ];
   return preferred.map(([label, relative]) => {
     const target = relative ? path.join(root, relative) : root;
-    return { label, enabled: !relative || fs.existsSync(target), click: () => shell.openPath(target) };
+    return { label: `${label}（${path.basename(target)}）`, enabled: !relative || fs.existsSync(target), click: () => shell.openPath(target) };
   });
 }
 
@@ -2171,7 +2204,7 @@ function createTray() {
   tray.setToolTip(APP_NAME);
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '显示主窗口', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
-    { label: '复制局域网地址', click: () => clipboard.writeText(primaryLanUrl()) },
+    { label: '复制局域网地址', click: copyLanAddress },
     { label: '在浏览器中打开', click: () => shell.openExternal(primaryLanUrl()) },
     { label: `修改服务器端口（当前 ${serverController.port}）`, click: openServerSettings },
     { type: 'separator' }, { label: '退出', click: requestApplicationQuit }
@@ -2388,5 +2421,6 @@ module.exports = { _test: {
   preferredPhysicalIpv4, tunnelRestartDelayMs, isPublicIpv4Address,
   normalizeTunnelEdgeAddresses, cloudflareEdgeTargetsFromSrv, publicIpv4AddressesFromDnsAnswer,
   queryDnsOverHttps, resolveCloudflareEdgeAddressesViaDoh, tunnelProbeLocalAddress, tunnelSystemProxyConfigured,
-  tunnelProbeTransport, parseTunnelProbeResponse, CLOUDFLARE_EDGE_PORT
+  tunnelProbeTransport, parseTunnelProbeResponse, CLOUDFLARE_EDGE_PORT,
+  HELP_LINKS, HELP_LINK_ALLOWLIST, openHelpLink
 } };

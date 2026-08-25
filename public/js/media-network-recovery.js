@@ -6,6 +6,7 @@
   if (root) root.SyncWatchMediaNetworkRecovery = policy;
 })(typeof globalThis === 'object' ? globalThis : this, function createMediaNetworkRecoveryPolicy() {
   const DELAYS_MS = Object.freeze([250, 500, 1000]);
+  const STALL_TIMEOUT_MS = 12000;
 
   function nextAttempt(completedAttempts) {
     const index = Math.max(0, Math.floor(Number(completedAttempts) || 0));
@@ -25,10 +26,18 @@
     }
   }
 
+  function isStillStalled(snapshot, current) {
+    return Number(current?.readyState) < 3
+      && Math.abs((Number(current?.currentTime) || 0) - (Number(snapshot?.currentTime) || 0)) < .5
+      && (Number(current?.bufferedAhead) || 0) < (Number(snapshot?.bufferedAhead) || 0) + .75;
+  }
+
   return Object.freeze({
     MAX_ATTEMPTS: DELAYS_MS.length,
     DELAYS_MS,
+    STALL_TIMEOUT_MS,
     nextAttempt,
-    isEligible
+    isEligible,
+    isStillStalled
   });
 });

@@ -12,9 +12,17 @@ const tunnelSmokeSource = fs.readFileSync(path.join(root, 'tests', 'tunnel-smoke
 
 assert.equal(policy.MAX_ATTEMPTS, 3);
 assert.deepEqual(policy.DELAYS_MS, [250, 500, 1000]);
+assert.equal(policy.STALL_TIMEOUT_MS, 12000);
 assert.deepEqual(policy.nextAttempt(0), { attempt: 1, delayMs: 250 });
 assert.deepEqual(policy.nextAttempt(2), { attempt: 3, delayMs: 1000 });
 assert.equal(policy.nextAttempt(3), null, '媒体网络恢复不能无限重试');
+assert.equal(policy.isStillStalled({ currentTime: 20, bufferedAhead: .2 }, { currentTime: 20.1, bufferedAhead: .3, readyState: 2 }), true);
+assert.equal(policy.isStillStalled({ currentTime: 20, bufferedAhead: .2 }, { currentTime: 20.7, bufferedAhead: .3, readyState: 2 }), false,
+  '播放时间已经推进时不应该重载');
+assert.equal(policy.isStillStalled({ currentTime: 20, bufferedAhead: .2 }, { currentTime: 20.1, bufferedAhead: 1.1, readyState: 2 }), false,
+  '缓冲区仍在增长时不应该重载');
+assert.equal(policy.isStillStalled({ currentTime: 20, bufferedAhead: .2 }, { currentTime: 20.1, bufferedAhead: .3, readyState: 3 }), false,
+  '播放器已经恢复可播放状态时不应该重载');
 
 const localSource = 'https://example.trycloudflare.com/media/movie.mp4?syncwatch_token=test';
 assert.equal(policy.isEligible({ errorCode: 2, sourceType: 'local', source: localSource, pageHref: 'https://example.trycloudflare.com/?room=ADMIN' }), true);
@@ -35,6 +43,12 @@ assert.match(appSource, /function teardownTimedMedia\([\s\S]{0,500}clearMediaNet
   '换片或销毁媒体时必须取消待执行的恢复');
 assert.match(appSource, /handleMediaError[\s\S]{0,300}scheduleMediaNetworkRecovery\(mediaError\)/,
   '媒体错误处理必须优先尝试有限网络恢复');
+assert.match(appSource, /handleMediaBuffering[\s\S]{0,400}scheduleMediaStallRecovery\(\)/,
+  '媒体长时缓冲且没有进度时必须进入有限网络恢复');
+assert.match(appSource, /scheduleMediaStallRecovery[\s\S]{0,1400}scheduleMediaNetworkRecovery\(\{ code: 2 \}\)/,
+  '缓冲超时必须复用现有的三次有限恢复，不能无限重载');
+assert.match(appSource, /scheduleMediaNetworkRecovery\(\{ code: 2 \}\);[\s\S]{0,80}else scheduleMediaStallRecovery\(\);/,
+  '缓冲仍有微小进展但尚未恢复时必须继续观察，不能只检查一次后永久停帧');
 
 assert.match(tunnelSmokeSource, /MAX_TRANSIENT_RANGE_ERRORS\s*=\s*3/);
 assert.match(tunnelSmokeSource, /TRANSIENT_RANGE_HTTP_STATUSES\s*=\s*new Set\(\[502, 503, 504\]\)/);

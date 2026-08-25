@@ -121,6 +121,16 @@ async function main() {
   fs.mkdirSync(outputDir, { recursive: true });
   let server; let authSocket; let chrome; let cdp;
   const sentMails = [];
+  const originalFetch = global.fetch;
+  global.fetch = (input, options) => {
+    const url = String(input?.url || input);
+    if (url === 'https://api.github.com/repos/xuange6610/SyncWatch/releases/latest') {
+      return Promise.resolve(new Response(JSON.stringify({ tag_name: 'v2.2.0', name: 'SyncWatch同步观影 v2.2.0' }), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return originalFetch(input, options);
+  };
   try {
     server = await startSyncWatchServer({
       host: '127.0.0.1', port: 0, dataDir, publicDir: path.resolve(__dirname, '..', 'public'),
@@ -145,7 +155,7 @@ async function main() {
       user: 'browser-ui@qq.com', authCode: 'browser-ui-smtp-secret', fromName: 'SyncWatch同步观影 测试'
     });
     assert.equal(mailSettings.success, true, mailSettings.error);
-    const novelText = '第一章 同步开始\n\n这是一段通过鉴权 Range 读取的 TXT 小说预览。';
+    const novelText = `第一章 同步开始\n\n${'这是一段通过鉴权 Range 读取并同步翻页的 TXT 小说预览。\n'.repeat(180)}`;
     const novelForm = new FormData();
     novelForm.append('file', new Blob([Buffer.from(novelText)], { type: 'text/plain' }), '浏览器小说预览.txt');
     const novelUploadResponse = await fetch(`${baseUrl}/api/upload`, {
@@ -198,18 +208,28 @@ async function main() {
     await delay(500);
     await evaluate(cdp, `if (typeof activeAppDialog !== 'undefined' && activeAppDialog) settleAppDialog(false); true`);
     await delay(120);
+    await evaluate(cdp, `openDownloadCenter(true); true`);
+    await waitFor(() => evaluate(cdp, `document.getElementById('downloadUpdateStatus')?.textContent.includes('GitHub 最新正式版本 v2.2.0')`), '同源检查 GitHub Latest');
+    assert.equal(await evaluate(cdp, `document.getElementById('downloadCenterModal').classList.contains('is-hidden')`), false);
+    await evaluate(cdp, `document.getElementById('closeDownloadCenterBtn').click(); true`);
     await evaluate(cdp, `(async () => { await selectFile(${JSON.stringify(novelFile.id)}); return true; })()`);
     await waitFor(() => evaluate(cdp, `document.getElementById('textViewer')?.textContent.includes('通过鉴权 Range 读取')`), 'TXT 小说预览');
     const textPreview = await evaluate(cdp, `({
       visible: !document.getElementById('textViewer').classList.contains('is-hidden'),
+      controlsVisible: !document.getElementById('textReaderControls').classList.contains('is-hidden'),
       fileId: document.getElementById('textViewer').dataset.fileId,
       iframeHidden: document.getElementById('documentViewer').classList.contains('is-hidden'),
-      content: document.getElementById('textViewer').textContent
+      content: document.getElementById('textViewer').textContent,
+      pageCount: Number(document.getElementById('textReaderPageCount').textContent)
     })`);
     assert.equal(textPreview.visible, true, JSON.stringify(textPreview));
+    assert.equal(textPreview.controlsVisible, true, JSON.stringify(textPreview));
     assert.equal(textPreview.fileId, novelFile.id);
     assert.equal(textPreview.iframeHidden, true);
+    assert.ok(textPreview.pageCount > 1, JSON.stringify(textPreview));
     assert.match(textPreview.content, /第一章 同步开始/);
+    await evaluate(cdp, `goToTextReaderPage(2)`);
+    await waitFor(() => evaluate(cdp, `state.room?.textReading?.fileId === ${JSON.stringify(novelFile.id)} && state.room?.textReading?.page === 2`), '同步小说页码');
     await evaluate(cdp, `(async () => { await clearPlayback(); return true; })()`);
     await waitFor(() => evaluate(cdp, `state.currentFile === null && document.getElementById('textViewer').classList.contains('is-hidden')`), '清空 TXT 预览');
     await evaluate(cdp, `openAccount('home')`);
@@ -707,19 +727,47 @@ async function main() {
     await evaluate(cdp, `state.pseudoFullscreen = false; handleFullscreenChange(); true`);
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const aiMobileLayout = await evaluate(cdp, `(() => {
+      document.body.classList.add('android-client');
       aiOpenWorkbench();
       if (elements.aiConfigPanel.classList.contains('is-hidden')) aiToggleConfig();
       elements.aiConfigPanel.scrollTop = elements.aiConfigPanel.scrollHeight;
       const card = elements.aiWorkbenchModal.querySelector('.ai-workbench-card').getBoundingClientRect();
       const panel = elements.aiConfigPanel.querySelector('.ai-config-command-row');
+      const conversations = elements.aiWorkbenchModal.querySelector('.ai-conversation-panel').getBoundingClientRect();
+      const composer = elements.aiComposer.getBoundingClientRect();
       const buttons = [...panel.querySelectorAll('button')].map((button) => ({ id: button.id, width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height }));
-      return { bodyWidth: document.body.scrollWidth, viewport: innerWidth, card: [card.left, card.top, card.right, card.bottom], rowWidth: panel.scrollWidth, rowClientWidth: panel.clientWidth, buttons };
+      return { bodyWidth: document.body.scrollWidth, viewport: innerWidth, viewportHeight: innerHeight, card: [card.left, card.top, card.right, card.bottom], conversations: [conversations.left, conversations.top, conversations.right, conversations.bottom, conversations.height], composer: [composer.left, composer.top, composer.right, composer.bottom], rowWidth: panel.scrollWidth, rowClientWidth: panel.clientWidth, buttons };
     })()`);
     assert.ok(aiMobileLayout.bodyWidth <= aiMobileLayout.viewport + 2, JSON.stringify(aiMobileLayout));
     assert.ok(aiMobileLayout.card[0] >= -1 && aiMobileLayout.card[1] >= -1 && aiMobileLayout.card[2] <= 391 && aiMobileLayout.card[3] <= 845, JSON.stringify(aiMobileLayout));
+    assert.ok(aiMobileLayout.conversations[0] >= -1 && aiMobileLayout.conversations[2] <= 391 && aiMobileLayout.conversations[4] <= 62, JSON.stringify(aiMobileLayout));
+    assert.ok(aiMobileLayout.composer[3] <= aiMobileLayout.viewportHeight + 1, JSON.stringify(aiMobileLayout));
     assert.ok(aiMobileLayout.rowWidth <= aiMobileLayout.rowClientWidth + 2, JSON.stringify(aiMobileLayout));
-    assert.ok(aiMobileLayout.buttons.every((button) => button.width >= 80 && button.height >= 32), JSON.stringify(aiMobileLayout));
+    assert.ok(aiMobileLayout.buttons.every((button) => button.width >= 80 && button.height >= 47.5), JSON.stringify(aiMobileLayout));
     const aiConfigMobilePath = path.join(outputDir, 'ai-config-mobile.png'); await capture(cdp, aiConfigMobilePath); images.push(aiConfigMobilePath);
+    const aiChatLayout = await evaluate(cdp, `(() => {
+      if (!elements.aiConfigPanel.classList.contains('is-hidden')) aiToggleConfig();
+      const conversation = aiActiveConversation();
+      conversation.messages = Array.from({ length: 36 }, (_, index) => ({ id: 'mobile-ai-' + index, role: index % 2 ? 'assistant' : 'user', content: '移动端 AI 对话布局回归消息 ' + (index + 1), createdAt: new Date(Date.now() + index * 1000).toISOString() }));
+      aiRenderMessages();
+      const messages = elements.aiMessages.getBoundingClientRect(); const composer = elements.aiComposer.getBoundingClientRect(); const send = elements.sendAiPromptBtn.getBoundingClientRect();
+      return { bodyWidth: document.body.scrollWidth, viewport: innerWidth, messages: [messages.left, messages.top, messages.right, messages.bottom], composer: [composer.left, composer.top, composer.right, composer.bottom], send: [send.left, send.top, send.right, send.bottom, send.height], scrollHeight: elements.aiMessages.scrollHeight, clientHeight: elements.aiMessages.clientHeight, atBottom: elements.aiMessages.scrollHeight - elements.aiMessages.scrollTop - elements.aiMessages.clientHeight };
+    })()`);
+    assert.ok(aiChatLayout.bodyWidth <= aiChatLayout.viewport + 2, JSON.stringify(aiChatLayout));
+    assert.ok(aiChatLayout.scrollHeight > aiChatLayout.clientHeight && aiChatLayout.atBottom <= 2, JSON.stringify(aiChatLayout));
+    assert.ok(aiChatLayout.messages[3] <= aiChatLayout.composer[1] + 1 && aiChatLayout.composer[3] <= 845 && aiChatLayout.send[3] <= 845 && aiChatLayout.send[4] >= 47.5, JSON.stringify(aiChatLayout));
+    const aiChatMobilePath = path.join(outputDir, 'ai-chat-mobile.png'); await capture(cdp, aiChatMobilePath); images.push(aiChatMobilePath);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 667, deviceScaleFactor: 1, mobile: true }); await delay(120);
+    const aiSmallPortrait = await evaluate(cdp, `(() => { const card = elements.aiWorkbenchModal.querySelector('.ai-workbench-card').getBoundingClientRect(); const composer = elements.aiComposer.getBoundingClientRect(); const send = elements.sendAiPromptBtn.getBoundingClientRect(); return { bodyWidth: document.body.scrollWidth, viewport: innerWidth, viewportHeight: innerHeight, card: [card.left, card.top, card.right, card.bottom], composer: [composer.left, composer.top, composer.right, composer.bottom], send: [send.left, send.top, send.right, send.bottom, send.height] }; })()`);
+    assert.ok(aiSmallPortrait.bodyWidth <= aiSmallPortrait.viewport + 2, JSON.stringify(aiSmallPortrait));
+    assert.ok(aiSmallPortrait.card[2] <= 376 && aiSmallPortrait.card[3] <= 668 && aiSmallPortrait.composer[3] <= aiSmallPortrait.viewportHeight + 1 && aiSmallPortrait.send[3] <= aiSmallPortrait.viewportHeight + 1 && aiSmallPortrait.send[4] >= 47.5, JSON.stringify(aiSmallPortrait));
+    const aiSmallPortraitPath = path.join(outputDir, 'ai-chat-375x667.png'); await capture(cdp, aiSmallPortraitPath); images.push(aiSmallPortraitPath);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 812, height: 375, deviceScaleFactor: 1, mobile: true }); await delay(120);
+    const aiLandscape = await evaluate(cdp, `(() => { const card = elements.aiWorkbenchModal.querySelector('.ai-workbench-card').getBoundingClientRect(); const composer = elements.aiComposer.getBoundingClientRect(); const messages = elements.aiMessages.getBoundingClientRect(); const send = elements.sendAiPromptBtn.getBoundingClientRect(); return { bodyWidth: document.body.scrollWidth, viewport: innerWidth, viewportHeight: innerHeight, card: [card.left, card.top, card.right, card.bottom], messages: [messages.left, messages.top, messages.right, messages.bottom], composer: [composer.left, composer.top, composer.right, composer.bottom], send: [send.left, send.top, send.right, send.bottom, send.height] }; })()`);
+    assert.ok(aiLandscape.bodyWidth <= aiLandscape.viewport + 2, JSON.stringify(aiLandscape));
+    assert.ok(aiLandscape.card[2] <= 813 && aiLandscape.card[3] <= 376 && aiLandscape.messages[3] <= aiLandscape.composer[1] + 1 && aiLandscape.composer[3] <= aiLandscape.viewportHeight + 1 && aiLandscape.send[3] <= aiLandscape.viewportHeight + 1 && aiLandscape.send[4] >= 47.5, JSON.stringify(aiLandscape));
+    const aiLandscapePath = path.join(outputDir, 'ai-chat-812x375.png'); await capture(cdp, aiLandscapePath); images.push(aiLandscapePath);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }); await delay(120);
     await evaluate(cdp, `aiCloseWorkbench(); true`);
     await evaluate(cdp, `document.body.classList.add('android-client'); elements.toastRegion.innerHTML = ''; elements.mobileMenuBtn.click(); true`); await delay(200);
     const androidToastClearance = await evaluate(cdp, `(() => {
@@ -766,6 +814,34 @@ async function main() {
     })()`);
     assert.equal(mobileModuleScroll.position, 'static', JSON.stringify(mobileModuleScroll));
     assert.ok(mobileModuleScroll.target > 0 && mobileModuleScroll.after < mobileModuleScroll.before - 40, JSON.stringify(mobileModuleScroll));
+    const mobileChatFeed = await evaluate(cdp, `(async () => {
+      const originalMessages = state.messages; const originalFilter = state.chatViewFilter;
+      globalThis.__uiSmokeChatRestore = { messages: originalMessages, filter: originalFilter };
+      toggleMobileActionMenu(false);
+      state.chatViewFilter = { channel: '', username: '', userMode: 'include', query: '' };
+      state.messages = Array.from({ length: 80 }, (_, index) => ({ id: 'mobile-chat-' + index, type: index % 3 ? 'public' : 'system', from: 'browser-ui-owner', fromName: '布局测试成员', text: '移动端聊天与房间动态 ' + (index + 1), timestamp: new Date(Date.now() + index * 1000).toISOString() }));
+      state.mobileChatCollapsed = false; applyMobileChatCollapsed(); renderChat();
+      elements.chatHistory.scrollTop = 0; openMobileModule('chat');
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const history = elements.chatHistory.getBoundingClientRect(); const form = elements.chatForm.getBoundingClientRect();
+      const switchedToBottom = elements.chatHistory.scrollHeight - elements.chatHistory.scrollTop - elements.chatHistory.clientHeight;
+      elements.chatHistory.scrollTop = 0;
+      addChatMessage({ id: 'mobile-chat-reader', type: 'public', from: 'browser-ui-owner', fromName: '布局测试成员', text: '阅读历史时不抢滚动位置', timestamp: new Date(Date.now() + 100000).toISOString() });
+      const readerTop = elements.chatHistory.scrollTop;
+      elements.chatHistory.scrollTop = elements.chatHistory.scrollHeight;
+      addChatMessage({ id: 'mobile-chat-latest', type: 'public', from: 'browser-ui-owner', fromName: '布局测试成员', text: '位于底部时跟随最新消息', timestamp: new Date(Date.now() + 101000).toISOString() });
+      const latestBottom = elements.chatHistory.scrollHeight - elements.chatHistory.scrollTop - elements.chatHistory.clientHeight;
+      const result = { panelMode: elements.theater.dataset.mobileModuleActive, history: [history.left, history.top, history.right, history.bottom, history.height], form: [form.left, form.top, form.right, form.bottom], scrollHeight: elements.chatHistory.scrollHeight, clientHeight: elements.chatHistory.clientHeight, switchedToBottom, readerTop, latestBottom, overflowY: getComputedStyle(elements.chatHistory).overflowY };
+      return result;
+    })()`);
+    assert.equal(mobileChatFeed.panelMode, 'chat', JSON.stringify(mobileChatFeed));
+    assert.equal(mobileChatFeed.overflowY, 'auto', JSON.stringify(mobileChatFeed));
+    assert.ok(mobileChatFeed.scrollHeight > mobileChatFeed.clientHeight && mobileChatFeed.history[4] <= 421, JSON.stringify(mobileChatFeed));
+    assert.ok(Math.abs(mobileChatFeed.form[1] - mobileChatFeed.history[3]) <= 2, JSON.stringify(mobileChatFeed));
+    assert.ok(mobileChatFeed.switchedToBottom <= 2 && mobileChatFeed.readerTop <= 2 && mobileChatFeed.latestBottom <= 2, JSON.stringify(mobileChatFeed));
+    await evaluate(cdp, `elements.chatPanel.scrollIntoView({ block: 'start' }); true`); await delay(120);
+    const mobileChatPath = path.join(outputDir, 'mobile-chat-scroll.png'); await capture(cdp, mobileChatPath); images.push(mobileChatPath);
+    await evaluate(cdp, `(() => { const restore = globalThis.__uiSmokeChatRestore; if (restore) { state.messages = restore.messages; state.chatViewFilter = restore.filter; delete globalThis.__uiSmokeChatRestore; } renderChat(); openMobileModule('watch'); return true; })()`);
     const androidFullscreenLayers = await evaluate(cdp, `(() => {
       const videoWasHidden = elements.videoPlayer.classList.contains('is-hidden');
       const emptyWasHidden = elements.emptyStage.classList.contains('is-hidden');
@@ -935,6 +1011,7 @@ async function main() {
     const cubeSettingsPath = path.join(outputDir, 'login-cube-settings-mobile.png'); await capture(cdp, cubeSettingsPath); images.push(cubeSettingsPath);
     console.log(JSON.stringify({ success: true, images, original, mobile }));
   } finally {
+    global.fetch = originalFetch;
     cdp?.close();
     await stopProcessTree(chrome);
     authSocket?.close();

@@ -42,8 +42,8 @@ assert.match(css, /\.header-online-stat[\s\S]*white-space:\s*nowrap/,
 
 assert.match(app, /function openServerSettingsFromLogin\([\s\S]*!state\.authenticated[\s\S]*请先登录超级管理员账号/,
   'login-page settings must require an authenticated super-admin account');
-assert.match(app, /async function loginAsServerAdmin\([\s\S]*finishAuthentication\(result, state\.rememberSession, false, \{ managementOnly: true \}\)[\s\S]*openManagementHub\(['"]server['"]\)/,
-  'server-admin login must land on the server settings hub after authentication');
+assert.match(app, /async function loginAsServerAdmin\([\s\S]*host-passwordless-management-login[\s\S]*finishAuthentication\(result, state\.rememberSession, false\)[\s\S]*result\.sessionMode === ['"]management['"][\s\S]*openManagementHub\(['"]server['"]\)/,
+  'server-admin login must use the dedicated passwordless event, trust the server-issued session mode, and land on settings');
 assert.match(app, /if \(managementOnly\) \{[\s\S]*elements\.loginPage\.classList\.remove\(['"]is-hidden['"]\)[\s\S]*elements\.mainPage\.classList\.add\(['"]is-hidden['"]\)/,
   'server-admin settings authentication must keep the room surface hidden');
 

@@ -22,11 +22,13 @@ try {
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.0', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', experiencePerMinute: 1, passwordPolicy: { mode: 'unrestricted', minLength: 6, maxLength: 72, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.0', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', experiencePerMinute: 1, passwordPolicy: { mode: 'unrestricted', minLength: 6, maxLength: 72, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
   expectedSeek: null, expectedPlaybackEvent: null, expectedVolume: null, mediaGeneration: 0,
   textPreviewGeneration: 0, textPreviewController: null,
+  textReading: { fileId: '', position: 0, page: 1, revision: 0 }, applyingTextReading: false,
+  textReadingApplyTimer: null, textReadingEmitTimer: null,
   activeTimedFileId: null, activeTimedSource: '', activeMediaVariant: 'auto', mediaEventBlockUntil: 0, shareMediaSuspended: false,
   serverClockOffset: 0, serverClockReady: false, serverClockAnchor: null, clockSamples: [], autoplayBlocked: false,
   localCapture: null, captureTimer: null, captureVideo: null, captureCanvas: null, captureSession: 0,
@@ -46,7 +48,7 @@ const state = {
   rememberSession: Boolean(localStorage.getItem('syncwatchToken')), authGeneration: 0,
   hostToken: windowHostToken, lastWatchReport: Date.now(),
   lastPlaybackProgress: 0, volumeEmitTimer: null, mediaFailed: false, lastConnectionError: '',
-  mediaNetworkRecovery: { key: '', attempts: 0, timer: null, resume: null },
+  mediaNetworkRecovery: { key: '', attempts: 0, timer: null, stallTimer: null, resume: null },
   compatibilityFallbackFileId: '', compatibilityFallbackGeneration: -1,
   uploadBatch: null, libraryCollapsed: localStorage.getItem('syncwatchFilesCollapsed') === '1',
   uploadProgressBackgrounded: false,
@@ -119,7 +121,8 @@ const state = {
 
 const MAX_NATIVE_CAPTURE_BYTES = Math.floor(1.5 * 1024 * 1024);
 const MAX_NATIVE_CAPTURE_BASE64_LENGTH = Math.ceil(MAX_NATIVE_CAPTURE_BYTES * 4 / 3);
-const TEXT_PREVIEW_LIMIT_BYTES = 2 * 1024 * 1024;
+const TEXT_PREVIEW_LIMIT_BYTES = 10 * 1024 * 1024;
+const TEXT_READER_CHARACTERS_PER_PAGE = 1200;
 const SCREEN_FRAME_RELIABLE_INTERVAL_MS = 1000;
 const SCREEN_FRAME_SEND_ACK_TIMEOUT_MS = 3000;
 const UI_THEMES = [
@@ -243,21 +246,21 @@ const deviceId = localStorage.getItem('syncwatchDeviceId') || createDeviceId();
 localStorage.setItem('syncwatchDeviceId', deviceId);
 
 const elements = {};
-const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop
-  loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn loginHostShortcuts adminContactBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
+const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn
+  loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
  loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
  fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText
  playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
- playerContainer emptyStage emptyStageHint videoPlayer imageViewer documentViewer textViewer sharedWebViewer sharedWebEmpty downloadViewer downloadTitle downloadLink screenShareCanvas screenShareVideo screenShareStatus syncNotice resumePlaybackBtn danmakuContainer reactionLayer friendVideoNoticeLayer playerInfo playerResolution playerCodec hardwareDecode
+ playerContainer emptyStage emptyStageHint videoPlayer imageViewer documentViewer textViewer textReaderControls textReaderPreviousBtn textReaderPage textReaderPageCount textReaderNextBtn textReaderProgress sharedWebViewer sharedWebEmpty downloadViewer downloadTitle downloadLink screenShareCanvas screenShareVideo screenShareStatus syncNotice resumePlaybackBtn danmakuContainer reactionLayer friendVideoNoticeLayer playerInfo playerResolution playerCodec hardwareDecode
  controlRequestOverlay controlRequestTitle controlRequestDetail controlRequestSuppress controlRequestDenyBtn controlRequestAllowBtn permissionNotice permissionNoticeTitle permissionNoticeText permissionNoticeCloseBtn
  chatPanel chatHistory chatForm chatInput privateRecipient voiceBtn voiceFileInput chatImageInput chatImageBtn chatEmojiBtn chatEmojiBar chatEmojiCollapseBtn loadHistoryBtn chatToggleBtn chatViewFilterBtn chatViewFilters chatViewChannel chatViewUser chatViewUserMode chatViewQuery chatViewResetBtn reactionBar userList userCount roomCode roomScheme roomShareUrl applyShareDomainBtn copyShareLinkBtn copyRoomCodeBtn copyLanAddressBtn copyPublicAddressBtn resetShareAddressBtn showQrBtn qrBox currentRoomBanner globalRoomSearch
  liveVoiceBar liveVoiceStatus voiceRoomBtn voicePrivateBtn voiceMuteBtn voiceLeaveBtn voiceAudioDock voiceDockToggleBtn liveVoiceFloating voiceFloatingStatus voiceFloatingMuteBtn voicePushToTalkBtn voiceFloatingLeaveBtn voiceFloatingCollapseBtn collapseMembersBtn
   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicAudio
-  usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
-  mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible saveNoticePreferenceSettingsBtn loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
- roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn uploadLimitMb uploadTimeLimit saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSendNotice savePermissionsBtn
+   usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus localPasswordlessCard localPasswordlessManagementEnabled localPasswordlessRoomEnabled saveLocalPasswordlessBtn localPasswordlessStatus downloadAssetSettingsCard openDownloadCenterSettingsBtn downloadAssetUploadProgress downloadAssetUploadStatus windowsServerAssetStatus androidClientAssetStatus macServerAssetStatus macClientAssetStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
+  mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
+ roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSendNotice savePermissionsBtn
  permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
  pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus accountAdminList refreshAccountsBtn accountViewMode registrationRequestList refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
   passwordPolicyCard passwordPolicyMode passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
@@ -265,7 +268,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn downloadMacServerMainBtn downloadMacClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
-  managementHubModal closeManagementHubBtn managementContentHost switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
+  managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
   fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn macDownloadModal closeMacDownloadBtn macDownloadTitle macDownloadHint macDownloadArch macDownloadFormat macDownloadAvailability macDownloadStatus confirmMacDownloadBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
@@ -273,7 +276,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
 dataBackupCard dataBackupScope exportDataBtn importDataBtn importDataInput dataBackupStatus dataBackupProgress dataBackupProgressLabel dataBackupProgressPercent dataBackupProgressBar dataBackupProgressDetail
 webShareModal closeWebShareBtn webUrlInput pasteWebUrlBtn openWebUrlBtn shareWebUrlBtn probeWebUrlBtn shareWebWindowBtn webShareStatus webProbeResults webShareEmpty webFrame
  themeModal closeThemeBtn resetThemeBtn syncThemeBtn themeSyncTargets themeSyncAll themeSyncSelected themeSyncMemberList themeGrid themeFontSearch themeFontSelect applyThemeFontBtn resetThemeFontBtn themeFontStatus copyrightNotice newRoomId
- myRoomsModal closeMyRoomsBtn myRoomsTitle myRoomsHint myRoomsList loginRoomReminderControls loginRoomReminderPreference loginTemporaryRoomBtn accountOverviewModal closeAccountOverviewBtn accountOverviewSearch accountOverviewPresence accountOverviewSort accountOverviewCount accountOverviewList openAccountOverviewBtn accountAuditLogModal closeAccountAuditLogBtn refreshAccountAuditLogsBtn accountAuditLogSearch accountAuditLogType accountAuditLogSelectAll deleteSelectedAccountAuditLogsBtn accountAuditLogList memberProfileModal closeMemberProfileBtn memberProfileContent locationAuthorizationsModal closeLocationAuthorizationsBtn refreshLocationAuthorizationsBtn locationAuthorizationsList viewLocationAuthorizationsBtn adminContactModal closeAdminContactBtn adminContactTitle adminContactNoteDisplay adminContactList tunnelTutorialModal closeTunnelTutorialBtn uploadLimitTutorialModal closeUploadLimitTutorialBtn uploadLimitTutorialActionBtn noticeModal closeNoticeBtn noticeForm noticeText noticeFont noticeDuration noticeFontSize noticeColor noticeScopeGroup noticeScope openPermissionsFromNoticeBtn conversionProgressModal closeConversionProgressBtn refreshConversionProgressBtn conversionProgressSummary mediaProcessingAdminControls mediaCompatibilityAutoConvert mediaProcessingConcurrency saveMediaProcessingBtn openConvertedMediaFolderBtn mediaProcessingControlStatus mediaProcessingSearch mediaProcessingSelectAll mediaProcessingDeleteSource deleteSelectedMediaProcessingBtn conversionProgressList agreementModal agreementTitle agreementVersion agreementText agreementCheck acceptAgreementBtn declineAgreementBtn ownerExitModal ownerExitTitle desktopCloseModal desktopCloseStatus screenNoticeOverlay screenNoticeSender screenNoticeText closeScreenNoticeBtn roomSwitchSuccessOverlay roomSwitchSuccessText
+  myRoomsModal closeMyRoomsBtn myRoomsTitle myRoomsHint myRoomsList loginRoomReminderControls loginRoomReminderPreference loginTemporaryRoomBtn accountOverviewModal closeAccountOverviewBtn accountOverviewSearch accountOverviewPresence accountOverviewSort accountOverviewCount accountOverviewList openAccountOverviewBtn accountAuditLogModal closeAccountAuditLogBtn refreshAccountAuditLogsBtn accountAuditLogSearch accountAuditLogType accountAuditLogSelectAll deleteSelectedAccountAuditLogsBtn accountAuditLogList memberProfileModal closeMemberProfileBtn memberProfileContent locationAuthorizationsModal closeLocationAuthorizationsBtn refreshLocationAuthorizationsBtn locationAuthorizationsList viewLocationAuthorizationsBtn adminContactModal closeAdminContactBtn adminContactTitle adminContactNoteDisplay adminContactList tunnelTutorialModal closeTunnelTutorialBtn uploadLimitTutorialModal closeUploadLimitTutorialBtn uploadLimitTutorialActionBtn noticeModal closeNoticeBtn noticeForm noticeText noticeFont noticeDuration noticeFontSize noticeColor noticeScopeGroup noticeScope openPermissionsFromNoticeBtn conversionProgressModal closeConversionProgressBtn refreshConversionProgressBtn conversionProgressSummary mediaProcessingAdminControls mediaCompatibilityAutoConvert mediaProcessingConcurrency saveMediaProcessingBtn openConvertedMediaFolderBtn mediaProcessingControlStatus mediaProcessingSearch mediaProcessingSelectAll mediaProcessingDeleteSource deleteSelectedMediaProcessingBtn conversionProgressList downloadCenterModal closeDownloadCenterBtn checkDownloadUpdateBtn openGithubProjectBtn openGithubLatestBtn downloadUpdateStatus agreementModal agreementTitle agreementVersion agreementText agreementCheck acceptAgreementBtn declineAgreementBtn ownerExitModal ownerExitTitle desktopCloseModal desktopCloseStatus screenNoticeOverlay screenNoticeSender screenNoticeText closeScreenNoticeBtn roomSwitchSuccessOverlay roomSwitchSuccessText
 appDialog appDialogCloseBtn appDialogForm appDialogTitle appDialogDescription appDialogInputGroup appDialogInputLabel appDialogInput appDialogPasswordToggle appDialogSelectGroup appDialogSelectLabel appDialogSelect appDialogConfirmGroup appDialogConfirmLabel appDialogConfirmInput appDialogConfirmPasswordToggle appDialogError appDialogFillRiskBtn appDialogBackBtn appDialogCancelBtn appDialogConfirmBtn`.split(/\s+/);
 for (const id of ids) elements[id] = document.getElementById(id);
 // This setting was added after the main element registry; keep the optional
@@ -846,7 +849,9 @@ async function saveServerNoticePreferences() {
   const settings = {
     f11PromptEnabled: elements.f11PromptGlobalEnabled?.checked !== false,
     initialPasswordReminderEnabled: elements.initialPasswordReminderEnabled?.checked !== false,
-    downloadButtonsVisible: elements.downloadButtonsVisible?.checked !== false
+    downloadButtonsVisible: elements.downloadButtonsVisible?.checked !== false,
+    locationStatusNoticesEnabled: elements.locationStatusNoticesEnabled?.checked !== false,
+    locationAuthorizationRequestsEnabled: elements.locationAuthorizationRequestsEnabled?.checked !== false
   };
   const result = await adminAction('set-notice-preferences', settings);
   const status = elements.noticePreferenceSettingsStatus;
@@ -1277,10 +1282,24 @@ function bindUiEvents() {
   elements.onlineRoomSelect?.addEventListener('change', selectOnlineRoom);
   elements.refreshOnlineRoomsBtn?.addEventListener('click', refreshOnlineRooms);
   elements.myRoomsLoginBtn?.addEventListener('click', loadMyRoomsBeforeLogin);
-  elements.serverAdminLoginBtn?.addEventListener('click', loginAsServerAdmin);
+  elements.serverAdminLoginBtn?.addEventListener('click', () => loginAsServerAdmin('management'));
+  elements.serverAdminRoomLoginBtn?.addEventListener('click', () => loginAsServerAdmin('room'));
+  elements.managementLogoutBtn?.addEventListener('click', logoutManagementSession);
+  elements.managementSessionLogoutBtn?.addEventListener('click', logoutManagementSession);
   elements.resetAdminPasswordBtn?.addEventListener('click', resetServerAdminPassword);
   elements.restartServerBtn?.addEventListener('click', restartServerSoftware);
+  elements.saveLocalPasswordlessBtn?.addEventListener('click', saveLocalPasswordlessSettings);
   elements.adminContactBtn?.addEventListener('click', openAdminContact);
+  elements.adminProfileBtn?.addEventListener('click', openAdminProfileEditor);
+  elements.checkUpdateBtn?.addEventListener('click', () => openDownloadCenter(true));
+  elements.downloadCenterBtn?.addEventListener('click', () => openDownloadCenter(false));
+  elements.openDownloadCenterLoginBtn?.addEventListener('click', () => openDownloadCenter(false));
+  elements.openDownloadCenterSettingsBtn?.addEventListener('click', () => openDownloadCenter(false));
+  elements.closeDownloadCenterBtn?.addEventListener('click', () => elements.downloadCenterModal?.classList.add('is-hidden'));
+  elements.checkDownloadUpdateBtn?.addEventListener('click', checkForUpdates);
+  elements.openGithubProjectBtn?.addEventListener('click', () => openExternalUrl('https://github.com/xuange6610/SyncWatch'));
+  elements.openGithubLatestBtn?.addEventListener('click', () => openExternalUrl('https://github.com/xuange6610/SyncWatch/releases/latest'));
+  elements.downloadAssetSettingsCard?.addEventListener('click', handleDownloadAssetUploadClick);
   elements.mobileMenuBtn?.addEventListener('click', () => toggleMobileActionMenu());
   elements.mobileMenuBackdrop?.addEventListener('click', () => toggleMobileActionMenu(false));
   document.querySelector('.topbar-actions')?.addEventListener('click', (event) => {
@@ -1639,6 +1658,8 @@ function bindUiEvents() {
   elements.f11PromptGlobalEnabled?.addEventListener('change', saveServerNoticePreferences);
   elements.initialPasswordReminderEnabled?.addEventListener('change', saveServerNoticePreferences);
   elements.downloadButtonsVisible?.addEventListener('change', saveServerNoticePreferences);
+  elements.locationStatusNoticesEnabled?.addEventListener('change', saveServerNoticePreferences);
+  elements.locationAuthorizationRequestsEnabled?.addEventListener('change', saveServerNoticePreferences);
   elements.refreshAllApplicationsBtn?.addEventListener('click', refreshAllApplications);
   elements.saveRoomEntryNoticeBtn?.addEventListener('click', saveRoomEntryNoticeSettings);
   elements.roomEntryNoticeScope?.addEventListener('change', renderRoomEntryNoticeEditor);
@@ -1694,6 +1715,10 @@ function bindUiEvents() {
   elements.playerSeekSlider?.addEventListener('change', commitPlayerSeek);
   elements.playerSeekSlider?.addEventListener('pointerup', commitPlayerSeek);
   elements.playerSeekSlider?.addEventListener('pointercancel', cancelPlayerSeekDrag);
+  elements.textViewer?.addEventListener('scroll', handleTextReaderScroll, { passive: true });
+  elements.textReaderPreviousBtn?.addEventListener('click', () => changeTextReaderPage(-1));
+  elements.textReaderNextBtn?.addEventListener('click', () => changeTextReaderPage(1));
+  elements.textReaderPage?.addEventListener('change', () => goToTextReaderPage(elements.textReaderPage.value));
   elements.videoPlayer.addEventListener('waiting', handleMediaBuffering);
   elements.videoPlayer.addEventListener('stalled', handleMediaBuffering);
   elements.videoPlayer.addEventListener('playing', handleMediaBufferRecovered);
@@ -1866,6 +1891,10 @@ function bindUiEvents() {
   elements.fileList?.addEventListener('error', handleFileThumbnailError, true);
   elements.closeAdminContactBtn?.addEventListener('click', () => elements.adminContactModal.classList.add('is-hidden'));
   elements.closeTunnelTutorialBtn?.addEventListener('click', () => elements.tunnelTutorialModal?.classList.add('is-hidden'));
+  document.querySelectorAll('[data-editor-close]').forEach((button) => button.addEventListener('click', () => {
+    if (button.dataset.editorClose === 'accountTierEditor') closeAccountTierEditor();
+    else closePermissionGroupEditor();
+  }));
   elements.adminContactList?.addEventListener('click', handleAdminContactAction);
   elements.agreementCheck?.addEventListener('change', () => { elements.acceptAgreementBtn.disabled = !elements.agreementCheck.checked; });
   elements.acceptAgreementBtn?.addEventListener('click', () => settleAgreement(true));
@@ -1889,7 +1918,9 @@ function bindUiEvents() {
   document.addEventListener('fullscreenchange', handleFullscreenChange);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
-    if (document.body.classList.contains('mobile-actions-open')) toggleMobileActionMenu(false);
+    if (!elements.permissionGroupEditor?.classList.contains('is-hidden')) closePermissionGroupEditor();
+    else if (!elements.accountTierEditor?.classList.contains('is-hidden')) closeAccountTierEditor();
+    else if (document.body.classList.contains('mobile-actions-open')) toggleMobileActionMenu(false);
     else if (state.pseudoFullscreen) void togglePlayerFullscreen();
   });
   document.addEventListener('click', (event) => { if (!event.target.closest('#chatContextMenu')) hideChatContextMenu(); });
@@ -2294,6 +2325,17 @@ function connectSocket() {
       if (state.adminSettings) state.adminSettings.lanAccessEnabled = policy.lanAccessEnabled !== false;
       renderLanAccessSetting(policy.lanAccessEnabled !== false);
     }
+    if (Object.prototype.hasOwnProperty.call(policy, 'localPasswordlessManagementEnabled')
+      || Object.prototype.hasOwnProperty.call(policy, 'localPasswordlessRoomEnabled')) {
+      if (state.adminSettings) Object.assign(state.adminSettings, policy);
+      renderLocalPasswordlessSettings(policy);
+      void loadPublicConfig(true);
+    }
+    applyPublicConfig();
+  });
+  state.socket.on('download-assets-updated', (downloads = {}) => {
+    state.publicConfig = { ...state.publicConfig, ...downloads };
+    renderDownloadAssetStatuses();
     applyPublicConfig();
   });
   state.socket.on('notice-preferences-updated', (preferences = {}) => {
@@ -2308,6 +2350,7 @@ function connectSocket() {
   state.socket.on('agreement-required', (agreement) => { state.publicConfig = { ...state.publicConfig, legalAgreement: agreement || {} }; if (state.authenticated) void handleRuntimeAgreementRequired(agreement); });
   state.socket.on('users-list', (users) => { state.users = users; synchronizeDisplayNamesFromUsers(); refreshSelfAccess(); renderUsers(); updateRoomHeader(); updateLocationActions(); });
   state.socket.on('member-location-status', (event = {}) => {
+    if (state.publicConfig.locationStatusNoticesEnabled === false) return;
     const labels = { authorized: '已同意位置授权', denied: '已拒绝位置授权', revoked: '已取消位置授权', suppressed: '已永久关闭位置授权提示', unavailable: '当前设备无法定位', failed: '位置获取失败' };
     const place = [event.location?.province, event.location?.city, event.location?.district, event.location?.street].filter(Boolean).join(' · ');
     const message = `${event.displayName || event.username || '成员'}${labels[event.status] || event.statusText || '更新了位置状态'}${place ? `：${place}` : ''}`;
@@ -2319,6 +2362,7 @@ function connectSocket() {
     ], 0, 'error');
   });
   state.socket.on('location-authorization-requested', (request = {}) => {
+    if (state.publicConfig.locationAuthorizationRequestsEnabled === false) return;
     const entry = { ...request, id: request.id || `location-${Date.now()}`, kind: 'location-authorization', own: false };
     addPersistentRequest(entry);
     toastWithAction(request.message || `${request.requestedByName || '管理员'} 邀请您重新授权位置`, '立即处理', () => {
@@ -2357,6 +2401,12 @@ function connectSocket() {
   state.socket.on('media-processing-updated', applyMediaProcessingStatus);
   state.socket.on('upload-pending', (file) => { upsertFile(file); toast(`新文件待审核：${file.originalName}`); refreshAdminForIncomingRequest(); });
   state.socket.on('playback-state', (playback) => adaptiveSynchronize(playback, true));
+  state.socket.on('text-reading-state', applyTextReadingState);
+  state.socket.on('text-upload-policy-updated', ({ allowTextUploads } = {}) => {
+    state.publicConfig.allowTextUploads = allowTextUploads !== false;
+    if (elements.allowTextUploadsToggle) elements.allowTextUploadsToggle.checked = state.publicConfig.allowTextUploads;
+    applyPublicConfig();
+  });
   state.socket.on('playback-command', (command) => applyPlaybackCommand(command));
   state.socket.on('playback-sync', (playback) => adaptiveSynchronize(playback, false));
   state.socket.on('playback-change', showPlaybackChange);
@@ -2827,14 +2877,27 @@ function handleMyRoomsSelection(event) {
   }
 }
 
-async function loginAsServerAdmin() {
-  const passwordless = state.publicConfig.serverHostPasswordlessAvailable === true;
+async function loginAsServerAdmin(mode = 'management') {
+  const roomEntry = mode === 'room';
+  const profileEntry = mode === 'profile';
+  const passwordless = roomEntry
+    ? state.publicConfig.serverHostPasswordlessRoomAvailable === true
+    : state.publicConfig.serverHostPasswordlessManagementAvailable === true || state.publicConfig.serverHostPasswordlessAvailable === true;
   const password = elements.password.value;
-  if (!passwordless && !password) return setLoginStatus('请输入服务器管理员密码');
-  elements.serverAdminLoginBtn.disabled = true;
-  setLoginStatus(passwordless ? '正在从本机进入服务器管理中心…' : '正在验证服务器超级管理员…', true);
+  const targetRoomId = String(elements.roomIdInput?.value || state.publicConfig.defaultRoomId || '').trim().toUpperCase();
+  if (roomEntry && !targetRoomId) return setLoginStatus('请先选择要进入的房间');
+  if (roomEntry && !passwordless) return setLoginStatus('服务器已关闭本机免密进入房间');
+  if (!roomEntry && !passwordless && !password) return setLoginStatus('请输入服务器管理员密码');
+  const button = roomEntry ? elements.serverAdminRoomLoginBtn : elements.serverAdminLoginBtn;
+  if (button) button.disabled = true;
+  setLoginStatus(roomEntry ? '正在以本机 admin 身份进入所选房间…'
+    : passwordless ? '正在从本机进入服务器管理中心…' : '正在验证服务器超级管理员…', true);
   try {
-    const result = await emitAck('host-admin-login', { passwordless, adminPassword: password, roomId: String(elements.roomIdInput?.value || '').trim().toUpperCase(), ...deviceInfo() }, 30000);
+    const eventName = roomEntry ? 'host-passwordless-room-login'
+      : passwordless ? 'host-passwordless-management-login' : 'host-admin-login';
+    const result = await emitAck(eventName, {
+      ...(passwordless ? {} : { adminPassword: password }), roomId: targetRoomId, ...deviceInfo()
+    }, 30000);
     if (!result.success) {
       const message = loginErrorMessage(result, '账号登录失败，请检查账号、密码和服务器地址');
       setLoginStatus(message);
@@ -2842,12 +2905,13 @@ async function loginAsServerAdmin() {
       return;
     }
     state.token = result.token; state.rememberSession = elements.autoLogin.checked;
-    await finishAuthentication(result, state.rememberSession, false, { managementOnly: true });
-    // The server-admin entry is a settings shortcut. Keep the authenticated
-    // session in the management hub instead of entering a temporary room.
-    if (state.authenticated) openManagementHub('server');
+    await finishAuthentication(result, state.rememberSession, false);
+    if (state.authenticated && result.sessionMode === 'management') {
+      if (profileEntry) await openAccount('home');
+      else openManagementHub('server');
+    }
   } catch (error) { setLoginStatus(localizedError(error, '服务器超级管理员登录失败')); }
-  finally { elements.serverAdminLoginBtn.disabled = false; }
+  finally { if (button) button.disabled = false; }
 }
 
 function requireAgreement(agreement = state.publicConfig.legalAgreement) {
@@ -3885,7 +3949,7 @@ function renderLanRooms() {
   const canDelete = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
   elements.lanScanSelectAll?.closest('.lan-scan-toolbar')?.classList.toggle('is-hidden', !canDelete);
   if (!state.lanRooms.length) { elements.lanRoomList.innerHTML = '<p class="muted">没有发现公开房间。服务器离线或房间已被封禁时不会出现在扫描结果中。</p>'; updateLanRoomSelection(); return; }
-  elements.lanRoomList.innerHTML = state.lanRooms.map((room) => `<div class="history-row" data-lan-room="${escapeHtml(room.id)}" data-lan-address="${escapeHtml(room.address)}">${canDelete && room.localServer ? `<label class="check-line"><input data-lan-room-select type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedLanRooms.has(room.id) ? 'checked' : ''}><span class="visually-hidden">选择房间 ${escapeHtml(room.id)}</span></label>` : ''}<div><strong><span class="room-type-badge ${room.temporary ? 'temporary' : 'formal'}">${room.temporary ? '临时房间' : '正式房间'}</span> ${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><p>${escapeHtml(room.server || room.address)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需要密码' : ''}</p></div><button data-lan-action="join" type="button">加入</button></div>`).join('');
+  elements.lanRoomList.innerHTML = state.lanRooms.map((room) => `<div class="history-row lan-room-row ${canDelete && room.localServer ? 'is-selectable' : ''}" data-lan-room="${escapeHtml(room.id)}" data-lan-address="${escapeHtml(room.address)}">${canDelete && room.localServer ? `<label class="check-line"><input data-lan-room-select type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedLanRooms.has(room.id) ? 'checked' : ''}><span class="visually-hidden">选择房间 ${escapeHtml(room.id)}</span></label>` : ''}<div><strong><span class="room-type-badge ${room.temporary ? 'temporary' : 'formal'}">${room.temporary ? '临时房间' : '正式房间'}</span> ${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><p>${escapeHtml(room.server || room.address)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需要密码' : ''}</p></div><button data-lan-action="join" type="button">加入</button></div>`).join('');
   updateLanRoomSelection();
 }
 
@@ -3993,7 +4057,9 @@ function resetRoomScopedClientState() {
 }
 
 async function finishAuthentication(result, remember, reconnecting = false, options = {}) {
-  const managementOnly = Boolean(options.managementOnly || (reconnecting && state.managementOnlyAuth));
+  // `sessionMode` is issued by a dedicated server authentication event; no
+  // client payload can promote a room login into a management-only login.
+  const managementOnly = Boolean(result.sessionMode === 'management' || options.managementOnly || (reconnecting && state.managementOnlyAuth));
   const sessionRemember = managementOnly ? false : Boolean(remember);
   const wasAuthenticated = state.authenticated;
   if (!wasAuthenticated) state.initialAdminPasswordSetupSkipped = false;
@@ -4086,7 +4152,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   if (!managementOnly && ((!reconnecting && roomChanged) || !wasAuthenticated)) setTimeout(showF11PromptIfNeeded, 420);
    // Request location as soon as the room is entered. Browsers may still
    // require a user gesture; the room toolbar remains a retry action.
-  if (!managementOnly) setTimeout(() => void reportMemberLocation({ interactive: !reconnecting }), 250);
+  if (!managementOnly && state.publicConfig.locationAuthorizationRequestsEnabled !== false) setTimeout(() => void reportMemberLocation({ interactive: !reconnecting }), 250);
   if (state.capabilities.mustChangeAccountPassword) {
     setTimeout(async () => {
       await promptRequiredAccountPasswordChange();
@@ -4303,9 +4369,16 @@ async function handleDesktopCloseChoice(event) {
   }
 }
 
-async function logout({ preserveCredentials = false } = {}) {
+async function logoutManagementSession() {
+  if (!state.authenticated || !state.managementOnlyAuth) return;
+  await logout({ managementSession: true });
+}
+
+async function logout({ preserveCredentials = false, managementSession = false } = {}) {
   let ownerExitAction = 'leave';
-  if (state.capabilities.owner) {
+  if (managementSession || state.managementOnlyAuth) {
+    ownerExitAction = state.room?.temporary ? 'delete' : 'leave';
+  } else if (state.capabilities.owner) {
     ownerExitAction = state.room?.temporary ? 'delete' : await requestOwnerExitChoice();
     if (!ownerExitAction) return;
     if (ownerExitAction === 'delete') {
@@ -4333,6 +4406,7 @@ async function logout({ preserveCredentials = false } = {}) {
 function forcedLogout(message) { state.intentionalLogout = true; clearSession(); toast(message || '已退出登录', 'error'); setTimeout(() => location.reload(), 900); }
 function clearSession() {
   state.token = ''; state.user = null; state.authenticated = false; state.socketAuthenticated = false;
+  state.managementOnlyAuth = false;
   updateGuestConversionAccess();
   state.friendDirectory = []; state.friendDirectoryLoaded = false; state.friendDirectoryLoading = false;
   state.friendMessages.clear(); state.selectedDevices.clear();
@@ -4411,15 +4485,21 @@ function applyPublicConfig() {
   const showDownloads = state.publicConfig.downloadButtonsVisible !== false;
   elements.androidApkBtn?.classList.toggle('is-hidden', !showDownloads || !state.authenticated || !state.publicConfig.androidApkAvailable);
   elements.aiWorkbenchBtn?.classList.toggle('is-hidden', !state.authenticated);
+  const localManagementAvailable = state.publicConfig.serverHostPasswordlessManagementAvailable === true
+    || state.publicConfig.serverHostPasswordlessAvailable === true;
   elements.serverAdminLoginBtn?.classList.toggle('is-hidden', !state.publicConfig.serverHostLoginAvailable || state.authenticated);
-  if (elements.serverAdminLoginBtn) elements.serverAdminLoginBtn.textContent = state.publicConfig.serverHostPasswordlessAvailable
+  if (elements.serverAdminLoginBtn) elements.serverAdminLoginBtn.textContent = localManagementAvailable
     ? '本机免密进入管理中心' : '超级管理员登录';
+  elements.serverAdminRoomLoginBtn?.classList.toggle('is-hidden', state.authenticated || state.publicConfig.serverHostPasswordlessRoomAvailable !== true);
+  elements.managementLogoutBtn?.classList.toggle('is-hidden', !state.authenticated || !state.managementOnlyAuth);
+  elements.managementSessionLogoutBtn?.classList.toggle('is-hidden', !state.authenticated || !state.managementOnlyAuth);
   const canManageServer = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
   const serverMenu = Boolean(state.publicConfig.serverHostLoginAvailable || state.hostToken || canManageServer);
+  elements.adminProfileBtn?.classList.toggle('is-hidden', !(canManageServer || (!state.authenticated && state.publicConfig.serverHostLoginAvailable)));
   elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', state.authenticated && !canManageServer);
   elements.resetAdminPasswordBtn?.classList.toggle('is-hidden', !serverMenu);
   elements.restartServerBtn?.classList.toggle('is-hidden', !canManageServer);
-  elements.loginHostShortcuts?.classList.toggle('is-hidden', ![elements.serverAdminLoginBtn, elements.resetAdminPasswordBtn, elements.restartServerBtn]
+  elements.loginHostShortcuts?.classList.toggle('is-hidden', ![elements.serverAdminLoginBtn, elements.serverAdminRoomLoginBtn, elements.managementLogoutBtn, elements.resetAdminPasswordBtn, elements.restartServerBtn]
     .some((button) => button && !button.classList.contains('is-hidden')));
   elements.downloadClientBtn?.classList.toggle('is-hidden', !showDownloads || state.authenticated);
   if (elements.downloadClientBtn) {
@@ -4451,6 +4531,8 @@ function applyPublicConfig() {
   const canSeePort = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
   elements.headerServerPortGroup?.classList.toggle('is-hidden', !canSeePort);
   if (elements.headerServerPort) elements.headerServerPort.textContent = canSeePort ? String(state.publicConfig.port || location.port || '默认') : '--';
+  renderServerEndpointStatus();
+  renderDownloadAssetStatuses();
   const contact = state.publicConfig.contact || {};
   elements.adminContactBtn?.classList.toggle('is-hidden', ![contact.qq, contact.wechat, contact.email, contact.phone, contact.note].some(Boolean));
   if (elements.adminContactBtn) {
@@ -4475,7 +4557,114 @@ function applyPublicConfig() {
   }
   const size = state.publicConfig.maxUploadBytes ? `最大 ${formatSize(state.publicConfig.maxUploadBytes)}` : '大小不限';
   const time = state.publicConfig.uploadTimeLimitSeconds ? `最长 ${state.publicConfig.uploadTimeLimitSeconds} 秒` : '时长不限';
-  elements.uploadLimitText.textContent = `${size} · ${time} · 支持拖动上传 MKV/MP4/WebM/字幕`;
+  const textHint = state.publicConfig.allowTextUploads !== false ? '/安全文本' : '';
+  elements.uploadLimitText.textContent = `${size} · ${time} · 支持拖动上传 MKV/MP4/WebM/字幕${textHint}`;
+}
+
+function renderServerEndpointStatus() {
+  if (!elements.serverEndpointBadge) return;
+  const serverContext = Boolean(state.publicConfig.serverHostLoginAvailable || state.hostToken
+    || (state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin)));
+  elements.serverEndpointBadge.classList.toggle('is-hidden', !serverContext);
+  if (!serverContext) return;
+  const address = (state.publicConfig.addresses || []).find((candidate) => {
+    try { return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(new URL(candidate).hostname); }
+    catch (_) { return false; }
+  }) || state.publicConfig.addresses?.[0] || `http://${location.hostname}:${state.publicConfig.port || location.port || 5000}`;
+  const enabled = state.publicConfig.lanAccessEnabled !== false;
+  const known = state.publicConfigKnown !== false;
+  elements.serverEndpointAddress.textContent = address.replace(/^https?:\/\//i, '');
+  elements.serverEndpointState.textContent = !known ? '检测中' : enabled ? '已开放' : '仅本机';
+  elements.serverEndpointBadge.classList.toggle('is-open', known && enabled);
+  elements.serverEndpointBadge.classList.toggle('is-local', known && !enabled);
+  elements.serverEndpointBadge.classList.toggle('is-offline', !known);
+  elements.serverEndpointBadge.title = known
+    ? enabled ? `局域网服务已开放：${address}` : `局域网访问已关闭；本机仍可使用 ${location.origin}`
+    : '正在读取服务器开放状态';
+}
+
+function downloadAssetSummary(value) {
+  if (Array.isArray(value)) {
+    const formats = value.flatMap((entry) => (entry.formats || []).map((format) => `${entry.architecture || ''} ${String(format).toUpperCase()}`.trim()));
+    return formats.length ? `已提供：${formats.join('、')}` : '尚未上传';
+  }
+  if (value?.available) return `已提供：${value.filename || '服务器文件'}${value.size ? ` · ${formatSize(value.size)}` : ''}`;
+  return '尚未上传';
+}
+
+function renderDownloadAssetStatuses() {
+  const details = state.publicConfig.downloadAssetDetails || {};
+  if (elements.windowsServerAssetStatus) elements.windowsServerAssetStatus.textContent = downloadAssetSummary(details.windowsServer);
+  if (elements.androidClientAssetStatus) elements.androidClientAssetStatus.textContent = downloadAssetSummary(details.androidClient);
+  if (elements.macServerAssetStatus) elements.macServerAssetStatus.textContent = downloadAssetSummary(details.macServer || state.publicConfig.macServerDownloads);
+  if (elements.macClientAssetStatus) elements.macClientAssetStatus.textContent = downloadAssetSummary(details.macClient || state.publicConfig.macClientDownloads);
+}
+
+function openDownloadCenter(check = false) {
+  elements.downloadCenterModal?.classList.remove('is-hidden');
+  if (check) void checkForUpdates();
+}
+
+function semverParts(value) {
+  const match = String(value || '').trim().match(/^v?(\d+)\.(\d+)\.(\d+)/i);
+  return match ? match.slice(1).map(Number) : null;
+}
+
+function compareSemver(left, right) {
+  const a = semverParts(left); const b = semverParts(right);
+  if (!a || !b) return 0;
+  for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
+  return 0;
+}
+
+async function checkForUpdates() {
+  if (elements.checkDownloadUpdateBtn) elements.checkDownloadUpdateBtn.disabled = true;
+  if (elements.downloadUpdateStatus) elements.downloadUpdateStatus.textContent = '正在读取 GitHub Latest…';
+  try {
+    const response = await fetchWithTimeout('/api/releases/latest', {}, 12000);
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
+    const release = await response.json();
+    const current = state.publicConfig.version || 'v2.2.0';
+    const latest = String(release.tag_name || '').trim();
+    const comparison = compareSemver(current, latest);
+    elements.downloadUpdateStatus.textContent = comparison < 0
+      ? `发现新版本 ${latest}（当前 ${current}），请打开 Latest 下载页更新。`
+      : comparison > 0 ? `当前 ${current} 高于 GitHub Latest ${latest}，这通常是发布前测试版本。`
+      : `当前已是 GitHub 最新正式版本 ${latest || current}。`;
+  } catch (error) {
+    elements.downloadUpdateStatus.textContent = `检查失败：${localizedError(error, '无法连接 GitHub')}。可点击“Latest 下载页”手动查看。`;
+  } finally { if (elements.checkDownloadUpdateBtn) elements.checkDownloadUpdateBtn.disabled = false; }
+}
+
+async function openAdminProfileEditor() {
+  if (state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin)) return openAccount('home');
+  if (!state.publicConfig.serverHostLoginAvailable) return toast('管理员资料入口只在服务器本机或已登录的超级管理员中显示', 'error');
+  await loginAsServerAdmin('profile');
+}
+
+async function handleDownloadAssetUploadClick(event) {
+  const button = event.target.closest('[data-download-upload]');
+  if (!button) return;
+  if (!state.adminSettings?.serverAdmin) return toast('只有服务器主机或超级管理员可以更新客户端下载文件', 'error');
+  const row = button.closest('[data-download-upload-kind]');
+  const fileInput = row?.querySelector('input[type="file"]');
+  const file = fileInput?.files?.[0];
+  if (!row || !file) return toast('请先选择要上传的安装文件', 'error');
+  const architecture = row.querySelector('select')?.value || '';
+  const query = architecture ? `?arch=${encodeURIComponent(architecture)}` : '';
+  button.disabled = true;
+  if (elements.downloadAssetUploadStatus) elements.downloadAssetUploadStatus.textContent = `正在校验并上传 ${file.name}…`;
+  try {
+    const result = await uploadFileWithProgress(`/api/download-assets/${encodeURIComponent(row.dataset.downloadUploadKind)}${query}`, 'file', file, elements.downloadAssetUploadProgress, 6 * 60 * 60 * 1000);
+    state.publicConfig = { ...state.publicConfig, ...(result.downloads || {}) };
+    fileInput.value = '';
+    renderDownloadAssetStatuses(); applyPublicConfig();
+    if (elements.downloadAssetUploadStatus) elements.downloadAssetUploadStatus.textContent = result.message || '客户端下载文件已更新';
+    toast(result.message || '客户端下载文件已更新', 'success', 7000);
+  } catch (error) {
+    if (elements.downloadAssetUploadStatus) elements.downloadAssetUploadStatus.textContent = localizedError(error, '客户端下载文件上传失败');
+    toast(localizedError(error, '客户端下载文件上传失败'), 'error', 8000);
+  } finally { button.disabled = false; }
 }
 
 function applyUiTheme(themeId) {
@@ -5124,14 +5313,15 @@ function updateUploadEntryAttention() {
   const hasVideo = [...state.files.values()].some((file) => file.category === 'video' && file.status !== 'rejected');
   const needsFirstVideo = Boolean(state.authenticated && !hasVideo);
   elements.chooseFileBtn.classList.toggle('needs-first-video', needsFirstVideo);
-  elements.chooseFileBtn.setAttribute('aria-label', needsFirstVideo ? '上传影片或字幕，当前房间还没有影片' : '上传影片或字幕');
+  const uploadKinds = state.publicConfig.allowTextUploads !== false ? '影片、字幕或文本' : '影片或字幕';
+  elements.chooseFileBtn.setAttribute('aria-label', needsFirstVideo ? `上传${uploadKinds}，当前房间还没有影片` : `上传${uploadKinds}`);
   elements.chooseFileBtn.title = needsFirstVideo ? '当前房间还没有影片，上传第一部影片后提示会自动停止' : '';
 }
 
 function renderFileCard(file) {
     const metadata = file.metadata || {};
     const compatibility = file.compatibility || {};
-    const quality = metadata.height ? `${metadata.height}P` : ({ video: '视频', audio: '音频', subtitle: '字幕', document: '文档' }[file.category] || '文件');
+    const quality = metadata.height ? `${metadata.height}P` : ({ video: '视频', audio: '音频', subtitle: '字幕', text: '文本', document: '文档' }[file.category] || '文件');
     const codec = metadata.videoCodec || metadata.audioCodec || '';
     const duration = metadata.duration ? formatTime(metadata.duration) : '';
     const thumbnail = file.thumbnailUrl ? `<img class="file-thumb" src="${escapeHtml(file.thumbnailUrl)}" alt="${escapeHtml(file.originalName)} 缩略图">` : `<div class="file-thumb">${fileIcon(file.category)}</div>`;
@@ -6014,11 +6204,13 @@ function applyRoom(room) {
   const incomingRoomId = String(room.id || '').trim().toUpperCase();
   if (state.authenticated && expectedRoomId && incomingRoomId && incomingRoomId !== expectedRoomId) return;
   const playback = room.playback;
-  state.room = { ...room, playback: state.room?.playback || playback };
+  const textReading = room.textReading;
+  state.room = { ...room, playback: state.room?.playback || playback, textReading: textReading || state.room?.textReading };
   state.queue = room.queue || state.queue;
   applyRoomMarquee(room.marqueeNotice);
   updateRoomHeader(); renderRoomStorage(room.storage); updateLights(room.lightsOn); renderQueue(); updateControlAccess(); renderTemporaryRoomNotice();
   if (playback) adaptiveSynchronize(playback, true);
+  if (textReading) applyTextReadingState(textReading);
   if (room.screenShare?.active) showScreenShare(room.screenShare);
   else hideScreenShare({ preserveLocal: Boolean(state.localCapture && (state.resumeInFlight || !state.socketAuthenticated)) });
   applyAudioSourceShareState(room.audioShare || { active: false });
@@ -6128,6 +6320,7 @@ function updateControlAccess() {
   applyPlaybackRateUi(state.room?.playback?.playbackRate || 1);
   if (elements.playerSeekSlider) elements.playerSeekSlider.disabled = !timedMedia || state.screenShareActive;
   elements.addCurrentQueueBtn.disabled = !canControl || !isTimedFile(state.currentFile) || state.currentFile.status !== 'approved';
+  if (state.currentFile?.category === 'text') updateTextReaderControls();
 }
 
 function canControlPlayback() { return Boolean(state.capabilities.owner || state.permissions.control); }
@@ -6265,7 +6458,11 @@ function loadFile(file) {
   else if (file.category === 'pdf') { if (changed || elements.documentViewer.getAttribute('src') !== file.url) elements.documentViewer.src = file.url; if (!state.screenShareActive && !state.webShare.active) elements.documentViewer.classList.remove('is-hidden'); }
   else if (file.category === 'text') {
     if (changed || elements.textViewer.dataset.fileId !== file.id) void loadTextPreview(file);
-    else if (!state.screenShareActive && !state.webShare.active) elements.textViewer.classList.remove('is-hidden');
+    else if (!state.screenShareActive && !state.webShare.active) {
+      elements.textViewer.classList.remove('is-hidden');
+      elements.textReaderControls?.classList.remove('is-hidden');
+      requestAnimationFrame(() => applyTextReadingState(state.room?.textReading || state.textReading));
+    }
   }
   else { elements.downloadTitle.textContent = file.originalName; elements.downloadLink.href = file.downloadUrl; if (!state.screenShareActive && !state.webShare.active) elements.downloadViewer.classList.remove('is-hidden'); }
   if (!isTimedFile(file)) { clearAutoplayRecovery(); elements.syncStatus.textContent = '静态内容'; state.latestDrift = 0; state.syncPercent = 100; }
@@ -6285,12 +6482,111 @@ function mediaUrlWithSessionToken(value) {
 
 function decodeTextPreview(buffer) {
   const bytes = new Uint8Array(buffer);
+  if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+    return new TextDecoder('utf-16le').decode(bytes.subarray(2)).replace(/^\uFEFF/, '');
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    return new TextDecoder('utf-16be').decode(bytes.subarray(2)).replace(/^\uFEFF/, '');
+  }
   let text = new TextDecoder('utf-8').decode(bytes);
   const replacementCount = (text.match(/\uFFFD/g) || []).length;
   if (replacementCount > Math.max(2, Math.floor(text.length / 200))) {
     try { text = new TextDecoder('gb18030').decode(bytes); } catch (_) {}
   }
   return text.replace(/^\uFEFF/, '');
+}
+
+function canonicalTextReading(value = {}) {
+  const rawPosition = Number(value.position);
+  return {
+    fileId: String(value.fileId || ''),
+    position: Number.isFinite(rawPosition) ? Math.max(0, Math.min(1, rawPosition)) : 0,
+    page: Math.max(1, Math.floor(Number(value.page) || 1)),
+    updatedAt: Number(value.updatedAt) || Date.now(),
+    changedBy: String(value.changedBy || ''),
+    revision: Math.max(0, Math.floor(Number(value.revision) || 0))
+  };
+}
+
+function textReaderPageCount() {
+  return Math.max(1, Math.ceil(String(elements.textViewer?.textContent || '').length / TEXT_READER_CHARACTERS_PER_PAGE));
+}
+
+function updateTextReaderControls(position = null) {
+  if (!elements.textReaderControls || !elements.textReaderPage) return;
+  const count = textReaderPageCount();
+  const viewer = elements.textViewer;
+  const maximumScroll = Math.max(0, Number(viewer?.scrollHeight || 0) - Number(viewer?.clientHeight || 0));
+  const currentPosition = Number.isFinite(Number(position))
+    ? Math.max(0, Math.min(1, Number(position)))
+    : maximumScroll > 0 ? Math.max(0, Math.min(1, Number(viewer?.scrollTop || 0) / maximumScroll)) : 0;
+  const page = count > 1 ? Math.min(count, 1 + Math.round(currentPosition * (count - 1))) : 1;
+  const canControl = canControlPlayback();
+  elements.textReaderPage.min = '1';
+  elements.textReaderPage.max = String(count);
+  elements.textReaderPage.value = String(page);
+  if (elements.textReaderPageCount) elements.textReaderPageCount.textContent = String(count);
+  if (elements.textReaderProgress) elements.textReaderProgress.textContent = `阅读进度 ${Math.round(currentPosition * 100)}%${canControl ? ' · 已同步' : ' · 本机浏览'}`;
+  elements.textReaderPage.disabled = !canControl;
+  if (elements.textReaderPreviousBtn) elements.textReaderPreviousBtn.disabled = !canControl || page <= 1;
+  if (elements.textReaderNextBtn) elements.textReaderNextBtn.disabled = !canControl || page >= count;
+}
+
+function applyTextReadingState(value = {}) {
+  const incoming = canonicalTextReading(value);
+  const current = canonicalTextReading(state.textReading);
+  if (incoming.fileId && incoming.fileId === current.fileId && incoming.revision < current.revision) return;
+  state.textReading = incoming;
+  if (state.room) state.room.textReading = incoming;
+  if (!incoming.fileId || state.currentFile?.category !== 'text' || state.currentFile.id !== incoming.fileId) return;
+  const viewer = elements.textViewer;
+  const maximumScroll = Math.max(0, viewer.scrollHeight - viewer.clientHeight);
+  state.applyingTextReading = true;
+  viewer.scrollTop = maximumScroll * incoming.position;
+  clearTimeout(state.textReadingApplyTimer);
+  state.textReadingApplyTimer = setTimeout(() => { state.applyingTextReading = false; }, 140);
+  updateTextReaderControls(incoming.position);
+}
+
+function emitTextReadingUpdate(position) {
+  if (!canControlPlayback() || state.currentFile?.category !== 'text') return;
+  const fileId = state.currentFile.id;
+  const normalized = Math.max(0, Math.min(1, Number(position) || 0));
+  const count = textReaderPageCount();
+  const page = count > 1 ? Math.min(count, 1 + Math.round(normalized * (count - 1))) : 1;
+  clearTimeout(state.textReadingEmitTimer);
+  state.textReadingEmitTimer = setTimeout(async () => {
+    if (!canControlPlayback() || state.currentFile?.category !== 'text' || state.currentFile.id !== fileId) return;
+    const result = await emitAck('text-reading-update', { fileId, position: normalized, page });
+    if (!result.success && result.error) toast(result.error, 'error');
+  }, 160);
+}
+
+function handleTextReaderScroll() {
+  if (state.currentFile?.category !== 'text' || state.applyingTextReading) return;
+  const maximumScroll = Math.max(0, elements.textViewer.scrollHeight - elements.textViewer.clientHeight);
+  const position = maximumScroll > 0 ? elements.textViewer.scrollTop / maximumScroll : 0;
+  updateTextReaderControls(position);
+  emitTextReadingUpdate(position);
+}
+
+function goToTextReaderPage(rawPage) {
+  if (state.currentFile?.category !== 'text') return;
+  if (!canControlPlayback()) return permissionDeniedToast('同步文本阅读进度');
+  const count = textReaderPageCount();
+  const page = Math.max(1, Math.min(count, Math.floor(Number(rawPage) || 1)));
+  const position = count > 1 ? (page - 1) / (count - 1) : 0;
+  const maximumScroll = Math.max(0, elements.textViewer.scrollHeight - elements.textViewer.clientHeight);
+  state.applyingTextReading = true;
+  elements.textViewer.scrollTop = maximumScroll * position;
+  clearTimeout(state.textReadingApplyTimer);
+  state.textReadingApplyTimer = setTimeout(() => { state.applyingTextReading = false; }, 140);
+  updateTextReaderControls(position);
+  emitTextReadingUpdate(position);
+}
+
+function changeTextReaderPage(delta) {
+  goToTextReaderPage(Number(elements.textReaderPage?.value || 1) + Number(delta || 0));
 }
 
 async function loadTextPreview(file) {
@@ -6300,8 +6596,15 @@ async function loadTextPreview(file) {
   state.textPreviewController = controller;
   elements.textViewer.dataset.fileId = file.id;
   elements.textViewer.textContent = Number(file.size) === 0 ? '（空文本文件）' : '正在读取文本内容…';
-  if (!state.screenShareActive && !state.webShare.active) elements.textViewer.classList.remove('is-hidden');
-  if (Number(file.size) === 0) return;
+  if (!state.screenShareActive && !state.webShare.active) {
+    elements.textViewer.classList.remove('is-hidden');
+    elements.textReaderControls?.classList.remove('is-hidden');
+  }
+  if (Number(file.size) === 0) {
+    updateTextReaderControls(0);
+    applyTextReadingState(state.room?.textReading || state.textReading);
+    return;
+  }
   try {
     const source = mediaUrlWithSessionToken(file.originalUrl || file.url);
     const response = await fetch(source, {
@@ -6316,9 +6619,12 @@ async function loadTextPreview(file) {
       text += `\n\n—— 已显示前 ${formatSize(buffer.byteLength)}，完整文件共 ${formatSize(file.size)} ——`;
     }
     elements.textViewer.textContent = text || '（空文本文件）';
+    updateTextReaderControls(state.room?.textReading?.position ?? state.textReading.position);
+    requestAnimationFrame(() => applyTextReadingState(state.room?.textReading || state.textReading));
   } catch (error) {
     if (error?.name !== 'AbortError' && generation === state.textPreviewGeneration && state.currentFile?.id === file.id) {
       elements.textViewer.textContent = `文本预览加载失败：${localizedError(error, '请稍后重试')}`;
+      updateTextReaderControls(0);
     }
   } finally {
     if (state.textPreviewController === controller) state.textPreviewController = null;
@@ -6343,7 +6649,9 @@ function clearInactiveFileSources(nextCategory = '') {
   if (nextCategory !== 'text') {
     state.textPreviewGeneration += 1;
     state.textPreviewController?.abort(); state.textPreviewController = null;
+    clearTimeout(state.textReadingEmitTimer); state.textReadingEmitTimer = null;
     elements.textViewer.textContent = ''; delete elements.textViewer.dataset.fileId;
+    elements.textReaderControls?.classList.add('is-hidden');
   }
   if (!['document', 'download'].includes(nextCategory)) elements.downloadLink.removeAttribute('href');
 }
@@ -6373,7 +6681,7 @@ function attachSubtitleTracks(videoFile) {
   });
 }
 
-function hidePlaybackViews() { for (const item of [elements.videoPlayer, elements.imageViewer, elements.documentViewer, elements.textViewer, elements.sharedWebViewer, elements.downloadViewer]) item.classList.add('is-hidden'); updatePlayerProgressBar(); }
+function hidePlaybackViews() { for (const item of [elements.videoPlayer, elements.imageViewer, elements.documentViewer, elements.textViewer, elements.textReaderControls, elements.sharedWebViewer, elements.downloadViewer]) item?.classList.add('is-hidden'); updatePlayerProgressBar(); }
 function hideStageViews() { hidePlaybackViews(); elements.screenShareCanvas.classList.add('is-hidden'); }
 function clearStage() {
   state.currentFile = null; teardownTimedMedia(); clearInactiveFileSources(''); state.shareMediaSuspended = false;
@@ -6669,10 +6977,12 @@ function handleMediaBuffering() {
   state.localBuffering = true;
   showSyncNotice('网络延迟不等于缓冲，当前正在补充播放数据…');
   updatePlayerBufferState();
+  scheduleMediaStallRecovery();
 }
 
 function handleMediaBufferRecovered() {
   state.localBuffering = false;
+  clearMediaStallRecovery();
   updatePlayerBufferState();
   if (state.room?.playback?.isPlaying) elements.syncNotice.classList.add('is-hidden');
 }
@@ -6910,6 +7220,7 @@ function showAccountNotification(notification = {}) {
     return;
   }
   if (notification.kind === 'location-authorization-request') {
+    if (state.publicConfig.locationAuthorizationRequestsEnabled === false) return;
     addPersistentRequest({ ...notification, id: notification.id || `location-${Date.now()}`, kind: 'location-authorization', own: false });
     toast(notification.message || '管理员邀请您重新授权位置', 'success', 0);
     return;
@@ -9956,8 +10267,29 @@ function clearMediaNetworkRecovery(success) {
   const recovery = state.mediaNetworkRecovery;
   if (!recovery) return;
   if (recovery.timer) clearTimeout(recovery.timer);
+  clearMediaStallRecovery();
   recovery.timer = null; recovery.resume = null;
   if (success || success === false) { recovery.key = ''; recovery.attempts = 0; }
+}
+function clearMediaStallRecovery() {
+  const recovery = state.mediaNetworkRecovery;
+  if (recovery?.stallTimer) clearTimeout(recovery.stallTimer);
+  if (recovery) recovery.stallTimer = null;
+}
+function scheduleMediaStallRecovery() {
+  const recovery = state.mediaNetworkRecovery; const policy = globalThis.SyncWatchMediaNetworkRecovery;
+  const file = state.currentFile; const source = state.activeTimedSource; const video = elements.videoPlayer;
+  if (recovery?.stallTimer || !policy?.STALL_TIMEOUT_MS || !policy.isEligible({ errorCode: 2, sourceType: file?.sourceType, source, pageHref: location.href })) return;
+  const snapshot = { currentTime: Number(video.currentTime) || 0, bufferedAhead: Number(state.bufferedAheadSeconds) || 0 };
+  const generation = state.mediaGeneration;
+  recovery.stallTimer = setTimeout(() => {
+    recovery.stallTimer = null;
+    if (!state.localBuffering || state.currentFile?.id !== file?.id || state.activeTimedSource !== source || state.mediaGeneration !== generation || state.screenShareActive) return;
+    updatePlayerBufferState();
+    if (policy.isStillStalled(snapshot, { currentTime: video.currentTime, bufferedAhead: state.bufferedAheadSeconds, readyState: video.readyState })) {
+      scheduleMediaNetworkRecovery({ code: 2 });
+    } else scheduleMediaStallRecovery();
+  }, policy.STALL_TIMEOUT_MS);
 }
 function scheduleMediaNetworkRecovery(mediaError) {
   const file = state.currentFile; const source = state.activeTimedSource;
@@ -10341,6 +10673,7 @@ function openMobileModule(module) {
       applyMobileChatCollapsed();
     }
     elements.chatPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    requestAnimationFrame(() => { elements.chatHistory.scrollTop = elements.chatHistory.scrollHeight; });
     return;
   }
   elements.theater?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -10409,6 +10742,7 @@ async function loadAdminSettings({ silent = false } = {}) {
   elements.roomNameInput.value = result.admin.roomName; elements.maxUsersInput.value = result.admin.maxUsers; elements.uploadApprovalToggle.checked = result.admin.requireUploadApproval;
   if (elements.roomAllowGuests) elements.roomAllowGuests.checked = result.admin.allowGuests !== false;
   elements.uploadLimitMb.value = result.admin.uploadLimitBytes ? Math.round(result.admin.uploadLimitBytes / 1024 / 1024) : 0; elements.uploadTimeLimit.value = result.admin.uploadTimeLimitSeconds;
+  if (elements.allowTextUploadsToggle) elements.allowTextUploadsToggle.checked = result.admin.allowTextUploads !== false;
   const mail = result.admin.mail || {};
   elements.mailSettingsCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   elements.brandingSettingsCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
@@ -10427,6 +10761,8 @@ async function loadAdminSettings({ silent = false } = {}) {
   elements.loginMusicSettingsCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   elements.roomEntryNoticeSettingsCard?.classList.toggle('is-hidden', !(result.admin.serverAdmin || result.admin.roomEntryNoticeTargets?.length));
   elements.lanAccessCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
+  elements.localPasswordlessCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
+  elements.downloadAssetSettingsCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   elements.factoryResetCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   if (result.admin.serverAdmin) {
     elements.serverLogsCard?.classList.remove('is-hidden');
@@ -10455,6 +10791,8 @@ async function loadAdminSettings({ silent = false } = {}) {
       ? '已开启：公网访问期间所有房间必须设置访问密码'
       : '已关闭：可在无房间密码时开启公网访问';
     renderLanAccessSetting(result.admin.lanAccessEnabled !== false);
+    renderLocalPasswordlessSettings(result.admin);
+    renderDownloadAssetStatuses();
     elements.mailSettingsStatus.textContent = mail.configured
       ? `${mail.enabled ? '已启用' : '已保存但未启用'} · ${mail.host || 'SMTP'}:${mail.port || 465} · ${mail.fromEmail || mail.user}`
       : '尚未保存完整的 SMTP 账号与加密凭据';
@@ -10467,6 +10805,8 @@ async function loadAdminSettings({ silent = false } = {}) {
     if (elements.f11PromptGlobalEnabled) elements.f11PromptGlobalEnabled.checked = result.admin.f11PromptEnabled !== false;
     if (elements.initialPasswordReminderEnabled) elements.initialPasswordReminderEnabled.checked = result.admin.initialPasswordReminderEnabled !== false;
     if (elements.downloadButtonsVisible) elements.downloadButtonsVisible.checked = result.admin.downloadButtonsVisible !== false;
+    if (elements.locationStatusNoticesEnabled) elements.locationStatusNoticesEnabled.checked = result.admin.locationStatusNoticesEnabled !== false;
+    if (elements.locationAuthorizationRequestsEnabled) elements.locationAuthorizationRequestsEnabled.checked = result.admin.locationAuthorizationRequestsEnabled !== false;
     const loginCube = result.admin.loginCube || state.publicConfig.loginCube || {};
     state.publicConfig.loginCube = normalizeClientLoginCube(loginCube);
     renderLoginCubeSettings(state.publicConfig.loginCube);
@@ -11197,6 +11537,8 @@ function openAccountTierEditor(tierId = '') {
   elements.accountTierEditor.classList.remove('is-hidden'); elements.accountTierId.value = tier.id || ''; elements.accountTierId.readOnly = Boolean(tier.id);
   elements.accountTierName.value = tier.name || ''; elements.accountTierUploadGb.value = Number(tier.uploadLimitBytes) ? (Number(tier.uploadLimitBytes) / 1024 / 1024 / 1024).toFixed(1) : 0;
   elements.accountTierRoomQuota.value = Number(tier.roomQuota) || 0; elements.accountTierDescription.value = tier.description || '';
+  elements.accountTierEditor.querySelector('h2').textContent = tier.id ? '查看/编辑等级' : '新建等级';
+  bringModalToFront(elements.accountTierEditor); elements.accountTierName.focus();
 }
 function closeAccountTierEditor() { elements.accountTierEditor?.classList.add('is-hidden'); }
 async function saveAccountTier() {
@@ -11342,7 +11684,22 @@ async function saveExperiencePolicy() {
   toast(result.message || result.error, result.success ? 'success' : 'error');
   if (result.success && state.adminSettings) state.adminSettings.experiencePerMinute = result.experiencePerMinute;
 }
-async function saveUploadLimits() { const result = await adminAction('set-upload-limits', { uploadLimitBytes: Math.floor(Number(elements.uploadLimitMb.value || 0) * 1024 * 1024), uploadTimeLimitSeconds: Number(elements.uploadTimeLimit.value || 0) }); toast(result.message || result.error, result.success ? 'success' : 'error'); }
+async function saveUploadLimits() {
+  const result = await adminAction('set-upload-limits', {
+    uploadLimitBytes: Math.floor(Number(elements.uploadLimitMb.value || 0) * 1024 * 1024),
+    uploadTimeLimitSeconds: Number(elements.uploadTimeLimit.value || 0)
+  });
+  if (!result.success) return toast(result.message || result.error, 'error');
+  const textResult = await adminAction('set-text-upload-policy', {
+    allowTextUploads: elements.allowTextUploadsToggle?.checked !== false
+  });
+  toast(textResult.message || textResult.error || result.message, textResult.success ? 'success' : 'error');
+  if (textResult.success) {
+    state.publicConfig.allowTextUploads = textResult.allowTextUploads !== false;
+    if (state.adminSettings) state.adminSettings.allowTextUploads = state.publicConfig.allowTextUploads;
+    applyPublicConfig();
+  }
+}
 async function savePermissions() {
   const username = elements.permissionUser.value; if (!username) return toast('请选择成员', 'error');
   const result = await adminAction('set-permissions', {
@@ -11448,6 +11805,8 @@ function openPermissionGroupEditor(groupId = '') {
   elements.groupPermManageChat.checked = Boolean(permissions.manageChat); elements.groupPermManageRoom.checked = Boolean(permissions.manageRoom); elements.groupPermSendNotice.checked = Boolean(permissions.sendNotice);
   elements.savePermissionGroupBtn.disabled = Boolean(group?.system);
   elements.permissionGroupEditor.classList.remove('is-hidden');
+  elements.permissionGroupEditor.querySelector('h2').textContent = group ? '查看/编辑权限组' : '新建权限组';
+  bringModalToFront(elements.permissionGroupEditor); elements.permissionGroupName.focus();
 }
 function closePermissionGroupEditor() { elements.permissionGroupEditor.classList.add('is-hidden'); elements.permissionGroupId.readOnly = false; elements.savePermissionGroupBtn.disabled = false; }
 async function savePermissionGroup() {
@@ -12220,6 +12579,7 @@ function renderLanAccessSetting(enabled) {
   if (elements.lanAccessStatus) elements.lanAccessStatus.textContent = allowed
     ? '当前允许局域网地址访问'
     : '局域网地址访问已关闭，仅本机与公网地址可连接';
+  renderServerEndpointStatus();
 }
 
 async function saveLanAccessSetting() {
@@ -12254,6 +12614,39 @@ async function saveLanAccessSetting() {
     toast(localizedError(error, '局域网访问设置保存失败'), 'error');
   } finally {
     elements.saveLanAccessBtn.disabled = false;
+  }
+}
+
+function renderLocalPasswordlessSettings(settings = state.adminSettings || {}) {
+  const managementEnabled = settings.localPasswordlessManagementEnabled !== false;
+  const roomEnabled = settings.localPasswordlessRoomEnabled !== false;
+  if (elements.localPasswordlessManagementEnabled) elements.localPasswordlessManagementEnabled.checked = managementEnabled;
+  if (elements.localPasswordlessRoomEnabled) elements.localPasswordlessRoomEnabled.checked = roomEnabled;
+  if (elements.localPasswordlessStatus) {
+    elements.localPasswordlessStatus.textContent = `管理中心：${managementEnabled ? '已开启' : '已关闭'} · 进入房间：${roomEnabled ? '已开启' : '已关闭'}`;
+  }
+}
+
+async function saveLocalPasswordlessSettings() {
+  if (!state.adminSettings?.serverAdmin) return toast('请先验证服务器管理员密码并加载设置', 'error');
+  const managementEnabled = elements.localPasswordlessManagementEnabled?.checked !== false;
+  const roomEnabled = elements.localPasswordlessRoomEnabled?.checked !== false;
+  if (elements.saveLocalPasswordlessBtn) elements.saveLocalPasswordlessBtn.disabled = true;
+  try {
+    const result = await adminAction('set-local-passwordless-access', { managementEnabled, roomEnabled });
+    if (!result.success) return toast(result.error || '本机免密设置保存失败', 'error');
+    Object.assign(state.adminSettings, {
+      localPasswordlessManagementEnabled: result.localPasswordlessManagementEnabled,
+      localPasswordlessRoomEnabled: result.localPasswordlessRoomEnabled
+    });
+    renderLocalPasswordlessSettings(state.adminSettings);
+    await loadPublicConfig(true);
+    toast(result.message || '本机免密入口设置已保存', 'success');
+  } catch (error) {
+    renderLocalPasswordlessSettings(state.adminSettings);
+    toast(localizedError(error, '本机免密设置保存失败'), 'error');
+  } finally {
+    if (elements.saveLocalPasswordlessBtn) elements.saveLocalPasswordlessBtn.disabled = false;
   }
 }
 
