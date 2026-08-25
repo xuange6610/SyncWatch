@@ -14,13 +14,13 @@ const modules = [
       ['设置名称和人数', '在“房间设置”填写易识别的名称和最多人数；关闭游客后，未注册用户将不能加入。'],
       ['设置访问密码', '在“房间访问密码”输入新密码并保存。公网开放前必须使用独立强密码，不要和管理员密码相同。'],
       ['规划存储空间', '查看“房间存储”中的已用容量和上限；上传大文件前预留原片、缩略图和兼容媒体空间。'],
-      ['配置上传限制', '最大文件单位为 MB，上传时长单位为秒；0 表示不限制。公网大文件建议时长至少 7200 秒。'],
-      ['选择并上传文件', '在主界面选择影片、音频、字幕、图片或文档。等待上传完成和媒体分析结束，不要强制退出服务器。'],
+      ['配置上传限制', '最大文件单位为 MB，上传时长单位为秒；0 表示不限制。可取消“允许上传安全文本并同步阅读”，服务端会拒绝后续文本上传。'],
+      ['选择并上传文件', '在主界面选择影片、音频、字幕、图片或安全文本。文本可连续滚动或按页同步阅读；媒体需等待分析结束。'],
       ['处理待审核上传', '开启“新上传文件需审核”后，在待审核列表核对文件名、上传者、大小和类型，再批准或拒绝。'],
       ['加入播放队列', '文件状态为可用后点击“加入队列”或“立即播放”，播放前确认房间密码和成员连接状态。'],
       ['解散或存档', '需要结束房间时选择保留档案或彻底删除；永久删除前先导出需要的聊天、影片索引和配置。']
     ],
-    features: [['房间名称/最多人数','修改当前房间展示名和容量；保存后新规则立即生效。'],['允许游客进入','关闭后仅正式账号可加入，适合公网或私密房间。'],['新上传需审核','把新媒体先放入待审核区，批准后成员才可见。'],['房间存储','显示当前房间媒体占用和服务器设置的空间上限。'],['最大文件/最长上传','分别限制单文件 MB 和上传秒数，0 表示不限。'],['刷新待审核','重新拉取等待批准的文件，避免根据旧列表操作。'],['房间访问密码','控制成员加入房间，与账号密码、管理员密码相互独立。'],['解散房间','可存档保留数据或永久删除，属于高风险操作。']],
+    features: [['房间名称/最多人数','修改当前房间展示名和容量；保存后新规则立即生效。'],['允许游客进入','关闭后仅正式账号可加入，适合公网或私密房间。'],['新上传需审核','把新媒体先放入待审核区，批准后成员才可见。'],['房间存储','显示当前房间媒体占用和服务器设置的空间上限。'],['最大文件/最长上传','分别限制单文件 MB 和上传秒数，0 表示不限。'],['安全文本上传','允许或禁止 TXT、Markdown、日志、数据和配置文本的上传与同步阅读。'],['刷新待审核','重新拉取等待批准的文件，避免根据旧列表操作。'],['房间访问密码','控制成员加入房间，与账号密码、管理员密码相互独立。'],['解散房间','可存档保留数据或永久删除，属于高风险操作。']],
     example: '家庭成员准备异地观看一部 8 GB 影片：先把房间人数设为 6、关闭游客、设置房间密码；上传限制设为 12288 MB / 7200 秒；上传完成并通过审核后加入队列，再用普通账号从另一台设备验证。',
     verify: ['普通账号能使用正确房间密码进入，错误密码会被拒绝。','超过限制的新上传被清楚提示，已有媒体不受影响。','批准后的媒体出现在队列，拒绝项不会被成员看到。','切换到其他房间后，名称、成员、队列和权限同时变化。'],
     pitfalls: ['把管理员密码当成房间密码分享。','上传未分析完成就关闭服务器。','只备份 config.json，不备份 uploads。','未确认当前房间就执行解散。'],
@@ -152,7 +152,7 @@ const modules = [
     summary: '管理品牌信息、登录与房间公告、滚动通知、登录媒体、3D 立方体、管理员联系方式和首次协议。',
     entry: ['登录有通知权限的账号', '打开管理中心', '点击“通知/通告设置”', '先确认通知范围和目标'],
     steps: [
-      ['设置通知偏好','决定首次密码提醒、下载按钮和登录提醒是否显示。'],
+      ['设置通知偏好','决定首次密码、下载入口、位置状态通知和位置授权请求是否显示或允许。'],
       ['维护品牌署名','品牌所有者和 NOTICE 内容用于界面归属，不应写入私人信息。'],
       ['配置滚动公告','选择登录页/房间、文字、颜色、速度和范围，保存后在普通账号验证。'],
       ['设置登录音乐或视频','二者互斥；上传后先预览，确认体积、音量和浏览器兼容。'],
@@ -162,7 +162,7 @@ const modules = [
       ['发布首次使用协议','修改版本、标题和正文后发布；新版本会要求用户重新确认。'],
       ['发送屏幕公告','先预览字号、颜色、停留时间和范围，再发送；需要时及时撤回。']
     ],
-    features: [['通知与登录提醒','控制系统提示和下载入口是否显示。'],['品牌与 NOTICE','设置公开署名和归属说明。'],['滚动公告','在登录或房间以指定速度显示文字。'],['登录背景音乐','HTTPS 地址或上传音频，支持音量、循环和曲目。'],['登录背景视频','上传后由服务器探测并转换，和音乐互斥。'],['登录 3D 立方体','六面内容、图片、旋转、惯性、速度和 GLB 模型。'],['进房通知','全局默认或单房间覆盖，进入后限时显示。'],['管理员联系方式','公开登录页联系入口。'],['首次登录协议','版本化发布使用协议。'],['屏幕公告','按范围发送可撤回的全屏通知。']],
+    features: [['通知与登录提醒','控制系统提示和下载入口是否显示。'],['位置状态通知','关闭后服务端不再向管理员和房主广播成员位置状态。'],['位置授权请求','关闭后不再自动提示，也不允许管理员发起授权请求。'],['品牌与 NOTICE','设置公开署名和归属说明。'],['滚动公告','在登录或房间以指定速度显示文字。'],['登录背景音乐','HTTPS 地址或上传音频，支持音量、循环和曲目。'],['登录背景视频','上传后由服务器探测并转换，和音乐互斥。'],['登录 3D 立方体','六面内容、图片、旋转、惯性、速度和 GLB 模型。'],['进房通知','全局默认或单房间覆盖，进入后限时显示。'],['管理员联系方式','公开登录页联系入口。'],['首次登录协议','版本化发布使用协议。'],['屏幕公告','按范围发送可撤回的全屏通知。']],
     example: '计划停机维护：先用滚动公告提前通知；维护开始前向目标房间发送全屏公告，文字写明开始时间、预计恢复时间和用户动作；恢复后撤回紧急公告并保留操作记录。',
     verify: ['登录页和房间显示范围正确。','音乐与视频不会同时启用。','3D 立方体六面和速度在新客户端同步。','全屏公告不遮挡关闭控件并可撤回。'],
     pitfalls: ['公告只写“发生错误”而没有恢复动作。','上传超大登录媒体拖慢所有用户。','在联系方式里公开不愿公开的私人信息。','修改协议正文但不提高版本。'],
@@ -211,21 +211,23 @@ const modules = [
   },
   {
     slug: 'server-settings', folder: 'server', title: '服务器设置', role: '超级管理员或通过服务器管理员密码验证的账号',
-    summary: '管理公网 Tunnel、局域网、备份恢复、密码与房间号策略、屏蔽词、管理员密码和出厂重置。',
+    summary: '管理公网 Tunnel、局域网、本机免密入口、下载中心、备份恢复、密码与房间号策略、屏蔽词、管理员密码和出厂重置。',
     entry: ['先完成局域网基本测试', '打开管理中心', '点击“服务器设置”', '验证服务器管理员权限'],
     steps: [
-      ['确认本机服务','先打开 127.0.0.1 地址，确认登录、建房和播放可用，再处理网络。'],
+      ['确认本机服务','先打开 127.0.0.1 地址，确认登录、建房和播放可用；顶栏同时显示当前局域网 IP、端口和开放状态。'],
       ['配置局域网访问','启用同一 Wi-Fi 访问，允许正确的防火墙网络类型，并从另一设备测试。'],
       ['选择公网方式','首次使用选择临时地址；固定域名使用稳定 Tunnel 并填写完整令牌和根地址。'],
       ['运行网络诊断','检查本机端口、DNS、系统代理、VPN/TUN、TCP 443 与 TCP/UDP 7844。'],
       ['复制并验证公网地址','出现 HTTPS 地址后从外网设备测试 HTTP、WebSocket 和媒体 Range。'],
+      ['维护下载入口','从下载中心检查更新；缺少文件时只上传界面要求的 EXE、APK 或对应架构 DMG/ZIP。'],
+      ['限制本机免密','按需要分别关闭免密管理与免密入房，完成管理后使用“退出管理登录”。'],
       ['导出完整备份','选择全部数据与配置，确认账号、房间、媒体、聊天和密钥均在范围内。'],
       ['恢复前保护现场','停止服务，复制当前 Data 目录，再导入来源明确且版本兼容的备份。'],
       ['配置安全策略','设置密码字符与长度、过期天数、房间号规则和聊天屏蔽词。'],
       ['修改管理员密码','首次登录立即修改；新密码至少 8 位，不和房间密码或邮箱密码相同。'],
       ['谨慎使用出厂重置','此操作清空账户、房间、媒体、聊天和设置，只在有完整备份且确需重置时使用。']
     ],
-    features: [['公网访问模式','临时地址无需令牌；稳定隧道用于固定域名。'],['开启/关闭公网','启动或强制停止 cloudflared。'],['网络诊断与修复','检查 DNS、代理、网卡绑定和边缘连接。'],['局域网访问','控制同一网络设备是否能访问服务。'],['公网房间密码策略','开放公网前要求房间设置密码。'],['数据导入与导出','按模块或全部备份配置、账号、房间、媒体和聊天。'],['管理员密码','修改服务器管理入口密码。'],['用户密码规则','字符、最小/最大位数、过期天数和设备策略。'],['房间号规则','长度、字符集和可选正则。'],['聊天屏蔽词','服务端统一过滤聊天、弹幕、私聊和好友消息。'],['恢复出厂设置','清空本软件产生的数据与配置，不可撤销。']],
+    features: [['公网访问模式','临时地址无需令牌；稳定隧道用于固定域名。'],['开启/关闭公网','启动或强制停止 cloudflared。'],['网络诊断与修复','检查 DNS、代理、网卡绑定和边缘连接。'],['顶栏状态与更新','查看局域网 IP:端口和状态，打开 GitHub、Latest 与下载中心。'],['下载文件上传','把受校验的 Windows、Android 或 macOS 文件写入固定下载目标。'],['本机免密入口','分别控制回环设备免密管理与免密进入所选房间。'],['局域网访问','控制同一网络设备是否能访问服务。'],['公网房间密码策略','开放公网前要求房间设置密码。'],['数据导入与导出','按模块或全部备份配置、账号、房间、媒体和聊天。'],['管理员密码','修改服务器管理入口密码。'],['用户密码规则','字符、最小/最大位数、过期天数和设备策略。'],['房间号规则','长度、字符集和可选正则。'],['聊天屏蔽词','服务端统一过滤聊天、弹幕、私聊和好友消息。'],['恢复出厂设置','清空本软件产生的数据与配置，不可撤销。']],
     example: '第一次异地观影：本机和局域网成员先完成登录、建房、同步播放；设置房间密码并导出完整备份；打开临时公网地址，运行诊断，从手机移动网络测试登录、Socket.IO 和视频拖动，成功后再分享给可信成员。',
     verify: ['本机、局域网和公网三个层级分别通过。','关闭 Tunnel 后公网地址立即失效，本机服务仍可用。','备份恢复后账号、房间、uploads、secrets 和聊天完整。','密码与房间号策略对新操作生效且不会破坏现有数据。'],
     pitfalls: ['本机打不开时继续反复启动 Tunnel。','把 Tunnel Token 或管理员密码截图公开。','恢复前没有保留当前 Data 目录。','把出厂重置当成普通重启。'],
@@ -246,10 +248,10 @@ function renderModule(module, index) {
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101318"><meta name="description" content="${escapeHtml(module.title)}完整图文教程 | SyncWatch同步观影"><title>${escapeHtml(module.title)}完整教程 | SyncWatch同步观影</title><link rel="icon" href="../favicon.ico"><link rel="stylesheet" href="../assets/guide.css"><link rel="stylesheet" href="../assets/module-guide.css"><link rel="stylesheet" href="../assets/pro-max.css"></head>
 <body><!-- THESIS: 用真实管理界面讲清每个按钮的输入、结果与风险。 OWN-WORLD: 放映控制台、深色操作面与五张实机证据。 STORY: 找到入口、配置、保存、验证、再安全收尾。 FIRST VIEWPORT: 左侧任务说明，右侧鼠标可控的五画面 3D 监视器。 FORM: established-world Read surface / module-console-${module.folder}. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md. -->
 <a class="skip" href="#main">跳到正文</a><header class="guide-header"><div class="shell guide-topbar"><a class="guide-brand" href="../management-center.html">SyncWatch同步观影</a><nav class="guide-nav"><a href="../management-center.html">11 个模块</a><a href="../management-center-guide.html">完整管理教程</a><a href="../troubleshooting.html">错误处理</a><a href="https://github.com/xuange6610/SyncWatch">GitHub</a></nav></div></header>
-<main id="main"><section class="module-hero"><div class="shell module-hero-grid"><div><h1>${escapeHtml(module.title)}</h1><p>${escapeHtml(module.summary)}</p><div class="module-meta"><span><strong>适用权限：</strong>${escapeHtml(module.role)}</span><span><strong>截图：</strong>5 张真实 v2.1.9 界面</span></div><div class="hero-actions"><a class="button primary" href="#steps">开始逐步配置</a><a class="button" href="#gallery">查看实机图集</a></div></div><div class="module-stage" data-module-stage aria-label="${escapeHtml(module.title)}五张实机界面互动预览"><span class="module-stage__label" data-stage-label></span><i class="module-stage__signal"></i><div class="module-stage__screen"><img src="${imagePath(module.shots[0][0])}" alt="${escapeHtml(module.title)}实机界面"></div><div class="module-stage__rail">${stageButtons}</div></div></div></section>
+<main id="main"><section class="module-hero"><div class="shell module-hero-grid"><div><h1>${escapeHtml(module.title)}</h1><p>${escapeHtml(module.summary)}</p><div class="module-meta"><span><strong>适用权限：</strong>${escapeHtml(module.role)}</span><span><strong>截图：</strong>5 张真实 v2.2.0 界面</span></div><div class="hero-actions"><a class="button primary" href="#steps">开始逐步配置</a><a class="button" href="#gallery">查看实机图集</a></div></div><div class="module-stage" data-module-stage aria-label="${escapeHtml(module.title)}五张实机界面互动预览"><span class="module-stage__label" data-stage-label></span><i class="module-stage__signal"></i><div class="module-stage__screen"><img src="${imagePath(module.shots[0][0])}" alt="${escapeHtml(module.title)}实机界面"></div><div class="module-stage__rail">${stageButtons}</div></div></div></section>
 <section class="guide-section"><div class="shell"><div class="section-heading"><h2>怎样打开这个模块</h2><p>入口会随账号权限变化。普通成员看不到服务器管理员专属模块，这是正常的服务端权限结果。</p></div>${list(module.entry.map((item) => item), false, 'entry-path')}</div></section>
 <section id="steps" class="guide-section"><div class="shell"><div class="section-heading"><h2>从打开到验证的完整步骤</h2><p>一次只修改一类设置；看到保存成功后，再使用普通测试账号验证最终结果。</p></div><div class="module-content-grid"><ol class="module-steps">${module.steps.map(([title, detail]) => `<li><strong>${escapeHtml(title)}：</strong>${escapeHtml(detail)}</li>`).join('')}</ol><aside class="module-aside" data-tilt><h3>完整操作示例</h3><p>${escapeHtml(module.example)}</p><h3>常见误区</h3>${list(module.pitfalls)}</aside></div></div></section>
-<section class="guide-section paper"><div class="shell"><div class="section-heading"><h2>全部按钮、字段与结果</h2><p>字段名称以 v2.1.9 为准；不同平台、账号角色或功能开关可能隐藏不适用的项目。</p></div><table class="function-table"><thead><tr><th>按钮 / 字段</th><th>用途、结果与注意事项</th></tr></thead><tbody>${module.features.map(([name, detail]) => `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(detail)}</td></tr>`).join('')}</tbody></table></div></section>
+<section class="guide-section paper"><div class="shell"><div class="section-heading"><h2>全部按钮、字段与结果</h2><p>字段名称以 v2.2.0 为准；不同平台、账号角色或功能开关可能隐藏不适用的项目。</p></div><table class="function-table"><thead><tr><th>按钮 / 字段</th><th>用途、结果与注意事项</th></tr></thead><tbody>${module.features.map(([name, detail]) => `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(detail)}</td></tr>`).join('')}</tbody></table></div></section>
 <section id="gallery" class="guide-section"><div class="shell"><div class="section-heading"><h2>5 张对应模块的高清实机图</h2><p>每张图都从真实临时服务器的 ${escapeHtml(module.title)} 页面采集，没有复用其他模块截图。点击图片可查看原始尺寸，并用方向键切换。</p></div><div class="module-gallery">${gallery}</div></div></section>
 <section class="guide-section"><div class="shell"><div class="section-heading"><h2>保存后必须这样验证</h2><p>管理员页面显示成功只是第一层；还要用目标角色、目标设备和目标网络重复真实操作。</p></div><div class="validation">${list(module.verify)}</div></div></section>
 <div class="shell module-navline"><a href="${previous.slug}.html">← ${escapeHtml(previous.title)}</a><a href="../management-center.html">返回 11 个模块总览</a><a href="${next.slug}.html">${escapeHtml(next.title)} →</a></div></main>

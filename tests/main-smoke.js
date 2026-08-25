@@ -14,8 +14,8 @@ const dataDir = process.env.SYNCWATCH_DATA_DIR;
 
 const { _test: electronSettings } = require('../electron-pink');
 
-const driveDRoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: 'D:\\SyncWatch同步观影\\SyncWatch同步观影-v2.1.9.exe' });
-const driveERoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: 'E:\\SyncWatch同步观影\\SyncWatch同步观影-v2.1.9.exe' });
+const driveDRoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: 'D:\\SyncWatch同步观影\\SyncWatch同步观影-v2.2.0.exe' });
+const driveERoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: 'E:\\SyncWatch同步观影\\SyncWatch同步观影-v2.2.0.exe' });
 assert.equal(driveDRoot, path.resolve('D:\\SyncWatch同步观影'));
 assert.equal(driveERoot, path.resolve('E:\\SyncWatch同步观影'));
 assert.notEqual(driveDRoot, driveERoot);
@@ -24,25 +24,36 @@ assert.equal(electronSettings.resolveApplicationRoot({
   userDataPath: '/Users/example/Library/Application Support/SyncWatch同步观影-服务器'
 }), path.resolve('/Users/example/Library/Application Support/SyncWatch同步观影-服务器'));
 fs.mkdirSync(dataDir, { recursive: true });
-const packagedServerPath = path.join(dataDir, 'SyncWatch同步观影-v2.1.9.exe');
-const packagedClientPath = path.join(dataDir, 'SyncWatch同步观影-Client-v2.1.9.exe');
+const packagedServerPath = path.join(dataDir, 'SyncWatch同步观影-v2.2.0.exe');
+const packagedClientPath = path.join(dataDir, 'SyncWatch同步观影-Client-v2.2.0.exe');
 fs.writeFileSync(packagedClientPath, 'smoke-client');
-assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: packagedServerPath }), packagedClientPath);
-assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: path.join(dataDir, 'missing', 'SyncWatch同步观影-v2.1.9.exe') }), '');
+assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: packagedServerPath }), '');
+assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, resourcesPath: dataDir }), '');
+const embeddedClientPath = path.join(dataDir, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe');
+fs.mkdirSync(path.dirname(embeddedClientPath), { recursive: true });
+fs.writeFileSync(embeddedClientPath, 'embedded-client');
+assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, resourcesPath: dataDir }), embeddedClientPath);
+assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: path.join(dataDir, 'missing', 'SyncWatch同步观影-v2.2.0.exe') }), '');
 const macArtifacts = path.join(dataDir, 'mac');
 fs.mkdirSync(macArtifacts);
-const macServerArm64 = path.join(macArtifacts, 'SyncWatch同步观影-服务器-v2.1.9-arm64.dmg');
-const macServerX64Zip = path.join(macArtifacts, 'SyncWatch同步观影-服务器-v2.1.9-x64.zip');
-const macClientX64 = path.join(macArtifacts, 'SyncWatch同步观影-客户端-v2.1.9-x64.dmg');
-const macClientX64Zip = path.join(macArtifacts, 'SyncWatch同步观影-客户端-v2.1.9-x64.zip');
+const macServerArm64 = path.join(macArtifacts, 'SyncWatch同步观影-服务器-v2.2.0-arm64.dmg');
+const macServerX64Zip = path.join(macArtifacts, 'SyncWatch同步观影-服务器-v2.2.0-x64.zip');
+const macClientX64 = path.join(macArtifacts, 'SyncWatch同步观影-客户端-v2.2.0-x64.dmg');
+const macClientX64Zip = path.join(macArtifacts, 'SyncWatch同步观影-客户端-v2.2.0-x64.zip');
 fs.writeFileSync(macServerArm64, 'server-arm64');
 fs.writeFileSync(macServerX64Zip, 'server-x64-zip');
 fs.writeFileSync(macClientX64, 'client-x64');
 fs.writeFileSync(macClientX64Zip, 'client-x64-zip');
-assert.deepEqual(electronSettings.resolveMacDownloadPaths('server', { portableExecutableFile: packagedServerPath }), {
+assert.deepEqual(electronSettings.resolveMacDownloadPaths('server', { isPackaged: true, portableExecutableFile: packagedServerPath }), {
+  x64: { dmg: '', zip: '' }, arm64: { dmg: '', zip: '' }
+});
+assert.deepEqual(electronSettings.resolveMacDownloadPaths('client', { isPackaged: true, portableExecutableFile: packagedServerPath }), {
+  x64: { dmg: '', zip: '' }, arm64: { dmg: '', zip: '' }
+});
+assert.deepEqual(electronSettings.resolveMacDownloadPaths('server', { developmentDirectory: dataDir }), {
   x64: { dmg: '', zip: macServerX64Zip }, arm64: { dmg: macServerArm64, zip: '' }
 });
-assert.deepEqual(electronSettings.resolveMacDownloadPaths('client', { portableExecutableFile: packagedServerPath }), {
+assert.deepEqual(electronSettings.resolveMacDownloadPaths('client', { developmentDirectory: dataDir }), {
   x64: { dmg: macClientX64, zip: macClientX64Zip }, arm64: { dmg: '', zip: '' }
 });
 
@@ -58,6 +69,8 @@ console.log('✓ Electron 便携根目录按 EXE 所在文件夹隔离，不同�
 assert.equal(electronSettings.normalizeServerSettings({}).port, 5000);
 assert.equal(electronSettings.normalizeServerSettings({}).autostart, false);
 assert.equal(electronSettings.normalizeServerSettings({ autostart: true }).autostart, true);
+assert.equal(electronSettings.normalizeServerSettings({}).networkInterface, 'auto');
+assert.equal(electronSettings.normalizeServerSettings({ networkInterface: '  Ethernet  ' }).networkInterface, 'Ethernet');
 assert.equal(electronSettings.normalizeServerSettings({ publicUrl: 'http://Example.com:8080/' }).publicUrl, 'http://example.com:8080');
 assert.deepEqual(electronSettings.normalizeServerSettings({ allowedHosts: 'Movie.Example.com\nmovie.example.com:8443' }).allowedHosts, ['movie.example.com', 'movie.example.com:8443']);
 for (const port of [0, 'abc', 70000, undefined]) {
@@ -73,6 +86,20 @@ for (const publicUrl of [
   assert.throws(() => electronSettings.normalizeServerSettings({ publicUrl }), /publicUrl/);
 }
 console.log('✓ Electron 配置仅在缺少 port 时默认 5000，并严格拒绝非法端口和 publicUrl');
+
+const networkInterfaces = {
+  'vEthernet (WSL)': [{ address: '172.20.0.1', family: 'IPv4', internal: false }],
+  'Wi-Fi': [{ address: '192.168.1.23', family: 'IPv4', internal: false }],
+  Loopback: [{ address: '127.0.0.1', family: 'IPv4', internal: true }]
+};
+assert.equal(electronSettings.resolveLanAddress({ networkInterface: 'auto' }, networkInterfaces), '192.168.1.23');
+assert.equal(electronSettings.resolveLanAddress({ networkInterface: 'vEthernet (WSL)' }, networkInterfaces), '172.20.0.1');
+assert.equal(electronSettings.resolveLanAddress({ networkInterface: 'missing' }, networkInterfaces), '192.168.1.23');
+assert.deepEqual(electronSettings.selectableNetworkAdapters(networkInterfaces).map(({ name, address }) => ({ name, address })), [
+  { name: 'Wi-Fi', address: '192.168.1.23' },
+  { name: 'vEthernet (WSL)', address: '172.20.0.1' }
+]);
+console.log('✓ 启动网卡支持自动优选、手动指定与断线回退');
 
 assert.deepEqual(electronSettings.tunnelCommandArgs('quick', 5000), [
   'tunnel', '--url', 'http://127.0.0.1:5000', '--protocol', 'http2', '--edge-ip-version', '4', '--retries', '12', '--no-autoupdate'
@@ -151,4 +178,3 @@ process.on('exit', () => {
   try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch (_) {}
   console.log('✓ Electron 主入口、屏幕捕获授权处理器、托盘和服务器启动正常');
 });
-

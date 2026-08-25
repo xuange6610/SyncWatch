@@ -24,32 +24,32 @@ bash scripts/build-macos.sh
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-macos-portable.ps1
 ```
 
-发布到项目根目录的文件：
+生成到根目录 `dist/` 的文件：
 
-- `SyncWatch同步观影-服务器-v2.1.9-x64.dmg` / `.zip`
-- `SyncWatch同步观影-服务器-v2.1.9-arm64.dmg` / `.zip`
-- `SyncWatch同步观影-客户端-v2.1.9-x64.dmg` / `.zip`
-- `SyncWatch同步观影-客户端-v2.1.9-arm64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.0-x64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.0-arm64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.0-x64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.0-arm64.dmg` / `.zip`
 
-`dist-mac-server` 与 `dist-mac-client` 中保留相同构建副本；ZIP 适合企业内部分发和自动化部署。当前 Windows 发布机只生成 Windows EXE、APK 和服务器部署包，不会伪造 macOS 文件。
+不再在项目根目录或 `dist-mac-*` 保留重复副本。ZIP 适合企业内部分发和完整离线包内嵌；Windows 发布机不会伪造 macOS 文件。
 
 GitHub Release 使用仅含 ASCII 的公共下载名，避免平台上传接口删除中文后造成客户端与服务器同名覆盖：
 
-- `SyncWatch-Server-macOS-v2.1.9-x64.dmg` / `.zip`
-- `SyncWatch-Server-macOS-v2.1.9-arm64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.1.9-x64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.1.9-arm64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.0-x64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.0-arm64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.0-x64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.0-arm64.dmg` / `.zip`
 
 ## 下载产物如何发布
 
 服务器会自动检查以下位置（优先使用 DMG，没有 DMG 时使用 ZIP）：
 
 - 与服务器可执行文件同级的 `mac/`；
-- 项目根目录、`dist-mac-server/` 和 `dist-mac-client/`；
+- 项目根目录的 `dist/`；
 - 部署包中的 `mac/` 目录。
 
 文件名必须与以下格式一致：
-`SyncWatch同步观影-服务器-v2.1.9-x64.dmg`、`SyncWatch同步观影-服务器-v2.1.9-arm64.zip`（客户端同理）。只有真实存在且非空的文件才会出现在下载按钮和 `/api/public-config` 中。
+正式资产使用 `SyncWatch-Server-macOS-v2.2.0-x64.dmg`、`SyncWatch-Server-macOS-v2.2.0-arm64.zip`（客户端同理）。旧的中文本地文件名仍可被服务器兼容读取；只有真实存在且非空的文件才会出现在下载按钮和 `/api/public-config` 中。
 
 ### 从 HTTPS 发布站点提供产物
 
@@ -60,5 +60,3 @@ GitHub Release 使用仅含 ASCII 的公共下载名，避免平台上传接口�
 ## Windows 发布机的可交付边界
 
 Windows 无法生成可运行、可签名和可公证的 macOS DMG。请在 macOS 主机或 macOS CI 运行 `bash scripts/build-macos.sh`，然后将生成的 DMG/ZIP 放入上述目录，或上传到 HTTPS 发布站点并配置 manifest。未配置真实产物时界面显示“尚未提供”是正确状态，不应下载一个伪造文件。
-
-\n

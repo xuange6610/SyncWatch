@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing v-prefixed tag to build and upload (for example v2.1.9)
+        description: Existing v-prefixed tag to build and upload (for example v2.2.0)
         required: true
         type: string
 
@@ -30,7 +30,7 @@ jobs:
         run: |
           $tag = '${{ inputs.tag || github.ref_name }}'
           if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
-            throw "Release workflow requires a v-prefixed SemVer tag such as v2.1.9; received '$tag'."
+            throw "Release workflow requires a v-prefixed SemVer tag such as v2.2.0; received '$tag'."
           }
 
       - name: Setup Node.js
@@ -65,17 +65,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path mobile | Out-Null
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
           $tag = '${{ inputs.tag || github.ref_name }}'
-          gh release download $tag --repo '${{ github.repository }}' --pattern 'SyncWatch-Android-v2.1.9-universal.apk' --dir mobile --clobber
-          Copy-Item 'mobile/SyncWatch-Android-v2.1.9-universal.apk' 'mobile/SyncWatch同步观影-v2.1.9.apk' -Force
-          $apk = Get-Item 'mobile/SyncWatch-Android-v2.1.9-universal.apk'
+          gh release download $tag --repo '${{ github.repository }}' --pattern 'SyncWatch-Android-v2.2.0-universal.apk' --dir dist --clobber
+          $apk = Get-Item 'dist/SyncWatch-Android-v2.2.0-universal.apk'
           if ($apk.Length -lt 150MB) { throw 'The verified Android asset is unexpectedly small.' }
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $apk.FullName).Hash
           Write-Host "Using signed Android APK $($apk.Length) bytes SHA256 $hash"
-          if ($hash -ne '67E6B06080A52F52EE456353ADBF8CBB3EA625E0B1A7D176A737D8B80E4F6886') {
-            throw "The Android asset hash does not match the v2.1.9 verified APK: $hash"
-          }
+          node tests/android-package.test.js $apk.FullName
 
       - name: Build portable server and client
         shell: pwsh
@@ -83,25 +80,16 @@ jobs:
           npx electron-builder --win portable --publish never
           npm run build:client -- --publish never
 
-      - name: Upload Android 2.1.9 asset before offline packaging
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: pwsh
-        run: |
-          gh release upload '${{ inputs.tag || github.ref_name }}' 'mobile/SyncWatch-Android-v2.1.9-universal.apk' --repo '${{ github.repository }}' --clobber
-
       - name: Prepare Full offline bundle
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path release/offline-bundle/windows,release/offline-bundle/android,release/offline-bundle/mac | Out-Null
-          Copy-Item 'dist-client/SyncWatch同步观影-Client-v2.1.9.exe' 'release/offline-bundle/windows/SyncWatch同步观影-Client-v2.1.9.exe' -Force
-          Copy-Item 'mobile/SyncWatch同步观影-v2.1.9.apk' 'release/offline-bundle/android/SyncWatch同步观影-v2.1.9.apk' -Force
-          gh release download '${{ inputs.tag || github.ref_name }}' --repo '${{ github.repository }}' --pattern 'SyncWatch-Server-macOS-v2.1.9-*.zip' --dir release/offline-bundle/mac --clobber
-          gh release download '${{ inputs.tag || github.ref_name }}' --repo '${{ github.repository }}' --pattern 'SyncWatch-Client-macOS-v2.1.9-*.zip' --dir release/offline-bundle/mac --clobber
-          Get-ChildItem release/offline-bundle/mac -Filter 'SyncWatch-Server-macOS-*.zip' | ForEach-Object { Rename-Item $_.FullName ($_.Name -replace 'SyncWatch-Server-macOS-', 'SyncWatch同步观影-服务器-') }
-          Get-ChildItem release/offline-bundle/mac -Filter 'SyncWatch-Client-macOS-*.zip' | ForEach-Object { Rename-Item $_.FullName ($_.Name -replace 'SyncWatch-Client-macOS-', 'SyncWatch同步观影-客户端-') }
+          New-Item -ItemType Directory -Force -Path .build/offline-bundle/windows,.build/offline-bundle/android,.build/offline-bundle/mac | Out-Null
+          Copy-Item 'dist/SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe' '.build/offline-bundle/windows/SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe' -Force
+          Copy-Item 'dist/SyncWatch-Android-v2.2.0-universal.apk' '.build/offline-bundle/android/SyncWatch-Android-v2.2.0-universal.apk' -Force
+          gh release download '${{ inputs.tag || github.ref_name }}' --repo '${{ github.repository }}' --pattern 'SyncWatch-Server-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
+          gh release download '${{ inputs.tag || github.ref_name }}' --repo '${{ github.repository }}' --pattern 'SyncWatch-Client-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
           node scripts/verify-full-offline-bundle.js
 
       - name: Build Full installer and standalone EXE
@@ -113,29 +101,16 @@ jobs:
       - name: Collect release assets
         shell: pwsh
         run: |
-          $version = '2.1.9'
-          New-Item -ItemType Directory -Force -Path release\windows-installer | Out-Null
-          New-Item -ItemType Directory -Force -Path release\windows-full-portable | Out-Null
-          New-Item -ItemType Directory -Force -Path release\windows-server | Out-Null
-          New-Item -ItemType Directory -Force -Path release\windows-client | Out-Null
-          $installer = Get-ChildItem dist-installer -Filter *.exe | Select-Object -First 1
-          $fullPortable = Get-ChildItem dist-full-portable -Filter *.exe | Select-Object -First 1
-          $server = Get-ChildItem dist -Filter *.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          $client = Get-ChildItem dist-client -Filter *.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $installer -or -not $fullPortable -or -not $server -or -not $client) { throw 'A required Windows release package is missing.' }
-          Copy-Item $installer.FullName "release\windows-installer\SyncWatch-v$version-Full-Offline-Installer-x64.exe" -Force
-          Copy-Item $fullPortable.FullName "release\windows-full-portable\SyncWatch-v$version-Full-Offline-Portable-x64.exe" -Force
-          Copy-Item $server.FullName "release\windows-server\SyncWatch-Standard-Server-Portable-v$version-x64.exe" -Force
-          Copy-Item $client.FullName "release\windows-client\SyncWatch-Experience-Client-Portable-v$version-x64.exe" -Force
+          Get-ChildItem dist -Filter *.exe | Get-FileHash -Algorithm SHA256
 
       - name: Verify release tiers and embedded runtime
         shell: pwsh
         run: |
           $expected = @(
-            'release\windows-installer\SyncWatch-v2.1.9-Full-Offline-Installer-x64.exe',
-            'release\windows-full-portable\SyncWatch-v2.1.9-Full-Offline-Portable-x64.exe',
-            'release\windows-server\SyncWatch-Standard-Server-Portable-v2.1.9-x64.exe',
-            'release\windows-client\SyncWatch-Experience-Client-Portable-v2.1.9-x64.exe'
+            'dist\SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe',
+            'dist\SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe',
+            'dist\SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe',
+            'dist\SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe'
           )
           foreach ($file in $expected) {
             if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing release asset: $file" }
@@ -146,8 +121,8 @@ jobs:
             throw 'The Full and Standard server builds require the bundled cloudflared.exe.'
           }
           $fullPackages = @(
-            'release\windows-installer\SyncWatch-v2.1.9-Full-Offline-Installer-x64.exe',
-            'release\windows-full-portable\SyncWatch-v2.1.9-Full-Offline-Portable-x64.exe'
+            'dist\SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe',
+            'dist\SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe'
           )
           foreach ($file in $fullPackages) {
             if ((Get-Item -LiteralPath $file).Length -lt 1GB) {
@@ -163,7 +138,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SyncWatch-Windows-${{ inputs.tag || github.ref_name }}
-          path: release/windows-*/**
+          path: dist/*.exe
           if-no-files-found: error
 
       - name: Upload to GitHub Release
@@ -174,4 +149,4 @@ jobs:
           $tag = '${{ inputs.tag || github.ref_name }}'
           gh release view $tag --repo '${{ github.repository }}' *> $null
           if ($LASTEXITCODE -ne 0) { gh release create $tag --repo '${{ github.repository }}' --title "SyncWatch同步观影 $tag" --generate-notes }
-          gh release upload $tag release/windows-installer/*.exe release/windows-full-portable/*.exe release/windows-server/*.exe release/windows-client/*.exe --repo '${{ github.repository }}' --clobber
+          gh release upload $tag dist/*.exe --repo '${{ github.repository }}' --clobber

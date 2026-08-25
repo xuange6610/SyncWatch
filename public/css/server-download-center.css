@@ -1,0 +1,194 @@
+.header-line-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.server-endpoint-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 2.65rem;
+  padding: .38rem .62rem;
+  border: 1px solid color-mix(in srgb, var(--line, #4a4332) 76%, transparent);
+  border-radius: .78rem;
+  background: color-mix(in srgb, var(--panel, #171814) 88%, transparent);
+  color: var(--text, #f5f1e6);
+  white-space: nowrap;
+}
+
+.server-endpoint-badge > i {
+  width: .52rem;
+  height: .52rem;
+  border-radius: 50%;
+  background: #8a929a;
+  box-shadow: 0 0 0 .24rem rgb(138 146 154 / 12%);
+}
+
+.server-endpoint-badge > span {
+  display: grid;
+  gap: .08rem;
+  min-width: 0;
+}
+
+.server-endpoint-badge small {
+  color: var(--muted, #a6a299);
+  font-size: .66rem;
+  line-height: 1;
+}
+
+.server-endpoint-badge strong {
+  max-width: 13rem;
+  overflow: hidden;
+  color: inherit;
+  font: 650 .78rem/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-overflow: ellipsis;
+}
+
+.server-endpoint-badge > b {
+  padding: .2rem .38rem;
+  border-radius: 999px;
+  background: rgb(138 146 154 / 12%);
+  color: var(--muted, #a6a299);
+  font-size: .68rem;
+  font-weight: 650;
+}
+
+.server-endpoint-badge.is-open > i { background: #75d59b; box-shadow: 0 0 0 .24rem rgb(117 213 155 / 13%), 0 0 .75rem rgb(117 213 155 / 40%); }
+.server-endpoint-badge.is-open > b { background: rgb(117 213 155 / 12%); color: #9be5b7; }
+.server-endpoint-badge.is-local > i { background: #d3ad62; box-shadow: 0 0 0 .24rem rgb(211 173 98 / 13%); }
+.server-endpoint-badge.is-local > b { background: rgb(211 173 98 / 12%); color: #e5c780; }
+.server-endpoint-badge.is-offline > i { background: #e37c7c; box-shadow: 0 0 0 .24rem rgb(227 124 124 / 13%); }
+.server-endpoint-badge.is-offline > b { background: rgb(227 124 124 / 12%); color: #f2a1a1; }
+
+.login-host-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+  padding: .62rem;
+  border: 1px solid color-mix(in srgb, var(--line, #4a4332) 82%, transparent);
+  border-radius: .8rem;
+  background: color-mix(in srgb, var(--panel-soft, #202018) 68%, transparent);
+}
+
+.login-host-shortcuts > button {
+  width: auto;
+  min-height: 2.65rem;
+  padding: .62rem .82rem;
+  flex: 1 1 10rem;
+}
+
+.login-host-shortcuts > .primary-button { flex-basis: 13rem; }
+.login-host-shortcuts > .danger-button { flex-basis: 9rem; }
+
+.management-nav #managementSessionLogoutBtn {
+  margin-top: auto;
+  border-color: color-mix(in srgb, var(--danger, #ee737d) 48%, transparent);
+}
+
+.download-center-card {
+  width: min(94vw, 1120px);
+  max-height: min(88vh, 900px);
+  overflow: auto;
+}
+
+.download-center-heading {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.download-center-heading h2 { margin-bottom: .35rem; }
+.download-center-heading p { max-width: 58rem; }
+
+.download-center-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .48rem;
+  flex: 0 0 auto;
+}
+
+.download-center-actions button { min-height: 2.7rem; padding: .58rem .78rem; }
+
+.download-center-table-wrap {
+  margin-top: .85rem;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--line, #4a4332) 80%, transparent);
+  border-radius: .78rem;
+}
+
+.download-center-table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: collapse;
+  background: color-mix(in srgb, var(--panel, #171814) 92%, transparent);
+}
+
+.download-center-table th,
+.download-center-table td {
+  padding: .78rem .85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--line, #4a4332) 58%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--line, #4a4332) 45%, transparent);
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.download-center-table th:last-child,
+.download-center-table td:last-child { border-right: 0; }
+.download-center-table tbody tr:last-child td { border-bottom: 0; }
+.download-center-table thead th { position: sticky; top: 0; z-index: 1; background: var(--panel-strong, #24231d); color: var(--text, #f5f1e6); }
+.download-center-table td:first-child { width: 38%; overflow-wrap: anywhere; }
+.download-center-table a { color: var(--accent-bright, #e7c978); text-underline-offset: .2em; }
+
+.download-asset-upload-list {
+  display: grid;
+  gap: .55rem;
+  margin-top: .75rem;
+}
+
+.download-asset-upload-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) auto minmax(14rem, 1.35fr) auto;
+  align-items: center;
+  gap: .6rem;
+  padding: .65rem;
+  border: 1px solid color-mix(in srgb, var(--line, #4a4332) 66%, transparent);
+  border-radius: .72rem;
+  background: color-mix(in srgb, var(--panel-soft, #202018) 66%, transparent);
+}
+
+.download-asset-upload-row > span { display: grid; gap: .15rem; min-width: 0; }
+.download-asset-upload-row small { color: var(--muted, #a6a299); overflow-wrap: anywhere; }
+.download-asset-upload-row input[type="file"] { min-width: 0; width: 100%; }
+.download-asset-upload-row select { min-width: 9rem; }
+.download-asset-upload-row button { min-height: 2.65rem; white-space: nowrap; }
+
+@media (max-width: 960px) {
+  .server-endpoint-badge { max-width: 16rem; }
+  .download-center-heading { display: grid; }
+  .download-center-actions { justify-content: flex-start; }
+  .download-asset-upload-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .download-asset-upload-row input[type="file"] { grid-column: 1 / -1; }
+}
+
+@media (max-width: 620px) {
+  .login-host-shortcuts > button { flex-basis: calc(50% - .3rem); min-width: 0; font-size: .8rem; }
+  .server-endpoint-badge { width: 100%; max-width: none; justify-content: flex-start; }
+  .server-endpoint-badge strong { max-width: calc(100vw - 9.5rem); }
+  .server-endpoint-badge > b { margin-left: auto; }
+  .download-center-card { width: min(96vw, 1120px); max-height: 92vh; padding: 1rem; }
+  .download-center-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .download-center-actions > :first-child { grid-column: 1 / -1; }
+  .download-center-actions button { width: 100%; }
+  .download-asset-upload-row { grid-template-columns: 1fr; }
+  .download-asset-upload-row input[type="file"] { grid-column: auto; }
+  .download-asset-upload-row button,
+  .download-asset-upload-row select { width: 100%; }
+}

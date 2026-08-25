@@ -80,10 +80,18 @@ async function main() {
   const electron = fs.readFileSync(path.resolve(__dirname, '..', 'electron-pink.js'), 'utf8');
   assert.match(html, /id="backgroundUploadBtn"/);
   assert.match(html, /id="mediaProcessingConcurrency"[\s\S]*value="3"/);
+  assert.match(html, /id="mediaCompatibilityAutoConvert"[^>]*checked/);
   assert.match(html, /id="openConvertedMediaFolderBtn"/);
   assert.match(app, /playerSeekDragging[\s\S]*playerSeekTarget/);
   assert.match(app, /explicitTime\s*!==\s*null\s*&&\s*explicitTime\s*!==\s*undefined/);
   assert.match(app, /const attempts = action === 'seek' \? 2 : 1/);
+  assert.match(app, /emitAck\('media-processing-cancel',\s*\{\s*taskId\s*\}/);
+  assert.match(app, /data-media-processing-action="stop"/);
+  const serverSource = fs.readFileSync(path.resolve(__dirname, '..', 'server', 'index.js'), 'utf8');
+  assert.match(serverSource, /onSafe\('media-processing-cancel'/);
+  assert.match(serverSource, /manualReason:\s*'user-stopped'/);
+  assert.match(serverSource, /'-c:v',\s*'copy'/);
+  assert.doesNotMatch(serverSource.match(/function compatibilityOutputArguments[\s\S]*?\n  }/)[0], /'-r',\s*'30'/);
   assert.match(preload, /openConvertedMediaFolder:\s*\(\)\s*=>\s*ipcRenderer\.invoke\('syncwatch:open-compatible-media-folder'\)/);
   assert.match(electron, /event\.sender\s*!==\s*mainWindow\.webContents[\s\S]{0,500}compatible-media/);
 
@@ -98,9 +106,10 @@ async function main() {
     let status = await ack(socket, 'media-processing-status');
     assert.equal(status.success, true, status.error);
     assert.equal(status.status.concurrency, 3);
+    assert.equal(status.status.autoConvert, true);
     assert.equal(status.status.maximumConcurrency, 8);
     assert.equal(status.status.canConfigure, true);
-    assert.deepEqual(status.status.counts, { total: 0, converting: 0, queued: 0, completed: 0, failed: 0, unavailable: 0, native: 0 });
+    assert.deepEqual(status.status.counts, { total: 0, converting: 0, queued: 0, manual: 0, completed: 0, failed: 0, unavailable: 0, native: 0 });
 
     const remote = await ack(socket, 'add-remote-video', {
       name: '保留影片的处理记录.mp4', url: 'https://example.com/keep-media.mp4'
@@ -155,16 +164,19 @@ async function main() {
     assert.match(invalid.error, /1-8/);
 
     const changedEvent = once(socket, 'media-processing-updated');
-    const changed = await ack(socket, 'admin-action', { action: 'set-media-processing', concurrency: 5 });
+    const changed = await ack(socket, 'admin-action', { action: 'set-media-processing', concurrency: 5, autoConvert: false });
     assert.equal(changed.success, true, changed.error);
     assert.equal(changed.status.concurrency, 5);
+    assert.equal(changed.status.autoConvert, false);
     assert.equal((await changedEvent).concurrency, 5);
     const settings = await ack(socket, 'admin-action', { action: 'get-settings' });
     assert.equal(settings.admin.mediaCompatibilityConcurrency, 5);
+    assert.equal(settings.admin.mediaCompatibilityAutoConvert, false);
 
     socket.disconnect(); socket = null;
     await server.close(); server = null;
     assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8')).admin.mediaCompatibilityConcurrency, 5);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8')).admin.mediaCompatibilityAutoConvert, false);
 
     server = await launch(dataDir);
     baseUrl = `http://127.0.0.1:${server.port}`;
@@ -173,6 +185,7 @@ async function main() {
     hostLogin = await loginHost(socket, publicConfig.roomId);
     status = await ack(socket, 'media-processing-status');
     assert.equal(status.status.concurrency, 5);
+    assert.equal(status.status.autoConvert, false);
     assert.equal(status.status.tasks.some((task) => task.id === remoteFileId), false,
       '处理记录的清理状态应随账号持久化');
     const filesAfterRestart = await (await fetch(`${baseUrl}/api/files`, {

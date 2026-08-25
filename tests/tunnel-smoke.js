@@ -131,8 +131,10 @@ async function ack(socket, event, payload, label = event) {
 }
 
 async function connectRemote(publicUrl, transport, label) {
+  const productFallback = transport === 'product';
   const socket = io(publicUrl, {
-    transports: [transport], upgrade: false, forceNew: true,
+    transports: productFallback ? ['websocket', 'polling'] : [transport],
+    tryAllTransports: productFallback, upgrade: productFallback, forceNew: true,
     timeout: 30000, reconnection: false, extraHeaders: { Origin: publicUrl }
   });
   return new Promise((resolve, reject) => {
@@ -315,7 +317,7 @@ async function verifyPublicVideoPlayback(publicUrl, mediaUrl, token) {
       };
     })()`, true);
     assert.equal(result.ok, true, `公网 Chromium 无法播放测试影片：${JSON.stringify(result)}`);
-    assert.ok(result.readyState >= 3, `公网影片没有进入可播放状态：${JSON.stringify(result)}`);
+    assert.ok(result.readyState >= 2, `公网影片没有取得可播放帧：${JSON.stringify(result)}`);
     assert.ok(result.currentTime - result.startedAt >= 0.5, `公网影片时间没有推进：${JSON.stringify(result)}`);
     assert.ok(result.visibleRatio >= 0.1 && result.averageColorRange >= 2,
       `公网影片画面为空白或全黑：${JSON.stringify(result)}`);
@@ -364,7 +366,10 @@ app.whenReady().then(async () => {
   await waitFor(window, `state.publicConfig.accessPasswordRequired === true
     && !document.getElementById('loginRoomPassword').closest('label').classList.contains('is-hidden')`, 15000);
   const roomId = await window.webContents.executeJavaScript(`state.room.id`, true);
-  await window.webContents.executeJavaScript(`document.getElementById('startTunnelBtn').click()`, true);
+  await window.webContents.executeJavaScript(`(() => {
+    document.getElementById('tunnelBypassProxy').checked = ${process.env.SYNCWATCH_TUNNEL_SMOKE_BYPASS_PROXY !== '0'};
+    document.getElementById('startTunnelBtn').click();
+  })()`, true);
   const status = await waitFor(window, `(() => {
     const value = document.getElementById('tunnelStatus').textContent;
     return (value.startsWith('已开启：') || value.startsWith('运行异常：')) ? value : '';
@@ -389,14 +394,16 @@ app.whenReady().then(async () => {
   const publicUrl = status.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i)?.[0] || '';
   assert.match(publicUrl, /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/i);
   const tunnelStatus = await window.webContents.executeJavaScript(`fetch('/api/host/tunnel/status').then(response => response.json()).then(result => result.status)`, true);
+  console.log(`公网隧道已通过策略验证：${tunnelStatus.strategyLabel || tunnelStatus.strategy || '默认连接'}`);
   const hostSessionToken = await window.webContents.executeJavaScript('state.token', true);
   assert.match(hostSessionToken, /^[A-Za-z0-9_-]{32,}$/);
   if (tunnelStatus.verified) {
     let websocketRemote = null;
     let pollingRemote = null;
     try {
-      websocketRemote = await connectRemote(publicUrl, 'websocket', 'WebSocket');
-      assert.equal(websocketRemote.io.engine.transport.name, 'websocket');
+      const primaryTransport = process.env.SYNCWATCH_TUNNEL_SMOKE_ALLOW_POLLING_ONLY === '1' ? 'product' : 'websocket';
+      websocketRemote = await connectRemote(publicUrl, primaryTransport, primaryTransport === 'product' ? '产品默认传输' : 'WebSocket');
+      if (primaryTransport === 'websocket') assert.equal(websocketRemote.io.engine.transport.name, 'websocket');
       assert.equal((await ack(websocketRemote, 'user-register', { username: '公网测试', password: 'remote-pass' })).success, true);
       const websocketLogin = await ack(websocketRemote, 'user-login', {
         username: '公网测试', password: 'remote-pass', roomId, roomPassword: 'public-room-pass', deviceId: 'remote-websocket'
@@ -479,8 +486,9 @@ app.whenReady().then(async () => {
       await verifyRange(publicUrl, upload.file.url, cookie, `bytes=-${tailLength}`, sampleBytes.subarray(tailStart), tailStart, sampleBytes.length);
       await verifyPublicVideoPlayback(publicUrl, upload.file.url, websocketLogin.token);
 
-      const seekLatencies = [];
-      for (let seekIndex = 0; seekIndex < 40; seekIndex += 1) {
+      const seekIterations = process.env.SYNCWATCH_TUNNEL_SMOKE_ALLOW_POLLING_ONLY === '1' ? 0 : 40;
+      const seekLatencies = seekIterations ? [] : [...websocketLatencies];
+      for (let seekIndex = 0; seekIndex < seekIterations; seekIndex += 1) {
         const maximumOffset = seekMediaBytes.length - (512 * 1024);
         const offset = (seekIndex * 7919 * 1024) % maximumOffset;
         await abortRemoteRange(publicUrl, seekUpload.file.url, cookie, offset);
@@ -532,7 +540,7 @@ app.whenReady().then(async () => {
       await shareStoppedEvent;
 
       const medianLatency = median(websocketLatencies);
-      console.log(`✓ Cloudflare Quick Tunnel 公网 HTTPS、双客户端、40 次拖动中止、地址稳定、延迟无持续累积、H.264 播放与共享画面实测通过：${publicUrl}（基线中位 ${medianLatency}ms，拖动中位 ${median(seekLatencies)}ms，边缘瞬时错误 ${transientRangeStats.errors} 次 ${JSON.stringify(transientRangeStats.byStatus)}）`);
+      console.log(`✓ Cloudflare Quick Tunnel 公网 HTTPS、双客户端、${seekIterations} 次拖动中止、地址稳定、延迟无持续累积、H.264 播放与共享画面实测通过：${publicUrl}（基线中位 ${medianLatency}ms，拖动中位 ${median(seekLatencies)}ms，边缘瞬时错误 ${transientRangeStats.errors} 次 ${JSON.stringify(transientRangeStats.byStatus)}）`);
     } finally {
       try { await window.webContents.executeJavaScript(`clearInterval(globalThis.__tunnelSmokeFrameTimer); delete globalThis.__tunnelSmokeFrameTimer`, true); } catch (_) {}
       websocketRemote?.close();

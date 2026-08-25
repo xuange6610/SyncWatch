@@ -1,6 +1,6 @@
 # SyncWatch同步观影 技术架构、模块与依赖说明
 
-适用版本：v2.1.9
+适用版本：v2.2.0
 文档日期：2026-08-19
 
 ## 1. 项目定位
@@ -329,7 +329,7 @@ npm run start:server
 powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
 ```
 
-该脚本会先构建并验证 APK，再执行接口、硬化、媒体、Electron、同步、主进程、穿透和成品测试，最后原子替换 `release/windows-server/SyncWatch同步观影-v2.1.9.exe`，并同步生成 Windows 客户端和服务器部署包。
+该脚本会先运行完整回归，再构建并验证签名 APK、Windows 标准服务器和体验客户端；所有正式候选直接写入根目录 `dist/`。完整离线 EXE 只有在同一目录存在真实 macOS x64/arm64 ZIP 后才继续构建。
 
 ### 7.4 生成 Android APK
 
@@ -345,7 +345,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\mobile\build-apk.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build-server-package.ps1
 ```
 
-产物为 `release/server-deployment/SyncWatch同步观影-Server-v2.1.9.zip`，包含服务器源码、网页、APK、启动脚本、Docker 文件、部署文档和锁定的 Windows x64 生产依赖，不包含 Electron、测试目录、开发缓存和 Android 私钥。
+独立服务器 ZIP 是部署辅助包，由 `build-server-package.ps1` 默认生成到 `.build/server-deployment/`；它不属于正式 Release 的固定 26 项资产，也不会混入根目录 `dist/` 的 28 文件集合。
 
 ## 8. 测试体系
 

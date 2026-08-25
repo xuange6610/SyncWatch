@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 $NodeMobileVersion = '18.20.4'
@@ -514,9 +514,10 @@ if ($env:SYNCWATCH_ANDROID_OFFLINE -eq '1') { $gradleArgs = @('--offline') + $gr
 if ($LASTEXITCODE -ne 0) { throw 'Android release build failed.' }
 
 $builtApk = Join-Path $PSScriptRoot 'app\build\outputs\apk\release\app-release.apk'
-$deliveryApk = Join-Path $PSScriptRoot 'SyncWatch同步观影-v2.1.9.apk'
-$releaseApk = Join-Path $PSScriptRoot 'SyncWatch-Android-v2.1.9-universal.apk'
+$distRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\dist'))
+$deliveryApk = Join-Path $distRoot 'SyncWatch-Android-v2.2.0-universal.apk'
 if (-not (Test-Path -LiteralPath $builtApk)) { throw 'Gradle completed without the expected release APK.' }
+New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
 $buildTools = Join-Path $sdk 'build-tools\35.0.0'
 $aapt = Join-Path $buildTools 'aapt.exe'
@@ -530,7 +531,7 @@ try {
     $aaptExitCode = $LASTEXITCODE
     $badging = $badgingOutput | Select-Object -First 1
     if ($aaptExitCode -ne 0 -or $badging -notmatch "name='com\.xuan\.syncwatch'" -or
-        $badging -notmatch "versionCode='20109'" -or $badging -notmatch "versionName='2\.1\.9'") {
+        $badging -notmatch "versionCode='20200'" -or $badging -notmatch "versionName='2\.2\.0'") {
         throw "APK package metadata verification failed: $badging"
     }
 
@@ -576,7 +577,15 @@ try {
     }
 
     if (Test-Path -LiteralPath $deliveryApk -PathType Leaf) {
-        [System.IO.File]::Replace($stagedApk, $deliveryApk, $backupApk, $true)
+        for ($attempt = 1; $attempt -le 20; $attempt++) {
+            try {
+                [System.IO.File]::Replace($stagedApk, $deliveryApk, $backupApk, $true)
+                break
+            } catch [System.IO.IOException] {
+                if ($attempt -eq 20) { throw }
+                Start-Sleep -Milliseconds 250
+            }
+        }
         $deliveryWasReplaced = $true
     } else {
         [System.IO.File]::Move($stagedApk, $deliveryApk)
@@ -608,10 +617,7 @@ try {
 
 $apkInfo = Get-Item -LiteralPath $deliveryApk
 $apkHash = Get-Sha256 $deliveryApk
-Copy-Item -LiteralPath $deliveryApk -Destination $releaseApk -Force
-if ((Get-Sha256 $releaseApk) -ne $apkHash) { throw 'ASCII release APK copy verification failed.' }
 Write-Host "Build complete: $deliveryApk" -ForegroundColor Green
-Write-Host "Release asset: $releaseApk" -ForegroundColor Green
 Write-Host "Size: $($apkInfo.Length) bytes" -ForegroundColor Green
 Write-Host "SHA256: $apkHash" -ForegroundColor Green
 

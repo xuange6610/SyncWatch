@@ -13,7 +13,7 @@ if (!root || !fs.existsSync(path.join(root, 'server-standalone.js'))) {
   throw new Error('Usage: node tests/standalone-package-smoke.js <extracted-server-root>');
 }
 if (!/path\.join\(ROOT_DIR,\s*['"]mobile['"],\s*['"]SyncWatch同步观影-v2\.1\.8\.apk['"]\)/.test(fs.readFileSync(path.join(root, 'server-standalone.js'), 'utf8'))) {
-  throw new Error('standalone server must expose the packaged SyncWatch同步观影-v2.1.9.apk');
+  throw new Error('standalone server must expose the packaged SyncWatch同步观影-v2.2.0.apk');
 }
 if (!fs.existsSync(path.join(root, 'server', 'standalone-tunnel.js'))
   || !fs.existsSync(path.join(root, 'vendor', 'cloudflared.exe'))) {
@@ -22,11 +22,11 @@ if (!fs.existsSync(path.join(root, 'server', 'standalone-tunnel.js'))
 if (!fs.readFileSync(path.join(root, 'server-standalone.js'), 'utf8').includes('createStandaloneTunnelManager')) {
   throw new Error('standalone server must wire the cloudflared supervisor into startSyncWatchServer');
 }
-const packagedClientPath = path.join(root, 'SyncWatch同步观影-Client-v2.1.9.exe');
+const packagedClientPath = path.join(root, 'SyncWatch同步观影-Client-v2.2.0.exe');
 if (!fs.existsSync(packagedClientPath) || fs.statSync(packagedClientPath).size < 1024 * 1024) {
   throw new Error('standalone package must contain the canonical Windows client at its Docker context root');
 }
-if (!fs.readFileSync(path.join(root, 'Dockerfile'), 'utf8').includes('COPY SyncWatch同步观影-Client-v2.1.9.exe ./client/SyncWatch同步观影-Client-v2.1.9.exe')) {
+if (!fs.readFileSync(path.join(root, 'Dockerfile'), 'utf8').includes('COPY SyncWatch同步观影-Client-v2.2.0.exe ./client/SyncWatch同步观影-Client-v2.2.0.exe')) {
   throw new Error('standalone Dockerfile must copy the packaged Windows client into the runtime client directory');
 }
 

@@ -225,7 +225,7 @@ async function testTemporarilyUnavailableMediaSurvives() {
 
 async function main() {
   await testTemporarilyUnavailableMediaSurvives();
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-v2.1.9-integration-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-v2.2.0-integration-'));
   const publicDir = path.resolve(__dirname, '..', 'public');
   const clients = [];
   let server;
@@ -269,7 +269,7 @@ async function main() {
     baseUrl = `http://127.0.0.1:${server.port}`;
 
     const config = await json(await fetch(`${baseUrl}/api/public-config`));
-    assert.equal(config.response.status, 200); assert.equal(config.payload.version, 'v2.1.9');
+    assert.equal(config.response.status, 200); assert.equal(config.payload.version, 'v2.2.0');
     assert.equal(config.payload.downloadButtonsVisible, true);
     assert.equal(config.payload.maxUploadBytes, 10 * 1024 * 1024 * 1024); assert.equal(config.payload.uploadTimeLimitSeconds, 0);
     assert.equal(config.payload.defaultPlaybackQuality, 'original');
@@ -291,7 +291,7 @@ async function main() {
     const waitingRoom = initialRooms.rooms.find((room) => room.name === '系统候场室');
     assert.ok(waitingRoom, '公开房间扫描应包含正式的系统候场室');
     assert.equal(waitingRoom.temporary, false, '系统候场室应标注为正式房间');
-    check('公开配置为 v2.1.9，默认账户上传额度和时长配置已返回');
+    check('公开配置为 v2.2.0，默认账户上传额度和时长配置已返回');
 
     const sameOriginSocket = await makeClient({ Origin: baseUrl }); sameOriginSocket.close();
     await assert.rejects(() => new SocketTestClient(baseUrl, { Origin: 'http://evil.invalid' }).connect(), /403|Unexpected server response|socket hang up/i);
@@ -437,7 +437,7 @@ async function main() {
     await verifyRecoveryEmail(earlyRecoveryClient, '恢复用户', 'recover@example.com', 'old-recover-pass', 'early-recovery-device');
     const missingRecovery = await earlyRecoveryClient.emit('password-reset-request', { scope: 'account', identifier: '不存在的账号' });
     const knownRecovery = await earlyRecoveryClient.emit('password-reset-request', { scope: 'account', identifier: '恢复用户' });
-    // v2.1.9 explicitly reports an unknown account/mailbox. Keep accepting the
+    // v2.2.0 explicitly reports an unknown account/mailbox. Keep accepting the
     // legacy privacy-masked response so this integration suite remains useful
     // against older deployments during migration.
     if (missingRecovery.success !== false) assert.deepEqual(missingRecovery, knownRecovery, '不存在的账号与真实账号必须返回完全相同的恢复响应');
@@ -1376,7 +1376,7 @@ async function main() {
     assert.equal(standaloneRoomLogin.capabilities.serverHost, true);
     check('独立服务本机房主新建、退出并重进其他房间后仍保留服务器主机能力');
 
-    console.log(`\n全部 ${checks} 项 v2.1.9 集成检查通过。`);
+    console.log(`\n全部 ${checks} 项 v2.2.0 集成检查通过。`);
   } finally {
     for (const client of clients) client.close();
     if (server) await server.close().catch(() => {});

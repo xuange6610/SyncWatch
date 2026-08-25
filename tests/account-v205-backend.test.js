@@ -87,6 +87,8 @@ async function main() {
     const baseUrl = `http://127.0.0.1:${server.port}`;
     const publicConfig = await (await fetch(`${baseUrl}/api/public-config`)).json();
     const roomId = publicConfig.roomId;
+    assert.equal(publicConfig.locationStatusNoticesEnabled, true);
+    assert.equal(publicConfig.locationAuthorizationRequestsEnabled, true);
 
     const admin = await connect(baseUrl); sockets.push(admin);
     const adminLogin = await ack(admin, 'host-admin-login', {
@@ -203,11 +205,39 @@ async function main() {
     assert.equal(requestedLocation.success, true, requestedLocation.error);
     assert.equal((await requestLocationEvent).username, 'V205Alice');
 
+    const disabledLocationNotices = await ack(admin, 'admin-action', {
+      action: 'set-notice-preferences', f11PromptEnabled: true, initialPasswordReminderEnabled: true,
+      downloadButtonsVisible: true, locationStatusNoticesEnabled: false, locationAuthorizationRequestsEnabled: false
+    });
+    assert.equal(disabledLocationNotices.success, true, disabledLocationNotices.error);
+    let unexpectedLocationStatus = false;
+    const unexpectedLocationListener = () => { unexpectedLocationStatus = true; };
+    admin.on('member-location-status', unexpectedLocationListener);
+    const silentLocationUpdate = await ack(alice, 'member-location', { status: 'denied' });
+    assert.equal(silentLocationUpdate.success, true, silentLocationUpdate.error);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    admin.off('member-location-status', unexpectedLocationListener);
+    assert.equal(unexpectedLocationStatus, false, 'disabled server location status notices must not be emitted');
+    const disabledLocationRequest = await ack(admin, 'member-location-request', { username: 'V205Alice' });
+    assert.equal(disabledLocationRequest.success, false);
+    assert.equal(disabledLocationRequest.code, 'LOCATION_REQUESTS_DISABLED');
+    const unrelatedPreferenceUpdate = await ack(admin, 'admin-action', {
+      action: 'set-notice-preferences', f11PromptEnabled: false
+    });
+    assert.equal(unrelatedPreferenceUpdate.success, true, unrelatedPreferenceUpdate.error);
+    assert.equal(unrelatedPreferenceUpdate.locationStatusNoticesEnabled, false);
+    assert.equal(unrelatedPreferenceUpdate.locationAuthorizationRequestsEnabled, false);
+    const disabledPublicConfig = await (await fetch(`${baseUrl}/api/public-config`)).json();
+    assert.equal(disabledPublicConfig.locationStatusNoticesEnabled, false);
+    assert.equal(disabledPublicConfig.locationAuthorizationRequestsEnabled, false);
+
     const persisted = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8'));
     const storedMedia = persisted.admin.mediaManagementRequests.find((entry) => entry.id === mediaRequest.request.id);
     assert.equal(storedMedia.status, 'approved');
     assert.equal(persisted.rooms[roomId].mediaManagementGrants.V205Alice, true);
-    console.log('account v2.1.9 backend protocol regression passed');
+    assert.equal(persisted.admin.locationStatusNoticesEnabled, false);
+    assert.equal(persisted.admin.locationAuthorizationRequestsEnabled, false);
+    console.log('account v2.2.0 backend protocol regression passed');
   } finally {
     for (const socket of sockets) socket.close();
     await server?.close().catch(() => {});
@@ -216,6 +246,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('account v2.1.9 backend regression failed:', error);
+  console.error('account v2.2.0 backend regression failed:', error);
   process.exitCode = 1;
 });

@@ -1,8 +1,8 @@
 # SyncWatch同步观影 服务器部署与使用教程
 
-适用版本：v2.1.9（2026-08-06）
+适用版本：v2.2.0（2026-08-06）
 
-本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的目录均以解压后的 `SyncWatch同步观影-Server-v2.1.9/` 为例。
+本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的目录均以解压后的 `SyncWatch同步观影-Server-v2.2.0/` 为例。
 
 ## 1. 先理解“程序”和“数据”
 
@@ -76,10 +76,10 @@ SyncWatch同步观影 的网页、聊天和同步状态本身很轻，真正消�
 解压后至少应看到：
 
 ```text
-SyncWatch同步观影-Server-v2.1.9/
+SyncWatch同步观影-Server-v2.2.0/
 ├─ server/
 ├─ public/
-├─ mobile/SyncWatch同步观影-v2.1.9.apk
+├─ dist/SyncWatch-Android-v2.2.0-universal.apk
 ├─ node_modules/
 ├─ SyncWatch同步观影-Data/
 │  └─ server-config.json
@@ -94,6 +94,17 @@ SyncWatch同步观影-Server-v2.1.9/
 ## 4. 自定义端口和公网地址
 
 默认端口为 `5000`。当指定端口被占用时，服务器会自动随机选择一个可用端口，并把实际端口写入 `SyncWatch同步观影-Data/服务器运行信息.txt`。
+
+### Windows 桌面服务器的网卡选择
+
+Windows EXE 首次启动时会监听所有本机 IPv4 网卡的 `5000` 端口，并自动选择首选物理网卡作为局域网分享入口。需要固定使用有线、Wi-Fi、VPN 或 TUN 中的某一个 IPv4 时：
+
+1. 在服务器窗口左上角打开“系统 → 服务器启动设置”。
+2. 端口保持 `5000`，在“局域网网卡”选择“自动选择（推荐）”或具体的“网卡名称 · IPv4”。
+3. 点击“保存并自动重启”。窗口会先释放数据目录锁和端口，再重新启动；关闭服务失败时不会强行重启。
+4. 重启后在“系统 → 复制局域网地址”查看结果，用同一网络的手机打开该地址验证。
+
+手动网卡断开、IP 变化或不再存在时，启动不会失败，而是自动回退到当前可用网卡。`127.0.0.1` 本机管理入口始终保留。网卡选择控制 SyncWatch 接受哪个本机 IPv4 上的局域网请求；Windows 防火墙属于系统权限，首次提示时仍需手工允许专用网络，或按本章后文添加入站规则。
 
 端口优先级从高到低为：
 
@@ -145,6 +156,15 @@ PORT=7000 ./start-server.sh
 ```
 
 `publicUrl` 必须是完整的 `http://` 或 `https://` 根地址，不要附加 `/syncwatch` 等子路径；`allowedHosts` 只写 `主机名` 或 `主机名:端口`，不要写协议和路径。环境变量 `SYNCWATCH_ALLOWED_HOSTS` 可使用英文逗号分隔多个值。
+
+Windows EXE 可直接在“系统 → 服务器启动设置 → 公网根地址”填写同一值。正确填写顺序是：
+
+1. 先把域名 DNS 指向公网入口，并在 Caddy/Nginx/Cloudflare 配置可用的 HTTPS 证书与 WebSocket 反向代理。
+2. 从外部网络验证 `https://watch.example.com/api/public-config` 能打开。
+3. 再填写 `https://watch.example.com`。只填协议、主机名和可选端口，不填账号、密码、查询参数、`#` 片段或子路径。
+4. 保存自动重启后，该地址作为分享地址和 Host/Origin 信任校验；如果当前有已验证的 Cloudflare Tunnel，分享时优先显示 Tunnel 地址，Tunnel 停止后回退至该公网根地址。
+
+此字段不会代为购买域名、配置 DNS、申请证书、设置路由器端口转发或启动反向代理。仅使用 Cloudflare 临时公网访问时可以留空。
 
 ## 5. Windows Server 直接部署
 
@@ -282,12 +302,12 @@ sudo docker run --rm hello-world
 sudo docker compose version
 ```
 
-如果最后两条命令成功，说明 Docker 和 Compose 已就绪。把 `SyncWatch同步观影-Server-v2.1.9.zip` 上传到服务器后解压：
+如果最后两条命令成功，说明 Docker 和 Compose 已就绪。把 `SyncWatch同步观影-Server-v2.2.0.zip` 上传到服务器后解压：
 
 ```bash
 sudo apt install -y unzip
 sudo mkdir -p /opt/syncwatch
-sudo unzip ~/SyncWatch同步观影-Server-v2.1.9.zip -d /opt/syncwatch
+sudo unzip ~/SyncWatch同步观影-Server-v2.2.0.zip -d /opt/syncwatch
 cd /opt/syncwatch
 ```
 
@@ -462,8 +482,9 @@ sudo systemctl status caddy
 
 Windows 桌面 EXE 的“管理 → 公网访问”包含 Cloudflare Tunnel 管理器：
 
-- 临时模式会启动 Quick Tunnel，生成 `trycloudflare.com` HTTPS 地址；Windows 服务器固定使用 HTTP/2，以兼容系统代理、TUN 网络和长时间媒体传输。稳定命名隧道仍使用 `auto`。
-- 公网健康探测短暂超时只会显示降级状态，不会重启 cloudflared 或更换当前随机地址；只有 cloudflared 进程真正退出时才会进入异常状态。
+- 临时模式会启动 Quick Tunnel，生成 `trycloudflare.com` HTTPS 地址；Windows 服务器使用 HTTP/2，并根据预检在物理直连与系统网络之间选择。检测到系统出口可用而物理网卡访问 Cloudflare 超时时，会优先系统网络。
+- 连接器已注册但新地址在启动验证窗口内仍不可访问时，会停止该未发布连接器并切换下一连接策略；已经验证成功的地址只会在短暂探测波动时显示降级，不会因为一次超时立即更换。
+- Clash/FlClash/VPN/TUN Fake-IP 环境下，如果浏览器可联网但“绕过系统代理”失败，请取消勾选；并确保 `cloudflared.exe`、`api.trycloudflare.com`、`*.trycloudflare.com` 与 `*.argotunnel.com` 使用同一条可用网络规则。
 - 稳定模式使用 Cloudflare Tunnel 令牌和已经绑定的 HTTPS 域名；令牌只传给子进程，不保存到配置。
 - 开启前会提示确认未设置访问密码的房间，建议先为所有公网房间设置独立强密码。
 
@@ -480,7 +501,7 @@ cloudflared tunnel --url http://127.0.0.1:5000 --protocol http2 --no-autoupdate
 无论使用哪种穿透，都必须满足：
 
 - HTTP、Socket.IO polling 和 WebSocket 都转发到同一个 SyncWatch同步观影 端口。
-- 公网网页客户端会优先连接 WebSocket，失败时自动回退 polling；HTTPS 公网访问默认优先播放 H.264/AAC 流畅兼容版，减少首次播放失败和远程带宽压力。
+- 公网网页客户端会优先连接 WebSocket，失败时自动回退 polling；HTTPS 公网访问默认优先播放不高于 854×480、视频约 900 kbps、音频 96 kbps 的 H.264/AAC 流畅版。即使源文件已经是浏览器可解码的 H.264 MP4，只要分辨率或平均码率超过预算也会生成低带宽版本，避免“流畅版”静默回退到高码率原片。
 - 稳定域名应写入 `publicUrl` 和 `allowedHosts`。临时域名每次会变化，可以先通过该地址进行一次正常页面导航，让本机/内网代理转发的同源主机自动加入当前进程；服务器重启或地址变化后需要重新访问。
 - 所有房间设置强密码，不公开带 `#host=` 的房主链接。
 - 穿透服务需要长期运行时交给 systemd、Windows 任务计划或对应服务管理器。
@@ -732,4 +753,3 @@ Docker 升级时，先备份宿主机 `SyncWatch同步观影-Data/`，再执行 
 - Cloudflare WebSockets：<https://developers.cloudflare.com/network/websockets/>
 - Cloudflare 413 与上传大小限制：<https://developers.cloudflare.com/support/troubleshooting/http-status-codes/4xx-client-error/error-413/>
 - Cloudflare 支持代理的网络端口：<https://developers.cloudflare.com/fundamentals/reference/network-ports/>
-

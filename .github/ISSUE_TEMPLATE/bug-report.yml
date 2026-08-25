@@ -12,7 +12,7 @@ body:
     attributes:
       label: 版本
       description: 请填写版本号和下载文件名。
-      placeholder: v2.1.9 / Windows 服务器 EXE
+      placeholder: v2.2.0 / Windows 服务器 EXE
     validations:
       required: true
   - type: dropdown

@@ -85,6 +85,7 @@ async function main() {
     write(path.join(sourceDir, '.secrets', 'mail.key'), `${Buffer.alloc(32, 7).toString('base64')}\n`);
     write(path.join(sourceDir, 'secrets', 'migration-marker.txt'), Buffer.from('migration-admin-secret'));
     write(path.join(sourceDir, 'tools', 'cloudflared-windows-amd64.exe'), Buffer.from('migration-cloudflared'));
+    write(path.join(sourceDir, 'download-assets', 'migration-client.exe'), Buffer.from('migration-download-asset'));
     write(path.join(sourceDir, 'server-config.json'), JSON.stringify({ port: 5151, autostart: true }));
     write(path.join(sourceDir, 'cache', 'do-not-export.tmp'), Buffer.from('cache'));
     await source.close(); source = null; sourceSocket.close(); sourceSocket = null;
@@ -98,6 +99,11 @@ async function main() {
     assert.ok(archive.length > 1000, 'full migration archive should include files');
     assert.equal(archive.subarray(0, 19).toString('ascii'), 'SYNCWATCH-BACKUP-2\n');
     assert.match(archive.toString('utf8'), /chat-images|\.secrets|compatible-media|cloudflared-windows-amd64/);
+    assert.match(archive.toString('utf8'), /download-assets/, '完整备份应包含服务器下载中心文件');
+    const configExportResponse = await fetch(`http://127.0.0.1:${source.port}/api/host/data/export?scopes=config&format=binary`, { headers: auth(sourceExportLogin.token) });
+    assert.equal(configExportResponse.status, 200);
+    const configArchive = Buffer.from(await configExportResponse.arrayBuffer());
+    assert.doesNotMatch(configArchive.toString('utf8'), /download-assets/, '仅配置备份不能携带大体积客户端安装文件');
     await source.close(); source = null; sourceSocket.close(); sourceSocket = null;
 
     destination = await startSyncWatchServer({ host: '127.0.0.1', port: 0, dataDir: destinationDir, publicDir, discovery: false, hostControlToken: 'migration-host', ffprobePath: '', ffmpegPath: '' });
@@ -128,7 +134,8 @@ async function main() {
       ['voice/voice-message.bin', 'migration-voice'],
       ['.secrets/mail.key', `${Buffer.alloc(32, 7).toString('base64')}\n`],
       ['secrets/migration-marker.txt', 'migration-admin-secret'],
-      ['tools/cloudflared-windows-amd64.exe', 'migration-cloudflared']
+      ['tools/cloudflared-windows-amd64.exe', 'migration-cloudflared'],
+      ['download-assets/migration-client.exe', 'migration-download-asset']
     ]) {
       const contents = fs.readFileSync(path.join(destinationDir, relative));
       assert.equal(contents.equals(Buffer.isBuffer(expected) ? expected : Buffer.from(expected)), true, `migrated ${relative}`);

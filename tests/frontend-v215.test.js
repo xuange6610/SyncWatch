@@ -78,7 +78,7 @@ assert.match(app, /maxBitrate = 320000/);
 assert.match(app, /maxaveragebitrate=320000/);
 assert.match(app, /jitterBufferTarget = 0\.08/);
 
-// 9) The web surface stays on v2.1.9 and the standalone client uses the
+// 9) The web surface stays on v2.2.0 and the standalone client uses the
 // unified desktop product identity introduced by the split release.
 assert.match(html, /版本 v2\.1\.8 · 版权所有/);
 assert.match(html, /id="versionText">v2\.1\.8</);
@@ -107,4 +107,4 @@ assert.match(proMaxCss, /@media \(max-width:\s*760px\)[\s\S]*?button:not\([^}]+m
 assert.doesNotMatch(proMaxCss, /min-height:\s*44px/);
 assert.match(launcherProMaxCss, /focus-visible/);
 
-console.log('Frontend v2.1.9 product, accessibility and Pro Max redesign contracts passed.');
+console.log('Frontend v2.2.0 product, accessibility and Pro Max redesign contracts passed.');

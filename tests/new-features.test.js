@@ -144,22 +144,18 @@ async function main() {
     assert.match(electronClientSource, /const APP_NAME = ['"]SyncWatch同步观影['"];[\s\S]{0,80}app\.setName\(APP_NAME\)/);
     assert.match(electronClientSource, /setAppUserModelId\(['"]com\.xuan\.syncwatch\.client['"]\)/);
     assert.match(electronServerSource, /waitForPublicUrl\(establishedUrl, 8000,[\s\S]{0,180}localAddress/);
-    assert.match(electronServerSource, /const verified = Boolean\(verifiedResult\?\.ok\)[\s\S]{0,520}state: verified \? 'running' : 'verifying'[\s\S]{0,160}publicUrl: verified \? establishedUrl : ''/);
-    assert.ok(!packageManifest.build.extraResources.some((entry) => entry.from === 'SyncWatch同步观影-Client-v2.1.9.exe'));
-    assert.equal(packageManifest.build.portable.artifactName, 'SyncWatch同步观影-v2.1.9.exe');
+    assert.match(electronServerSource, /const verified = Boolean\(verifiedResult\?\.ok\)[\s\S]{0,160}if \(!verified && index \+ 1 < strategies\.length\)/);
+    assert.match(electronServerSource, /state: verified \? 'running' : 'verifying'[\s\S]{0,160}publicUrl: verified \? establishedUrl : ''/);
+    assert.ok(!packageManifest.build.extraResources.some((entry) => entry.from === 'SyncWatch同步观影-Client-v2.2.0.exe'));
+    assert.equal(packageManifest.build.portable.artifactName, 'SyncWatch-Standard-Server-Portable-v2.2.0-${arch}.exe');
     assert.equal(packageManifest.build.win.executableName, 'SyncWatch同步观影');
-    assert.match(releaseScriptSource, /build-apk\.ps1[\s\S]{0,500}& \$powerShellExecutable/);
+    assert.match(releaseScriptSource, /powershell\.exe[\s\S]{0,220}mobile\\build-apk\.ps1/);
     assert.doesNotMatch(releaseScriptSource, /Reusing the existing verified APK artifact/);
     assert.match(releaseScriptSource, /run test:all/);
-    const clientPublishBlock = releaseScriptSource.match(
-      /\$clientConfigPath\s*=[\s\S]*?\$tempRoot\s*=\s*\[System\.IO\.Path\]::GetFullPath/
-    )?.[0] || '';
-    assert.match(clientPublishBlock, /electron-builder-client\.json/);
-    assert.match(clientPublishBlock, /Get-FileHash[^\r\n]+\$clientCandidate/);
-    assert.match(clientPublishBlock, /Copy-Item[^\r\n]+\$clientCandidate[^\r\n]+\$clientStage/);
-    assert.match(clientPublishBlock, /\[System\.IO\.File\]::Replace\(\$clientStage,\s*\$clientDelivery,\s*\$clientBackup/);
-    assert.match(clientPublishBlock, /\[System\.IO\.File\]::Replace\(\$clientBackup,\s*\$clientDelivery/);
-    assert.match(clientPublishBlock, /finally\s*\{[\s\S]*?\$clientBuildRoot/);
+    assert.match(releaseScriptSource, /Join-Path\s+\$PSScriptRoot\s+['"]dist['"]/);
+    assert.match(releaseScriptSource, /Invoke-Builder ['"]electron-builder-client\.json['"]/);
+    assert.match(releaseScriptSource, /Assert-Artifact ['"]SyncWatch-Experience-Client-Portable-v2\.2\.0-x64\.exe['"]/);
+    assert.match(releaseScriptSource, /Get-FileHash\s+-Algorithm SHA256/);
     assert.deepEqual([...serverLauncherBytes.subarray(0, 3)], [0xEF, 0xBB, 0xBF]);
     assert.match(serverPackageScriptSource, /Management\.Automation\.Language\.Parser\]::ParseFile/);
     const initialPublicConfig = await (await fetch(`${baseUrl}/api/public-config`)).json();

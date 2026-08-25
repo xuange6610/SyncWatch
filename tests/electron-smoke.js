@@ -10,8 +10,8 @@ const { app, BrowserWindow, session } = require('electron');
 const { io: createSocketClient } = require('socket.io-client');
 const { startSyncWatchServer } = require('../server');
 
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-electron-v2.1.9-'));
-const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.1.9.apk'));
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-electron-v2.2.0-'));
+const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.0.apk'));
 app.setPath('userData', path.join(dataDir, 'electron-profile'));
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 let controller;
@@ -28,6 +28,19 @@ async function waitFor(expression, description, timeout = 12000) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error(`等待“${description}”超时`);
+}
+
+async function setContentViewport(width, height) {
+  if (window.isFullScreen()) window.setFullScreen(false);
+  if (window.isMaximized()) window.unmaximize();
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    window.setContentSize(width, height, false);
+    const viewport = await window.webContents.executeJavaScript(`({ width: innerWidth, height: innerHeight })`, true);
+    if (Math.abs(viewport.width - width) <= 2 && Math.abs(viewport.height - height) <= 2) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`无法把 Electron 内容视口调整为 ${width}x${height}`);
 }
 
 function connectSocketClient(baseUrl) {
@@ -956,7 +969,7 @@ async function run() {
   assert.equal(await window.webContents.executeJavaScript(`document.getElementById('hostTunnelCard').classList.contains('is-hidden')`), false);
   console.log('✓ 管理员强制改名、账号管理与服务器专属公网入口正常');
 
-  window.setSize(430, 780); await new Promise((resolve) => setTimeout(resolve, 300));
+  await setContentViewport(430, 780);
   const mobileChatToggle = await window.webContents.executeJavaScript(`(() => {
     state.mobileChatCollapsed = false; applyMobileChatCollapsed();
     document.getElementById('chatToggleBtn').click();
@@ -987,13 +1000,20 @@ async function run() {
   console.log('✓ 手机聊天可显式收起/展开，上传侧栏具备固定返回按钮并可恢复播放界面');
 
   for (const size of [[768, 1024], [900, 700], [1024, 768], [812, 375], [1920, 1080]]) {
-    window.setSize(size[0], size[1]); await new Promise((resolve) => setTimeout(resolve, 120));
-    const overflow = await window.webContents.executeJavaScript(`document.documentElement.scrollWidth > document.documentElement.clientWidth + 2`);
-    assert.equal(overflow, false, `${size.join('x')} 不应横向溢出`);
+    await setContentViewport(size[0], size[1]);
+    const overflow = await window.webContents.executeJavaScript(`(() => {
+      const viewport = document.documentElement.clientWidth;
+      const offenders = [...document.querySelectorAll('body *')].map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { tag: element.tagName, id: element.id, className: String(element.className || '').slice(0, 100), left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width) };
+      }).filter((item) => item.right > viewport + 2 || item.left < -2).slice(0, 12);
+      return { overflow: document.documentElement.scrollWidth > viewport + 2, viewport, scrollWidth: document.documentElement.scrollWidth, offenders };
+    })()`);
+    assert.equal(overflow.overflow, false, `${size.join('x')} 不应横向溢出：${JSON.stringify(overflow)}`);
   }
   console.log('✓ 手机、平板、电脑和电视尺寸无横向布局溢出');
 
-  window.setSize(812, 375); await new Promise((resolve) => setTimeout(resolve, 200));
+  await setContentViewport(812, 375);
   const shortLandscapeOverlap = await window.webContents.executeJavaScript(`(() => {
     const player = document.getElementById('playerContainer').getBoundingClientRect();
     const chat = document.querySelector('.chat-panel').getBoundingClientRect();
@@ -1002,6 +1022,8 @@ async function run() {
     return {
       overlaps: overlapWidth > 1 && overlapHeight > 1,
       overlapWidth, overlapHeight,
+      viewport: { width: innerWidth, height: innerHeight },
+      shortLandscape: matchMedia('(orientation: landscape) and (max-height: 560px) and (max-width: 1000px)').matches,
       player: { left: player.left, right: player.right, top: player.top, bottom: player.bottom },
       chat: { left: chat.left, right: chat.right, top: chat.top, bottom: chat.bottom }
     };
@@ -1025,7 +1047,7 @@ async function run() {
   await window.webContents.executeJavaScript(`document.getElementById('forgotPasswordBtn').click()`, true);
   await waitFor(`!document.getElementById('appDialog').classList.contains('is-hidden') && document.getElementById('appDialogTitle').textContent === 'QQ 邮箱找回密码'`, '打开 QQ 邮箱找回密码对话框');
   const recoveryDescription = await window.webContents.executeJavaScript(`document.getElementById('appDialogDescription').textContent`, true);
-  // v2.1.9 may explicitly explain an unknown account instead of promising a
+  // v2.2.0 may explicitly explain an unknown account instead of promising a
   // privacy-masked response; both variants must keep a usable description.
   assert.ok(recoveryDescription.trim().length > 0);
   await window.webContents.executeJavaScript(`document.getElementById('appDialogInput').value = '邮箱界面恢复'; document.getElementById('appDialogConfirmBtn').click()`, true);
@@ -1090,11 +1112,11 @@ app.whenReady().then(async () => {
   let exitCode = 0;
   try {
     await run();
-    console.log('\nElectron v2.1.9 渲染验收全部通过。');
+    console.log('\nElectron v2.2.0 渲染验收全部通过。');
   } catch (error) {
     exitCode = 1;
-    console.error('\nElectron v2.1.9 渲染验收失败:', error);
+    console.error('\nElectron v2.2.0 渲染验收失败:', error);
   }
   try { await finishTest(exitCode); }
-  catch (error) { console.error('\nElectron v2.1.9 清理失败:', error); app.exit(1); }
-}).catch((error) => { console.error('\nElectron v2.1.9 启动失败:', error); app.exit(1); });
+  catch (error) { console.error('\nElectron v2.2.0 清理失败:', error); app.exit(1); }
+}).catch((error) => { console.error('\nElectron v2.2.0 启动失败:', error); app.exit(1); });

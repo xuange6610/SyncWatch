@@ -22,7 +22,7 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前版本：v2.1.9 · 许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前源码候选：v2.2.0 · 最新正式发布：v2.1.9 · 许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
 ## 在线参观
 
@@ -43,12 +43,12 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 
 | 类型 | 适合谁 | 作用 |
 | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.1.9-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
-| [`SyncWatch-Standard-Server-Portable-v2.1.9-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 标准版；房主 | 绿色便携服务器，内置运行环境和 cloudflared，双击即用 |
-| [`SyncWatch-v2.1.9-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端、Android APK、macOS x64/arm64 客户端与服务器 ZIP |
-| [`SyncWatch-v2.1.9-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；Windows 房主 | 无需安装的独立 EXE；功能和内嵌文件与安装完整版一致 |
-| [`SyncWatch-Full-Offline-macOS-v2.1.9-x64.dmg`](https://github.com/xuange6610/SyncWatch/releases) / [`SyncWatch-Full-Offline-macOS-v2.1.9-x64.zip`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；Intel Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 Intel cloudflared |
-| [`SyncWatch-Full-Offline-macOS-v2.1.9-arm64.dmg`](https://github.com/xuange6610/SyncWatch/releases) / [`SyncWatch-Full-Offline-macOS-v2.1.9-arm64.zip`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；Apple Silicon 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 arm64 cloudflared |
+| [`SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
+| [`SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 标准版；房主 | 绿色便携服务器，内置运行环境和 cloudflared，双击即用 |
+| [`SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端、Android APK、macOS x64/arm64 客户端与服务器 ZIP |
+| [`SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；Windows 房主 | 无需安装的独立 EXE；功能和内嵌文件与安装完整版一致 |
+| [`SyncWatch-Full-Offline-macOS-v2.2.0-x64.dmg`](https://github.com/xuange6610/SyncWatch/releases) / [`SyncWatch-Full-Offline-macOS-v2.2.0-x64.zip`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；Intel Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 Intel cloudflared |
+| [`SyncWatch-Full-Offline-macOS-v2.2.0-arm64.dmg`](https://github.com/xuange6610/SyncWatch/releases) / [`SyncWatch-Full-Offline-macOS-v2.2.0-arm64.zip`](https://github.com/xuange6610/SyncWatch/releases) | 完整版；Apple Silicon 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 arm64 cloudflared |
 | [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases) | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
 | [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases) / [`node-v24.19.0-macos-x64.pkg`](https://github.com/xuange6610/SyncWatch/releases) / [`node-v24.19.0-darwin-arm64.tar.gz`](https://github.com/xuange6610/SyncWatch/releases) | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
 | Android APK | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
@@ -56,7 +56,7 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 | 独立服务器 ZIP | Windows/Linux 服务器管理员 | 使用 Node.js 启动服务，适合长期部署和 Docker |
 | Source code | 开发者 | 阅读、修改和自行构建，需要安装 Node.js 和依赖 |
 
-当前最新正式版本是 [`v2.1.9`](https://github.com/xuange6610/SyncWatch/releases/tag/v2.1.9)。该版本已经完成 Windows、Android、macOS 与运行工具的真实构建和 26 项维护者资产验收；加上 GitHub 自动生成的两个源码归档，Release 页面共显示 28 个文件。请只从本仓库 Release 下载，并按上表选择体验版、标准版、完整离线版或对应平台文件。
+`v2.2.0` 正在构建与验收，表中名称是本次候选资产清单，并不表示文件已经发布。当前最新正式版本仍是 [`v2.1.9`](https://github.com/xuange6610/SyncWatch/releases/tag/v2.1.9)；只有 Windows、Android、macOS 与运行工具全部完成真实构建、SHA-256 和 26 项维护者资产验收后，才会把 `v2.2.0` 设为 Latest。
 
 ## 第一次启动服务器
 
@@ -70,7 +70,9 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 6. 创建房间，可以设置房间密码、人数限制和成员权限。
 7. 先让同一 Wi-Fi 下的成员使用局域网地址连接，确认成功后再配置公网访问。
 
-> 服务器设备也可以在登录页点击“超级管理员登录”。验证成功后会建立管理专用会话，直接打开“管理中心 → 服务器设置”；登录页保持可见，观影主界面不会先打开，也无需经过临时房间。完成权限、上传、端口或公网策略设置后，管理员再主动选择房间入口进入观影；普通成员和普通账号仍按房间登录流程进入观影。
+> 服务器设备可使用“本机免密进入管理中心”或“本机免密以 admin 进入所选房间”。两条入口只在回环同源且持有服务器主机令牌时显示，不能从公网伪造；可在“管理中心 → 服务器设置 → 本机免密入口”分别关闭。管理专用会话可点击“退出管理登录”完整撤销，普通成员和普通账号仍按房间登录流程进入观影。
+
+Windows 服务器默认在全部本机网卡上监听 `5000` 端口，并自动把首选物理网卡用于局域网分享。如果电脑同时连着有线、Wi-Fi、VPN 或 TUN，可在左上角“系统 → 服务器启动设置”选择指定网卡；保存后服务器会自动安全重启。未选择时会自动跟随当前可用物理网卡，手动选择的网卡断开后也会回退到自动模式。系统防火墙是操作系统权限：首次启动出现 Windows 提示时仍需按实际网络允许访问。
 
 ### 从源码启动
 
@@ -117,19 +119,33 @@ pnpm start
 4. 只把成员链接发给可信成员，不公开带房主权限的链接、令牌或管理密码。
 5. 临时地址可能在重启后变化；需要固定域名时请阅读服务器部署教程。
 
-如果出现“Cloudflare 临时地址接口连接超时”，新版会在直连失败后自动切换到系统网络；仍失败时取消“绕过系统代理”并运行“网络诊断与修复”。独立安装、官方地址、Windows/macOS 命令和 Node.js 教程见 [cloudflared 与 Node.js 安装使用教程](docs/runtime-installation.md)。
+如果出现“Cloudflare 临时地址接口连接超时”，新版会在物理直连不可用或新地址无法验证时自动切换连接策略；仍失败时取消“绕过系统代理”并运行“网络诊断与修复”。Clash/FlClash/VPN/TUN Fake-IP 用户应让 `cloudflared.exe` 与 `*.trycloudflare.com`、`*.argotunnel.com` 使用同一条可用网络规则。独立安装、官方地址、Windows/macOS 命令和 Node.js 教程见 [cloudflared 与 Node.js 安装使用教程](docs/runtime-installation.md)。
+
+公网页面能打开但手机画面卡住时，先在播放器选择“流畅版”，并在“处理进度”确认它已真正生成。v2.2.0 的流畅版目标为 854×480、视频约 900 kbps、音频 96 kbps；本地缓冲不足时同步器会暂停反复定位，避免不断丢弃已下载片段。若仍卡顿，按[常见错误](docs/troubleshooting.md)检查服务器上行、手机实测下载、WebSocket/Polling 和媒体 Range。
+
+若媒体请求进入 `waiting/stalled` 且 12 秒没有播放时间或缓冲增长，客户端会执行最多 3 次有限网络恢复；这能处理 Tunnel/TUN 半开导致的永久停帧，但不能消除 Cloudflare 临时隧道、家庭上行或 VPN/TUN 本身的瞬时抖动。公司网络对照已验证完整播放与 40 次拖动可通过，同时也观察到启用 Fake-IP/TUN 时偶发 TLS/Range 超时。
 
 ## 主要功能
 
 - **同步播放**：房主控制播放、暂停、进度、倍速和可选音量同步，客户端自动校正明显偏差。
 - **媒体与字幕**：上传影片、音频、字幕、图片和文档，也可添加合法的 HTTPS 媒体直链。
 - **多房间**：支持正式房间、临时房间、房间密码、人数限制和房主/管理员权限。
+- **同步阅读**：TXT、Markdown、日志、CSV/TSV、JSON/XML/YAML 和常见配置文本可连续滚动或按页阅读；有控制权限的成员可同步位置。管理员可在“房间与上传 → 上传限制”关闭文本上传。
+- **登录与游客**：账号密码正确但房间号留空时，先列出该账号可用房间，也可选择临时房间；提醒可暂停或在安全设置中关闭。游客只获得普通成员权限，需注册后才能建立正式房间。
 - **实时交流**：公聊、私聊、弹幕、表情、图片、语音消息、全麦语音和全屏公告。
 - **共享能力**：浏览器、Electron 和 Android 屏幕共享；受支持的桌面端可共享电脑音源。
 - **账号与管理**：好友、通知、在线状态、设备信息、权限组、封禁、注册审批和操作记录。
-- **媒体处理**：FFprobe 分析媒体，FFmpeg 可生成缩略图和 H.264/AAC 浏览器兼容版本。
+- **媒体处理**：FFprobe 分析媒体，FFmpeg 在上传完成后默认生成缩略图和约 480P、1 Mbps 的 H.264/AAC 低带宽流畅版；丢失的缩略图会自动补建。
 - **AI 工作台**：可配置兼容 Responses API 或 Chat Completions 的对话、生图和视频接口。
 - **运维能力**：数据导入导出、备份恢复、回收站、邮件验证、密码找回、日志和网络诊断。
+
+### 常用开关在哪里
+
+- 关闭登录选房提醒：进入房间后打开右上角账号菜单 → “安全设置” → 关闭“登录房间提醒”。登录弹窗也可选择 1 小时、1 天、1 周、30 天或永不再提醒。
+- 关闭自动兼容转换：服务器管理员打开顶栏“处理进度” → 取消“上传完成后自动生成浏览器兼容版” → “立即应用”。关闭后新上传影片保留原文件，需要时仍可手动处理。
+- 选择局域网网卡和公网根地址：Windows 服务器左上角“系统 → 服务器启动设置”。“公网根地址”填写已经配置好 DNS、HTTPS 证书和反向代理的完整根地址，例如 `https://watch.example.com`；不要填子路径、查询参数或单独主机名。该字段用于分享地址和代理信任校验，不会代替 DNS、证书或路由器配置。
+- 顶栏会显示当前开放的局域网 `IP:端口` 和状态，并提供“检查更新”“GitHub”“Latest 下载”“下载中心”。缺少 Windows 服务器、Android、macOS 服务器或客户端文件时，服务器管理员可在下载中心上传对应固定类型；服务端不会接受任意目标路径或不匹配的文件签名。
+- 位置提醒开关位于“管理中心 → 通知/通告设置”。关闭“位置状态通知”后不再广播已授权位置状态；关闭“位置授权请求”后不再自动提示，也不允许管理员向成员发起授权请求。
 
 ## 原理与技术架构
 
@@ -153,8 +169,8 @@ flowchart LR
 1. Electron、独立 Node.js 服务或 Android 前台服务启动 `server/index.js`，创建 Express HTTP 服务和 Socket.IO 实时通道。
 2. 客户端先通过同源页面加载界面，再建立 Socket.IO 连接；登录后服务端校验密码哈希、设备策略、协议版本、房间密码和权限。
 3. 房主点击播放、暂停、跳转或倍速时，客户端只发送操作意图；服务端更新权威房间状态，附上时间和版本，再向房间成员广播。
-4. 成员端根据服务器时间、网络延迟和本地缓冲计算偏差，超过阈值才校正播放器，避免每次网络抖动都造成画面跳动。
-5. 上传使用 HTTP 流式写入，FFprobe 读取编码与时长；浏览器不兼容时由 FFmpeg 生成 H.264/AAC 兼容版本。媒体本体通过 HTTP Range 分段读取，播放状态仍通过 Socket.IO 同步。
+4. 成员端根据服务器时间、网络延迟和本地缓冲计算偏差，超过阈值才校正播放器；正在缓冲时暂停硬跳转，避免网络抖动造成反复定位。
+5. 上传使用 HTTP 流式写入，FFprobe 读取编码与时长；分辨率或平均码率超过流畅版预算时也会由 FFmpeg 生成低带宽 H.264/AAC 版本。媒体本体通过 HTTP Range 分段读取，播放状态仍通过 Socket.IO 同步。
 6. 配置和业务记录写入 `SyncWatch同步观影-Data/`，敏感材料单独保存在 secrets 目录；写盘使用临时文件与原子替换，同一数据目录只允许一个实例写入。
 7. 开启临时公网访问时，`cloudflared` 把本机 HTTP、Socket.IO 和媒体 Range 请求转发到 Cloudflare Edge；它不保存 SyncWatch 的账号和影片，临时网址重启后可能改变。
 

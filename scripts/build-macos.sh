@@ -25,18 +25,15 @@ for architecture in x64 arm64; do
   npm_config_arch="$architecture" npm ci --no-audit --no-fund
   node_modules/.bin/electron-builder --config electron-builder-mac-client.json --mac --"$architecture"
   node_modules/.bin/electron-builder --config electron-builder-mac-server.json --mac --"$architecture"
-  client_dmg="dist-mac-client/SyncWatch同步观影-客户端-v${VERSION}-${architecture}.dmg"
-  server_dmg="dist-mac-server/SyncWatch同步观影-服务器-v${VERSION}-${architecture}.dmg"
-  client_zip="dist-mac-client/SyncWatch同步观影-客户端-v${VERSION}-${architecture}.zip"
-  server_zip="dist-mac-server/SyncWatch同步观影-服务器-v${VERSION}-${architecture}.zip"
+  client_dmg="dist/SyncWatch-Client-macOS-v${VERSION}-${architecture}.dmg"
+  server_dmg="dist/SyncWatch-Server-macOS-v${VERSION}-${architecture}.dmg"
+  client_zip="dist/SyncWatch-Client-macOS-v${VERSION}-${architecture}.zip"
+  server_zip="dist/SyncWatch-Server-macOS-v${VERSION}-${architecture}.zip"
   if [[ ! -s "$client_dmg" || ! -s "$server_dmg" || ! -s "$client_zip" || ! -s "$server_zip" ]]; then
     echo "macOS ${architecture} 构建完成但缺少预期 DMG 或 ZIP。" >&2
     exit 3
   fi
-  for artifact in "$client_dmg" "$server_dmg" "$client_zip" "$server_zip"; do
-    cp -f "$artifact" "$(basename "$artifact")"
-  done
   shasum -a 256 "$client_dmg" "$server_dmg" "$client_zip" "$server_zip"
 done
 
-echo "macOS 客户端和服务器 x64/arm64 DMG/ZIP 已发布到项目根目录；构建副本位于 dist-mac-client/ 和 dist-mac-server/."
+echo "macOS 客户端和服务器 x64/arm64 DMG/ZIP 已生成到根目录 dist/."
