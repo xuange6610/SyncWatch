@@ -11,9 +11,17 @@ const { spawn } = require('child_process');
 const { io } = require('socket.io-client');
 const WebSocket = require('ws');
 const { startSyncWatchServer } = require('../server');
+const releaseVersion = String(require('../package.json').version);
+const publicReleaseVersion = `v${releaseVersion}`;
 
 const browserCandidates = [
   process.env.SYNCWATCH_CHROME_PATH,
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
   path.join(process.env.PROGRAMFILES || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
   path.join(process.env['ProgramFiles(x86)'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
   path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
@@ -23,7 +31,7 @@ const browserCandidates = [
 const chromePath = browserCandidates.find((candidate) => fs.existsSync(candidate));
 if (!chromePath) throw new Error('Chrome or Microsoft Edge is required for the browser UI smoke test.');
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.0.apk'));
+const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'dist', `SyncWatch-Android-${publicReleaseVersion}-universal.apk`));
 
 function findAvailablePort() {
   return new Promise((resolve, reject) => {
@@ -79,7 +87,15 @@ class CdpClient {
 }
 
 async function evaluate(cdp, expression) {
-  const result = await cdp.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+  let result;
+  try {
+    // Keep asynchronous page expressions reachable until CDP has resolved them.
+    const heldExpression = `window.__syncwatchCdpEval = (async () => await (0, eval)(${JSON.stringify(expression)}))(); window.__syncwatchCdpEval`;
+    result = await cdp.send('Runtime.evaluate', { expression: heldExpression, awaitPromise: true, returnByValue: true });
+  } catch (error) {
+    const preview = String(expression).replace(/\s+/g, ' ').trim().slice(0, 180);
+    throw new Error(`${error.message} [Runtime.evaluate: ${preview}]`);
+  }
   if (result.exceptionDetails) throw new Error(result.exceptionDetails.text || '页面脚本执行失败');
   return result.result?.value;
 }
@@ -115,6 +131,8 @@ async function removeDirectoryEventually(directory) {
 
 async function main() {
   if (!fs.existsSync(chromePath)) throw new Error(`Chrome 不存在：${chromePath}`);
+  const qualityOnly = process.argv.includes('--quality-only');
+  const avatarOnly = process.argv.includes('--avatar-only');
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-browser-ui-'));
   const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-chrome-profile-'));
   const outputDir = path.join(os.tmpdir(), 'syncwatch-ui-review');
@@ -125,7 +143,7 @@ async function main() {
   global.fetch = (input, options) => {
     const url = String(input?.url || input);
     if (url === 'https://api.github.com/repos/xuange6610/SyncWatch/releases/latest') {
-      return Promise.resolve(new Response(JSON.stringify({ tag_name: 'v2.2.0', name: 'SyncWatch同步观影 v2.2.0' }), {
+      return Promise.resolve(new Response(JSON.stringify({ tag_name: publicReleaseVersion, name: `SyncWatch同步观影 ${publicReleaseVersion}` }), {
         status: 200, headers: { 'Content-Type': 'application/json' }
       }));
     }
@@ -155,7 +173,7 @@ async function main() {
       user: 'browser-ui@qq.com', authCode: 'browser-ui-smtp-secret', fromName: 'SyncWatch同步观影 测试'
     });
     assert.equal(mailSettings.success, true, mailSettings.error);
-    const novelText = `第一章 同步开始\n\n${'这是一段通过鉴权 Range 读取并同步翻页的 TXT 小说预览。\n'.repeat(180)}`;
+    const novelText = `第一章 同步阅读开始\n\n${'这是一段通过鉴权 Range 读取并同步翻页的 TXT 小说预览。\n'.repeat(180)}`;
     const novelForm = new FormData();
     novelForm.append('file', new Blob([Buffer.from(novelText)], { type: 'text/plain' }), '浏览器小说预览.txt');
     const novelUploadResponse = await fetch(`${baseUrl}/api/upload`, {
@@ -164,6 +182,14 @@ async function main() {
     assert.equal(novelUploadResponse.status, 200);
     const novelFile = (await novelUploadResponse.json()).file;
     assert.equal(novelFile.category, 'text');
+    assert.equal(novelFile.size, Buffer.byteLength(novelText), 'uploaded novel metadata must retain the complete byte length');
+    const novelRangeResponse = await fetch(`${baseUrl}${novelFile.originalUrl}`, {
+      headers: { Authorization: `Bearer ${login.token}`, Range: 'bytes=0-10485759' }
+    });
+    assert.equal(novelRangeResponse.status, 206);
+    const novelRangeBytes = Buffer.from(await novelRangeResponse.arrayBuffer());
+    assert.equal(novelRangeBytes.length, novelFile.size, 'authenticated text Range must return the complete novel below the preview limit');
+    assert.equal(novelRangeBytes.toString('utf8'), novelText, 'authenticated text Range must preserve every character');
     authSocket.close(); authSocket = null;
 
     const debugPort = await findAvailablePort();
@@ -187,6 +213,7 @@ async function main() {
         if (sessionStorage.getItem('syncwatchSkipSmokeAutologin') === '1') localStorage.removeItem('syncwatchToken');
         else localStorage.setItem('syncwatchToken', ${JSON.stringify(login.token)});
         localStorage.setItem('syncwatchDeviceId', 'browser-ui-device');
+        localStorage.removeItem('syncwatchPlaybackQuality');
         localStorage.removeItem('syncwatchUiTheme');
       }
     ` });
@@ -206,12 +233,90 @@ async function main() {
       throw new Error(`${error.message}: ${JSON.stringify(diagnostic)}`);
     }
     await delay(500);
+    const desktopPlaybackQuality = await evaluate(cdp, `({
+      state: state.playbackQuality,
+      select: elements.playbackQualitySelect.value,
+      saved: localStorage.getItem('syncwatchPlaybackQuality'),
+      publicDefault: state.publicConfig.defaultPlaybackQuality
+    })`);
+    assert.equal(desktopPlaybackQuality.state, 'original', JSON.stringify(desktopPlaybackQuality));
+    assert.equal(desktopPlaybackQuality.select, 'original', JSON.stringify(desktopPlaybackQuality));
+    assert.equal(desktopPlaybackQuality.saved, null, JSON.stringify(desktopPlaybackQuality));
+    assert.equal(desktopPlaybackQuality.publicDefault, 'original', JSON.stringify(desktopPlaybackQuality));
+    const defaultPlaybackSource = await evaluate(cdp, `mediaSourceFor({
+      url: '/media/compatible-example.mp4',
+      originalUrl: '/media/original-example.mp4',
+      compatibility: { required: true, ready: true },
+      metadata: { videoCodec: 'HEVC' }
+    })`);
+    assert.deepEqual(defaultPlaybackSource, {
+      url: '/media/original-example.mp4', variant: 'original'
+    }, JSON.stringify(defaultPlaybackSource));
+    const savedPlaybackQuality = await evaluate(cdp, `(async () => {
+      localStorage.setItem('syncwatchPlaybackQuality', 'smooth');
+      state.playbackQuality = 'smooth';
+      elements.playbackQualitySelect.value = 'smooth';
+      await loadPublicConfig();
+      const result = {
+        state: state.playbackQuality,
+        select: elements.playbackQualitySelect.value,
+        saved: localStorage.getItem('syncwatchPlaybackQuality'),
+        publicDefault: state.publicConfig.defaultPlaybackQuality
+      };
+      localStorage.removeItem('syncwatchPlaybackQuality');
+      state.playbackQuality = 'original';
+      elements.playbackQualitySelect.value = 'original';
+      return result;
+    })()`);
+    assert.deepEqual(savedPlaybackQuality, {
+      state: 'smooth', select: 'smooth', saved: 'smooth', publicDefault: 'original'
+    }, JSON.stringify(savedPlaybackQuality));
+    if (qualityOnly) {
+      await evaluate(cdp, `(() => {
+        if (typeof activeAppDialog !== 'undefined' && activeAppDialog) settleAppDialog(false);
+        document.querySelectorAll('.modal').forEach((modal) => modal.classList.add('is-hidden'));
+        elements.toastRegion.replaceChildren();
+        elements.playbackQualitySelect.scrollIntoView({ block: 'center' });
+        return true;
+      })()`);
+      await delay(120);
+      const desktopPath = path.join(outputDir, 'playback-quality-original-desktop.png');
+      await capture(cdp, desktopPath);
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+      await evaluate(cdp, `elements.playbackQualitySelect.scrollIntoView({ block: 'center' }); true`);
+      await delay(200);
+      const mobilePlaybackQuality = await evaluate(cdp, `({
+        state: state.playbackQuality,
+        select: elements.playbackQualitySelect.value,
+        publicDefault: state.publicConfig.defaultPlaybackQuality,
+        bodyWidth: document.body.scrollWidth,
+        viewport: innerWidth
+      })`);
+      assert.equal(mobilePlaybackQuality.state, 'original', JSON.stringify(mobilePlaybackQuality));
+      assert.equal(mobilePlaybackQuality.select, 'original', JSON.stringify(mobilePlaybackQuality));
+      assert.equal(mobilePlaybackQuality.publicDefault, 'original', JSON.stringify(mobilePlaybackQuality));
+      assert.ok(mobilePlaybackQuality.bodyWidth <= mobilePlaybackQuality.viewport + 2, JSON.stringify(mobilePlaybackQuality));
+      const mobilePath = path.join(outputDir, 'playback-quality-original-mobile.png');
+      await capture(cdp, mobilePath);
+      console.log(JSON.stringify({ success: true, desktopPlaybackQuality, defaultPlaybackSource, mobilePlaybackQuality, images: [desktopPath, mobilePath] }));
+      return;
+    }
     await evaluate(cdp, `if (typeof activeAppDialog !== 'undefined' && activeAppDialog) settleAppDialog(false); true`);
     await delay(120);
     await evaluate(cdp, `openDownloadCenter(true); true`);
-    await waitFor(() => evaluate(cdp, `document.getElementById('downloadUpdateStatus')?.textContent.includes('GitHub 最新正式版本 v2.2.0')`), '同源检查 GitHub Latest');
+    await waitFor(() => evaluate(cdp, `document.getElementById('downloadUpdateStatus')?.textContent.includes(${JSON.stringify(`GitHub 最新正式版本 ${publicReleaseVersion}`)})`), '同源检查 GitHub Latest');
     assert.equal(await evaluate(cdp, `document.getElementById('downloadCenterModal').classList.contains('is-hidden')`), false);
     await evaluate(cdp, `document.getElementById('closeDownloadCenterBtn').click(); true`);
+    const browserNovelTransfer = await evaluate(cdp, `(async () => {
+      const response = await fetch(mediaUrlWithSessionToken(${JSON.stringify(novelFile.originalUrl)}), {
+        credentials: 'same-origin', headers: { Range: 'bytes=0-10485759' }
+      });
+      const buffer = await response.arrayBuffer();
+      return { status: response.status, bytes: buffer.byteLength, contentRange: response.headers.get('content-range'), characters: decodeTextPreview(buffer).length };
+    })()`);
+    assert.equal(browserNovelTransfer.status, 206, JSON.stringify(browserNovelTransfer));
+    assert.equal(browserNovelTransfer.bytes, novelFile.size, JSON.stringify(browserNovelTransfer));
+    assert.equal(browserNovelTransfer.characters, novelText.length, JSON.stringify(browserNovelTransfer));
     await evaluate(cdp, `(async () => { await selectFile(${JSON.stringify(novelFile.id)}); return true; })()`);
     await waitFor(() => evaluate(cdp, `document.getElementById('textViewer')?.textContent.includes('通过鉴权 Range 读取')`), 'TXT 小说预览');
     const textPreview = await evaluate(cdp, `({
@@ -220,16 +325,146 @@ async function main() {
       fileId: document.getElementById('textViewer').dataset.fileId,
       iframeHidden: document.getElementById('documentViewer').classList.contains('is-hidden'),
       content: document.getElementById('textViewer').textContent,
-      pageCount: Number(document.getElementById('textReaderPageCount').textContent)
+      pageCount: Number(document.getElementById('textReaderPageCount').textContent),
+      currentFile: { size: state.currentFile?.size, url: state.currentFile?.url, originalUrl: state.currentFile?.originalUrl },
+      viewerLength: document.getElementById('textViewer').textContent.length
     })`);
     assert.equal(textPreview.visible, true, JSON.stringify(textPreview));
     assert.equal(textPreview.controlsVisible, true, JSON.stringify(textPreview));
     assert.equal(textPreview.fileId, novelFile.id);
     assert.equal(textPreview.iframeHidden, true);
     assert.ok(textPreview.pageCount > 1, JSON.stringify(textPreview));
-    assert.match(textPreview.content, /第一章 同步开始/);
+    assert.match(textPreview.content, /第一章 同步阅读开始/);
+    const secondPageOffset = 1200;
     await evaluate(cdp, `goToTextReaderPage(2)`);
-    await waitFor(() => evaluate(cdp, `state.room?.textReading?.fileId === ${JSON.stringify(novelFile.id)} && state.room?.textReading?.page === 2`), '同步小说页码');
+    try {
+      await waitFor(() => evaluate(cdp, `state.room?.textReading?.fileId === ${JSON.stringify(novelFile.id)}
+        && state.room?.textReading?.page === 2
+        && state.room?.textReading?.characterOffset === ${secondPageOffset}`), '同步小说页码与精确字符锚点');
+    } catch (error) {
+      const readingDiagnostic = await evaluate(cdp, `({
+        authenticated: state.authenticated, socketAuthenticated: state.socketAuthenticated, connected: state.socket?.connected,
+        canControl: canControlPlayback(), roomReading: state.room?.textReading, localReading: state.textReading,
+        pageValue: elements.textReaderPage?.value, pageCount: textReaderPageCount(), viewerLength: textViewerCharacterLength(),
+        applying: state.applyingTextReading, blockedUntil: state.textReadingScrollBlockUntil, now: performance.now(),
+        currentFile: { id: state.currentFile?.id, category: state.currentFile?.category, size: state.currentFile?.size },
+        errors: window.__syncWatchSmokeErrors
+      })`);
+      throw new Error(`${error.message}: ${JSON.stringify(readingDiagnostic)}`);
+    }
+    const secondPageState = await evaluate(cdp, `({
+      roomOffset: state.room?.textReading?.characterOffset,
+      localOffset: state.textReading?.characterOffset,
+      targetOffset: (2 - 1) * TEXT_READER_CHARACTERS_PER_PAGE,
+      visualLineStart: textCharacterOffsetAtScroll()
+    })`);
+    assert.equal(secondPageState.roomOffset, secondPageOffset, JSON.stringify(secondPageState));
+    assert.equal(secondPageState.localOffset, secondPageOffset, JSON.stringify(secondPageState));
+    assert.equal(secondPageState.roomOffset, secondPageState.targetOffset, JSON.stringify(secondPageState));
+    assert.notEqual(secondPageState.visualLineStart, secondPageOffset, 'fixture must prove page navigation does not echo the local wrapped-line start');
+    const finalPage = await evaluate(cdp, `textReaderPageCount()`);
+    await evaluate(cdp, `goToTextReaderPage(${finalPage})`);
+    await waitFor(() => evaluate(cdp, `state.room?.textReading?.page === ${finalPage}`), '同步小说最后一页');
+    const finalTextAnchor = await evaluate(cdp, `({
+      page: Number(elements.textReaderPage.value),
+      expectedPage: textReaderPageCount(),
+      offset: state.room?.textReading?.characterOffset,
+      charactersPerPage: TEXT_READER_CHARACTERS_PER_PAGE,
+      targetOffset: Math.min(Math.max(0, textViewerCharacterLength() - 1), (${finalPage} - 1) * TEXT_READER_CHARACTERS_PER_PAGE)
+    })`);
+    assert.equal(finalTextAnchor.page, finalTextAnchor.expectedPage, JSON.stringify(finalTextAnchor));
+    assert.equal(finalTextAnchor.page, finalPage, JSON.stringify(finalTextAnchor));
+    assert.equal(Number.isSafeInteger(finalTextAnchor.offset), true, JSON.stringify(finalTextAnchor));
+    assert.equal(finalTextAnchor.offset, finalTextAnchor.targetOffset, JSON.stringify(finalTextAnchor));
+    const staleCrossFileState = await evaluate(cdp, `(() => {
+      const before = { ...state.textReading };
+      applyTextReadingState({ fileId: 'stale-other-file', position: 0.01, page: 1, characterOffset: 4, revision: Math.max(0, before.revision - 1) });
+      return { before, after: { ...state.textReading } };
+    })()`);
+    assert.deepEqual(staleCrossFileState.after, staleCrossFileState.before, JSON.stringify(staleCrossFileState));
+
+    const arbitraryAnchorOffset = 1234;
+    const arbitraryUpdate = await evaluate(cdp, `(async () => {
+      const characterOffset = ${arbitraryAnchorOffset};
+      const result = await emitAck('text-reading-update', {
+        fileId: ${JSON.stringify(novelFile.id)},
+        position: textReadingPositionForCharacterOffset(characterOffset),
+        page: 1 + Math.floor(characterOffset / TEXT_READER_CHARACTERS_PER_PAGE),
+        characterOffset
+      });
+      return { success: result.success, offset: result.textReading?.characterOffset, revision: result.textReading?.revision };
+    })()`);
+    assert.equal(arbitraryUpdate.success, true, JSON.stringify(arbitraryUpdate));
+    assert.equal(arbitraryUpdate.offset, arbitraryAnchorOffset, JSON.stringify(arbitraryUpdate));
+    await waitFor(() => evaluate(cdp, `state.room?.textReading?.characterOffset === ${arbitraryAnchorOffset}
+      && state.textReading?.characterOffset === ${arbitraryAnchorOffset}`), '桌面端应用任意精确字符锚点');
+    await delay(650);
+    const desktopTextAnchor = await evaluate(cdp, `(() => {
+      const node = textViewerTextNode();
+      const authoritativeOffset = state.room?.textReading?.characterOffset;
+      const rect = textRangeRectAt(node, authoritativeOffset);
+      const lineHeight = Number.parseFloat(getComputedStyle(elements.textViewer).lineHeight) || 0;
+      return {
+        authoritativeOffset,
+        localStateOffset: state.textReading?.characterOffset,
+        visualLineStart: textCharacterOffsetAtScroll(),
+        anchorCharacter: node?.data.slice(authoritativeOffset, authoritativeOffset + 1),
+        anchorText: node?.data.slice(authoritativeOffset, authoritativeOffset + 48),
+        anchorTopDelta: rect ? rect.top - textViewerContentTop(elements.textViewer) : null,
+        lineHeight,
+        scrollTop: elements.textViewer.scrollTop
+      };
+    })()`);
+    assert.equal(desktopTextAnchor.authoritativeOffset, arbitraryAnchorOffset, JSON.stringify(desktopTextAnchor));
+    assert.equal(desktopTextAnchor.localStateOffset, arbitraryAnchorOffset, JSON.stringify(desktopTextAnchor));
+    assert.equal(desktopTextAnchor.anchorCharacter, novelText.slice(arbitraryAnchorOffset, arbitraryAnchorOffset + 1), JSON.stringify(desktopTextAnchor));
+    assert.equal(desktopTextAnchor.anchorText, novelText.slice(arbitraryAnchorOffset, arbitraryAnchorOffset + 48), JSON.stringify(desktopTextAnchor));
+    assert.notEqual(desktopTextAnchor.visualLineStart, arbitraryAnchorOffset, 'desktop fixture must use a non-line-start anchor');
+    assert.ok(desktopTextAnchor.anchorTopDelta >= -2 && desktopTextAnchor.anchorTopDelta <= desktopTextAnchor.lineHeight + 2, JSON.stringify(desktopTextAnchor));
+
+    await evaluate(cdp, `document.body.classList.add('android-client'); true`);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await delay(420);
+    const mobileTextAnchor = await evaluate(cdp, `(() => {
+      applyTextReadingState(state.room.textReading);
+      const node = textViewerTextNode();
+      const authoritativeOffset = state.room?.textReading?.characterOffset;
+      const rect = textRangeRectAt(node, authoritativeOffset);
+      const lineHeight = Number.parseFloat(getComputedStyle(elements.textViewer).lineHeight) || 0;
+      return {
+        authoritativeOffset,
+        localStateOffset: state.textReading?.characterOffset,
+        visualLineStart: textCharacterOffsetAtScroll(),
+        anchorCharacter: node?.data.slice(authoritativeOffset, authoritativeOffset + 1),
+        anchorText: node?.data.slice(authoritativeOffset, authoritativeOffset + 48),
+        anchorTopDelta: rect ? rect.top - textViewerContentTop(elements.textViewer) : null,
+        lineHeight,
+        scrollTop: elements.textViewer.scrollTop
+      };
+    })()`);
+    assert.equal(mobileTextAnchor.authoritativeOffset, arbitraryAnchorOffset, JSON.stringify({ desktopTextAnchor, mobileTextAnchor }));
+    assert.equal(mobileTextAnchor.localStateOffset, arbitraryAnchorOffset, JSON.stringify({ desktopTextAnchor, mobileTextAnchor }));
+    assert.equal(mobileTextAnchor.anchorCharacter, desktopTextAnchor.anchorCharacter, JSON.stringify({ desktopTextAnchor, mobileTextAnchor }));
+    assert.equal(mobileTextAnchor.anchorText, desktopTextAnchor.anchorText, JSON.stringify({ desktopTextAnchor, mobileTextAnchor }));
+    assert.notEqual(mobileTextAnchor.visualLineStart, arbitraryAnchorOffset, 'mobile fixture must use a non-line-start anchor');
+    assert.ok(mobileTextAnchor.anchorTopDelta >= -2 && mobileTextAnchor.anchorTopDelta <= mobileTextAnchor.lineHeight + 2, JSON.stringify(mobileTextAnchor));
+
+    await evaluate(cdp, `goToTextReaderPage(2)`);
+    await waitFor(() => evaluate(cdp, `state.room?.textReading?.page === 2
+      && state.room?.textReading?.characterOffset === ${secondPageOffset}`), '移动端页码跳转保持精确页边界');
+    await delay(650);
+    const mobilePageJump = await evaluate(cdp, `({
+      roomOffset: state.room?.textReading?.characterOffset,
+      localOffset: state.textReading?.characterOffset,
+      targetOffset: (2 - 1) * TEXT_READER_CHARACTERS_PER_PAGE,
+      visualLineStart: textCharacterOffsetAtScroll()
+    })`);
+    assert.equal(mobilePageJump.roomOffset, secondPageOffset, JSON.stringify(mobilePageJump));
+    assert.equal(mobilePageJump.localOffset, secondPageOffset, JSON.stringify(mobilePageJump));
+    assert.equal(mobilePageJump.roomOffset, mobilePageJump.targetOffset, JSON.stringify(mobilePageJump));
+    assert.notEqual(mobilePageJump.visualLineStart, secondPageOffset, 'mobile page jump must not publish its wrapped-line start');
+    await evaluate(cdp, `document.body.classList.remove('android-client'); true`);
+    await cdp.send('Emulation.clearDeviceMetricsOverride');
     await evaluate(cdp, `(async () => { await clearPlayback(); return true; })()`);
     await waitFor(() => evaluate(cdp, `state.currentFile === null && document.getElementById('textViewer').classList.contains('is-hidden')`), '清空 TXT 预览');
     await evaluate(cdp, `openAccount('home')`);
@@ -302,12 +537,48 @@ async function main() {
     await delay(450);
     const memberAvatarSingleClick = await evaluate(cdp, `(async () => {
       const image = document.querySelector('.user-card[data-username="BrowserUiOwner"] .member-avatar img');
+      const control = image.closest('.member-avatar');
+      const delegatedClicks = [];
+      const recordClick = (event) => delegatedClicks.push({ detail: event.detail, trusted: event.isTrusted });
+      elements.userList.addEventListener('click', recordClick);
       image.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, view: window }));
-      await new Promise((resolve) => setTimeout(resolve, 320));
-      return !elements.memberProfileModal.classList.contains('is-hidden');
+      renderUsers();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      elements.userList.removeEventListener('click', recordClick);
+      return {
+        profileVisible: !elements.memberProfileModal.classList.contains('is-hidden'),
+        originalControlConnected: control.isConnected,
+        currentControlIsOriginal: document.querySelector('.user-card[data-username="BrowserUiOwner"] .member-avatar') === control,
+        delegatedClicks
+      };
     })()`);
-    assert.equal(memberAvatarSingleClick, true, '成员头像单击仍应打开成员名片');
+    assert.equal(memberAvatarSingleClick.profileVisible, true, `成员头像单击仍应打开成员名片: ${JSON.stringify(memberAvatarSingleClick)}`);
+    assert.equal(memberAvatarSingleClick.originalControlConnected, false, JSON.stringify(memberAvatarSingleClick));
+    assert.equal(memberAvatarSingleClick.currentControlIsOriginal, false, JSON.stringify(memberAvatarSingleClick));
+    assert.equal(memberAvatarSingleClick.delegatedClicks.length, 1, JSON.stringify(memberAvatarSingleClick));
     await evaluate(cdp, `elements.memberProfileModal.classList.add('is-hidden'); true`);
+    const memberAvatarTouchDouble = await evaluate(cdp, `(async () => {
+      const currentImage = () => document.querySelector('.user-card[data-username="BrowserUiOwner"] .member-avatar img');
+      const dispatchTouch = (image) => {
+        image.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerType: 'touch' }));
+        image.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, view: window }));
+      };
+      dispatchTouch(currentImage());
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      dispatchTouch(currentImage());
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return {
+        previewVisible: !document.querySelector('.avatar-preview-overlay').classList.contains('is-hidden'),
+        profileHidden: elements.memberProfileModal.classList.contains('is-hidden')
+      };
+    })()`);
+    assert.equal(memberAvatarTouchDouble.previewVisible, true, JSON.stringify(memberAvatarTouchDouble));
+    assert.equal(memberAvatarTouchDouble.profileHidden, true, '300ms 触摸双击不能先打开成员名片');
+    await evaluate(cdp, `document.querySelector('[data-avatar-preview-close]').click(); true`);
+    if (avatarOnly) {
+      console.log(JSON.stringify({ success: true, memberAvatarPreview, memberAvatarSingleClick, memberAvatarTouchDouble }));
+      return;
+    }
     const original = await evaluate(cdp, `({ theme: document.documentElement.dataset.uiTheme || '', count: UI_THEMES.length, bodyWidth: document.body.scrollWidth, viewport: innerWidth })`);
     assert.equal(original.theme, 'silver-screen'); assert.equal(original.count, 21); assert.ok(original.bodyWidth <= original.viewport + 2);
     const friendFloatingSurface = await evaluate(cdp, `(() => {
@@ -384,23 +655,32 @@ async function main() {
     assert.ok(aiConfigLayout.actions[0] >= aiConfigLayout.panel[0] - 1 && aiConfigLayout.actions[1] <= aiConfigLayout.panel[1] + 1, JSON.stringify(aiConfigLayout));
     assert.deepEqual(aiConfigLayout.buttons.map((button) => button.id), ['saveAiConfigBtn', 'testAiConnectionBtn', 'syncAiConfigBtn', 'exportAiConfigBtn', 'importAiConfigBtn', 'pasteAiConfigBtn']);
     assert.ok(aiConfigLayout.buttons.every((button) => button.width >= 76 && button.height >= 32), JSON.stringify(aiConfigLayout));
-    const aiModelFlow = await evaluate(cdp, `(async () => {
+    await evaluate(cdp, `(() => {
       const originalFetch = window.fetch;
-      try {
-        window.fetch = async (url, options) => String(url) === '/api/ai/models'
-          ? new Response(JSON.stringify({ success: true, endpoint: '/v1/models', models: ['gpt-compat-a', 'gpt-compat-b', 'gpt-compat-a'] }), { status: 200, headers: { 'content-type': 'application/json' } })
-          : originalFetch(url, options);
-        await aiRefreshModels(false);
+      window.__syncWatchAiModelFlow = { status: 'pending' };
+      window.fetch = async (url, options) => String(url) === '/api/ai/models'
+        ? new Response(JSON.stringify({ success: true, endpoint: '/v1/models', models: ['gpt-compat-a', 'gpt-compat-b', 'gpt-compat-a'] }), { status: 200, headers: { 'content-type': 'application/json' } })
+        : originalFetch(url, options);
+      window.__syncWatchAiModelFlowPromise = Promise.resolve()
+        .then(() => aiRefreshModels(false))
+        .then(() => {
         elements.aiModelPicker.value = 'gpt-compat-b';
         elements.aiModelPicker.dispatchEvent(new Event('change', { bubbles: true }));
         const saved = JSON.parse(localStorage.getItem('syncwatchAiWorkbenchConfigV2') || '{}');
-        return {
+          window.__syncWatchAiModelFlow = { status: 'done', value: {
           models: [...state.aiWorkbench.models], options: [...elements.aiModelPicker.options].map((option) => option.value),
           selected: elements.aiModelPicker.value, active: elements.aiActiveModel.value, chatModel: state.aiWorkbench.config.chatModel,
           savedCatalog: saved.modelCatalog, summary: elements.aiModelSummary.textContent
-        };
-      } finally { window.fetch = originalFetch; }
+          } };
+        })
+        .catch((error) => { window.__syncWatchAiModelFlow = { status: 'error', error: String(error?.stack || error) }; })
+        .finally(() => { window.fetch = originalFetch; });
+      return true;
     })()`);
+    await waitFor(() => evaluate(cdp, `window.__syncWatchAiModelFlow?.status !== 'pending'`), '刷新 AI 模型目录');
+    const aiModelFlowResult = await evaluate(cdp, `window.__syncWatchAiModelFlow`);
+    if (aiModelFlowResult.status !== 'done') throw new Error(`AI 模型刷新失败: ${aiModelFlowResult.error || JSON.stringify(aiModelFlowResult)}`);
+    const aiModelFlow = aiModelFlowResult.value;
     assert.deepEqual(aiModelFlow.models, ['gpt-compat-a', 'gpt-compat-b'], JSON.stringify(aiModelFlow));
     assert.ok(aiModelFlow.options.includes('gpt-compat-a') && aiModelFlow.options.includes('gpt-compat-b'), JSON.stringify(aiModelFlow));
     assert.equal(aiModelFlow.selected, 'gpt-compat-b', JSON.stringify(aiModelFlow));
@@ -538,21 +818,29 @@ async function main() {
     assert.match(firstVideoAttention.empty.animation, /first-video-upload-attention/);
     assert.equal(firstVideoAttention.withVideo.highlighted, false, JSON.stringify(firstVideoAttention));
     assert.doesNotMatch(firstVideoAttention.withVideo.animation, /first-video-upload-attention/);
-    const ownedRoomSwitcher = await evaluate(cdp, `(async () => {
-      openSwitchRoom();
-      await new Promise((resolve) => setTimeout(resolve, 120));
+    await evaluate(cdp, `openSwitchRoom(); true`);
+    await waitFor(() => evaluate(cdp, `!state.switchOwnedRoomsLoading`), '刷新我的房间列表');
+    await evaluate(cdp, `(() => {
       const originalProfile = state.profile;
       const originalSwitch = switchToRoomDirect;
       const currentRooms = Array.isArray(state.profile?.recentRooms) ? state.profile.recentRooms : [];
-      state.profile = { ...(state.profile || {}), recentRooms: [...currentRooms, { id: 'OWNED99', name: '备用放映厅', owned: true, online: 0, maxUsers: 8 }] };
+      state.profile = { ...(state.profile || {}), recentRooms: [...currentRooms.filter((room) => room.id !== 'OWNED99'), { id: 'OWNED99', name: '备用放映厅', owned: true, online: 0, maxUsers: 8 }] };
       renderSwitchOwnedRooms(state.profile.recentRooms);
-      let called = null;
-      switchToRoomDirect = async (roomId, options) => { called = { roomId, source: options?.source }; return false; };
+      window.__syncWatchOwnedRoomSwitcher = { called: null, originalProfile, originalSwitch };
+      switchToRoomDirect = async (roomId, options) => {
+        window.__syncWatchOwnedRoomSwitcher.called = { roomId, source: options?.source };
+        return false;
+      };
       elements.switchOwnedRoomList.querySelector('[data-switch-owned-room="OWNED99"]')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 40));
+      return true;
+    })()`);
+    await waitFor(() => evaluate(cdp, `Boolean(window.__syncWatchOwnedRoomSwitcher?.called)`), '切换我的房间');
+    await delay(40);
+    const ownedRoomSwitcher = await evaluate(cdp, `(() => {
+      const record = window.__syncWatchOwnedRoomSwitcher;
       const currentButton = elements.switchOwnedRoomList.querySelector('[data-switch-owned-room="' + state.room.id + '"]');
-      const result = { called, currentDisabled: Boolean(currentButton?.disabled), visibleRows: elements.switchOwnedRoomList.querySelectorAll('.switch-owned-room').length, modalVisible: !elements.switchRoomModal.classList.contains('is-hidden') };
-      switchToRoomDirect = originalSwitch; state.profile = originalProfile; elements.switchRoomModal.classList.add('is-hidden');
+      const result = { called: record.called, currentDisabled: Boolean(currentButton?.disabled), visibleRows: elements.switchOwnedRoomList.querySelectorAll('.switch-owned-room').length, modalVisible: !elements.switchRoomModal.classList.contains('is-hidden') };
+      switchToRoomDirect = record.originalSwitch; state.profile = record.originalProfile; delete window.__syncWatchOwnedRoomSwitcher; elements.switchRoomModal.classList.add('is-hidden');
       return result;
     })()`);
     assert.deepEqual(ownedRoomSwitcher.called, { roomId: 'OWNED99', source: '我的房间' }, JSON.stringify(ownedRoomSwitcher));
@@ -572,6 +860,7 @@ async function main() {
     await evaluate(cdp, `selectUiTheme('modular-windows'); elements.themeModal.classList.add('is-hidden'); if (typeof activeAppDialog !== 'undefined' && activeAppDialog) settleAppDialog(false); elements.toastRegion.innerHTML = ''; true`); await delay(200);
     const mobile = await evaluate(cdp, `({ bodyWidth: document.body.scrollWidth, viewport: innerWidth, quality: elements.playbackQualitySelect.value, syncNotice: elements.syncNoticeToggle.checked, theme: document.documentElement.dataset.uiTheme })`);
     assert.ok(mobile.bodyWidth <= mobile.viewport + 2, JSON.stringify(mobile)); assert.equal(mobile.theme, 'modular-windows');
+    assert.equal(mobile.quality, 'original', JSON.stringify(mobile));
     const mobilePath = path.join(outputDir, 'modular-windows-mobile.png'); await capture(cdp, mobilePath); images.push(mobilePath);
     await evaluate(cdp, `openAccount('home')`);
     await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[data-default-avatar-picker]')?.querySelector('[data-avatar-id]'))`), '手机默认头像选择器');

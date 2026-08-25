@@ -44,6 +44,14 @@ assert.match(styleSource, /#memberProfileModal\s*\{[^}]*z-index:\s*240/s,
   '从位置清单打开的成员资料必须绘制在位置清单上方');
 assert.match(appSource, /topbarDisplayMode:\s*localStorage\.getItem\('syncwatchTopbarDisplayModeV2'\)\s*===\s*'compact'\s*\?\s*'compact'\s*:\s*'text'/,
   '升级后的工具栏必须默认使用文字模式，旧版精简模式缓存不能覆盖新默认值');
+assert.match(pageSource, /id="playbackQualitySelect"[^>]*>[\s\S]*<option value="original" selected>原画<\/option>/,
+  '播放器清晰度选择器必须在首帧标记原画为默认选项');
+assert.match(appSource, /playbackQuality:\s*\['auto',\s*'smooth',\s*'original'\]\.includes\(localStorage\.getItem\('syncwatchPlaybackQuality'\)\)\s*\?\s*localStorage\.getItem\('syncwatchPlaybackQuality'\)\s*:\s*'original'/,
+  '没有已保存用户选择时，客户端必须默认使用原画');
+assert.match(appSource, /if\s*\(!localStorage\.getItem\('syncwatchPlaybackQuality'\)\)\s*state\.playbackQuality\s*=\s*state\.publicConfig\.defaultPlaybackQuality\s*\|\|\s*'original'/,
+  '服务器公共配置缺失或新客户端未保存选择时必须回退原画');
+assert.match(styleSource, /#desktopCloseModal\s+\.desktop-close-actions\s*>\s*button:is\(:hover,\s*:focus\)[\s\S]*background:\s*var\(--pink\)/,
+  '关闭方式窗口的所有按钮 hover/focus 必须使用与最小化到托盘一致的高亮背景');
 
 for (const id of [
   'refreshAllApplicationsBtn', 'marqueeLoginEnabled', 'copyLanAddressBtn',

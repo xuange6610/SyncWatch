@@ -1,0 +1,523 @@
+name: Build, verify, and publish one atomic release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated v-prefixed tag; dispatch this workflow from the same tag ref
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atomic-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Lock release source identity
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.source.outputs.version }}
+      commit_sha: ${{ steps.source.outputs.commit_sha }}
+      source_tree: ${{ steps.source.outputs.source_tree }}
+      artifact_prefix: ${{ steps.source.outputs.artifact_prefix }}
+    steps:
+      - name: Checkout the requested tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - name: Verify annotated tag, commit, tree, version, and empty Release target
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$WORKFLOW_REF" = "refs/tags/${RELEASE_TAG}"
+          test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
+          commit_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          source_tree="$(git rev-parse "${RELEASE_TAG}^{tree}")"
+          test "$WORKFLOW_SHA" = "$commit_sha"
+          test "$(git rev-parse HEAD)" = "$commit_sha"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$source_tree"
+          version="$(node -p "require('./package.json').version")"
+          test "$RELEASE_TAG" = "v${version}"
+          test -s "docs/release-notes-v${version}.md"
+          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .release-target.json 2> .release-target.err; then
+            RELEASE_JSON=.release-target.json node -e '
+              const r=require(`./${process.env.RELEASE_JSON}`);
+              if(r.draft!==true || !Array.isArray(r.assets) || r.assets.length!==0) {
+                throw new Error(`The existing Release must be an empty draft before this run starts.`);
+              }
+            '
+          elif ! grep -q 'HTTP 404' .release-target.err; then
+            cat .release-target.err >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$commit_sha" >> "$GITHUB_OUTPUT"
+          echo "source_tree=$source_tree" >> "$GITHUB_OUTPUT"
+          echo "artifact_prefix=release-${RELEASE_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+
+  source_tests:
+    name: Run source and repository release gates
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout immutable release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify immutable checkout
+        shell: bash
+        env:
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit_sha }}
+          RELEASE_TREE: ${{ needs.prepare.outputs.source_tree }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$RELEASE_TREE"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run release-specific source gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/release-candidate-gate.js
+          node --check scripts/release-third-party-assets.js
+          node tests/release-candidate-gate.test.js
+          node tests/release-third-party-assets.test.js
+          node tests/release-atomic-workflow.test.js
+          npm run test:repo
+          xvfb-run -a npm run test:all
+
+  android:
+    name: Build and verify Android
+    needs: [prepare, source_tests]
+    uses: ./.github/workflows/release-windows.yml
+    with:
+      phase: android
+      tag: ${{ inputs.tag }}
+      version: ${{ needs.prepare.outputs.version }}
+      commit_sha: ${{ needs.prepare.outputs.commit_sha }}
+      source_tree: ${{ needs.prepare.outputs.source_tree }}
+      artifact_prefix: ${{ needs.prepare.outputs.artifact_prefix }}
+    secrets:
+      android_keystore_base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      android_key_properties_base64: ${{ secrets.ANDROID_KEY_PROPERTIES_BASE64 }}
+
+  windows_base:
+    name: Build and verify Windows base packages
+    needs: [prepare, source_tests]
+    uses: ./.github/workflows/release-windows.yml
+    with:
+      phase: base
+      tag: ${{ inputs.tag }}
+      version: ${{ needs.prepare.outputs.version }}
+      commit_sha: ${{ needs.prepare.outputs.commit_sha }}
+      source_tree: ${{ needs.prepare.outputs.source_tree }}
+      artifact_prefix: ${{ needs.prepare.outputs.artifact_prefix }}
+
+  mac_base:
+    name: Build and verify native macOS base packages
+    needs: [prepare, source_tests]
+    uses: ./.github/workflows/release-macos.yml
+    with:
+      phase: base
+      tag: ${{ inputs.tag }}
+      version: ${{ needs.prepare.outputs.version }}
+      commit_sha: ${{ needs.prepare.outputs.commit_sha }}
+      source_tree: ${{ needs.prepare.outputs.source_tree }}
+      artifact_prefix: ${{ needs.prepare.outputs.artifact_prefix }}
+
+  official_assets:
+    name: Download and verify pinned official runtimes
+    needs: [prepare, source_tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout immutable release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify immutable checkout
+        shell: bash
+        env:
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit_sha }}
+          RELEASE_TREE: ${{ needs.prepare.outputs.source_tree }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$RELEASE_TREE"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - name: Install locked production dependencies for proxy-aware downloads
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Download fixed upstream files directly into dist
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit_sha }}
+          RELEASE_TREE: ${{ needs.prepare.outputs.source_tree }}
+        run: |
+          set -euo pipefail
+          test ! -e dist
+          node scripts/release-third-party-assets.js \
+            --output dist \
+            --evidence .build/evidence/official.json \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+          node scripts/release-candidate-gate.js \
+            --selection official \
+            --version "$RELEASE_VERSION" \
+            --directory dist
+          file dist/*
+          tar -tzf dist/node-v24.19.0-darwin-arm64.tar.gz > .build/node-arm64-contents.txt
+          grep -q '/bin/node$' .build/node-arm64-contents.txt
+      - name: Upload fixed official assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifact_prefix }}-official
+          path: dist/*
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+      - name: Upload official source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifact_prefix }}-evidence-official
+          path: .build/evidence/official.json
+          if-no-files-found: error
+          retention-days: 3
+
+  windows_full:
+    name: Build and verify Windows Full Offline packages
+    needs: [prepare, android, windows_base, mac_base]
+    uses: ./.github/workflows/release-windows.yml
+    with:
+      phase: full
+      tag: ${{ inputs.tag }}
+      version: ${{ needs.prepare.outputs.version }}
+      commit_sha: ${{ needs.prepare.outputs.commit_sha }}
+      source_tree: ${{ needs.prepare.outputs.source_tree }}
+      artifact_prefix: ${{ needs.prepare.outputs.artifact_prefix }}
+
+  mac_full:
+    name: Build and verify native macOS Full Offline packages
+    needs: [prepare, android, windows_base, mac_base]
+    uses: ./.github/workflows/release-macos.yml
+    with:
+      phase: full
+      tag: ${{ inputs.tag }}
+      version: ${{ needs.prepare.outputs.version }}
+      commit_sha: ${{ needs.prepare.outputs.commit_sha }}
+      source_tree: ${{ needs.prepare.outputs.source_tree }}
+      artifact_prefix: ${{ needs.prepare.outputs.artifact_prefix }}
+
+  final:
+    name: Verify exact 28 files and publish atomically
+    needs: [prepare, source_tests, android, windows_base, mac_base, official_assets, windows_full, mac_full]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout immutable release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - name: Prepare the only final dist directory
+        shell: bash
+        env:
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit_sha }}
+          RELEASE_TREE: ${{ needs.prepare.outputs.source_tree }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$RELEASE_TREE"
+          test ! -e dist
+          mkdir dist
+      - name: Download same-run Android artifact into dist
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifact_prefix }}-android
+          path: dist
+      - name: Download same-run Windows base artifacts into dist
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifact_prefix }}-windows-base
+          path: dist
+      - name: Download same-run Windows Full Offline artifacts into dist
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifact_prefix }}-windows-full
+          path: dist
+      - name: Download same-run macOS base artifacts into dist
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ needs.prepare.outputs.artifact_prefix }}-mac-base-*
+          path: dist
+          merge-multiple: true
+      - name: Download same-run macOS Full Offline artifacts into dist
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ needs.prepare.outputs.artifact_prefix }}-mac-full-*
+          path: dist
+          merge-multiple: true
+      - name: Download same-run official assets into dist
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifact_prefix }}-official
+          path: dist
+      - name: Download all same-run provenance evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ needs.prepare.outputs.artifact_prefix }}-evidence-*
+          path: .build/evidence
+          merge-multiple: true
+      - name: Generate source archives directly in dist and verify exact 28
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit_sha }}
+          RELEASE_TREE: ${{ needs.prepare.outputs.source_tree }}
+        run: |
+          set -euo pipefail
+          git archive \
+            --format=zip \
+            --prefix="SyncWatch-v${RELEASE_VERSION}/" \
+            --output="dist/SyncWatch-Source-v${RELEASE_VERSION}.zip" \
+            "$RELEASE_COMMIT"
+          git archive \
+            --format=tar \
+            --prefix="SyncWatch-v${RELEASE_VERSION}/" \
+            "$RELEASE_COMMIT" \
+            | gzip -9 -n > "dist/SyncWatch-Source-v${RELEASE_VERSION}.tar.gz"
+          node scripts/release-candidate-gate.js \
+            --selection bundle \
+            --version "$RELEASE_VERSION" \
+            --directory dist \
+            --manifest .build/SHA256SUMS-all-28.txt \
+            --upload-manifest .build/SHA256SUMS-release-26.txt \
+            --release-list .build/release-files-26.txt \
+            --evidence-directory .build/evidence \
+            --source-commit "$RELEASE_COMMIT" \
+            --source-tree "$RELEASE_TREE" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+          test "$(find dist -maxdepth 1 -type f | wc -l | tr -d ' ')" = "28"
+          test "$(wc -l < .build/SHA256SUMS-all-28.txt | tr -d ' ')" = "28"
+          test "$(wc -l < .build/SHA256SUMS-release-26.txt | tr -d ' ')" = "26"
+          test "$(wc -l < .build/release-files-26.txt | tr -d ' ')" = "26"
+      - name: Preserve final hashes and provenance as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.artifact_prefix }}-final-audit
+          path: |
+            .build/SHA256SUMS-all-28.txt
+            .build/SHA256SUMS-release-26.txt
+            .build/release-files-26.txt
+            .build/evidence/*.json
+            dist/SyncWatch-Source-v${{ needs.prepare.outputs.version }}.zip
+            dist/SyncWatch-Source-v${{ needs.prepare.outputs.version }}.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload one complete set, verify remote digests, then publish Latest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit_sha }}
+          RELEASE_TREE: ${{ needs.prepare.outputs.source_tree }}
+          NOTES_FILE: docs/release-notes-v${{ needs.prepare.outputs.version }}.md
+        run: |
+          set -euo pipefail
+          mapfile -t files < .build/release-files-26.txt
+          mapfile -t asset_names < <(sed 's#^dist/##' .build/release-files-26.txt)
+          test "${#files[@]}" -eq 26
+          test "${#asset_names[@]}" -eq 26
+          for file in "${files[@]}"; do test -s "$file"; done
+
+          assert_remote_tag() {
+            local tag_object remote_commit remote_tree
+            test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.type')" = "tag"
+            tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+            test "$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_object}" --jq '.object.type')" = "commit"
+            remote_commit="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_object}" --jq '.object.sha')"
+            test "$remote_commit" = "$RELEASE_COMMIT"
+            remote_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${remote_commit}" --jq '.tree.sha')"
+            test "$remote_tree" = "$RELEASE_TREE"
+          }
+
+          assert_remote_tag
+
+          release_touched=0
+          rollback_release() {
+            status=$?
+            if [[ "$status" -ne 0 && "$release_touched" -eq 1 ]]; then
+              set +e
+              for name in "${asset_names[@]}"; do
+                gh release delete-asset "$RELEASE_TAG" "$name" --repo "$GITHUB_REPOSITORY" --yes
+              done
+              if ! gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=true; then
+                gh release delete "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --yes
+                gh release create "$RELEASE_TAG" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --verify-tag \
+                  --title "SyncWatch同步观影 $RELEASE_TAG" \
+                  --notes-file "$NOTES_FILE" \
+                  --draft
+              fi
+              echo "Atomic publication failed; this run's 26 expected names were removed and the Release was restored to draft." >&2
+            fi
+            exit "$status"
+          }
+          trap rollback_release EXIT
+
+          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .build/pre-upload-release.json 2> .build/pre-upload-release.err; then
+            RELEASE_JSON=.build/pre-upload-release.json node -e '
+              const r=require(`./${process.env.RELEASE_JSON}`);
+              if(r.draft!==true || !Array.isArray(r.assets) || r.assets.length!==0) {
+                throw new Error(`Release target changed after preparation; refusing to replace it.`);
+              }
+            '
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "SyncWatch同步观影 $RELEASE_TAG" \
+              --notes-file "$NOTES_FILE" \
+              --draft=true
+          else
+            grep -q 'HTTP 404' .build/pre-upload-release.err
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "SyncWatch同步观影 $RELEASE_TAG" \
+              --notes-file "$NOTES_FILE" \
+              --draft
+          fi
+          release_touched=1
+
+          gh release upload "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .build/uploaded-release.json
+          node scripts/release-candidate-gate.js \
+            --selection release \
+            --version "$RELEASE_VERSION" \
+            --metadata .build/uploaded-release.json \
+            --expected-manifest .build/SHA256SUMS-release-26.txt
+
+          RELEASE_JSON=.build/uploaded-release.json node -e '
+            const fs=require(`fs`);
+            const release=JSON.parse(fs.readFileSync(process.env.RELEASE_JSON,`utf8`));
+            const sums=new Map(fs.readFileSync(`.build/SHA256SUMS-release-26.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>{
+              const match=/^([a-f0-9]{64})  (.+)$/.exec(line);
+              if(!match)throw new Error(`Invalid local checksum row: ${line}`);
+              return [match[2],match[1]];
+            }));
+            if(release.assets.length!==26 || sums.size!==26)throw new Error(`Remote readback requires exactly 26 assets.`);
+            const rows=release.assets.map((a)=>{
+              const expected=sums.get(a.name);
+              if(!expected || !Number.isSafeInteger(a.id))throw new Error(`Missing draft readback metadata for ${a.name}`);
+              return `${expected}\t${a.name}\t${a.id}`;
+            });
+            fs.writeFileSync(`.build/download-verification.tsv`,rows.join(`\n`)+`\n`);
+          '
+          test "$(wc -l < .build/download-verification.tsv | tr -d ' ')" = "26"
+          while IFS=$'\t' read -r expected name asset_id; do
+            actual=""
+            for attempt in 1 2 3; do
+              if actual="$(gh api \
+                -H 'Accept: application/octet-stream' \
+                "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
+                | sha256sum | awk '{print $1}')"; then break; fi
+              actual=""
+            done
+            test -n "$actual"
+            if [[ "$actual" != "$expected" ]]; then
+              echo "Downloaded SHA-256 mismatch for $name: expected $expected, got $actual" >&2
+              exit 1
+            fi
+          done < .build/download-verification.tsv
+
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SyncWatch同步观影 $RELEASE_TAG" \
+            --notes-file "$NOTES_FILE" \
+            --draft=false \
+            --prerelease=false \
+            --latest
+
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .build/published-release.json
+          RELEASE_JSON=.build/published-release.json node -e '
+            const r=require(`./${process.env.RELEASE_JSON}`);
+            if(r.draft || r.prerelease || r.tag_name!==process.env.RELEASE_TAG || r.name!==`SyncWatch同步观影 ${process.env.RELEASE_TAG}`) {
+              throw new Error(`Published Release identity/state mismatch.`);
+            }
+          '
+          node scripts/release-candidate-gate.js \
+            --selection release \
+            --version "$RELEASE_VERSION" \
+            --metadata .build/published-release.json \
+            --expected-manifest .build/SHA256SUMS-release-26.txt
+
+          assert_remote_tag
+
+          latest=""
+          for attempt in $(seq 1 12); do
+            latest="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')"
+            [[ "$latest" == "$RELEASE_TAG" ]] && break
+            sleep 5
+          done
+          test "$latest" = "$RELEASE_TAG"
+          node -e '
+            const fs=require(`fs`);
+            const release=JSON.parse(fs.readFileSync(`.build/published-release.json`,`utf8`));
+            if(release.assets.length!==26)throw new Error(`Published Release requires exactly 26 assets.`);
+            fs.writeFileSync(`.build/download-urls.txt`,release.assets.map((a)=>a.browser_download_url).join(`\n`)+`\n`);
+          '
+          test "$(wc -l < .build/download-urls.txt | tr -d ' ')" = "26"
+          while IFS= read -r url; do
+            curl --retry 3 --retry-all-errors -fsSIL --max-time 120 "$url" -o /dev/null
+          done < .build/download-urls.txt
+
+          curl --retry 3 --retry-all-errors -fL --max-time 900 \
+            "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${RELEASE_TAG}.zip" \
+            -o .build/github-source.zip
+          unzip -t .build/github-source.zip
+          unzip -p .build/github-source.zip "SyncWatch-${RELEASE_VERSION}/package.json" \
+            | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>{if(JSON.parse(b).version!==process.env.RELEASE_VERSION)process.exit(1)})'
+          rm .build/github-source.zip
+          curl --retry 3 --retry-all-errors -fL --max-time 900 \
+            "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${RELEASE_TAG}.tar.gz" \
+            -o .build/github-source.tar.gz
+          tar -tzf .build/github-source.tar.gz > .build/github-source-tar-list.txt
+          grep -qx "SyncWatch-${RELEASE_VERSION}/package.json" .build/github-source-tar-list.txt
+          tar -xOzf .build/github-source.tar.gz "SyncWatch-${RELEASE_VERSION}/package.json" \
+            | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>{if(JSON.parse(b).version!==process.env.RELEASE_VERSION)process.exit(1)})'
+          rm .build/github-source.tar.gz
+          release_touched=0

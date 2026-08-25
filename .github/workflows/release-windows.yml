@@ -1,152 +1,409 @@
-name: Build Windows release
+name: Build Windows and Android release artifacts
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      tag:
-        description: Existing v-prefixed tag to build and upload (for example v2.2.0)
+      phase:
+        description: android, base, or full
         required: true
         type: string
+      tag:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      commit_sha:
+        required: true
+        type: string
+      source_tree:
+        required: true
+        type: string
+      artifact_prefix:
+        required: true
+        type: string
+    secrets:
+      android_keystore_base64:
+        required: false
+      android_key_properties_base64:
+        required: false
 
 permissions:
-  contents: write
-
-concurrency:
-  group: windows-release-${{ github.ref }}
-  cancel-in-progress: true
+  contents: read
 
 jobs:
-  build:
-    runs-on: windows-2022
-    timeout-minutes: 45
+  validate:
+    name: Validate immutable Windows build inputs
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout tag
+      - name: Validate caller inputs
+        shell: bash
+        env:
+          RELEASE_PHASE: ${{ inputs.phase }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit_sha }}
+          RELEASE_TREE: ${{ inputs.source_tree }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_PHASE" =~ ^(android|base|full)$ ]]
+          [[ "$RELEASE_TAG" == "v${RELEASE_VERSION}" ]]
+          [[ "$RELEASE_COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$RELEASE_TREE" =~ ^[a-f0-9]{40}$ ]]
+
+  android:
+    name: Build signed Android artifact
+    if: inputs.phase == 'android'
+    needs: validate
+    runs-on: windows-2022
+    timeout-minutes: 75
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_COMMIT: ${{ inputs.commit_sha }}
+      RELEASE_TREE: ${{ inputs.source_tree }}
+      ARTIFACT_PREFIX: ${{ inputs.artifact_prefix }}
+    steps:
+      - name: Checkout immutable source commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
-
-      - name: Validate v-prefixed release tag
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify source commit and tree
         shell: pwsh
         run: |
-          $tag = '${{ inputs.tag || github.ref_name }}'
-          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
-            throw "Release workflow requires a v-prefixed SemVer tag such as v2.2.0; received '$tag'."
-          }
-
+          if ((git rev-parse HEAD).Trim() -ne $env:RELEASE_COMMIT) { throw 'Android checkout commit mismatch.' }
+          if ((git rev-parse 'HEAD^{tree}').Trim() -ne $env:RELEASE_TREE) { throw 'Android checkout tree mismatch.' }
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.19.0
           cache: npm
-
-      - name: Install locked package manager
-        run: npm install --global pnpm@11.9.0
-
       - name: Install locked dependencies
-        run: npm ci
-
-      - name: Prepare verified Cloudflare Tunnel binary
+        run: npm ci --no-audit --no-fund
+      - name: Restore ephemeral Android release signing material
+        shell: pwsh
+        env:
+          KEYSTORE_BASE64: ${{ secrets.android_keystore_base64 }}
+          KEY_PROPERTIES_BASE64: ${{ secrets.android_key_properties_base64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:KEYSTORE_BASE64) -or [string]::IsNullOrWhiteSpace($env:KEY_PROPERTIES_BASE64)) {
+            throw 'Android release signing secrets are required.'
+          }
+          New-Item -ItemType Directory -Force -Path .\mobile\.keys | Out-Null
+          [IO.File]::WriteAllBytes((Join-Path $PWD 'mobile\.keys\syncwatch-release.jks'), [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          [IO.File]::WriteAllBytes((Join-Path $PWD 'mobile\.keys\release.properties'), [Convert]::FromBase64String($env:KEY_PROPERTIES_BASE64))
+      - name: Build and verify signed Android artifact
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path vendor | Out-Null
-          Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'vendor/cloudflared.exe'
-          if ((Get-Item 'vendor/cloudflared.exe').Length -lt 1MB) { throw 'Downloaded cloudflared.exe is unexpectedly small.' }
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\mobile\build-apk.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Android release build failed.' }
+          $apk = ".\dist\SyncWatch-Android-v$env:RELEASE_VERSION-universal.apk"
+          if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) { throw "Missing exact Android output: $apk" }
+          node tests/android-package.test.js $apk
+          if ($LASTEXITCODE -ne 0) { throw 'Android package verification failed.' }
+          node scripts/release-candidate-gate.js --selection android --version $env:RELEASE_VERSION --directory .\dist --evidence .\.build\evidence\android.json --source-commit $env:RELEASE_COMMIT --source-tree $env:RELEASE_TREE --run-id $env:GITHUB_RUN_ID --run-attempt $env:GITHUB_RUN_ATTEMPT
+          if ($LASTEXITCODE -ne 0) { throw 'Android release gate failed.' }
+      - name: Remove ephemeral Android signing material
+        if: always()
+        shell: pwsh
+        run: Remove-Item -LiteralPath .\mobile\.keys -Recurse -Force -ErrorAction SilentlyContinue
+      - name: Upload Android candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-android
+          path: dist/SyncWatch-Android-v${{ inputs.version }}-universal.apk
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+      - name: Upload Android build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-evidence-android
+          path: .build/evidence/android.json
+          if-no-files-found: error
+          retention-days: 3
 
-      - name: Verify privacy and release contracts
+  android_startup:
+    name: Install and launch Android artifact in an emulator
+    if: inputs.phase == 'android'
+    needs: [validate, android]
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_COMMIT: ${{ inputs.commit_sha }}
+      RELEASE_TREE: ${{ inputs.source_tree }}
+    steps:
+      - name: Checkout immutable source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify source commit and tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$RELEASE_TREE"
+      - name: Download same-run signed Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-android
+          path: .build/android-smoke
+      - name: Install, launch, and keep the release APK alive
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-boot-timeout: 900
+          script: |
+            set -euo pipefail
+            apk=".build/android-smoke/SyncWatch-Android-v${RELEASE_VERSION}-universal.apk"
+            test -s "$apk"
+            adb install --no-streaming "$apk"
+            installed_version="$(adb shell dumpsys package com.xuan.syncwatch | sed -n 's/^[[:space:]]*versionName=//p' | head -n 1 | tr -d '\r')"
+            test "$installed_version" = "$RELEASE_VERSION"
+            adb logcat -c
+            adb shell am force-stop com.xuan.syncwatch
+            launch="$(adb shell am start -W -n com.xuan.syncwatch/.MainActivity | tr -d '\r')"
+            printf '%s\n' "$launch"
+            grep -q '^Status: ok$' <<< "$launch"
+            grep -q '^Activity: com.xuan.syncwatch/.MainActivity$' <<< "$launch"
+            sleep 15
+            test -n "$(adb shell pidof com.xuan.syncwatch | tr -d '\r')"
+            adb shell dumpsys activity activities > .build/android-smoke/activities.txt
+            grep -q 'com.xuan.syncwatch/.MainActivity' .build/android-smoke/activities.txt
+            if adb logcat -d -b crash | grep -q 'com.xuan.syncwatch'; then
+              adb logcat -d -b crash
+              exit 1
+            fi
+            adb exec-out screencap -p > .build/android-smoke/startup.png
+            test -s .build/android-smoke/startup.png
+      - name: Preserve Android startup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-android-startup-evidence
+          path: |
+            .build/android-smoke/activities.txt
+            .build/android-smoke/startup.png
+          if-no-files-found: warn
+          retention-days: 30
+
+  base:
+    name: Build Windows base artifacts
+    if: inputs.phase == 'base'
+    needs: validate
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_COMMIT: ${{ inputs.commit_sha }}
+      RELEASE_TREE: ${{ inputs.source_tree }}
+    steps:
+      - name: Checkout immutable source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify source commit and tree
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne $env:RELEASE_COMMIT) { throw 'Windows base checkout commit mismatch.' }
+          if ((git rev-parse 'HEAD^{tree}').Trim() -ne $env:RELEASE_TREE) { throw 'Windows base checkout tree mismatch.' }
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - name: Install locked package manager
+        run: npm install --global pnpm@11.9.0
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Prepare pinned Cloudflare Tunnel binary
+        shell: pwsh
+        run: |
+          node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --only cloudflared-windows-x64.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
+          New-Item -ItemType Directory -Force -Path .\vendor | Out-Null
+          Copy-Item -LiteralPath .\.build\embedded-cloudflared\cloudflared-windows-x64.exe -Destination .\vendor\cloudflared.exe
+      - name: Verify source and desktop contracts
         shell: pwsh
         run: |
           npm run test:privacy
           node tests/server-package-contract.test.js
           node tests/desktop-release-contract.test.js
           node tests/cloudflared-bundle.test.js
-
-      - name: Download and verify signed Android asset
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Build Windows base artifacts
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $tag = '${{ inputs.tag || github.ref_name }}'
-          gh release download $tag --repo '${{ github.repository }}' --pattern 'SyncWatch-Android-v2.2.0-universal.apk' --dir dist --clobber
-          $apk = Get-Item 'dist/SyncWatch-Android-v2.2.0-universal.apk'
-          if ($apk.Length -lt 150MB) { throw 'The verified Android asset is unexpectedly small.' }
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $apk.FullName).Hash
-          Write-Host "Using signed Android APK $($apk.Length) bytes SHA256 $hash"
-          node tests/android-package.test.js $apk.FullName
-
-      - name: Build portable server and client
-        shell: pwsh
-        run: |
-          npx electron-builder --win portable --publish never
+          npx electron-builder --win portable --x64 --publish never
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Standard build failed.' }
           npm run build:client -- --publish never
-
-      - name: Prepare Full offline bundle
-        env:
-          GH_TOKEN: ${{ github.token }}
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Experience build failed.' }
+      - name: Launch and verify Windows base artifacts
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path .build/offline-bundle/windows,.build/offline-bundle/android,.build/offline-bundle/mac | Out-Null
-          Copy-Item 'dist/SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe' '.build/offline-bundle/windows/SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe' -Force
-          Copy-Item 'dist/SyncWatch-Android-v2.2.0-universal.apk' '.build/offline-bundle/android/SyncWatch-Android-v2.2.0-universal.apk' -Force
-          gh release download '${{ inputs.tag || github.ref_name }}' --repo '${{ github.repository }}' --pattern 'SyncWatch-Server-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
-          gh release download '${{ inputs.tag || github.ref_name }}' --repo '${{ github.repository }}' --pattern 'SyncWatch-Client-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
-          node scripts/verify-full-offline-bundle.js
-
-      - name: Build Full installer and standalone EXE
-        shell: pwsh
-        run: |
-          npx electron-builder --config electron-builder-windows-installer.json --win nsis --publish never
-          npx electron-builder --config electron-builder-windows-full-portable.json --win portable --publish never
-
-      - name: Collect release assets
-        shell: pwsh
-        run: |
-          Get-ChildItem dist -Filter *.exe | Get-FileHash -Algorithm SHA256
-
-      - name: Verify release tiers and embedded runtime
-        shell: pwsh
-        run: |
-          $expected = @(
-            'dist\SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe',
-            'dist\SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe',
-            'dist\SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe',
-            'dist\SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe'
-          )
-          foreach ($file in $expected) {
-            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing release asset: $file" }
-            if ((Get-Item -LiteralPath $file).Length -lt 50MB) { throw "Release asset is unexpectedly small: $file" }
-            Get-FileHash -Algorithm SHA256 -LiteralPath $file
-          }
-          if (-not (Test-Path -LiteralPath 'vendor\cloudflared.exe') -or (Get-Item 'vendor\cloudflared.exe').Length -lt 1MB) {
-            throw 'The Full and Standard server builds require the bundled cloudflared.exe.'
-          }
-          $fullPackages = @(
-            'dist\SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe',
-            'dist\SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe'
-          )
-          foreach ($file in $fullPackages) {
-            if ((Get-Item -LiteralPath $file).Length -lt 1GB) {
-              throw "The Full offline package does not contain all platform downloads: $file"
-            }
-            if ((Get-Item -LiteralPath $file).Length -ge 2GB) {
-              throw "The Full offline package exceeds the GitHub Release 2 GiB per-asset limit: $file"
-            }
-          }
+          $standard = ".\dist\SyncWatch-Standard-Server-Portable-v$env:RELEASE_VERSION-x64.exe"
+          $client = ".\dist\SyncWatch-Experience-Client-Portable-v$env:RELEASE_VERSION-x64.exe"
+          node tests/split-desktop-artifact-smoke.js $standard
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Standard startup/core smoke failed.' }
+          $profile = Join-Path $env:RUNNER_TEMP 'syncwatch-client-smoke'
+          $process = Start-Process -FilePath $client -ArgumentList "--user-data-dir=$profile" -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 12
+          if ($process.HasExited) { throw "Windows Experience client exited during startup smoke ($($process.ExitCode))." }
+          taskkill.exe /PID $process.Id /T /F | Out-Null
           npm run test:privacy:release
-
-      - name: Upload workflow artifacts
+          Remove-Item -Path .\dist\*.blockmap, .\dist\latest*.yml -Force -ErrorAction SilentlyContinue
+          node scripts/release-candidate-gate.js --selection windows-base --version $env:RELEASE_VERSION --directory .\dist --evidence .\.build\evidence\windows-base.json --source-commit $env:RELEASE_COMMIT --source-tree $env:RELEASE_TREE --run-id $env:GITHUB_RUN_ID --run-attempt $env:GITHUB_RUN_ATTEMPT
+          if ($LASTEXITCODE -ne 0) { throw 'Windows base release gate failed.' }
+      - name: Upload Windows base candidate artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SyncWatch-Windows-${{ inputs.tag || github.ref_name }}
-          path: dist/*.exe
+          name: ${{ inputs.artifact_prefix }}-windows-base
+          path: |
+            dist/SyncWatch-Standard-Server-Portable-v${{ inputs.version }}-x64.exe
+            dist/SyncWatch-Experience-Client-Portable-v${{ inputs.version }}-x64.exe
+          compression-level: 0
           if-no-files-found: error
+          retention-days: 3
+      - name: Upload Windows base build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-evidence-windows-base
+          path: .build/evidence/windows-base.json
+          if-no-files-found: error
+          retention-days: 3
 
-      - name: Upload to GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
+  full:
+    name: Build Windows Full Offline artifacts
+    if: inputs.phase == 'full'
+    needs: validate
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_COMMIT: ${{ inputs.commit_sha }}
+      RELEASE_TREE: ${{ inputs.source_tree }}
+    steps:
+      - name: Checkout immutable source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify source commit and tree
         shell: pwsh
         run: |
-          $tag = '${{ inputs.tag || github.ref_name }}'
-          gh release view $tag --repo '${{ github.repository }}' *> $null
-          if ($LASTEXITCODE -ne 0) { gh release create $tag --repo '${{ github.repository }}' --title "SyncWatch同步观影 $tag" --generate-notes }
-          gh release upload $tag dist/*.exe --repo '${{ github.repository }}' --clobber
+          if ((git rev-parse HEAD).Trim() -ne $env:RELEASE_COMMIT) { throw 'Windows Full checkout commit mismatch.' }
+          if ((git rev-parse 'HEAD^{tree}').Trim() -ne $env:RELEASE_TREE) { throw 'Windows Full checkout tree mismatch.' }
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - name: Install locked package manager
+        run: npm install --global pnpm@11.9.0
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Prepare pinned Cloudflare Tunnel binary
+        shell: pwsh
+        run: |
+          node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --only cloudflared-windows-x64.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
+          New-Item -ItemType Directory -Force -Path .\vendor | Out-Null
+          Copy-Item -LiteralPath .\.build\embedded-cloudflared\cloudflared-windows-x64.exe -Destination .\vendor\cloudflared.exe
+      - name: Download same-run base artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-windows-base
+          path: .build/offline-bundle/windows
+      - name: Download same-run Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-android
+          path: .build/offline-bundle/android
+      - name: Download same-run macOS base artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.artifact_prefix }}-mac-base-*
+          path: .build/offline-bundle/mac
+          merge-multiple: true
+      - name: Verify Full Offline inputs and source contracts
+        shell: pwsh
+        run: |
+          node scripts/verify-full-offline-bundle.js
+          if ($LASTEXITCODE -ne 0) { throw 'Full Offline inputs failed verification.' }
+          npm run test:privacy
+          node tests/server-package-contract.test.js
+          node tests/desktop-release-contract.test.js
+          node tests/cloudflared-bundle.test.js
+      - name: Build Windows Full Offline artifacts
+        shell: pwsh
+        run: |
+          npx electron-builder --config electron-builder-windows-installer.json --win nsis --x64 --publish never
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Full Offline installer build failed.' }
+          npx electron-builder --config electron-builder-windows-full-portable.json --win portable --x64 --publish never
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Full Offline portable build failed.' }
+      - name: Install, launch, and verify Windows Full Offline artifacts
+        shell: pwsh
+        run: |
+          function Reserve-Port {
+            $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
+            $listener.Start(); $port = ([Net.IPEndPoint]$listener.LocalEndpoint).Port; $listener.Stop(); return $port
+          }
+          function Test-ServerExecutable([string]$executable, [string]$label) {
+            $port = Reserve-Port
+            $root = Join-Path $env:RUNNER_TEMP ("syncwatch-full-" + [Guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $root | Out-Null
+            $env:PORT = [string]$port
+            $env:SYNCWATCH_DATA_DIR = Join-Path $root 'data'
+            $env:SYNCWATCH_SMOKE_MODE = '1'
+            $env:SYNCWATCH_SMOKE_EXIT_MS = '120000'
+            $process = Start-Process -FilePath $executable -ArgumentList "--user-data-dir=$(Join-Path $root 'profile')" -PassThru -WindowStyle Hidden
+            try {
+              $config = $null
+              for ($attempt = 0; $attempt -lt 180 -and -not $config; $attempt++) {
+                if ($process.HasExited) { throw "$label exited before HTTP startup ($($process.ExitCode))." }
+                try { $config = Invoke-RestMethod -Uri "http://127.0.0.1:$port/api/public-config" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 500 }
+              }
+              if (-not $config) { throw "$label did not start its HTTP service." }
+              if ($config.version -ne "v$env:RELEASE_VERSION" -or -not $config.androidApkAvailable -or -not $config.clientDownloadAvailable -or $config.macServerDownloads.Count -ne 2 -or $config.macClientDownloads.Count -ne 2) {
+                throw "$label Full Offline closure/version verification failed."
+              }
+            } finally {
+              if (-not $process.HasExited) { taskkill.exe /PID $process.Id /T /F | Out-Null }
+              Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+          $installer = ".\dist\SyncWatch-v$env:RELEASE_VERSION-Full-Offline-Installer-x64.exe"
+          $portable = ".\dist\SyncWatch-v$env:RELEASE_VERSION-Full-Offline-Portable-x64.exe"
+          $installRoot = Join-Path $env:RUNNER_TEMP 'SyncWatchFullInstall'
+          $install = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$installRoot" -PassThru -Wait -WindowStyle Hidden
+          if ($install.ExitCode -ne 0) { throw "Full Offline installer failed ($($install.ExitCode))." }
+          $installed = Get-ChildItem -LiteralPath $installRoot -Recurse -File -Filter 'SyncWatch同步观影.exe' | Select-Object -First 1
+          if (-not $installed) { throw 'Full Offline installer did not install its startup program.' }
+          Test-ServerExecutable $installed.FullName 'Installed Full Offline server'
+          Test-ServerExecutable $portable 'Portable Full Offline server'
+          npm run test:privacy:release
+          Remove-Item -Path .\dist\*.blockmap, .\dist\latest*.yml -Force -ErrorAction SilentlyContinue
+          node scripts/release-candidate-gate.js --selection windows-full --version $env:RELEASE_VERSION --directory .\dist --evidence .\.build\evidence\windows-full.json --source-commit $env:RELEASE_COMMIT --source-tree $env:RELEASE_TREE --run-id $env:GITHUB_RUN_ID --run-attempt $env:GITHUB_RUN_ATTEMPT
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Full Offline release gate failed.' }
+      - name: Upload Windows Full Offline candidate artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-windows-full
+          path: |
+            dist/SyncWatch-v${{ inputs.version }}-Full-Offline-Installer-x64.exe
+            dist/SyncWatch-v${{ inputs.version }}-Full-Offline-Portable-x64.exe
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+      - name: Upload Windows Full Offline build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-evidence-windows-full
+          path: .build/evidence/windows-full.json
+          if-no-files-found: error
+          retention-days: 3

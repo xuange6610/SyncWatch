@@ -146,11 +146,11 @@ async function main() {
   const token = hostToken();
   const tunnelManager = createStandaloneTunnelManager({ rootDir: ROOT_DIR, dataDir: DATA_DIR, getPort: () => controller?.port || port });
   // Keep the standalone server aligned with the packaged Android artifact.
-  const androidApkPath = path.join(ROOT_DIR, 'dist', 'SyncWatch-Android-v2.2.0-universal.apk');
+  const androidApkPath = path.join(ROOT_DIR, 'dist', 'SyncWatch-Android-v2.2.1-universal.apk');
   const clientDownloadCandidates = [
-    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe'),
-    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.0.exe'),
-    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.0.exe')
+    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.1-x64.exe'),
+    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.1.exe'),
+    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.1.exe')
   ];
   const clientDownloadPath = clientDownloadCandidates.find((candidate) => fs.existsSync(candidate)) || '';
   const macArtifactCandidates = (prefix) => ({
@@ -165,8 +165,8 @@ async function main() {
       path.join(ROOT_DIR, 'mac', `${prefix}-arm64.dmg`)
     ].find((candidate) => fs.existsSync(candidate)) || ''
   });
-  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.0');
-  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.0');
+  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.1');
+  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.1');
   const controller = await startSyncWatchServer({
     host: '0.0.0.0', port, strictPort: false, portFallbackCount: 20, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
     hostControlToken: token, allowedHosts, publicUrl, androidApkPath, clientDownloadPath, tunnelManager,

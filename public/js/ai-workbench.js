@@ -453,7 +453,7 @@ function aiRenderConversationList() {
   const workbench = state.aiWorkbench;
   if (!workbench || !elements.aiConversationList) return;
   workbench.conversations.sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)));
-  elements.aiConversationList.innerHTML = workbench.conversations.map((entry) => `<button class="ai-conversation-item ${entry.id === workbench.activeId ? 'active' : ''}" data-ai-conversation-id="${escapeHtml(entry.id)}" type="button"><strong>${escapeHtml(entry.title)}</strong><small>${formatDate(entry.updatedAt)} · ${entry.messages.length} 条</small></button>`).join('');
+  elements.aiConversationList.innerHTML = workbench.conversations.map((entry) => `<button class="ai-conversation-item ${entry.id === workbench.activeId ? 'active' : ''}" data-ai-conversation-id="${escapeHtml(entry.id)}" type="button"><strong>${escapeHtml(entry.title)}</strong><small>${formatDate(entry.updatedAt)} · ${entry.messages.length} <span data-copy-key="ai.messagesUnit">条</span></small></button>`).join('');
 }
 
 function aiRenderMessages() {

@@ -237,6 +237,28 @@
     return image.closest('.member-avatar, .location-member-row, #accountMenuBtn');
   }
 
+  function delayedClickTarget(control) {
+    if (control.matches('.member-avatar')) {
+      return { kind: 'member', key: control.closest('[data-username]')?.dataset.username || '', control };
+    }
+    if (control.matches('.location-member-row')) {
+      return { kind: 'location', key: control.dataset.locationProfile || '', control };
+    }
+    return { kind: 'account', key: '', control };
+  }
+
+  function currentDelayedClickControl(target) {
+    if (target.control.isConnected) return target.control;
+    if (target.kind === 'account') return document.getElementById('accountMenuBtn');
+    const selector = target.kind === 'member'
+      ? '.user-card[data-username]'
+      : '.location-member-row[data-location-profile]';
+    const keyName = target.kind === 'member' ? 'username' : 'locationProfile';
+    const owner = [...document.querySelectorAll(selector)]
+      .find((candidate) => candidate.dataset[keyName] === target.key);
+    return target.kind === 'member' ? owner?.querySelector('.member-avatar') : owner;
+  }
+
   function handleAvatarClick(event) {
     if (replayingAvatarClick) return;
     const image = matchingAvatarImage(event.target);
@@ -252,13 +274,15 @@
     event.preventDefault();
     event.stopImmediatePropagation();
     cancelPendingAvatarClick();
+    const target = delayedClickTarget(control);
     const timer = setTimeout(() => {
       pendingAvatarClick = null;
-      if (!control.isConnected) return;
+      const currentControl = currentDelayedClickControl(target);
+      if (!currentControl) return;
       replayingAvatarClick = true;
-      try { control.click(); } finally { replayingAvatarClick = false; }
-    }, 260);
-    pendingAvatarClick = { timer, control };
+      try { currentControl.click(); } finally { replayingAvatarClick = false; }
+    }, 440);
+    pendingAvatarClick = { timer, target };
   }
 
   function initialize() {

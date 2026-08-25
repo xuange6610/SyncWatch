@@ -11,6 +11,8 @@ const { startSyncWatchServer } = require('../server');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-v220-admin-'));
 const dataDir = path.join(root, 'data');
+const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8');
 const sockets = [];
 let server;
 
@@ -42,6 +44,11 @@ async function acceptAgreement(socket, login) {
 
 async function main() {
   try {
+    assert.match(appSource, /canSkipInitialAccountPasswordVerification/);
+    assert.match(appSource, /let step = skipCurrentPasswordVerification \? 1 : 0/,
+      '密码认证的首次管理员改密必须从新密码步骤开始');
+    assert.match(serverSource, /passwordAuthenticated: true/);
+    assert.match(serverSource, /skipCurrentPasswordVerification/);
     const hostToken = 'v220-local-owner-token';
     server = await startSyncWatchServer({
       host: '127.0.0.1', port: 0, dataDir, discovery: false,
@@ -54,20 +61,62 @@ async function main() {
     assert.equal(config.serverHostPasswordlessManagementAvailable, true);
     assert.equal(config.serverHostPasswordlessRoomAvailable, true);
 
-    const first = await connect(baseUrl);
+    let first = await connect(baseUrl);
     assert.equal((await ack(first, 'host-admin-login', { passwordless: true, hostToken })).code, 'DEDICATED_PASSWORDLESS_EVENT_REQUIRED');
     const firstLogin = await acceptAgreement(first, await ack(first, 'host-passwordless-management-login', { hostToken, deviceId: 'admin-one' }));
     assert.equal(firstLogin.success, true, firstLogin.error);
     assert.equal(firstLogin.sessionMode, 'management');
+    assert.equal(firstLogin.capabilities.canSetInitialAccountPassword, true);
+    assert.equal(firstLogin.capabilities.canSkipInitialAccountPasswordVerification, false,
+      '本机免密会话不能跳过首次改密的当前密码校验');
+    const passwordlessBypass = await ack(first, 'account-action', {
+      action: 'change-password', initialSetup: true, currentPassword: '', newPassword: 'V220ForgedPassword!'
+    });
+    assert.equal(passwordlessBypass.success, false);
+    assert.equal(passwordlessBypass.code, 'CURRENT_PASSWORD_INVALID');
+    const passwordlessReuse = await ack(first, 'account-action', {
+      action: 'change-password', initialSetup: true, currentPassword: 'admin888', newPassword: 'admin888'
+    });
+    assert.equal(passwordlessReuse.success, false);
+    assert.equal(passwordlessReuse.code, 'PASSWORD_REUSE', '首次管理改密不能通过重复提交旧密码绕过');
+
+    first.close();
+    await new Promise((resolve) => setTimeout(resolve, 140));
+    first = await connect(baseUrl);
+    const passwordLogin = await acceptAgreement(first, await ack(first, 'host-admin-login', {
+      adminPassword: 'admin888', hostToken, deviceId: 'admin-one'
+    }));
+    assert.equal(passwordLogin.success, true, passwordLogin.error);
+    assert.equal(passwordLogin.sessionMode, 'management');
+    assert.equal(passwordLogin.capabilities.canSkipInitialAccountPasswordVerification, true,
+      '刚通过管理员密码认证的首次登录应直接进入新密码步骤');
+    const shortPassword = await ack(first, 'account-action', {
+      action: 'change-password', initialSetup: true, currentPassword: '', newPassword: 'x'
+    });
+    assert.equal(shortPassword.success, false);
+    assert.match(shortPassword.error || '', /至少需要 8 位/, '服务端必须执行首次管理员密码最小长度规则');
+    const reusedPassword = await ack(first, 'account-action', {
+      action: 'change-password', initialSetup: true, currentPassword: '', newPassword: 'admin888'
+    });
+    assert.equal(reusedPassword.success, false);
+    assert.equal(reusedPassword.code, 'PASSWORD_REUSE');
     const changedPassword = await ack(first, 'account-action', {
-      action: 'change-password', currentPassword: 'admin888', newPassword: 'V220AdminPassword!'
+      action: 'change-password', initialSetup: true, currentPassword: '', newPassword: 'V220AdminPassword!'
     });
     assert.equal(changedPassword.success, true, changedPassword.error);
+    assert.equal(changedPassword.initialSetup, true);
     const resumedManagement = await ack(first, 'session-resume', {
       token: changedPassword.token, hostToken, deviceId: 'admin-one'
     });
     assert.equal(resumedManagement.success, true, resumedManagement.error);
     assert.equal(resumedManagement.sessionMode, 'management', '改密替换 token 后管理专用会话不能降级为观影会话');
+    assert.equal(resumedManagement.capabilities.canSkipInitialAccountPasswordVerification, false,
+      '首次改密完成后必须立即撤销免重复校验能力');
+    const laterBypass = await ack(first, 'account-action', {
+      action: 'change-password', initialSetup: true, currentPassword: '', newPassword: 'V220LaterPassword!'
+    });
+    assert.equal(laterBypass.success, false);
+    assert.equal(laterBypass.code, 'CURRENT_PASSWORD_INVALID', '后续改密仍必须校验当前密码');
     const saved = await ack(first, 'admin-action', { action: 'set-admin-session-limit', limit: 3 });
     assert.equal(saved.success, true, saved.error);
     assert.equal(saved.limit, 3);
@@ -79,11 +128,11 @@ async function main() {
 
     const second = await connect(baseUrl);
     const secondLogin = await acceptAgreement(second, await ack(second, 'host-passwordless-room-login', {
-      hostToken, roomId: firstLogin.room.id, deviceId: 'admin-two'
+      hostToken, roomId: passwordLogin.room.id, deviceId: 'admin-two'
     }));
     assert.equal(secondLogin.success, true, secondLogin.error);
     assert.equal(secondLogin.sessionMode, 'room', '本机免密进入房间不能变成 managementOnly 会话');
-    assert.equal(secondLogin.room.id, firstLogin.room.id);
+    assert.equal(secondLogin.room.id, passwordLogin.room.id);
     assert.equal((await ack(second, 'admin-action', { action: 'get-settings' })).success, true, '进入房间后 admin 管理权限保持不回归');
 
     const third = await connect(baseUrl);

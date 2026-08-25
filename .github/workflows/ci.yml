@@ -39,3 +39,9 @@ jobs:
 
       - name: Run core integration tests
         run: npm test
+
+      - name: Verify credential and UI copy contracts
+        run: npm run test:credential-policy && npm run test:ui-copy
+
+      - name: Verify atomic release gates
+        run: npm run test:release-gates

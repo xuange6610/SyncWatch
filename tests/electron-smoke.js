@@ -9,9 +9,10 @@ const path = require('path');
 const { app, BrowserWindow, session } = require('electron');
 const { io: createSocketClient } = require('socket.io-client');
 const { startSyncWatchServer } = require('../server');
+const releaseVersion = String(require('../package.json').version);
 
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-electron-v2.2.0-'));
-const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.0.apk'));
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), `syncwatch-electron-v${releaseVersion}-`));
+const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'dist', `SyncWatch-Android-v${releaseVersion}-universal.apk`));
 app.setPath('userData', path.join(dataDir, 'electron-profile'));
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 let controller;
@@ -208,13 +209,15 @@ async function run() {
 
   await window.webContents.executeJavaScript(`
     document.getElementById('showRegisterBtn').click();
+  `, true);
+  assert.match(await window.webContents.executeJavaScript(`document.getElementById('authHint').textContent`), /注册账号不需要房间密码/);
+  await window.webContents.executeJavaScript(`
     document.getElementById('regUsername').value = '界面测试';
     document.getElementById('regEmail').value = '';
     document.getElementById('regPassword').value = '123456';
     document.getElementById('regPasswordConfirm').value = '123456';
     document.getElementById('registerForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   `, true);
-  assert.match(await window.webContents.executeJavaScript(`document.getElementById('authHint').textContent`), /注册账号不需要房间密码/);
   await waitFor(`document.getElementById('loginStatus').textContent.includes('注册成功')`, '注册成功');
   await window.webContents.executeJavaScript(`
     document.getElementById('username').value = '界面测试';
@@ -1112,11 +1115,11 @@ app.whenReady().then(async () => {
   let exitCode = 0;
   try {
     await run();
-    console.log('\nElectron v2.2.0 渲染验收全部通过。');
+    console.log(`\nElectron v${releaseVersion} 渲染验收全部通过。`);
   } catch (error) {
     exitCode = 1;
-    console.error('\nElectron v2.2.0 渲染验收失败:', error);
+    console.error(`\nElectron v${releaseVersion} 渲染验收失败:`, error);
   }
   try { await finishTest(exitCode); }
-  catch (error) { console.error('\nElectron v2.2.0 清理失败:', error); app.exit(1); }
-}).catch((error) => { console.error('\nElectron v2.2.0 启动失败:', error); app.exit(1); });
+  catch (error) { console.error(`\nElectron v${releaseVersion} 清理失败:`, error); app.exit(1); }
+}).catch((error) => { console.error(`\nElectron v${releaseVersion} 启动失败:`, error); app.exit(1); });

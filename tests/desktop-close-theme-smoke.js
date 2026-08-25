@@ -47,13 +47,29 @@ app.whenReady().then(async () => {
   });
   await window.loadURL(`http://127.0.0.1:${server.port}/#host=close-theme-smoke`);
   await waitFor(`document.readyState === 'complete' && document.documentElement.dataset.uiTheme === 'silver-screen'`);
-  const result = await window.webContents.executeJavaScript(`(() => {
+  window.show();
+  window.focus();
+  const result = await window.webContents.executeJavaScript(`(async () => {
     showDesktopClosePrompt();
     const modal = document.getElementById('desktopCloseModal');
     const card = modal.querySelector('.desktop-close-card');
     const minimize = modal.querySelector('[data-desktop-close="minimize"]');
     const minimizeDescription = minimize.querySelector('small');
     const style = getComputedStyle(card);
+    const focusButtons = [...modal.querySelectorAll('[data-desktop-close]')];
+    const focusStates = [];
+    for (const button of focusButtons) {
+      button.focus();
+      await new Promise((resolve) => setTimeout(resolve, 260));
+      const focused = getComputedStyle(button);
+      focusStates.push({
+        action: button.dataset.desktopClose,
+        background: focused.backgroundColor,
+        borderColor: focused.borderTopColor,
+        color: focused.color,
+        descriptionColor: getComputedStyle(button.querySelector('small') || button).color
+      });
+    }
     return {
       visible: !modal.classList.contains('is-hidden'),
       buttons: modal.querySelectorAll('[data-desktop-close]').length,
@@ -63,6 +79,7 @@ app.whenReady().then(async () => {
       textColor: style.color,
       minimizeBackground: getComputedStyle(minimize).backgroundColor,
       minimizeDescriptionColor: getComputedStyle(minimizeDescription).color,
+      focusStates,
       theme: document.documentElement.dataset.uiTheme
     };
   })()`, true);
@@ -73,6 +90,12 @@ app.whenReady().then(async () => {
   assert.equal(result.theme, 'silver-screen');
   assert.ok(contrastRatio(result.minimizeDescriptionColor, result.minimizeBackground) >= 4.5,
     `最小化到托盘说明文字对比度不足：${result.minimizeDescriptionColor} / ${result.minimizeBackground}`);
+  for (const button of result.focusStates) {
+    assert.equal(button.background, result.minimizeBackground,
+      `${button.action} 获得焦点时应使用与最小化到托盘相同的高亮背景`);
+    assert.equal(button.color, result.focusStates[0].color,
+      `${button.action} 获得焦点时应使用统一的高亮文字颜色`);
+  }
   const outputDir = path.join(os.tmpdir(), 'syncwatch-ui-review');
   fs.mkdirSync(outputDir, { recursive: true });
   const screenshot = path.join(outputDir, 'desktop-close-silver-screen.png');

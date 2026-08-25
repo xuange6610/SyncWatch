@@ -6,9 +6,9 @@
 
 支持的标准文件名：
 
-- `SyncWatch-Server-macOS-v2.2.0-arm64.dmg` / `.zip`
-- `SyncWatch-Server-macOS-v2.2.0-x64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.2.0-arm64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.2.0-x64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.1-arm64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.1-x64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.1-arm64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.1-x64.dmg` / `.zip`
 
 也可以在本目录放置 `mac-distribution.json`，配置已经发布到 HTTPS 的真实安装包地址。示例见项目根目录的 `mac-distribution.example.json`。Windows 无法生成、签名或公证可运行的 macOS 安装包，因此这里不接受伪造的空 DMG。
