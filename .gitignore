@@ -26,6 +26,11 @@ mobile/build/
 mobile/app/build/
 mobile/app/.cxx/
 vendor/
+!public/vendor/
+!public/vendor/three/
+!public/vendor/three/three.min.js
+!public/vendor/three/GLTFLoader.js
+!public/vendor/three/LICENSE
 *.exe
 *.apk
 *.zip
