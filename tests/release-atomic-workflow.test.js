@@ -56,6 +56,11 @@ assert.match(
 assert.match(workflows.atomic, /test "\$WORKFLOW_REF" = "refs\/tags\/\$\{RELEASE_TAG\}"/);
 assert.match(workflows.atomic, /git cat-file -t "refs\/tags\/\$\{RELEASE_TAG\}"/);
 assert.match(workflows.atomic, /test "\$WORKFLOW_SHA" = "\$commit_sha"/);
+assert.match(
+  workflows.atomic,
+  /source_tests:[\s\S]*?ELECTRON_DISABLE_SANDBOX:\s*['"]?1['"]?/,
+  'Ubuntu release source gates must configure Electron for runners without the chrome-sandbox SUID bit'
+);
 assert.match(workflows.atomic, /source_tree="\$\(git rev-parse "\$\{RELEASE_TAG\}\^\{tree\}"\)"/);
 assert.match(
   workflows.atomic,

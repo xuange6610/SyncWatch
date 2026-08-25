@@ -72,6 +72,11 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    # GitHub-hosted Ubuntu runners do not preserve Electron's chrome-sandbox
+    # SUID bit after npm ci. The release gate still exercises the Electron
+    # flows, while this CI-only setting avoids a runner-specific SIGTRAP.
+    env:
+      ELECTRON_DISABLE_SANDBOX: '1'
     steps:
       - name: Checkout immutable release commit
         uses: actions/checkout@v4
