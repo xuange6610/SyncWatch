@@ -182,6 +182,11 @@ async function uploadModel(baseUrl, token, buffer, name = 'cinema.glb', type = '
 
     const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
     const app = fs.readFileSync(path.join(publicDir, 'js', 'app.js'), 'utf8');
+    const webglSmoke = fs.readFileSync(path.join(__dirname, 'login-cube-webgl-smoke.js'), 'utf8');
+    assert.match(webglSmoke, /process\.platform === 'linux'/);
+    assert.match(webglSmoke, /appendSwitch\('use-gl', 'swiftshader'\)/);
+    assert.match(webglSmoke, /appendSwitch\('enable-unsafe-swiftshader'\)/);
+    assert.match(webglSmoke, /appendSwitch\('ignore-gpu-blocklist'\)/);
     assert.match(html, /id="loginCubeModel"/);
     assert.match(html, /id="loginCubeModelFile"[^>]+accept="\.glb,model\/gltf-binary"/);
     assert.doesNotMatch(html, /loginCubeModelFile[^>]+\.gltf/);
