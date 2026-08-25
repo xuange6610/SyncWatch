@@ -1,6 +1,39 @@
 'use strict';
 
 const HOST_TOKEN_SESSION_KEY = 'syncwatchHostToken';
+const UI_COPY_DEFAULTS = Object.freeze({
+  'login.title': '登录 SyncWatch同步观影', 'login.usernameLabel': '账号或邮箱', 'login.passwordLabel': '密码',
+  'login.roomLabel': '房间号（可选）', 'login.submit': '登录并进入房间', 'login.register': '注册账号',
+  'login.guest': '游客模式 · 免注册', 'login.forgot': '忘记密码', 'login.admin': '服务器设置', 'login.connecting': '正在连接服务器…',
+  'topbar.appName': 'SyncWatch同步观影', 'topbar.serverSettings': '服务器设置', 'topbar.management': '管理中心',
+  'topbar.logoutKeepCredentials': '退出登录，保留账号密码', 'topbar.logout': '退出登录',
+  'topbar.room': '房间', 'topbar.online': '在线成员', 'topbar.download': '下载中心',
+  'player.play': '播放', 'player.pause': '暂停', 'player.clear': '清空画面', 'player.jump': '跳转',
+  'player.quality': '清晰度', 'player.rate': '倍速', 'player.emptyTitle': '还没有选择影片',
+  'player.emptyHint': '从左侧影片库选择文件，所有成员会看到同一播放状态。', 'player.syncStatus': '同步状态',
+  'closeDialog.title': '请选择关闭方式', 'closeDialog.description': '最小化到托盘后，服务器、房间和临时公网连接会继续运行；退出程序会停止本机服务。',
+  'closeDialog.minimize': '最小化到托盘', 'closeDialog.restart': '重新启动', 'closeDialog.quit': '退出程序',
+  'closeDialog.newServer': '打开新的服务器', 'closeDialog.cancel': '取消',
+  'management.title': '管理设置', 'management.verify': '验证并加载', 'management.server': '服务器设置',
+  'management.save': '保存设置', 'management.copyHint': '可检索全部界面文案；开启编辑模式后，双击页面文字或按钮即可修改并实时同步。',
+  'management.import': '导入文案', 'management.export': '导出文案', 'management.reset': '恢复默认文案',
+  'management.status': '文案字典尚未加载', 'ai.messagesUnit': '条', 'common.closeNotice': '关闭提示',
+  'dialog.close': '关闭窗口', 'dialog.fillRisk': '一键填入确认文字', 'dialog.back': '上一步',
+  'dialog.cancel': '取消', 'dialog.confirm': '确定'
+});
+const UI_COPY_GENERATED_KEY_PATTERN = /^ui\.auto\.[a-z0-9][a-z0-9_-]{0,47}\.(?:text|option|placeholder|title|aria-label|alt|value)\.[a-f0-9]{8}$/;
+function validClientUiCopyKey(key) { return Object.prototype.hasOwnProperty.call(UI_COPY_DEFAULTS, key) || UI_COPY_GENERATED_KEY_PATTERN.test(String(key || '')); }
+function validClientUiCopyText(value) { return typeof value === 'string' && value.length <= 240 && Boolean(value.trim()) && !/[<>]/.test(value) && !/(?:javascript|data):/i.test(value); }
+function normalizedUiCopy(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const output = { ...UI_COPY_DEFAULTS };
+  for (const [key, raw] of Object.entries(source).slice(0, 5000)) {
+    if (!validClientUiCopyKey(key) || !validClientUiCopyText(raw)) continue;
+    output[key] = String(raw).trim().slice(0, 240);
+  }
+  return output;
+}
+function uiCopyText(key, fallback = '') { return String(state.uiCopy?.[key] || UI_COPY_DEFAULTS[key] || window.SyncWatchUiCopy?.defaultText(key) || fallback); }
 const LOGIN_CUBE_FACE_DEFAULTS = Object.freeze([
   { id: 'front', label: '正面', icon: '🎬', title: '同一帧，共此刻', text: '局域网 / 公网 · 智能同步 · SyncWatch同步观影 为您带来极致的观影体验', image: '' },
   { id: 'back', label: '背面', icon: '📺', title: '稳定同步', text: '播放、暂停、进度与倍速保持一致', image: '' },
@@ -12,6 +45,8 @@ const LOGIN_CUBE_FACE_DEFAULTS = Object.freeze([
 const SYNCWATCH_SUPPORT_EMAIL = '2590813506@qq.com';
 const PLAYBACK_RATE_PROMPT_KEY = 'syncwatchPlaybackRatePrompt';
 const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
+const USERNAME_MAX_UTF8_BYTES = 1024;
+const PASSWORD_MAX_UTF8_BYTES = 4096;
 const hostTokenFromHash = new URLSearchParams(location.hash.slice(1)).get('host') || '';
 let windowHostToken = hostTokenFromHash;
 try {
@@ -21,14 +56,16 @@ try {
 
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
-  capabilities: { owner: false, serverHost: false, superAdmin: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.0', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', experiencePerMinute: 1, passwordPolicy: { mode: 'unrestricted', minLength: 6, maxLength: 72, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
+  publicConfig: { version: 'v2.2.1', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
+  uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
   expectedSeek: null, expectedPlaybackEvent: null, expectedVolume: null, mediaGeneration: 0,
   textPreviewGeneration: 0, textPreviewController: null,
-  textReading: { fileId: '', position: 0, page: 1, revision: 0 }, applyingTextReading: false,
-  textReadingApplyTimer: null, textReadingEmitTimer: null,
+  textReading: { fileId: '', position: 0, page: 1, characterOffset: null, revision: 0 }, applyingTextReading: false,
+  textReadingApplyTimer: null, textReadingEmitTimer: null, textReadingResizeTimer: null, textReadingScrollBlockUntil: 0,
+  textReadingProgrammaticAnchor: null,
   activeTimedFileId: null, activeTimedSource: '', activeMediaVariant: 'auto', mediaEventBlockUntil: 0, shareMediaSuspended: false,
   serverClockOffset: 0, serverClockReady: false, serverClockAnchor: null, clockSamples: [], autoplayBlocked: false,
   localCapture: null, captureTimer: null, captureVideo: null, captureCanvas: null, captureSession: 0,
@@ -41,7 +78,9 @@ const state = {
   chatViewFilter: { channel: '', username: '', userMode: 'include', query: '' },
   chatManageAccounts: [], chatManageAccountsLoading: false, chatManageMessages: [], chatManageSelectedUsers: new Set(),
   chatManageHasMore: true, chatManageLoading: false, chatManageBeforeId: '', chatManageBefore: '', chatManageGeneration: 0,
-  latestDrift: 0, localLatency: null, syncPercent: 100, localBuffering: false, bufferedAheadSeconds: 0, profile: null, adminSettings: null, mailTemplateDrafts: {}, mailTemplateKey: '',
+  latestDrift: 0, localLatency: null, syncPercent: 100, localBuffering: false, bufferedAheadSeconds: 0,
+  networkProbe: { inFlightSequence: 0, sequence: 0, appliedSequence: 0, connectionEpoch: 0, localConnectionState: 'online', tracker: window.SyncWatchNetworkQuality.createTracker() },
+  profile: null, adminSettings: null, mailTemplateDrafts: {}, mailTemplateKey: '',
   verificationCodes: [], verificationCodeSearch: '', verificationCodeType: '', verificationCodeStatus: '', selectedVerificationCodes: new Set(), loginMusicObjectUrl: '', loginVideoObjectUrl: '', loginMusicProgressTimer: null,
   mediaRecorder: null, voiceChunks: [], voiceStopTimer: null, voiceCapturePending: false, voiceProcessing: false, authenticated: false, socketAuthenticated: false,
   resumeInFlight: false, resumeNeeded: false, resumeReconnect: false, resumeRetryTimer: null,
@@ -263,12 +302,12 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSendNotice savePermissionsBtn
  permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
  pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus accountAdminList refreshAccountsBtn accountViewMode registrationRequestList refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
-  passwordPolicyCard passwordPolicyMode passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
+  passwordPolicyCard usernamePolicyMode usernamePolicyLengthRestricted usernamePolicyMin usernamePolicyMax usernamePolicyStatus passwordPolicyMode passwordPolicyLengthRestricted passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
  toastRegion clearAllToastsBtn reconnectOverlay reconnectMessage reconnectRetryBtn closeReconnectOverlayBtn accountModal closeAccountBtn accountNav accountContent theater guestConvertBtn guestConvertModal closeGuestConvertBtn guestConvertForm guestConvertUsername guestConvertPassword guestConvertPasswordConfirm guestConvertEmail guestConvertEmailCode sendGuestConvertEmailCodeBtn guestConvertStatus
  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn downloadMacServerMainBtn downloadMacClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
-  managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
+   managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
   fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn macDownloadModal closeMacDownloadBtn macDownloadTitle macDownloadHint macDownloadArch macDownloadFormat macDownloadAvailability macDownloadStatus confirmMacDownloadBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
@@ -290,6 +329,11 @@ document.addEventListener('DOMContentLoaded', initialize);
 async function initialize() {
   if (window.SyncWatchAndroid) document.body.classList.add('android-client');
   initializeManagementArchitecture();
+  window.SyncWatchUiCopy?.initialize({ legacyDefaults: UI_COPY_DEFAULTS, onChange: () => {
+    if (elements.uiCopyEditorList) renderUiCopySettings(state.uiCopy);
+  } });
+  bindUiCopyEditing();
+  applyUiCopy(state.uiCopy);
   initializeLoginMarquee();
   initializeLoginMusic();
   initializeLoginVideo();
@@ -338,8 +382,8 @@ function restoreRetainedLoginCredentials() {
     sessionStorage.removeItem('syncwatchRetainedLogin');
   } catch (_) {}
   if (!retained || typeof retained !== 'object') return;
-  elements.username.value = String(retained.username || '').slice(0, 24);
-  elements.password.value = String(retained.password || '').slice(0, 72);
+  elements.username.value = String(retained.username || '');
+  elements.password.value = String(retained.password || '');
   state.lastLoginPassword = elements.password.value;
   elements.autoLogin.checked = false;
   setLoginStatus('已保留上次登录的账号密码，可直接选择房间再登录。', true);
@@ -397,6 +441,145 @@ function initializeManagementArchitecture() {
     const field = document.createElement('label'); field.className = 'admin-search-field'; field.innerHTML = '搜索位置或成员<input id="locationAuthorizationSearch" type="search" placeholder="按地址、用户名、显示名或备注模糊搜索">';
     elements.locationAuthorizationsList.before(field); elements.locationAuthorizationSearch = field.querySelector('input');
   }
+  initializeUiCopySettings();
+}
+
+function initializeUiCopySettings() {
+  const host = elements.adminTab;
+  if (!host || document.getElementById('uiCopySettingsCard')) return;
+  const card = document.createElement('section');
+  card.id = 'uiCopySettingsCard'; card.className = 'settings-card ui-copy-settings-card is-hidden'; card.dataset.managementPanel = 'server'; card.dataset.copyIgnore = 'true';
+  card.innerHTML = `<div class="settings-title"><div><p class="eyebrow">自定义修改</p><h3>${escapeHtml(uiCopyText('management.title'))}</h3><p>${escapeHtml(uiCopyText('management.copyHint'))}</p></div><div class="settings-title-actions"><button id="uiCopyEditModeBtn" class="secondary-button" type="button" aria-pressed="false">开启页面双击编辑</button><button id="exportUiCopyBtn" class="secondary-button" type="button">${escapeHtml(uiCopyText('management.export'))}</button><button id="importUiCopyBtn" class="secondary-button" type="button">${escapeHtml(uiCopyText('management.import'))}</button><button id="resetUiCopyBtn" class="text-button" type="button">${escapeHtml(uiCopyText('management.reset'))}</button><input id="importUiCopyInput" class="visually-hidden" type="file" accept="application/json,.json"></div></div><label class="ui-copy-search-field">检索界面文字、按钮或键名<input id="uiCopySearch" type="search" autocomplete="off" placeholder="例如：登录、关闭、placeholder 或按钮 ID"></label><div id="uiCopyEditorList" class="ui-copy-editor-list" role="list"></div><p id="uiCopySettingsStatus" class="setting-status" role="status" aria-live="polite">${escapeHtml(uiCopyText('management.status'))}</p>`;
+  host.appendChild(card);
+  elements.uiCopySettingsCard = card; elements.uiCopyEditorList = card.querySelector('#uiCopyEditorList'); elements.uiCopySettingsStatus = card.querySelector('#uiCopySettingsStatus');
+  elements.uiCopySearch = card.querySelector('#uiCopySearch'); elements.uiCopyEditModeBtn = card.querySelector('#uiCopyEditModeBtn');
+  elements.exportUiCopyBtn = card.querySelector('#exportUiCopyBtn'); elements.importUiCopyBtn = card.querySelector('#importUiCopyBtn'); elements.resetUiCopyBtn = card.querySelector('#resetUiCopyBtn'); elements.importUiCopyInput = card.querySelector('#importUiCopyInput');
+  elements.uiCopySearch.addEventListener('input', () => { state.uiCopySearch = elements.uiCopySearch.value; renderUiCopySettings(state.uiCopy); });
+  elements.uiCopyEditModeBtn.addEventListener('click', () => setUiCopyEditMode(!state.uiCopyEditActive));
+  elements.exportUiCopyBtn.addEventListener('click', exportUiCopy);
+  elements.importUiCopyBtn.addEventListener('click', () => elements.importUiCopyInput.click());
+  elements.importUiCopyInput.addEventListener('change', importUiCopyFile);
+  elements.resetUiCopyBtn.addEventListener('click', resetUiCopy);
+  card.addEventListener('dblclick', handleUiCopyDoubleClick);
+  card.addEventListener('keydown', (event) => {
+    if (!['Enter', ' '].includes(event.key)) return;
+    const row = event.target.closest('[data-ui-copy-key]');
+    if (!row) return;
+    event.preventDefault(); void editUiCopyKey(row.dataset.uiCopyKey);
+  });
+  renderUiCopySettings(state.uiCopy);
+}
+
+function setUiCopyEditMode(enabled) {
+  state.uiCopyEditActive = Boolean(enabled && state.adminSettings?.serverAdmin);
+  document.body.classList.toggle('ui-copy-editable', state.uiCopyEditActive);
+  if (elements.uiCopyEditModeBtn) {
+    elements.uiCopyEditModeBtn.setAttribute('aria-pressed', String(state.uiCopyEditActive));
+    elements.uiCopyEditModeBtn.textContent = state.uiCopyEditActive ? '结束页面双击编辑' : '开启页面双击编辑';
+  }
+}
+
+function renderUiCopySettings(value = state.uiCopy) {
+  state.uiCopy = normalizedUiCopy(value);
+  if (!elements.uiCopyEditorList) return;
+  const fallbackEntries = Object.entries(UI_COPY_DEFAULTS).map(([key, defaultText]) => ({ key, defaultText, kind: 'legacy', scope: key.split('.')[0], legacy: true, bindingCount: 0 }));
+  const entries = window.SyncWatchUiCopy?.entries?.() || fallbackEntries;
+  const query = String(state.uiCopySearch || '').trim().toLocaleLowerCase('zh-CN');
+  const visible = entries.filter((entry) => !query || `${entry.key}\n${entry.scope}\n${entry.kind}\n${entry.defaultText}\n${uiCopyText(entry.key)}`.toLocaleLowerCase('zh-CN').includes(query));
+  elements.uiCopyEditorList.innerHTML = visible.map((entry) => {
+    const current = uiCopyText(entry.key, entry.defaultText);
+    const changed = current !== entry.defaultText;
+    return `<div class="ui-copy-editor-row" role="listitem" tabindex="0" data-ui-copy-key="${escapeHtml(entry.key)}"><div class="ui-copy-editor-key"><code>${escapeHtml(entry.key)}</code><small>${escapeHtml(entry.scope)} · ${escapeHtml(entry.kind)} · ${entry.bindingCount || 0} 处${changed ? ' · 已自定义' : ''}</small></div><span data-ui-copy-value>${escapeHtml(current)}</span></div>`;
+  }).join('') || '<p class="ui-copy-empty">没有匹配的界面文案。请尝试搜索按钮文字、窗口 ID 或属性类型。</p>';
+  const coverage = window.SyncWatchUiCopy?.coverage?.() || { catalogEntries: entries.length, boundSlots: 0, totalButtons: 0, coveredButtons: 0, buttonCoveragePercent: 0 };
+  if (elements.uiCopySettingsStatus) elements.uiCopySettingsStatus.textContent = `${entries.length} 个稳定键 · ${coverage.boundSlots} 个已绑定文本/属性 · 按钮 ${coverage.coveredButtons}/${coverage.totalButtons}（${coverage.buttonCoveragePercent}%）${query ? ` · 当前显示 ${visible.length} 项` : ''}`;
+}
+
+async function handleUiCopyDoubleClick(event) {
+  const row = event.target.closest('[data-ui-copy-key]');
+  if (!row || !state.adminSettings?.serverAdmin) return;
+  const key = row.dataset.uiCopyKey; if (!validClientUiCopyKey(key)) return;
+  await editUiCopyKey(key);
+}
+
+async function editUiCopyKey(key) {
+  if (!state.adminSettings?.serverAdmin || !validClientUiCopyKey(key)) return;
+  const value = await showAppInput({ title: `编辑界面文案 · ${key}`, description: '仅允许纯文本，保存后会立即广播给所有在线客户端。', label: '文案内容', initialValue: uiCopyText(key), maxLength: 240, confirmText: '保存文案', validate: (input) => !validClientUiCopyText(input) ? '文案不能为空，也不能包含 HTML 标签或可执行协议' : '' });
+  if (value === null) return;
+  const result = await adminAction('set-ui-copy', { entries: { [key]: value } });
+  toast(result.message || result.error, result.success ? 'success' : 'error');
+  if (result.success) applyUiCopy(result.uiCopy || result.entries);
+}
+
+function bindUiCopyEditing() {
+  document.addEventListener('click', (event) => {
+    if (!state.uiCopyEditActive || event.target.closest?.('#uiCopySettingsCard')) return;
+    if (!window.SyncWatchUiCopy?.keyForTarget?.(event.target) && !event.target.closest?.('[data-copy-key]')) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('dblclick', (event) => {
+    if (!state.uiCopyEditActive || event.target.closest?.('#uiCopySettingsCard') || !state.adminSettings?.serverAdmin) return;
+    const key = event.target.closest?.('[data-copy-key]')?.dataset.copyKey || window.SyncWatchUiCopy?.keyForTarget?.(event.target);
+    if (!key) return;
+    event.preventDefault(); event.stopImmediatePropagation(); void editUiCopyKey(key);
+  });
+}
+
+async function exportUiCopy() {
+  const result = await adminAction('export-ui-copy');
+  if (!result.success) return toast(result.error || '文案导出失败', 'error');
+  const completeUiCopy = normalizedUiCopy(result.uiCopy || result.entries);
+  for (const entry of window.SyncWatchUiCopy?.entries?.() || []) completeUiCopy[entry.key] = uiCopyText(entry.key, entry.defaultText);
+  const exportJson = JSON.stringify({ version: result.version || 2, generatedAt: new Date().toISOString(), coverage: window.SyncWatchUiCopy?.coverage?.(), uiCopy: completeUiCopy }, null, 2);
+  const blob = new Blob([exportJson], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.filename || 'SyncWatch-ui-copy.json'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  if (elements.uiCopySettingsStatus) elements.uiCopySettingsStatus.textContent = '文案字典已导出';
+}
+
+async function importUiCopyFile() {
+  const file = elements.importUiCopyInput?.files?.[0]; if (!file) return;
+  try {
+    if (file.size > 2 * 1024 * 1024) throw new Error('文案文件不能超过 2 MB');
+    const json = await file.text();
+    const result = await adminAction('import-ui-copy', { json });
+    toast(result.message || result.error, result.success ? 'success' : 'error');
+    if (result.success) applyUiCopy(result.uiCopy || result.entries);
+  } catch (error) { toast(error.message || '文案导入失败', 'error'); }
+  finally { if (elements.importUiCopyInput) elements.importUiCopyInput.value = ''; }
+}
+
+async function resetUiCopy() {
+  if (!await showAppConfirm('恢复后会覆盖当前服务器自定义文案，是否继续？', { title: '恢复默认文案', confirmText: '恢复默认', danger: true })) return;
+  const result = await adminAction('reset-ui-copy');
+  toast(result.message || result.error, result.success ? 'success' : 'error');
+  if (result.success) applyUiCopy(result.uiCopy || result.entries);
+}
+
+function applyUiCopy(value = state.uiCopy) {
+  state.uiCopy = normalizedUiCopy(value);
+  window.SyncWatchUiCopy?.apply?.(state.uiCopy);
+  for (const element of document.querySelectorAll('[data-copy-key]')) {
+    const key = element.dataset.copyKey; if (!Object.prototype.hasOwnProperty.call(UI_COPY_DEFAULTS, key)) continue;
+    const text = uiCopyText(key);
+    const attribute = element.dataset.copyAttr;
+    if (attribute) { element.setAttribute(attribute, text); continue; }
+    const target = element.querySelector('[data-copy-value], .button-label, strong');
+    if (target) { target.textContent = text; continue; }
+    const control = element.querySelector('input, select, textarea');
+    if (control) {
+      const textNode = [...element.childNodes].find((node) => node.nodeType === 3 && node.textContent.trim());
+      if (textNode) textNode.textContent = `${text}`;
+      else element.insertBefore(document.createTextNode(`${text}`), control);
+    } else element.textContent = text;
+  }
+  if (elements.uiCopySettingsCard) {
+    const heading = elements.uiCopySettingsCard.querySelector('h3'); if (heading) heading.textContent = uiCopyText('management.title');
+    const hint = elements.uiCopySettingsCard.querySelector('.settings-title p:not(.eyebrow)'); if (hint) hint.textContent = uiCopyText('management.copyHint');
+    if (elements.exportUiCopyBtn) elements.exportUiCopyBtn.textContent = uiCopyText('management.export');
+    if (elements.importUiCopyBtn) elements.importUiCopyBtn.textContent = uiCopyText('management.import');
+    if (elements.resetUiCopyBtn) elements.resetUiCopyBtn.textContent = uiCopyText('management.reset');
+  }
+  if (elements.uiCopyEditorList) renderUiCopySettings(state.uiCopy);
 }
 
 function initializeLoginMarquee() {
@@ -1498,7 +1681,14 @@ function bindUiEvents() {
     if (!event.target.closest('.select-shell') && !event.target.closest('#enhancedSelectMenu')) closeEnhancedSelect();
     if (!event.target.closest('#friendChatContextMenu')) elements.friendChatContextMenu?.classList.add('is-hidden');
   });
-  window.addEventListener('resize', () => { positionAccountDropdown(); positionEnhancedSelectMenu(); });
+  window.addEventListener('resize', () => {
+    positionAccountDropdown(); positionEnhancedSelectMenu();
+    clearTimeout(state.textReadingResizeTimer);
+    state.textReadingResizeTimer = setTimeout(() => {
+      if (state.currentFile?.category !== 'text' || state.textReading?.characterOffset === null) return;
+      requestAnimationFrame(() => applyTextReadingState(state.textReading));
+    }, 90);
+  });
   window.addEventListener('scroll', () => { positionAccountDropdown(); positionEnhancedSelectMenu(); }, true);
   elements.accountNav.addEventListener('click', (event) => event.target.dataset.accountPage && renderAccountPage(event.target.dataset.accountPage));
   elements.accountContent.addEventListener('click', handleAccountAction);
@@ -1665,6 +1855,8 @@ function bindUiEvents() {
   elements.roomEntryNoticeScope?.addEventListener('change', renderRoomEntryNoticeEditor);
   elements.resetRoomEntryNoticeBtn?.addEventListener('click', resetRoomEntryNoticeSettings);
   elements.savePasswordPolicyBtn?.addEventListener('click', savePasswordPolicy);
+  elements.usernamePolicyLengthRestricted?.addEventListener('change', syncCredentialPolicyLengthControls);
+  elements.passwordPolicyLengthRestricted?.addEventListener('change', syncCredentialPolicyLengthControls);
   elements.saveBlockedWordsBtn?.addEventListener('click', saveBlockedWords);
   elements.saveAdminContactBtn?.addEventListener('click', saveAdminContact);
   elements.saveLegalAgreementBtn?.addEventListener('click', saveLegalAgreement);
@@ -2165,12 +2357,12 @@ function openAppDialog(options = {}) {
     }
     elements.appDialogError.textContent = '';
     elements.appDialogError.classList.add('is-hidden');
-    elements.appDialogCancelBtn.textContent = options.cancelText || '取消';
-    elements.appDialogConfirmBtn.textContent = options.confirmText || '确定';
+    elements.appDialogCancelBtn.textContent = options.cancelText || uiCopyText('dialog.cancel');
+    elements.appDialogConfirmBtn.textContent = options.confirmText || uiCopyText('dialog.confirm');
     elements.appDialogConfirmBtn.className = options.danger ? 'danger-button' : 'primary-button';
     elements.appDialogFillRiskBtn?.classList.toggle('is-hidden', !options.fillValue);
     elements.appDialogBackBtn?.classList.toggle('is-hidden', options.allowBack !== true);
-    if (elements.appDialogBackBtn) elements.appDialogBackBtn.textContent = options.backText || '上一步';
+    if (elements.appDialogBackBtn) elements.appDialogBackBtn.textContent = options.backText || uiCopyText('dialog.back');
     const mountRoot = document.fullscreenElement || document.body;
     if (elements.appDialog.parentElement !== mountRoot) mountRoot.appendChild(elements.appDialog);
     elements.appDialog.classList.remove('is-hidden');
@@ -2263,6 +2455,7 @@ function connectSocket() {
   });
   if (typeof aiBindSocketEvents === 'function') aiBindSocketEvents(state.socket);
   state.socket.on('connect', () => {
+    resetNetworkQualityTracking();
     resetOutgoingScreenFrames();
     state.lastConnectionError = '';
     state.socketAuthenticated = false;
@@ -2273,6 +2466,7 @@ function connectSocket() {
       updateConnection(true);
       setReconnectState(false);
     }
+    updateRoomHeader();
   });
   state.socket.io.on('reconnect_attempt', (attempt) => {
     if (state.intentionalLogout) return;
@@ -2287,11 +2481,12 @@ function connectSocket() {
     else setLoginStatus(`无法连接服务器：${state.lastConnectionError}`);
   });
   state.socket.on('disconnect', () => {
+    resetNetworkQualityTracking();
     resetOutgoingScreenFrames();
     state.socketAuthenticated = false; state.resumeNeeded = Boolean(state.token);
     closeLiveVoicePeers();
     if (state.intentionalLogout) { setReconnectState(false); return; }
-    updateConnection(false, '连接中断'); setReconnectMessage('连接中断，正在自动重试…'); setReconnectState(Boolean(state.authenticated));
+    updateConnection(false, '连接中断'); updateRoomHeader(); setReconnectMessage('连接中断，正在自动重试…'); setReconnectState(Boolean(state.authenticated));
     if (state.nativeCapture) stopNativeCapture(false);
     if (state.localCapture) showLocalShareReconnectState();
   });
@@ -2300,12 +2495,24 @@ function connectSocket() {
     state.publicConfig = {
       ...state.publicConfig, version: meta.version || state.publicConfig.version,
       accessPasswordRequired: Boolean(meta.accessPasswordRequired), branding: meta.branding || state.publicConfig.branding,
+      uiCopy: normalizedUiCopy(meta.uiCopy || state.publicConfig.uiCopy),
       loginCube: meta.loginCube || state.publicConfig.loginCube,
       loginMusic: meta.loginMusic || state.publicConfig.loginMusic,
       loginVideo: meta.loginVideo || state.publicConfig.loginVideo,
-      passwordPolicy: meta.passwordPolicy || state.publicConfig.passwordPolicy, contact: meta.contact || state.publicConfig.contact
+      passwordPolicy: meta.passwordPolicy || state.publicConfig.passwordPolicy,
+      usernamePolicy: meta.usernamePolicy || state.publicConfig.usernamePolicy,
+      contact: meta.contact || state.publicConfig.contact
     };
+    state.uiCopy = normalizedUiCopy(state.publicConfig.uiCopy);
+    applyUiCopy(state.uiCopy);
     applyPublicConfig();
+  });
+  state.socket.on('ui-copy-state', (payload = {}) => {
+    const entries = payload.uiCopy || payload.entries || payload.dictionary || payload;
+    state.publicConfig = { ...state.publicConfig, uiCopy: normalizedUiCopy(entries) };
+    state.uiCopy = normalizedUiCopy(entries);
+    applyUiCopy(state.uiCopy);
+    if (state.adminSettings) { state.adminSettings.uiCopy = state.uiCopy; renderUiCopySettings(state.uiCopy); }
   });
   state.socket.on('branding-updated', (branding) => {
     state.publicConfig = { ...state.publicConfig, branding: branding || state.publicConfig.branding };
@@ -2321,6 +2528,7 @@ function connectSocket() {
   state.socket.on('server-contact-updated', (contact) => { state.publicConfig = { ...state.publicConfig, contact: contact || {} }; applyPublicConfig(); });
   state.socket.on('server-policy-updated', (policy = {}) => {
     state.publicConfig = { ...state.publicConfig, ...policy };
+    if (policy.usernamePolicy && state.adminSettings) state.adminSettings.usernamePolicy = policy.usernamePolicy;
     if (Object.prototype.hasOwnProperty.call(policy, 'lanAccessEnabled')) {
       if (state.adminSettings) state.adminSettings.lanAccessEnabled = policy.lanAccessEnabled !== false;
       renderLanAccessSetting(policy.lanAccessEnabled !== false);
@@ -2969,7 +3177,7 @@ async function resetServerAdminPassword() {
   if (state.hostToken || state.publicConfig.serverHostLoginAvailable) {
     const newPassword = await showAppInput({
       title: '重置超级管理员密码', description: '服务器设备可直接设置新密码，不需要输入旧密码。保存后现有 admin 登录会立即退出。',
-      label: '新密码', password: true, confirmPassword: true, minLength: 8, maxLength: 72, confirmText: '确认重置'
+      label: '新密码', password: true, confirmPassword: true, minLength: 8, maxLength: PASSWORD_MAX_UTF8_BYTES, confirmText: '确认重置'
     });
     if (newPassword === null) return;
     try {
@@ -3171,11 +3379,83 @@ function confirmMacDownload() {
   toast(`${state.macDownloadKind === 'server' ? '苹果服务器' : '苹果客户端'} ${format.toUpperCase()} 已开始下载`, 'success');
 }
 
+function utf8ByteLength(value) {
+  const text = String(value ?? '');
+  if (typeof TextEncoder === 'function') return new TextEncoder().encode(text).byteLength;
+  return new Blob([text]).size;
+}
+
+function registrationUsernamePolicyError(value) {
+  const policy = state.publicConfig.usernamePolicy || {
+    mode: 'unrestricted', lengthRestricted: false,
+    minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES
+  };
+  const text = String(value || '').trim().normalize('NFC');
+  const maxBytes = Math.max(1, Number(policy.maxBytes) || USERNAME_MAX_UTF8_BYTES);
+  if (!text) return '请输入账号';
+  if (utf8ByteLength(text) > maxBytes) return `账号不能超过 ${maxBytes} 个 UTF-8 字节（仅用于防止异常超大请求）`;
+  const min = Math.max(1, Number(policy.minLength) || 1);
+  const max = Math.max(min, Number(policy.maxLength) || USERNAME_MAX_UTF8_BYTES);
+  const length = Array.from(text).length;
+  if (policy.lengthRestricted === true && (length < min || length > max)) return `账号长度需为 ${min}-${max} 个字符`;
+  if (policy.mode === 'unrestricted') return '';
+  const chinese = '\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\u{20000}-\\u{2ebef}\\u{30000}-\\u{323af}';
+  const patterns = {
+    safe: new RegExp('^[\\p{L}\\p{M}\\p{N}_-]+$', 'u'),
+    chinese: new RegExp(`^[${chinese}]+$`, 'u'), english: /^[A-Za-z]+$/, digits: /^\d+$/,
+    chinese_english: new RegExp(`^[${chinese}A-Za-z]+$`, 'u'), chinese_digits: new RegExp(`^[${chinese}\\d]+$`, 'u'),
+    english_digits: /^[A-Za-z\d]+$/, chinese_english_digits: new RegExp(`^[${chinese}A-Za-z\\d]+$`, 'u')
+  };
+  return patterns[policy.mode]?.test(text) ? '' : '账号包含服务器当前不允许的字符';
+}
+
+function registrationPasswordPolicyError(value) {
+  const policy = state.publicConfig.passwordPolicy || {
+    mode: 'unrestricted', lengthRestricted: false,
+    minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES
+  };
+  const text = String(value || '');
+  const maxBytes = Math.max(1, Number(policy.maxBytes) || PASSWORD_MAX_UTF8_BYTES);
+  if (!text) return '请输入密码';
+  if (utf8ByteLength(text) > maxBytes) return `密码不能超过 ${maxBytes} 个 UTF-8 字节（仅用于防止异常超大请求）`;
+  const min = Math.max(1, Number(policy.minLength) || 1);
+  const max = Math.max(min, Number(policy.maxLength) || PASSWORD_MAX_UTF8_BYTES);
+  const length = Array.from(text).length;
+  if (policy.lengthRestricted === true && (length < min || length > max)) return `密码长度需为 ${min}-${max} 位`;
+  const patterns = {
+    chinese: /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{2ebef}\u{30000}-\u{323af}]+$/u,
+    english: /^[A-Za-z]+$/, digits: /^\d+$/,
+    chinese_english: /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{2ebef}\u{30000}-\u{323af}A-Za-z]+$/u,
+    chinese_digits: /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{2ebef}\u{30000}-\u{323af}\d]+$/u,
+    english_digits: /^[A-Za-z\d]+$/,
+    chinese_english_digits: /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{2ebef}\u{30000}-\u{323af}A-Za-z\d]+$/u
+  };
+  return policy.mode === 'unrestricted' || patterns[policy.mode]?.test(text) ? '' : '密码包含服务器当前不允许的字符';
+}
+
+function syncCredentialPolicyLengthControls() {
+  const usernameRestricted = elements.usernamePolicyLengthRestricted?.checked === true;
+  const passwordRestricted = elements.passwordPolicyLengthRestricted?.checked === true;
+  if (elements.usernamePolicyMin) elements.usernamePolicyMin.disabled = !usernameRestricted;
+  if (elements.usernamePolicyMax) elements.usernamePolicyMax.disabled = !usernameRestricted;
+  if (elements.passwordPolicyMin) elements.passwordPolicyMin.disabled = !passwordRestricted;
+  if (elements.passwordPolicyMax) elements.passwordPolicyMax.disabled = !passwordRestricted;
+}
+
+function credentialPolicyLengthText(policy, fallbackMaxBytes) {
+  if (policy?.lengthRestricted === true) return `${policy.minLength}-${policy.maxLength} 位`;
+  return `字符长度不限（${Number(policy?.maxBytes) || fallbackMaxBytes} 个 UTF-8 字节防滥用上限）`;
+}
+
 async function register(event) {
   event.preventDefault();
   const username = elements.regUsername.value.trim();
   const email = elements.regEmail.value.trim();
   const password = elements.regPassword.value;
+  const usernameError = registrationUsernamePolicyError(username);
+  if (usernameError) return setLoginStatus(usernameError);
+  const passwordError = registrationPasswordPolicyError(password);
+  if (passwordError) return setLoginStatus(passwordError);
   if (password !== elements.regPasswordConfirm.value) return setLoginStatus('两次输入的密码不一致');
   if (email && !/^\S+@\S+\.\S+$/.test(email)) return setLoginStatus('请输入有效的邮箱地址');
   if (email && !elements.regEmailVerificationCode?.value.trim()) return setLoginStatus('填写邮箱后必须先发送并输入邮箱验证码');
@@ -3300,7 +3580,7 @@ async function recoverPasswordByEmail() {
     const identifier = await showAppInput({
       title: 'QQ 邮箱找回密码',
       description: '输入登录账号或已验证的绑定邮箱。若账号或邮箱不存在，服务器会立即给出明确提示；重置服务器管理员密码时请输入“服务器管理员”。',
-      label: '账号 / 邮箱', placeholder: '登录账号、绑定邮箱或服务器管理员', maxLength: 120,
+      label: '账号 / 邮箱', placeholder: '登录账号、绑定邮箱或服务器管理员', maxLength: USERNAME_MAX_UTF8_BYTES,
       autocomplete: 'username', confirmText: '发送验证码'
     });
     if (identifier === null) return;
@@ -3318,19 +3598,29 @@ async function recoverPasswordByEmail() {
     if (code === null) return setLoginStatus('已取消密码找回');
     const verified = await emitAck('password-reset-verify', { scope, identifier: scope === 'admin' ? '' : identifier, code });
     if (!verified.success) { setLoginStatus(verified.error); return toast(verified.error, 'error'); }
-    const minimum = scope === 'admin' ? 8 : 6;
+    const policy = state.publicConfig.passwordPolicy || {
+      mode: 'unrestricted', lengthRestricted: false,
+      minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES
+    };
+    const minimum = scope === 'admin'
+      ? Math.max(8, policy.lengthRestricted === true ? Number(policy.minLength) || 1 : 1)
+      : (policy.lengthRestricted === true ? Math.max(1, Number(policy.minLength) || 1) : 1);
+    const maximum = policy.lengthRestricted === true
+      ? Math.max(minimum, Number(policy.maxLength) || PASSWORD_MAX_UTF8_BYTES)
+      : Math.max(1, Number(policy.maxBytes) || PASSWORD_MAX_UTF8_BYTES);
     let newPassword = '';
     while (true) {
       const value = await showAppInput({
         title: scope === 'admin' ? '设置新的服务器管理员密码' : '设置新的登录密码',
         description: '邮箱验证已经通过。完成修改后，旧登录会话会立即失效。', label: '新密码', password: true,
-        initialValue: newPassword, minLength: minimum, maxLength: 72, minLengthMessage: `新密码至少 ${minimum} 位`, autocomplete: 'new-password', confirmText: '下一步', allowBack: true
+        initialValue: newPassword, minLength: minimum, maxLength: maximum, minLengthMessage: `新密码至少 ${minimum} 位`, autocomplete: 'new-password', confirmText: '下一步', allowBack: true,
+        validate: (input) => registrationPasswordPolicyError(input)
       });
       if (value === null) return setLoginStatus('邮箱已验证，但尚未修改密码；重置授权将在 10 分钟后失效');
       newPassword = value;
       const confirmation = await showAppInput({
         title: '确认新密码', description: '请再次输入相同的新密码。', label: '确认密码', password: true,
-        minLength: minimum, maxLength: 72, autocomplete: 'new-password', allowBack: true,
+        minLength: minimum, maxLength: maximum, autocomplete: 'new-password', allowBack: true,
         validate: (input) => input === newPassword ? '' : '两次输入的密码不一致', confirmText: '修改密码'
       });
       if (confirmation === APP_DIALOG_BACK) continue;
@@ -3486,6 +3776,10 @@ async function convertGuestAccount(event) {
   const email = elements.guestConvertEmail?.value.trim() || '';
   const emailCode = elements.guestConvertEmailCode?.value.trim() || '';
   if (!username) return toast('请输入正式账号名', 'error');
+  const usernameError = registrationUsernamePolicyError(username);
+  if (usernameError) return toast(usernameError, 'error');
+  const passwordError = registrationPasswordPolicyError(password);
+  if (passwordError) return toast(passwordError, 'error');
   if (password !== confirmation) return toast('两次输入的密码不一致', 'error');
   if (email && !emailCode) return toast('填写邮箱后必须输入邮箱验证码', 'error');
   const submit = elements.guestConvertForm?.querySelector('[type="submit"]');
@@ -3810,17 +4104,24 @@ async function promptRequiredAccountPasswordChange() {
   state.accountPasswordPromptActive = true;
   try {
     const initialSetup = Boolean(state.capabilities.canSetInitialAccountPassword && state.capabilities.serverHost && state.user?.username === 'admin');
-    const policy = state.publicConfig.passwordPolicy || { minLength: 6, maxLength: 72 };
-    const minimum = initialSetup ? Math.max(8, Number(policy.minLength) || 6) : Math.max(1, Number(policy.minLength) || 6);
-    const maximum = Math.max(minimum, Number(policy.maxLength) || 72);
-    let step = 0;
+    const skipCurrentPasswordVerification = Boolean(initialSetup && state.capabilities.canSkipInitialAccountPasswordVerification);
+    const policy = state.publicConfig.passwordPolicy || {
+      lengthRestricted: false, minLength: 1,
+      maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES
+    };
+    const configuredMinimum = policy.lengthRestricted === true ? Math.max(1, Number(policy.minLength) || 1) : 1;
+    const minimum = initialSetup ? Math.max(8, configuredMinimum) : configuredMinimum;
+    const maximum = policy.lengthRestricted === true
+      ? Math.max(minimum, Number(policy.maxLength) || PASSWORD_MAX_UTF8_BYTES)
+      : Math.max(minimum, Number(policy.maxBytes) || PASSWORD_MAX_UTF8_BYTES);
+    let step = skipCurrentPasswordVerification ? 1 : 0;
     let currentPassword = '';
     let newPassword = '';
     while (state.authenticated && state.capabilities.mustChangeAccountPassword) {
       if (step === 0) {
         const value = await showAppInput({
           title: '首次登录需要修改密码', description: '先校验当前密码，校验正确后才能设置新密码。',
-          label: '当前密码', password: true, trim: false, minLength: 1, maxLength: 72, initialValue: currentPassword,
+          label: '当前密码', password: true, trim: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, initialValue: currentPassword,
           confirmText: '校验并进入下一步', cancelText: initialSetup ? '暂不更改' : '退出登录'
         });
         if (value === null) {
@@ -3835,10 +4136,12 @@ async function promptRequiredAccountPasswordChange() {
       if (step === 1) {
         const value = await showAppInput({
           title: initialSetup ? '设置新的 admin 与服务器管理员密码' : '设置新的登录密码',
-          description: initialSetup ? '设置后会同时替换 admin 初始密码和服务器管理员密码。' : '当前密码已校验，请按照服务器规则设置新密码。',
+          description: initialSetup
+            ? (skipCurrentPasswordVerification ? '本次登录已验证管理员身份，设置后会同时替换 admin 初始密码和服务器管理员密码。' : '设置后会同时替换 admin 初始密码和服务器管理员密码。')
+            : '当前密码已校验，请按照服务器规则设置新密码。',
           label: '新密码', password: true, trim: false, minLength: minimum, maxLength: maximum, initialValue: newPassword,
           minLengthMessage: `新密码至少 ${minimum} 位`, validate: (input) => input === currentPassword ? '新密码不能与当前密码相同' : '',
-          confirmText: '下一步', allowBack: true, backText: '上一步', cancelText: initialSetup ? '暂不更改' : '退出登录'
+          confirmText: '下一步', allowBack: !skipCurrentPasswordVerification, backText: '上一步', cancelText: initialSetup ? '暂不更改' : '退出登录'
         });
         if (value === APP_DIALOG_BACK) { step = 0; continue; }
         if (value === null) {
@@ -3861,7 +4164,7 @@ async function promptRequiredAccountPasswordChange() {
         const result = await emitAck('account-action', { action: 'change-password', currentPassword, newPassword, initialSetup }, 30000);
         if (!result.success) {
           toast(result.error || '密码修改失败，请重试', 'error');
-          step = result.code === 'CURRENT_PASSWORD_INVALID' ? 0 : 1;
+          step = result.code === 'CURRENT_PASSWORD_INVALID' && !skipCurrentPasswordVerification ? 0 : 1;
           if (step === 0) currentPassword = '';
           continue;
         }
@@ -4053,6 +4356,9 @@ function resetRoomScopedClientState() {
   state.messages = []; state.chatHasMore = true; state.chatBeforeId = ''; state.chatBefore = '';
   state.chatManageAccounts = []; resetChatManagerMessages();
   state.playbackRevision = -1; state.playbackAnchor = null; state.pendingPlayback = null;
+  clearTimeout(state.textReadingApplyTimer); clearTimeout(state.textReadingEmitTimer); clearTimeout(state.textReadingResizeTimer);
+  state.textReading = { fileId: '', position: 0, page: 1, characterOffset: null, revision: 0 };
+  state.applyingTextReading = false; state.textReadingScrollBlockUntil = 0; state.textReadingProgrammaticAnchor = null;
   state.files = new Map(); state.queue = []; state.currentFile = null; clearStage();
 }
 
@@ -4405,6 +4711,7 @@ async function logout({ preserveCredentials = false, managementSession = false }
 
 function forcedLogout(message) { state.intentionalLogout = true; clearSession(); toast(message || '已退出登录', 'error'); setTimeout(() => location.reload(), 900); }
 function clearSession() {
+  resetNetworkQualityTracking();
   state.token = ''; state.user = null; state.authenticated = false; state.socketAuthenticated = false;
   state.managementOnlyAuth = false;
   updateGuestConversionAccess();
@@ -4446,10 +4753,10 @@ async function loadPublicConfig(silent = false) {
   try {
     const response = await fetchWithTimeout('/api/public-config', { headers: state.hostToken ? { 'X-SyncWatch-Host-Token': state.hostToken } : {} }, 8000);
     if (!response.ok) throw new Error(`服务器返回 ${response.status}`);
-    state.publicConfig = { ...state.publicConfig, ...await response.json() }; state.publicConfigKnown = true;
+    state.publicConfig = { ...state.publicConfig, ...await response.json() }; state.publicConfig.uiCopy = normalizedUiCopy(state.publicConfig.uiCopy); state.uiCopy = state.publicConfig.uiCopy; state.publicConfigKnown = true;
     if (!localStorage.getItem('syncwatchPlaybackQuality')) state.playbackQuality = state.publicConfig.defaultPlaybackQuality || 'original';
     if (elements.playbackQualitySelect) elements.playbackQualitySelect.value = state.playbackQuality;
-    applyPublicConfig(); void loadRoomInfo(); void loadOnlineRooms();
+    applyUiCopy(state.uiCopy); applyPublicConfig(); void loadRoomInfo(); void loadOnlineRooms();
     if (!state.authenticated && /读取服务器配置失败/.test(elements.loginStatus.textContent)) setLoginStatus('');
     return true;
   } catch (error) {
@@ -4461,10 +4768,11 @@ async function loadPublicConfig(silent = false) {
 }
 
 function applyPublicConfig() {
-  elements.versionText.textContent = state.publicConfig.version || 'v2.2.0';
+  applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
+  elements.versionText.textContent = state.publicConfig.version || 'v2.2.1';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.0'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.1'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -4542,13 +4850,43 @@ function applyPublicConfig() {
     else elements.adminContactBtn.textContent = contactLabel;
     elements.adminContactBtn.title = contactLabel;
   }
-  const policy = state.publicConfig.passwordPolicy || { mode: 'unrestricted', minLength: 6, maxLength: 72 };
-  if (elements.regPassword) {
-    elements.regPassword.minLength = Math.max(1, Number(policy.minLength) || 6);
-    elements.regPassword.maxLength = Math.max(elements.regPassword.minLength, Number(policy.maxLength) || 72);
-    const policyLabels = { unrestricted: '字符不限', chinese: '仅中文', english: '仅英文', digits: '仅数字', chinese_english: '中文和英文', chinese_digits: '中文和数字', english_digits: '英文和数字', chinese_english_digits: '中文、英文和数字' };
-    elements.regPassword.placeholder = `${elements.regPassword.minLength}-${elements.regPassword.maxLength} 位，${policyLabels[policy.mode] || '按服务器规则'}`;
+  const usernamePolicy = state.publicConfig.usernamePolicy || {
+    mode: 'unrestricted', lengthRestricted: false,
+    minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES
+  };
+  const usernameModeLabels = {
+    unrestricted: '字符类型不限', safe: '字母、数字、下划线和短横线', chinese: '仅中文', english: '仅英文', digits: '仅数字',
+    chinese_english: '中文和英文', chinese_digits: '中文和数字', english_digits: '英文和数字', chinese_english_digits: '中文、英文和数字'
+  };
+  const usernameMin = Math.max(1, Number(usernamePolicy.minLength) || 1);
+  const usernameMax = Math.max(usernameMin, Number(usernamePolicy.maxLength) || USERNAME_MAX_UTF8_BYTES);
+  const usernameMaxBytes = Math.max(1, Number(usernamePolicy.maxBytes) || USERNAME_MAX_UTF8_BYTES);
+  const usernameLengthRestricted = usernamePolicy.lengthRestricted === true;
+  if (elements.username) elements.username.maxLength = usernameMaxBytes;
+  for (const input of [elements.regUsername, elements.guestConvertUsername]) {
+    if (!input) continue;
+    input.minLength = usernameLengthRestricted ? usernameMin : 1;
+    input.maxLength = usernameLengthRestricted ? usernameMax : usernameMaxBytes;
+    input.placeholder = `${usernameLengthRestricted ? `${usernameMin}-${usernameMax} 位` : '长度不限'}，${usernameModeLabels[usernamePolicy.mode] || '按服务器规则'}`;
   }
+  const policy = state.publicConfig.passwordPolicy || {
+    mode: 'unrestricted', lengthRestricted: false,
+    minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES
+  };
+  const passwordMin = Math.max(1, Number(policy.minLength) || 1);
+  const passwordMax = Math.max(passwordMin, Number(policy.maxLength) || PASSWORD_MAX_UTF8_BYTES);
+  const passwordMaxBytes = Math.max(1, Number(policy.maxBytes) || PASSWORD_MAX_UTF8_BYTES);
+  const passwordLengthRestricted = policy.lengthRestricted === true;
+  for (const input of [elements.password, elements.adminPassword, elements.newAdminPassword, elements.defaultAccountPassword]) {
+    if (input) input.maxLength = passwordMaxBytes;
+  }
+  const policyLabels = { unrestricted: '字符类型不限', chinese: '仅中文', english: '仅英文', digits: '仅数字', chinese_english: '中文和英文', chinese_digits: '中文和数字', english_digits: '英文和数字', chinese_english_digits: '中文、英文和数字' };
+  for (const input of [elements.regPassword, elements.regPasswordConfirm, elements.guestConvertPassword, elements.guestConvertPasswordConfirm]) {
+    if (!input) continue;
+    input.minLength = passwordLengthRestricted ? passwordMin : 1;
+    input.maxLength = passwordLengthRestricted ? passwordMax : passwordMaxBytes;
+  }
+  if (elements.regPassword) elements.regPassword.placeholder = `${passwordLengthRestricted ? `${passwordMin}-${passwordMax} 位` : '长度不限'}，${policyLabels[policy.mode] || '按服务器规则'}`;
   const roomIdPolicy = state.publicConfig.roomIdPolicy || { enabled: false, minLength: 4, maxLength: 32 };
   for (const input of [elements.roomIdInput, elements.newRoomId, elements.switchRoomId]) {
     if (!input) continue;
@@ -4624,7 +4962,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', {}, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.0';
+    const current = state.publicConfig.version || 'v2.2.1';
     const latest = String(release.tag_name || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -5086,7 +5424,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.0.apk';
+    link.download = 'SyncWatch同步观影-v2.2.1.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -5103,7 +5441,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch同步观影-v2.2.0.apk';
+    link.href = url; link.download = 'SyncWatch同步观影-v2.2.1.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -5672,7 +6010,7 @@ async function batchDeleteManagedVideos() {
 
 function exportVideoManagement() {
   const files = manageableMediaFiles().map((file) => ({ id: file.id, originalName: file.originalName, collection: fileCollectionName(file), note: file.note || '', uploadedAt: file.uploadedAt, size: file.size }));
-  downloadJsonFile(`SyncWatch同步观影-影片管理-${new Date().toISOString().slice(0, 10)}.json`, { version: '2.2.0', type: 'syncwatch-media-management', files });
+  downloadJsonFile(`SyncWatch同步观影-影片管理-${new Date().toISOString().slice(0, 10)}.json`, { version: '2.2.1', type: 'syncwatch-media-management', files });
 }
 
 async function importVideoManagement() {
@@ -6258,8 +6596,14 @@ function updateRoomHeader() {
   if (!state.room) return;
   const onlineCount = countOnlineUsers();
   elements.headerRoomName.textContent = state.room.name; updateHeaderOnlineMetric(onlineCount, state.room.maxUsers);
-  elements.headerStatus.textContent = state.users.some((user) => user.connectionState !== 'online') ? '网络波动' : '同步正常';
-  elements.headerStatus.classList.toggle('healthy', !state.users.some((user) => user.connectionState !== 'online'));
+  const roomStatus = window.SyncWatchNetworkQuality.roomStatus({
+    authenticated: state.authenticated, socketConnected: Boolean(state.socket?.connected),
+    socketAuthenticated: state.socketAuthenticated,
+    localConnectionState: state.networkProbe.localConnectionState, members: state.users
+  });
+  elements.headerStatus.textContent = roomStatus.label;
+  elements.headerStatus.dataset.state = roomStatus.state;
+  elements.headerStatus.classList.toggle('healthy', roomStatus.healthy);
   elements.roomCode.textContent = state.room.id; elements.roomScheme.textContent = `syncwatch://${state.room.id}`;
   if (elements.roomShareUrl && !elements.roomShareUrl.dataset.customBase) elements.roomShareUrl.value = roomShareAddress();
   if (elements.currentRoomBanner) {
@@ -6272,7 +6616,7 @@ function updateRoomHeader() {
 function syncPlayPauseButton(playing) {
   if (elements.playPauseBtn) {
     elements.playPauseBtn.textContent = playing ? '⏸' : '▶';
-    elements.playPauseBtn.title = playing ? '同步暂停' : '同步播放';
+    elements.playPauseBtn.title = playing ? uiCopyText('player.pause', '同步暂停') : uiCopyText('player.play', '同步播放');
     elements.playPauseBtn.setAttribute('aria-label', elements.playPauseBtn.title);
     elements.playPauseBtn.setAttribute('aria-pressed', String(playing));
   }
@@ -6498,13 +6842,120 @@ function decodeTextPreview(buffer) {
 
 function canonicalTextReading(value = {}) {
   const rawPosition = Number(value.position);
+  const rawCharacterOffset = value.characterOffset ?? value.anchorOffset;
+  const hasCharacterOffset = rawCharacterOffset !== undefined && rawCharacterOffset !== null && String(rawCharacterOffset).trim() !== '';
+  const numericCharacterOffset = Number(rawCharacterOffset);
   return {
     fileId: String(value.fileId || ''),
     position: Number.isFinite(rawPosition) ? Math.max(0, Math.min(1, rawPosition)) : 0,
     page: Math.max(1, Math.floor(Number(value.page) || 1)),
+    characterOffset: hasCharacterOffset && Number.isSafeInteger(numericCharacterOffset) && numericCharacterOffset >= 0
+      ? Math.min(50_000_000, numericCharacterOffset) : null,
     updatedAt: Number(value.updatedAt) || Date.now(),
     changedBy: String(value.changedBy || ''),
     revision: Math.max(0, Math.floor(Number(value.revision) || 0))
+  };
+}
+
+function textViewerTextNode() {
+  const node = elements.textViewer?.firstChild;
+  return node && node.nodeType === 3 ? node : null;
+}
+
+function textViewerCharacterLength() {
+  return textViewerTextNode()?.data.length || String(elements.textViewer?.textContent || '').length;
+}
+
+function textCharacterOffsetForPosition(position) {
+  const length = textViewerCharacterLength();
+  if (length <= 1) return 0;
+  return Math.max(0, Math.min(length - 1, Math.round(Math.max(0, Math.min(1, Number(position) || 0)) * (length - 1))));
+}
+
+function textReadingPositionForCharacterOffset(characterOffset) {
+  const length = textViewerCharacterLength();
+  if (length <= 1) return 0;
+  return Math.max(0, Math.min(1, Math.max(0, Math.min(length - 1, Number(characterOffset) || 0)) / (length - 1)));
+}
+
+function textViewerContentTop(viewer) {
+  const style = getComputedStyle(viewer);
+  const border = Number.parseFloat(style.borderTopWidth) || 0;
+  const padding = Number.parseFloat(style.paddingTop) || 0;
+  return viewer.getBoundingClientRect().top + border + padding;
+}
+
+function textRangeRectAt(node, characterOffset) {
+  if (!node || !node.length || typeof document.createRange !== 'function') return null;
+  const offset = Math.max(0, Math.min(node.length - 1, Math.floor(Number(characterOffset) || 0)));
+  const range = document.createRange();
+  range.setStart(node, offset); range.setEnd(node, Math.min(node.length, offset + 1));
+  const rect = Array.from(range.getClientRects?.() || []).find((entry) => entry.width || entry.height) || range.getBoundingClientRect();
+  return rect && (rect.width || rect.height) ? rect : null;
+}
+
+function textLineStartOffset(node, characterOffset) {
+  if (!node || !node.length) return 0;
+  const offset = Math.max(0, Math.min(node.length - 1, Math.floor(Number(characterOffset) || 0)));
+  const current = textRangeRectAt(node, offset);
+  if (!current) return offset;
+  const targetTop = current.top;
+  let low = 0; let high = offset;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const rect = textRangeRectAt(node, middle);
+    if (!rect || rect.top < targetTop - 0.5) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+// Use a character anchor instead of a percentage of scrollHeight.  The latter
+// points at different text on clients with different viewport sizes, fonts, or
+// line wrapping. Range geometry is local to each client, so the same UTF-16
+// offset is aligned to the top of every reader independently.
+function textCharacterOffsetAtScroll() {
+  const viewer = elements.textViewer; const node = textViewerTextNode();
+  if (!viewer || !node || !node.length || !viewer.clientHeight) {
+    const maximumScroll = Math.max(0, Number(viewer?.scrollHeight || 0) - Number(viewer?.clientHeight || 0));
+    return textCharacterOffsetForPosition(maximumScroll > 0 ? Number(viewer?.scrollTop || 0) / maximumScroll : 0);
+  }
+  const targetTop = textViewerContentTop(viewer) + 1;
+  let low = 0; let high = node.length - 1;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const rect = textRangeRectAt(node, middle);
+    if (!rect || rect.bottom < targetTop - 0.5) low = middle + 1;
+    else high = middle;
+  }
+  return textLineStartOffset(node, low);
+}
+
+function scrollTextViewerToCharacterOffset(characterOffset) {
+  const viewer = elements.textViewer; const node = textViewerTextNode();
+  const numericOffset = Number(characterOffset);
+  if (!viewer || !node || !node.length || !viewer.clientHeight
+    || !Number.isSafeInteger(numericOffset) || numericOffset < 0) return false;
+  const offset = Math.min(node.length - 1, numericOffset);
+  const rect = textRangeRectAt(node, offset);
+  if (!rect) return false;
+  const maximumScroll = Math.max(0, viewer.scrollHeight - viewer.clientHeight);
+  const targetScroll = viewer.scrollTop + rect.top - textViewerContentTop(viewer);
+  viewer.scrollTop = Math.max(0, Math.min(maximumScroll, targetScroll));
+  return true;
+}
+
+function rememberProgrammaticTextReadingAnchor(fileId, characterOffset, page, visualOffset = characterOffset) {
+  const hasCharacterOffset = characterOffset !== null && characterOffset !== undefined && String(characterOffset).trim() !== '';
+  const numericOffset = Number(characterOffset); const numericPage = Number(page); const numericVisualOffset = Number(visualOffset);
+  if (!fileId || !hasCharacterOffset || !Number.isSafeInteger(numericOffset) || numericOffset < 0) {
+    state.textReadingProgrammaticAnchor = null;
+    return;
+  }
+  state.textReadingProgrammaticAnchor = {
+    fileId: String(fileId), characterOffset: numericOffset,
+    page: Number.isSafeInteger(numericPage) && numericPage >= 1 ? numericPage : null,
+    visualOffset: Number.isSafeInteger(numericVisualOffset) && numericVisualOffset >= 0 ? numericVisualOffset : numericOffset
   };
 }
 
@@ -6512,15 +6963,22 @@ function textReaderPageCount() {
   return Math.max(1, Math.ceil(String(elements.textViewer?.textContent || '').length / TEXT_READER_CHARACTERS_PER_PAGE));
 }
 
-function updateTextReaderControls(position = null) {
+function updateTextReaderControls(position = null, characterOffset = null, pageOverride = null) {
   if (!elements.textReaderControls || !elements.textReaderPage) return;
   const count = textReaderPageCount();
   const viewer = elements.textViewer;
   const maximumScroll = Math.max(0, Number(viewer?.scrollHeight || 0) - Number(viewer?.clientHeight || 0));
-  const currentPosition = Number.isFinite(Number(position))
+  const numericCharacterOffset = Number(characterOffset);
+  const hasCharacterOffset = Number.isSafeInteger(numericCharacterOffset) && numericCharacterOffset >= 0;
+  const anchorPosition = hasCharacterOffset ? textReadingPositionForCharacterOffset(numericCharacterOffset) : null;
+  const currentPosition = anchorPosition !== null ? anchorPosition : Number.isFinite(Number(position))
     ? Math.max(0, Math.min(1, Number(position)))
     : maximumScroll > 0 ? Math.max(0, Math.min(1, Number(viewer?.scrollTop || 0) / maximumScroll)) : 0;
-  const page = count > 1 ? Math.min(count, 1 + Math.round(currentPosition * (count - 1))) : 1;
+  const numericPageOverride = Number(pageOverride);
+  const hasPageOverride = Number.isSafeInteger(numericPageOverride) && numericPageOverride >= 1;
+  const page = hasPageOverride ? Math.min(count, numericPageOverride) : hasCharacterOffset
+    ? Math.min(count, 1 + Math.floor(numericCharacterOffset / TEXT_READER_CHARACTERS_PER_PAGE))
+    : count > 1 ? Math.min(count, 1 + Math.round(currentPosition * (count - 1))) : 1;
   const canControl = canControlPlayback();
   elements.textReaderPage.min = '1';
   elements.textReaderPage.max = String(count);
@@ -6535,39 +6993,62 @@ function updateTextReaderControls(position = null) {
 function applyTextReadingState(value = {}) {
   const incoming = canonicalTextReading(value);
   const current = canonicalTextReading(state.textReading);
-  if (incoming.fileId && incoming.fileId === current.fileId && incoming.revision < current.revision) return;
+  if (incoming.revision < current.revision
+    || (incoming.revision === current.revision && current.fileId && incoming.fileId !== current.fileId)) return;
   state.textReading = incoming;
   if (state.room) state.room.textReading = incoming;
   if (!incoming.fileId || state.currentFile?.category !== 'text' || state.currentFile.id !== incoming.fileId) return;
   const viewer = elements.textViewer;
   const maximumScroll = Math.max(0, viewer.scrollHeight - viewer.clientHeight);
   state.applyingTextReading = true;
-  viewer.scrollTop = maximumScroll * incoming.position;
+  state.textReadingScrollBlockUntil = performance.now() + 500;
+  const anchorApplied = incoming.characterOffset !== null && scrollTextViewerToCharacterOffset(incoming.characterOffset);
+  if (!anchorApplied) viewer.scrollTop = maximumScroll * incoming.position;
+  const visualOffset = anchorApplied ? textCharacterOffsetAtScroll() : incoming.characterOffset;
+  rememberProgrammaticTextReadingAnchor(incoming.fileId, incoming.characterOffset, incoming.page, visualOffset);
   clearTimeout(state.textReadingApplyTimer);
-  state.textReadingApplyTimer = setTimeout(() => { state.applyingTextReading = false; }, 140);
-  updateTextReaderControls(incoming.position);
+  state.textReadingApplyTimer = setTimeout(() => { state.applyingTextReading = false; }, 320);
+  updateTextReaderControls(incoming.position, incoming.characterOffset, incoming.page);
 }
 
-function emitTextReadingUpdate(position) {
+function emitTextReadingUpdate(position, characterOffset = null, pageOverride = null) {
   if (!canControlPlayback() || state.currentFile?.category !== 'text') return;
   const fileId = state.currentFile.id;
+  const numericOffset = characterOffset === null || characterOffset === undefined ? NaN : Number(characterOffset);
+  const normalizedOffset = Number.isSafeInteger(numericOffset) && numericOffset >= 0
+    ? Math.min(50_000_000, numericOffset) : null;
+  // Keep the measured scroll percentage for legacy clients. New clients use
+  // normalizedOffset as the authoritative anchor and ignore this fallback.
   const normalized = Math.max(0, Math.min(1, Number(position) || 0));
   const count = textReaderPageCount();
-  const page = count > 1 ? Math.min(count, 1 + Math.round(normalized * (count - 1))) : 1;
+  const numericPageOverride = Number(pageOverride);
+  const hasPageOverride = Number.isSafeInteger(numericPageOverride) && numericPageOverride >= 1;
+  const page = hasPageOverride ? Math.min(count, numericPageOverride) : normalizedOffset === null
+    ? (count > 1 ? Math.min(count, 1 + Math.round(normalized * (count - 1))) : 1)
+    : Math.min(count, 1 + Math.floor(normalizedOffset / TEXT_READER_CHARACTERS_PER_PAGE));
   clearTimeout(state.textReadingEmitTimer);
   state.textReadingEmitTimer = setTimeout(async () => {
     if (!canControlPlayback() || state.currentFile?.category !== 'text' || state.currentFile.id !== fileId) return;
-    const result = await emitAck('text-reading-update', { fileId, position: normalized, page });
+    const result = await emitAck('text-reading-update', { fileId, position: normalized, page, characterOffset: normalizedOffset });
     if (!result.success && result.error) toast(result.error, 'error');
   }, 160);
 }
 
 function handleTextReaderScroll() {
-  if (state.currentFile?.category !== 'text' || state.applyingTextReading) return;
+  if (state.currentFile?.category !== 'text' || state.applyingTextReading || performance.now() < state.textReadingScrollBlockUntil) return;
+  const characterOffset = textCharacterOffsetAtScroll();
   const maximumScroll = Math.max(0, elements.textViewer.scrollHeight - elements.textViewer.clientHeight);
-  const position = maximumScroll > 0 ? elements.textViewer.scrollTop / maximumScroll : 0;
-  updateTextReaderControls(position);
-  emitTextReadingUpdate(position);
+  const position = maximumScroll > 0 ? elements.textViewer.scrollTop / maximumScroll : textReadingPositionForCharacterOffset(characterOffset);
+  const programmatic = state.textReadingProgrammaticAnchor;
+  if (programmatic) {
+    if (programmatic.fileId === state.currentFile.id
+      && Math.abs(characterOffset - programmatic.visualOffset) <= 2) {
+      updateTextReaderControls(position, programmatic.characterOffset, programmatic.page);
+      return;
+    } else state.textReadingProgrammaticAnchor = null;
+  }
+  updateTextReaderControls(position, characterOffset);
+  emitTextReadingUpdate(position, characterOffset);
 }
 
 function goToTextReaderPage(rawPage) {
@@ -6575,14 +7056,21 @@ function goToTextReaderPage(rawPage) {
   if (!canControlPlayback()) return permissionDeniedToast('同步文本阅读进度');
   const count = textReaderPageCount();
   const page = Math.max(1, Math.min(count, Math.floor(Number(rawPage) || 1)));
-  const position = count > 1 ? (page - 1) / (count - 1) : 0;
-  const maximumScroll = Math.max(0, elements.textViewer.scrollHeight - elements.textViewer.clientHeight);
+  const characterOffset = Math.min(
+    Math.max(0, textViewerCharacterLength() - 1),
+    Math.max(0, (page - 1) * TEXT_READER_CHARACTERS_PER_PAGE)
+  );
+  const position = textReadingPositionForCharacterOffset(characterOffset);
+  clearTimeout(state.textReadingEmitTimer); state.textReadingEmitTimer = null;
   state.applyingTextReading = true;
-  elements.textViewer.scrollTop = maximumScroll * position;
+  state.textReadingScrollBlockUntil = performance.now() + 500;
+  const anchorApplied = scrollTextViewerToCharacterOffset(characterOffset);
+  const visualOffset = anchorApplied ? textCharacterOffsetAtScroll() : characterOffset;
+  rememberProgrammaticTextReadingAnchor(state.currentFile.id, characterOffset, page, visualOffset);
   clearTimeout(state.textReadingApplyTimer);
-  state.textReadingApplyTimer = setTimeout(() => { state.applyingTextReading = false; }, 140);
-  updateTextReaderControls(position);
-  emitTextReadingUpdate(position);
+  state.textReadingApplyTimer = setTimeout(() => { state.applyingTextReading = false; }, 320);
+  updateTextReaderControls(position, characterOffset, page);
+  emitTextReadingUpdate(position, characterOffset, page);
 }
 
 function changeTextReaderPage(delta) {
@@ -6591,6 +7079,7 @@ function changeTextReaderPage(delta) {
 
 async function loadTextPreview(file) {
   state.textPreviewController?.abort();
+  state.textReadingProgrammaticAnchor = null;
   const controller = new AbortController();
   const generation = ++state.textPreviewGeneration;
   state.textPreviewController = controller;
@@ -6619,7 +7108,10 @@ async function loadTextPreview(file) {
       text += `\n\n—— 已显示前 ${formatSize(buffer.byteLength)}，完整文件共 ${formatSize(file.size)} ——`;
     }
     elements.textViewer.textContent = text || '（空文本文件）';
-    updateTextReaderControls(state.room?.textReading?.position ?? state.textReading.position);
+    updateTextReaderControls(
+      state.room?.textReading?.position ?? state.textReading.position,
+      state.room?.textReading?.characterOffset ?? state.textReading.characterOffset
+    );
     requestAnimationFrame(() => applyTextReadingState(state.room?.textReading || state.textReading));
   } catch (error) {
     if (error?.name !== 'AbortError' && generation === state.textPreviewGeneration && state.currentFile?.id === file.id) {
@@ -6650,6 +7142,7 @@ function clearInactiveFileSources(nextCategory = '') {
     state.textPreviewGeneration += 1;
     state.textPreviewController?.abort(); state.textPreviewController = null;
     clearTimeout(state.textReadingEmitTimer); state.textReadingEmitTimer = null;
+    state.textReadingProgrammaticAnchor = null;
     elements.textViewer.textContent = ''; delete elements.textViewer.dataset.fileId;
     elements.textReaderControls?.classList.add('is-hidden');
   }
@@ -7083,7 +7576,7 @@ function showSyncNotice(text, kind = 'status') {
   if (kind === 'drift' && !state.syncDriftNotice) return;
   elements.syncNotice.replaceChildren();
   const message = document.createElement('span'); message.textContent = String(text || '');
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'notice-close-button'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示');
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'notice-close-button'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示'); close.dataset.copyKey = 'common.closeNotice'; close.dataset.copyAttr = 'title';
   close.addEventListener('click', () => elements.syncNotice.classList.add('is-hidden'));
   elements.syncNotice.append(message, close); elements.syncNotice.classList.remove('is-hidden'); clearTimeout(showSyncNotice.timer);
   showSyncNotice.timer = setTimeout(() => elements.syncNotice.classList.add('is-hidden'), 3200);
@@ -7284,8 +7777,11 @@ function renderUsers() {
   const activeUsernames = new Set(sortedUsers.map((user) => user.username));
   for (const username of state.memberDetailOverrides.keys()) if (!activeUsernames.has(username)) state.memberDetailOverrides.delete(username);
   elements.userList.innerHTML = sortedUsers.map((user, index) => {
-    const unstable = user.connectionState !== 'online';
     const isSelf = user.username === selfUsername;
+    const reconnecting = user.connectionState === 'reconnecting';
+    const unstable = user.connectionState === 'unstable'
+      || isSelf && state.networkProbe.localConnectionState === 'unstable';
+    const connectionIssue = reconnecting || unstable;
     const role = user.isOwner ? '房主' : user.isSuperAdmin ? '超级管理员' : user.isAdmin ? '管理员' : user.permissions.groupId === 'controller' ? '协管员' : '成员';
     const groupName = user.permissionGroup?.name || role;
     const permissionNames = [
@@ -7302,9 +7798,12 @@ function renderUsers() {
     const avatar = user.avatar ? `<img src="${escapeHtml(user.avatar)}" alt="">` : escapeHtml(String(user.displayName || user.username || '?').slice(0, 1).toUpperCase());
     const level = Number(user.level) > 0 ? ` · ${levelEmoji(user.level)} Lv.${Number(user.level)} ${escapeHtml(user.levelName || '')}` : '';
     const detailId = `memberDetails-${index}`;
-    return `<article class="user-card ${user.isOwner ? 'owner' : ''} ${user.isSuperAdmin ? 'super-admin' : ''} ${unstable ? 'unstable' : ''} ${isSelf ? 'self' : ''} ${isSelf && state.selfMemberHighlight ? 'self-highlight' : ''} ${detailsExpanded ? 'member-detail-expanded' : 'member-detail-collapsed'}" data-socket-id="${user.socketId}" data-username="${escapeHtml(user.username)}"><button class="member-avatar" data-user-action="profile" type="button" title="查看成员资料">${avatar}<span class="user-dot">${unstable ? '⚠' : user.voiceMode ? '🎙' : '🟢'}</span></button><div class="user-info" data-user-action="profile"><strong class="member-name-line"><span>${escapeHtml(user.displayName || user.username)}${isSelf ? '<span class="self-member-label">我</span>' : ''}</span><button class="member-detail-toggle" data-user-action="toggle-details" type="button" aria-expanded="${detailsExpanded}" aria-controls="${detailId}" title="${detailsExpanded ? '收起该成员明细' : '展开该成员明细'}">${detailsExpanded ? '收起' : '展开'}</button></strong><div id="${detailId}" class="user-detail-content${detailsExpanded ? '' : ' is-hidden'}" ${detailsExpanded ? '' : 'hidden'}><small>${escapeHtml(user.username)}${level}</small><small class="user-role">${role}${user.voiceMode === 'room' ? ' · 全麦中' : user.voiceMode === 'private' ? ' · 私聊语音中' : ''}</small><small class="user-group">分组：${escapeHtml(groupName)}</small><small class="user-permissions" title="${escapeHtml(permissionNames.join('、'))}">分组权限：${escapeHtml(permissionNames.join('、') || '跟随观看')}</small><small>${escapeHtml(localizedDeviceLabel(user.browser, 'browser'))} · ${escapeHtml(localizedDeviceLabel(user.platform, 'platform'))}</small><small class="user-quality">清晰度：${playbackQualityLabel(user.playbackQuality)}</small>${unstable ? '<small>网络波动 · 正在重新连接…</small>' : `<progress class="sync-bar" max="100" value="${Number(user.syncPercent) || 0}"></progress><small>播放同步 ${user.syncPercent}% · 延迟 ${user.latency ?? '--'} 毫秒</small>`}<details class="user-location-details"><summary>位置与设备详情</summary><small>${escapeHtml(locationText)}</small><small>设备：${escapeHtml(user.deviceName || '未知设备')}</small></details></div></div>${actions}</article>`;
+    const qualityStatus = reconnecting ? '<small>连接中断 · 正在重新连接…</small>'
+      : unstable ? '<small>持续高延迟 · 正在恢复…</small>'
+        : `<progress class="sync-bar" max="100" value="${Number(user.syncPercent) || 0}"></progress><small>播放同步 ${user.syncPercent}% · 延迟 ${user.latency ?? '--'} 毫秒</small>`;
+    return `<article class="user-card ${user.isOwner ? 'owner' : ''} ${user.isSuperAdmin ? 'super-admin' : ''} ${connectionIssue ? 'unstable' : ''} ${reconnecting ? 'reconnecting' : ''} ${isSelf ? 'self' : ''} ${isSelf && state.selfMemberHighlight ? 'self-highlight' : ''} ${detailsExpanded ? 'member-detail-expanded' : 'member-detail-collapsed'}" data-socket-id="${user.socketId}" data-username="${escapeHtml(user.username)}"><button class="member-avatar" data-user-action="profile" type="button" title="查看成员资料">${avatar}<span class="user-dot">${connectionIssue ? '⚠' : user.voiceMode ? '🎙' : '🟢'}</span></button><div class="user-info" data-user-action="profile"><strong class="member-name-line"><span>${escapeHtml(user.displayName || user.username)}${isSelf ? '<span class="self-member-label">我</span>' : ''}</span><button class="member-detail-toggle" data-user-action="toggle-details" type="button" aria-expanded="${detailsExpanded}" aria-controls="${detailId}" title="${detailsExpanded ? '收起该成员明细' : '展开该成员明细'}">${detailsExpanded ? '收起' : '展开'}</button></strong><div id="${detailId}" class="user-detail-content${detailsExpanded ? '' : ' is-hidden'}" ${detailsExpanded ? '' : 'hidden'}><small>${escapeHtml(user.username)}${level}</small><small class="user-role">${role}${user.voiceMode === 'room' ? ' · 全麦中' : user.voiceMode === 'private' ? ' · 私聊语音中' : ''}</small><small class="user-group">分组：${escapeHtml(groupName)}</small><small class="user-permissions" title="${escapeHtml(permissionNames.join('、'))}">分组权限：${escapeHtml(permissionNames.join('、') || '跟随观看')}</small><small>${escapeHtml(localizedDeviceLabel(user.browser, 'browser'))} · ${escapeHtml(localizedDeviceLabel(user.platform, 'platform'))}</small><small class="user-quality">清晰度：${playbackQualityLabel(user.playbackQuality)}</small>${qualityStatus}<details class="user-location-details"><summary>位置与设备详情</summary><small>${escapeHtml(locationText)}</small><small>设备：${escapeHtml(user.deviceName || '未知设备')}</small></details></div></div>${actions}</article>`;
   }).join('') || '<p class="muted">暂无在线成员</p>';
-  const otherUsers = state.users.filter((user) => user.username !== state.user?.username);
+  const otherUsers = state.users.filter((user) => user.username !== state.user?.username && user.connectionState !== 'reconnecting');
   const recipientOptions = '<option value="">选择私聊成员</option>' + otherUsers.map((user) => `<option value="${escapeHtml(user.username)}">${escapeHtml(user.displayName || user.username)}</option>`).join('');
   elements.privateRecipient.innerHTML = recipientOptions;
   if (elements.fullscreenPrivateRecipient) elements.fullscreenPrivateRecipient.innerHTML = recipientOptions;
@@ -10114,16 +10613,56 @@ async function openConvertedMediaFolder() {
   } catch (error) { toast(`打开转换目录失败：${localizedError(error)}`, 'error'); }
 }
 
+function resetNetworkQualityTracking() {
+  const probe = state.networkProbe;
+  probe.connectionEpoch += 1;
+  probe.inFlightSequence = 0;
+  probe.localConnectionState = 'online';
+  probe.tracker = window.SyncWatchNetworkQuality.createTracker();
+}
+
+function emitNetworkQualityObservation(sequence, observation, latency) {
+  state.networkProbe.localConnectionState = observation.state;
+  updateRoomHeader();
+  renderUsers();
+  if (!state.socketAuthenticated || !state.socket?.connected) return;
+  state.socket.volatile.emit('network-quality', {
+    sequence, latency, syncPercent: state.syncPercent, drift: state.latestDrift,
+    playbackQuality: state.playbackQuality, sampleStatus: observation.sampleStatus,
+    connectionState: observation.state
+  });
+}
+
 async function measureNetwork() {
   if (!state.socketAuthenticated || !state.socket.connected) return;
+  const probe = state.networkProbe;
+  if (probe.inFlightSequence) return;
+  const sequence = ++probe.sequence;
+  const connectionEpoch = probe.connectionEpoch;
+  probe.inFlightSequence = sequence;
   const wallStarted = Date.now(); const started = performance.now();
   try {
-    const result = await emitAck('network-ping', {}, 5000); if (!result.success) return;
+    const result = await emitAck('network-ping', { sequence }, 5000);
+    if (connectionEpoch !== probe.connectionEpoch || sequence !== probe.inFlightSequence
+      || sequence <= probe.appliedSequence || !state.socketAuthenticated || !state.socket.connected) return;
+    probe.appliedSequence = sequence;
+    if (!result.success) {
+      if (!(result.transient && /超时/.test(String(result.error || '')))) return;
+      const observation = probe.tracker.observe({ timedOut: true });
+      emitNetworkQualityObservation(sequence, observation, 5000);
+      return;
+    }
     const wallFinished = Date.now(); state.localLatency = Math.round(performance.now() - started);
     updateServerClock(Number(result.serverTime), wallStarted, wallFinished, state.localLatency);
     elements.localLatency.textContent = `${state.localLatency} 毫秒`;
-    state.socket.emit('network-quality', { latency: state.localLatency, syncPercent: state.syncPercent, drift: state.latestDrift, playbackQuality: state.playbackQuality, connectionState: state.localLatency > 500 ? 'unstable' : 'online' });
-  } catch (_) {}
+    const observation = probe.tracker.observe({ latencyMs: state.localLatency });
+    emitNetworkQualityObservation(sequence, observation, state.localLatency);
+  } catch (_) {
+    // emitAck reports control-channel timeouts as a normal transient result.
+    // Unrelated rendering/runtime errors must not be mislabeled as network loss.
+  } finally {
+    if (connectionEpoch === probe.connectionEpoch && sequence === probe.inFlightSequence) probe.inFlightSequence = 0;
+  }
 }
 function recoverFromBackground() {
   if (document.hidden || !navigator.onLine) return;
@@ -10733,7 +11272,7 @@ async function loadAdminSettings({ silent = false } = {}) {
       if (elements.loadAdminBtn) { elements.loadAdminBtn.disabled = false; elements.loadAdminBtn.textContent = buttonText; }
     }
   }
-  const result = await adminAction('get-settings'); if (!result.success) return toast(result.error, 'error'); state.adminSettings = result.admin; hydratePersistentRequests(result.admin);
+  const result = await adminAction('get-settings'); if (!result.success) return toast(result.error, 'error'); state.adminSettings = result.admin; setUiCopyEditMode(false); state.uiCopy = normalizedUiCopy(result.admin.uiCopy || state.publicConfig.uiCopy); state.publicConfig.uiCopy = state.uiCopy; applyUiCopy(state.uiCopy); window.SyncWatchUiCopy?.scan?.(document, { legacyDefaults: UI_COPY_DEFAULTS }); hydratePersistentRequests(result.admin);
   elements.managementAuth?.classList.toggle('is-hidden', Boolean(result.admin.serverAdmin));
   if (result.admin.serverAdmin) {
     if (elements.adminUsername) elements.adminUsername.value = '';
@@ -10763,6 +11302,7 @@ async function loadAdminSettings({ silent = false } = {}) {
   elements.lanAccessCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   elements.localPasswordlessCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   elements.downloadAssetSettingsCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
+  elements.uiCopySettingsCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   elements.factoryResetCard?.classList.toggle('is-hidden', !result.admin.serverAdmin);
   if (result.admin.serverAdmin) {
     elements.serverLogsCard?.classList.remove('is-hidden');
@@ -10812,15 +11352,31 @@ async function loadAdminSettings({ silent = false } = {}) {
     renderLoginCubeSettings(state.publicConfig.loginCube);
     applyLoginCubeSettings(state.publicConfig.loginCube);
     if (elements.loginCubeSettingsStatus) elements.loginCubeSettingsStatus.textContent = '六面内容和旋转参数已从服务器加载';
-    const passwordPolicy = result.admin.passwordPolicy || { mode: 'unrestricted', minLength: 6, maxLength: 72, expiryDays: 7 };
+    const usernamePolicy = result.admin.usernamePolicy || {
+      mode: 'unrestricted', lengthRestricted: false,
+      minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES
+    };
+    state.publicConfig.usernamePolicy = usernamePolicy;
+    if (elements.usernamePolicyMode) elements.usernamePolicyMode.value = usernamePolicy.mode || 'unrestricted';
+    if (elements.usernamePolicyLengthRestricted) elements.usernamePolicyLengthRestricted.checked = usernamePolicy.lengthRestricted === true;
+    if (elements.usernamePolicyMin) elements.usernamePolicyMin.value = usernamePolicy.minLength || 1;
+    if (elements.usernamePolicyMax) elements.usernamePolicyMax.value = usernamePolicy.maxLength || USERNAME_MAX_UTF8_BYTES;
+    if (elements.usernamePolicyStatus) elements.usernamePolicyStatus.textContent = `当前规则：${credentialPolicyLengthText(usernamePolicy, USERNAME_MAX_UTF8_BYTES)} · ${usernamePolicy.mode === 'unrestricted' ? '字符类型不限' : '按所选字符集限制'}`;
+    const passwordPolicy = result.admin.passwordPolicy || {
+      mode: 'unrestricted', lengthRestricted: false,
+      minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7
+    };
     elements.passwordPolicyMode.value = passwordPolicy.mode;
+    if (elements.passwordPolicyLengthRestricted) elements.passwordPolicyLengthRestricted.checked = passwordPolicy.lengthRestricted === true;
     elements.passwordPolicyMin.value = passwordPolicy.minLength;
     elements.passwordPolicyMax.value = passwordPolicy.maxLength;
     elements.passwordPolicyExpiryDays.value = Number(passwordPolicy.expiryDays) || 0;
+    syncCredentialPolicyLengthControls();
     elements.adminMaxConcurrentSessions.value = Math.max(1, Math.min(20, Number(result.admin.adminMaxConcurrentSessions) || 5));
+    const passwordLengthText = credentialPolicyLengthText(passwordPolicy, PASSWORD_MAX_UTF8_BYTES);
     elements.passwordPolicyStatus.textContent = Number(passwordPolicy.expiryDays) > 0
-      ? `当前规则已用于注册、改密与管理员重置；密码每 ${passwordPolicy.expiryDays} 天需要修改`
-      : '当前规则已用于注册、改密与管理员重置；定期修改已关闭';
+      ? `当前规则已用于注册、改密与管理员重置；${passwordLengthText}；密码每 ${passwordPolicy.expiryDays} 天需要修改`
+      : `当前规则已用于注册、改密与管理员重置；${passwordLengthText}；定期修改已关闭`;
     if (elements.blockedWordsInput) elements.blockedWordsInput.value = (result.admin.blockedWords || []).join('\n');
     if (elements.blockedWordsStatus) elements.blockedWordsStatus.textContent = `当前启用 ${result.admin.blockedWords?.length || 0} 个屏蔽词`;
     const roomIdPolicy = result.admin.roomIdPolicy || { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' };
@@ -10836,7 +11392,7 @@ async function loadAdminSettings({ silent = false } = {}) {
     elements.adminContactWechat.value = contact.wechat || ''; elements.adminContactEmail.value = contact.email || '';
     elements.adminContactPhone.value = contact.phone || ''; elements.adminContactNote.value = contact.note || '';
     const agreement = result.admin.legalAgreement || state.publicConfig.legalAgreement || {};
-    elements.legalAgreementVersion.value = agreement.version || '2.2.0'; elements.legalAgreementTitle.value = agreement.title || '';
+    elements.legalAgreementVersion.value = agreement.version || '2.2.1'; elements.legalAgreementTitle.value = agreement.title || '';
     elements.legalAgreementText.value = agreement.text || '';
     const marquee = result.admin.marqueeNotice || {};
     elements.marqueeEnabled.checked = Boolean(marquee.enabled);
@@ -11472,17 +12028,31 @@ async function resetRoomEntryNoticeSettings() {
 async function savePasswordPolicy() {
   if (!state.adminSettings?.serverAdmin) return toast('请先验证服务器管理员密码并加载设置', 'error');
   const result = await adminAction('set-password-policy', {
-    mode: elements.passwordPolicyMode.value, minLength: Number(elements.passwordPolicyMin.value), maxLength: Number(elements.passwordPolicyMax.value),
-    expiryDays: Number(elements.passwordPolicyExpiryDays.value)
+    mode: elements.passwordPolicyMode.value,
+    lengthRestricted: elements.passwordPolicyLengthRestricted?.checked === true,
+    minLength: Number(elements.passwordPolicyMin.value), maxLength: Number(elements.passwordPolicyMax.value),
+    expiryDays: Number(elements.passwordPolicyExpiryDays.value),
+    usernamePolicy: {
+      mode: elements.usernamePolicyMode?.value || 'unrestricted',
+      lengthRestricted: elements.usernamePolicyLengthRestricted?.checked === true,
+      minLength: Number(elements.usernamePolicyMin?.value) || 1,
+      maxLength: Number(elements.usernamePolicyMax?.value) || USERNAME_MAX_UTF8_BYTES
+    }
   });
   if (!result.success) return toast(result.error, 'error');
   const deviceResult = await adminAction('set-admin-session-limit', { limit: Number(elements.adminMaxConcurrentSessions.value) });
   if (!deviceResult.success) return toast(deviceResult.error, 'error');
   state.publicConfig.passwordPolicy = result.passwordPolicy;
+  state.publicConfig.usernamePolicy = result.usernamePolicy || state.publicConfig.usernamePolicy;
   state.adminSettings.passwordPolicy = result.passwordPolicy;
+  state.adminSettings.usernamePolicy = result.usernamePolicy || state.adminSettings.usernamePolicy;
   state.adminSettings.adminMaxConcurrentSessions = deviceResult.limit;
   const expiryText = Number(result.passwordPolicy.expiryDays) > 0 ? `密码每 ${result.passwordPolicy.expiryDays} 天需要修改` : '定期修改已关闭';
-  elements.passwordPolicyStatus.textContent = `${result.message}；${expiryText}；${deviceResult.message}`;
+  if (elements.usernamePolicyLengthRestricted && result.usernamePolicy) elements.usernamePolicyLengthRestricted.checked = result.usernamePolicy.lengthRestricted === true;
+  if (elements.passwordPolicyLengthRestricted) elements.passwordPolicyLengthRestricted.checked = result.passwordPolicy.lengthRestricted === true;
+  syncCredentialPolicyLengthControls();
+  if (elements.usernamePolicyStatus && result.usernamePolicy) elements.usernamePolicyStatus.textContent = `当前规则：${credentialPolicyLengthText(result.usernamePolicy, USERNAME_MAX_UTF8_BYTES)} · ${result.usernamePolicy.mode === 'unrestricted' ? '字符类型不限' : '按所选字符集限制'}`;
+  elements.passwordPolicyStatus.textContent = `${result.message}；${credentialPolicyLengthText(result.passwordPolicy, PASSWORD_MAX_UTF8_BYTES)}；${expiryText}；${deviceResult.message}`;
   applyPublicConfig(); toast('密码与登录策略已保存', 'success');
 }
 async function saveBlockedWords() {
@@ -11635,7 +12205,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.0-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.1-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
@@ -13866,7 +14436,7 @@ async function profileDeleteSelected(kind) {
 
 function exportProfileCollection(kind) {
   const p = state.profile || {}; const data = kind === 'room' ? p.recentRooms : kind === 'favorites' ? p.favoriteFiles : kind === 'history' ? p.history : p.myFiles;
-  downloadJsonFile(`SyncWatch同步观影-${kind}-${new Date().toISOString().slice(0, 10)}.json`, { type: `syncwatch-profile-${kind}`, version: '2.2.0', data, meta: { favoriteMeta: p.favoriteMeta, roomMeta: p.roomMeta } });
+  downloadJsonFile(`SyncWatch同步观影-${kind}-${new Date().toISOString().slice(0, 10)}.json`, { type: `syncwatch-profile-${kind}`, version: '2.2.1', data, meta: { favoriteMeta: p.favoriteMeta, roomMeta: p.roomMeta } });
 }
 
 async function importProfileCollection(kind, file) {
@@ -14018,7 +14588,7 @@ function toast(message, type = '', duration = 4200) {
   const item = document.createElement('div'); item.className = `toast with-close ${type}`; item.dataset.message = textValue; item.dataset.variant = type;
   item.setAttribute('role', type === 'error' ? 'alert' : 'status');
   const text = document.createElement('span'); text.textContent = textValue;
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'toast-close'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示');
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'toast-close'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示'); close.dataset.copyKey = 'common.closeNotice'; close.dataset.copyAttr = 'title';
   close.addEventListener('click', () => dismissToast(item));
   item.append(text, close); elements.toastRegion.appendChild(item); updateClearAllToastsVisibility(); scheduleToastDismiss(item, duration); return item;
 }
@@ -14032,7 +14602,7 @@ function toastWithAction(message, label, callback, duration = 8000) {
   const text = document.createElement('span'); text.textContent = textValue;
   const action = document.createElement('button'); action.type = 'button'; action.textContent = label;
   action.addEventListener('click', () => { callback(); dismissToast(item); });
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'toast-close'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示');
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'toast-close'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示'); close.dataset.copyKey = 'common.closeNotice'; close.dataset.copyAttr = 'title';
   close.addEventListener('click', () => dismissToast(item));
   item.append(text, action, close); elements.toastRegion.appendChild(item); updateClearAllToastsVisibility();
   scheduleToastDismiss(item, duration); return item;
@@ -14048,7 +14618,7 @@ function toastWithActions(message, actions = [], duration = 8000, type = '') {
     action.addEventListener('click', () => { Promise.resolve(entry?.callback?.()).catch(() => {}); dismissToast(item); });
     item.appendChild(action);
   }
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'toast-close'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示');
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'toast-close'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示'); close.dataset.copyKey = 'common.closeNotice'; close.dataset.copyAttr = 'title';
   close.addEventListener('click', () => dismissToast(item)); item.appendChild(close); elements.toastRegion.appendChild(item); updateClearAllToastsVisibility();
   scheduleToastDismiss(item, duration); return item;
 }

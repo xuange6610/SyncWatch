@@ -40,7 +40,7 @@ assert.match(buildScript, /scripts\\collect-macos-distribution\.ps1/);
 assert.match(buildScript, /-SourceRoot\s+\$PSScriptRoot\s+-Destination\s+\$macDirectory\s+-Version\s+\$version/);
 assert.match(buildScript, /server\\standalone-tunnel\.js/);
 assert.match(buildScript, /vendor\\cloudflared\.exe/);
-assert.match(buildScript, /Join-Path\s+\$PSScriptRoot\s+['"]dist\\SyncWatch-Experience-Client-Portable-v2\.2\.0-x64\.exe['"]/);
+assert.ok(buildScript.includes(`Join-Path $PSScriptRoot 'dist\\SyncWatch-Experience-Client-Portable-v${version}-x64.exe'`));
 assert.doesNotMatch(buildScript, /Join-Path\s+\$PSScriptRoot\s+['"]SyncWatch同步观影-Client-v2\.1\.8\.exe['"]/, 
   'the server package must never fall back to a stale root-level client EXE');
 

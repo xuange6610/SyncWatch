@@ -52,6 +52,15 @@ async function main() {
     assert.match(clientSource, /elements\.textViewer\.textContent = text/, 'text reader must render untrusted files as text');
     assert.doesNotMatch(clientSource, /elements\.textViewer\.innerHTML\s*=\s*text/, 'text reader must not execute uploaded markup');
     assert.match(clientSource, /state\.currentFile\.id !== fileId/, 'delayed reading updates must not leak from the previous text file');
+    assert.match(clientSource, /characterOffset/, 'text reader must carry an absolute character anchor');
+    assert.match(clientSource, /textRangeRectAt\([\s\S]{0,1200}getClientRects/, 'text reader must resolve an anchor with local DOM geometry');
+    assert.match(clientSource, /anchorApplied\s*=\s*incoming\.characterOffset !== null\s*&&\s*scrollTextViewerToCharacterOffset/, 'incoming anchors must take precedence over viewport percentages');
+    assert.match(clientSource, /rememberProgrammaticTextReadingAnchor\(incoming\.fileId, incoming\.characterOffset, incoming\.page, visualOffset\)/, 'the exact incoming UTF-16 offset must remain authoritative after local layout');
+    assert.match(clientSource, /emitTextReadingUpdate\(position, characterOffset, page\)/, 'page navigation must publish its exact logical page boundary');
+    assert.doesNotMatch(clientSource, /canonicalOffset\s*=\s*appliedOffset/, 'page navigation must not replace a logical offset with a viewport line start');
+    assert.doesNotMatch(clientSource, /return textCharacterOffsetAtScroll\(\);/, 'visual scrolling must not return a local line start as the canonical offset');
+    assert.match(clientSource, /incoming\.revision < current\.revision/, 'stale cross-file reading revisions must be ignored');
+    assert.match(clientSource, /textReadingProgrammaticAnchor/, 'programmatic page jumps must not be overwritten by their own scroll event');
 
     server = await startSyncWatchServer({
       host: '127.0.0.1', port: 0, dataDir: path.join(root, 'data'), publicDir: path.resolve(__dirname, '..', 'public'),
@@ -127,24 +136,45 @@ async function main() {
 
     const hostTextState = once(host, 'text-reading-state');
     const viewerTextState = once(viewer, 'text-reading-state');
-    const updated = await ack(host, 'text-reading-update', { fileId: novel.body.file.id, position: 0.42, page: 6 });
+    const updated = await ack(host, 'text-reading-update', {
+      fileId: novel.body.file.id, position: 0.42, page: 6, characterOffset: 1234
+    });
     assert.equal(updated.success, true, updated.error);
+    assert.equal(updated.textReading.characterOffset, 1234);
     for (const state of [await hostTextState, await viewerTextState]) {
       assert.equal(state.fileId, novel.body.file.id);
       assert.equal(state.position, 0.42);
       assert.equal(state.page, 6);
+      assert.equal(state.characterOffset, 1234);
     }
+    // Two clients can have different local scroll percentages because their
+    // containers are different heights. The absolute text anchor remains the
+    // same and is what the browser uses to align the visible line.
+    const differentViewport = once(viewer, 'text-reading-state');
+    const differentViewportHost = once(host, 'text-reading-state');
+    const viewportUpdate = await ack(host, 'text-reading-update', {
+      fileId: novel.body.file.id, position: 0.77, page: 11, characterOffset: 1234
+    });
+    assert.equal(viewportUpdate.success, true, viewportUpdate.error);
+    assert.equal((await differentViewport).characterOffset, 1234);
+    assert.equal((await differentViewportHost).characterOffset, 1234);
+    assert.equal((await ack(host, 'text-reading-update', {
+      fileId: novel.body.file.id, position: 0.5, page: 7, characterOffset: 1280.5
+    })).success, false);
     assert.equal((await ack(viewer, 'text-reading-update', { fileId: novel.body.file.id, position: 0.9, page: 12 })).success, false);
 
     const viewerToken = viewerLogin.token;
     viewer.close(); viewer = null;
-    assert.equal((await ack(host, 'text-reading-update', { fileId: novel.body.file.id, position: 0.73, page: 9 })).success, true);
+    assert.equal((await ack(host, 'text-reading-update', {
+      fileId: novel.body.file.id, position: 0.73, page: 9, characterOffset: 2190
+    })).success, true);
     resumedViewer = await connect(baseUrl);
     const resumed = await ack(resumedViewer, 'session-resume', { token: viewerToken, deviceId: 'text-viewer-device' });
     assert.equal(resumed.success, true, resumed.error);
     assert.equal(resumed.room.textReading.fileId, novel.body.file.id);
     assert.equal(resumed.room.textReading.position, 0.73);
     assert.equal(resumed.room.textReading.page, 9);
+    assert.equal(resumed.room.textReading.characterOffset, 2190);
 
     const clearedForHost = once(host, 'text-reading-state');
     const clearedForViewer = once(resumedViewer, 'text-reading-state');

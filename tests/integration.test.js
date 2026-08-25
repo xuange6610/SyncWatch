@@ -9,6 +9,7 @@ const path = require('path');
 const { io: createSocketIoClient } = require('socket.io-client');
 const WebSocket = require('ws');
 const { startSyncWatchServer } = require('../server');
+const releaseVersion = String(require('../package.json').version);
 
 class SocketTestClient {
   constructor(url, headers = {}) { this.url = url; this.headers = headers; this.socket = null; this.nextAckId = 1; this.acks = new Map(); this.events = new Map(); this.waiters = new Map(); }
@@ -225,7 +226,7 @@ async function testTemporarilyUnavailableMediaSurvives() {
 
 async function main() {
   await testTemporarilyUnavailableMediaSurvives();
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-v2.2.0-integration-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), `syncwatch-v${releaseVersion}-integration-`));
   const publicDir = path.resolve(__dirname, '..', 'public');
   const clients = [];
   let server;
@@ -269,7 +270,7 @@ async function main() {
     baseUrl = `http://127.0.0.1:${server.port}`;
 
     const config = await json(await fetch(`${baseUrl}/api/public-config`));
-    assert.equal(config.response.status, 200); assert.equal(config.payload.version, 'v2.2.0');
+    assert.equal(config.response.status, 200); assert.equal(config.payload.version, `v${require('../package.json').version}`);
     assert.equal(config.payload.downloadButtonsVisible, true);
     assert.equal(config.payload.maxUploadBytes, 10 * 1024 * 1024 * 1024); assert.equal(config.payload.uploadTimeLimitSeconds, 0);
     assert.equal(config.payload.defaultPlaybackQuality, 'original');
@@ -277,7 +278,7 @@ async function main() {
       headers: { 'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'stable-address.trycloudflare.com' }
     }));
     assert.equal(publicProxyConfig.response.status, 200);
-    assert.equal(publicProxyConfig.payload.defaultPlaybackQuality, 'smooth');
+    assert.equal(publicProxyConfig.payload.defaultPlaybackQuality, 'original');
     const publicHttpProxyConfig = await json(await fetch(`${baseUrl}/api/public-config`, {
       headers: {
         'X-Forwarded-Proto': 'http',
@@ -286,12 +287,12 @@ async function main() {
       }
     }));
     assert.equal(publicHttpProxyConfig.response.status, 200);
-    assert.equal(publicHttpProxyConfig.payload.defaultPlaybackQuality, 'smooth');
+    assert.equal(publicHttpProxyConfig.payload.defaultPlaybackQuality, 'original');
     const initialRooms = await (await fetch(`${baseUrl}/api/online-rooms`)).json();
     const waitingRoom = initialRooms.rooms.find((room) => room.name === '系统候场室');
     assert.ok(waitingRoom, '公开房间扫描应包含正式的系统候场室');
     assert.equal(waitingRoom.temporary, false, '系统候场室应标注为正式房间');
-    check('公开配置为 v2.2.0，默认账户上传额度和时长配置已返回');
+    check('公开配置版本与 package.json 一致，默认账户上传额度和时长配置已返回');
 
     const sameOriginSocket = await makeClient({ Origin: baseUrl }); sameOriginSocket.close();
     await assert.rejects(() => new SocketTestClient(baseUrl, { Origin: 'http://evil.invalid' }).connect(), /403|Unexpected server response|socket hang up/i);
@@ -924,7 +925,7 @@ async function main() {
     assert.equal((await recoveryClient.emit('password-reset-verify', { scope: 'account', identifier: '邮箱找回用户', code: wrongCode })).success, false);
     const resetVerified = await recoveryClient.emit('password-reset-verify', { scope: 'account', identifier: '邮箱找回用户', code: resetCode });
     assert.equal(resetVerified.success, true, resetVerified.error); assert.ok(resetVerified.resetToken);
-    assert.equal((await recoveryClient.emit('password-reset-complete', { resetToken: resetVerified.resetToken, newPassword: '123' })).success, false);
+    assert.equal((await recoveryClient.emit('password-reset-complete', { resetToken: resetVerified.resetToken, newPassword: '' })).success, false);
     const resetCompleted = await recoveryClient.emit('password-reset-complete', { resetToken: resetVerified.resetToken, newPassword: 'email-new-pass' });
     assert.equal(resetCompleted.success, true, resetCompleted.error);
     assert.equal((await fetch(`${baseUrl}/api/files`, { headers: auth(emailOldLogin.token) })).status, 401);
@@ -1376,7 +1377,7 @@ async function main() {
     assert.equal(standaloneRoomLogin.capabilities.serverHost, true);
     check('独立服务本机房主新建、退出并重进其他房间后仍保留服务器主机能力');
 
-    console.log(`\n全部 ${checks} 项 v2.2.0 集成检查通过。`);
+    console.log(`\n全部 ${checks} 项 v${releaseVersion} 集成检查通过。`);
   } finally {
     for (const client of clients) client.close();
     if (server) await server.close().catch(() => {});

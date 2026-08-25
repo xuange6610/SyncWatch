@@ -21,6 +21,7 @@ const clientPreload = read('electron-client-preload.js');
 const launcher = read('client-launcher.html');
 const macReleaseWorkflow = read('.github/workflows/release-macos.yml');
 const windowsReleaseWorkflow = read('.github/workflows/release-windows.yml');
+const atomicReleaseWorkflow = read('.github/workflows/release-atomic.yml');
 const windowsBuildPath = path.join(root, 'build-windows.ps1');
 const windowsBuildBytes = fs.readFileSync(windowsBuildPath);
 const windowsBuild = windowsBuildBytes.toString('utf8').replace(/^\uFEFF/, '');
@@ -115,48 +116,55 @@ for (const [label, config] of [
     assert.ok(resources.some((entry) => entry.includes(directory)), `${label} must embed ${directory}`);
   }
 }
-assert.equal(fullInstallerConfig.nsis.artifactName, 'SyncWatch-v2.2.0-Full-Offline-Installer-${arch}.exe');
-assert.equal(fullPortableConfig.portable.artifactName, 'SyncWatch-v2.2.0-Full-Offline-Portable-${arch}.exe');
-assert.equal(manifest.build.portable.artifactName, 'SyncWatch-Standard-Server-Portable-v2.2.0-${arch}.exe');
-assert.equal(clientConfig.portable.artifactName, 'SyncWatch-Experience-Client-Portable-v2.2.0-${arch}.exe');
-assert.equal(macClientConfig.artifactName, 'SyncWatch-Client-macOS-v2.2.0-${arch}.${ext}');
-assert.equal(macServerConfig.artifactName, 'SyncWatch-Server-macOS-v2.2.0-${arch}.${ext}');
-assert.equal(macFullConfig.artifactName, 'SyncWatch-Full-Offline-macOS-v2.2.0-${arch}.${ext}');
+assert.equal(fullInstallerConfig.nsis.artifactName, `SyncWatch-v${manifest.version}-Full-Offline-Installer-\${arch}.exe`);
+assert.equal(fullPortableConfig.portable.artifactName, `SyncWatch-v${manifest.version}-Full-Offline-Portable-\${arch}.exe`);
+assert.equal(manifest.build.portable.artifactName, `SyncWatch-Standard-Server-Portable-v${manifest.version}-\${arch}.exe`);
+assert.equal(clientConfig.portable.artifactName, `SyncWatch-Experience-Client-Portable-v${manifest.version}-\${arch}.exe`);
+assert.equal(macClientConfig.artifactName, `SyncWatch-Client-macOS-v${manifest.version}-\${arch}.\${ext}`);
+assert.equal(macServerConfig.artifactName, `SyncWatch-Server-macOS-v${manifest.version}-\${arch}.\${ext}`);
+assert.equal(macFullConfig.artifactName, `SyncWatch-Full-Offline-macOS-v${manifest.version}-\${arch}.\${ext}`);
 assert.match(electronServer, /offline-downloads['"], ['"]windows/);
 assert.match(electronServer, /offline-downloads['"], ['"]android/);
 assert.match(electronServer, /offline-downloads['"], ['"]mac/);
 
 assert.doesNotMatch(windowsBuild, /SyncWatch同步观影-Client-v2\.1\.7\.exe/);
-assert.match(windowsBuild, /SyncWatch-Experience-Client-Portable-v2\.2\.0-x64\.exe/);
+assert.match(windowsBuild, new RegExp(`SyncWatch-Experience-Client-Portable-v${manifest.version.replaceAll('.', '\\.')}-x64\\.exe`));
 
-// GitHub strips some non-ASCII characters from uploaded asset names. Keep the
-// public macOS names ASCII and role-specific so client/server jobs cannot
-// overwrite one another when both architectures are published.
-for (const arch of ['x64', 'arm64']) {
-  for (const extension of ['dmg', 'zip']) {
-    assert.match(macReleaseWorkflow,
-      new RegExp(`SyncWatch-\\$\\{release_role\\}-macOS-v\\$\\{VERSION\\}-${arch}\\.${extension}`));
-  }
-}
-assert.match(macReleaseWorkflow, /release_role="Client"/);
-assert.match(macReleaseWorkflow, /release_role="Server"/);
-for (const publicName of [
-  'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe',
-  'SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe',
-  'SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe',
-  'SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe'
+// Platform workflows only build immutable candidates. The atomic caller
+// collects one same-run set, verifies it, and is the sole Release publisher.
+assert.match(macReleaseWorkflow, /name: Build macOS release artifacts/);
+assert.match(macReleaseWorkflow, /workflow_call:/);
+assert.match(macReleaseWorkflow, /if: inputs\.phase == 'base'/);
+assert.match(macReleaseWorkflow, /if: inputs\.phase == 'full'/);
+assert.match(macReleaseWorkflow, /release-candidate-gate\.js[\s\S]{0,260}--selection \"\$RELEASE_SELECTION\"/);
+assert.doesNotMatch(macReleaseWorkflow, /gh release (?:create|upload|edit)|--draft=false|--latest/,
+  'macOS candidate workflow must not mutate a Release');
+assert.match(macReleaseWorkflow, /RELEASE_ROLE: \$\{\{ matrix\.role \}\}/);
+assert.match(macReleaseWorkflow, /SyncWatch-\$\{RELEASE_ROLE\}-macOS-v\$\{RELEASE_VERSION\}-\$\{RELEASE_ARCH\}\.dmg/);
+assert.match(macReleaseWorkflow, /SyncWatch-\$\{RELEASE_ROLE\}-macOS-v\$\{RELEASE_VERSION\}-\$\{RELEASE_ARCH\}\.zip/);
+for (const publicPattern of [
+  'SyncWatch-Experience-Client-Portable-v$env:RELEASE_VERSION-x64.exe',
+  'SyncWatch-Standard-Server-Portable-v$env:RELEASE_VERSION-x64.exe',
+  'SyncWatch-v$env:RELEASE_VERSION-Full-Offline-Installer-x64.exe',
+  'SyncWatch-v$env:RELEASE_VERSION-Full-Offline-Portable-x64.exe'
 ]) {
-  assert.match(windowsReleaseWorkflow, new RegExp(publicName.replaceAll('.', '\\.')),
-    `Windows release workflow must publish the tiered asset ${publicName}`);
+  assert.ok(windowsReleaseWorkflow.includes(publicPattern),
+    `Windows release workflow must publish the tiered asset pattern ${publicPattern}`);
 }
-assert.match(windowsReleaseWorkflow, /dist\/\*\.exe|dist\\\*\.exe/,
-  'Windows release workflow must collect EXE assets from root dist');
-for (const arch of ['x64', 'arm64']) {
-  for (const extension of ['dmg', 'zip']) {
-    assert.match(macReleaseWorkflow,
-      new RegExp(`SyncWatch-Full-Offline-macOS-v\\$\\{VERSION\\}-${arch}\\.${extension}`),
-      `macOS release workflow must publish the Full Offline ${arch} ${extension} package`);
-  }
-}
+assert.match(windowsReleaseWorkflow, /name: Build Windows and Android release artifacts/);
+assert.match(windowsReleaseWorkflow, /workflow_call:/);
+assert.match(windowsReleaseWorkflow, /if: inputs\.phase == 'android'/);
+assert.match(windowsReleaseWorkflow, /if: inputs\.phase == 'base'/);
+assert.match(windowsReleaseWorkflow, /if: inputs\.phase == 'full'/);
+assert.match(windowsReleaseWorkflow, /release-candidate-gate\.js --selection windows-base/);
+assert.match(windowsReleaseWorkflow, /release-candidate-gate\.js --selection windows-full/);
+assert.doesNotMatch(windowsReleaseWorkflow, /gh release (?:create|upload|edit)|--draft=false|--latest/,
+  'Windows candidate workflow must not mutate a Release');
+assert.match(atomicReleaseWorkflow, /name: Build, verify, and publish one atomic release/);
+assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_REF\" = \"refs\/tags\/\$\{RELEASE_TAG\}\"/);
+assert.match(atomicReleaseWorkflow, /test \"\$\(find dist -maxdepth 1 -type f \| wc -l \| tr -d ' '\)\" = \"28\"/);
+assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{files\[@\]\}\"/);
+assert.match(atomicReleaseWorkflow, /--draft=false[\s\S]{0,100}--latest/);
+assert.match(atomicReleaseWorkflow, /download-verification\.tsv/);
 
 console.log('desktop login visual, metadata and split-release contracts passed.');

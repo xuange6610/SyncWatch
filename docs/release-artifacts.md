@@ -2,6 +2,8 @@
 
 GitHub Release 是给普通用户下载成品的地方；仓库首页的 `Source code (zip)` 只是源码快照，不是完整安装包。每一个上传文件都必须有版本号、平台、角色和架构说明。
 
+当前最新正式版本是 v2.2.0；v2.2.1 仍是源码候选。候选文件名、构建配置或文档条目不能证明成品已经生成、验证或上传。
+
 ## 文件分类
 
 | 文件类型 | 文件名模式 | 谁下载 | 能做什么 | 注意事项 |
@@ -10,7 +12,7 @@ GitHub Release 是给普通用户下载成品的地方；仓库首页的 `Source
 | Windows 标准版 | `SyncWatch-Standard-Server-Portable-v版本-x64.exe` | 房主、服务器管理员 | 绿色便携运行，启动服务器、管理房间、上传媒体和配置公网访问 | 内置 Electron/Node、FFmpeg/FFprobe 和 cloudflared |
 | Windows 安装完整版 | `SyncWatch-v版本-Full-Offline-Installer-x64.exe` | 希望正常安装并给各平台成员分发客户端的房主 | 安装目录、快捷方式、卸载入口、完整 Windows 服务端和内嵌的 Windows/Android/macOS 下载文件 | 不需要另装 Node.js/cloudflared；文件超过 1 GB；首次登录立即修改 `admin888` |
 | Windows 独立 EXE 完整版 | `SyncWatch-v版本-Full-Offline-Portable-x64.exe` | 不想安装但需要完整离线下载中心的房主 | 直接双击运行完整 Windows 服务端，内嵌内容与安装完整版一致 | 文件超过 1 GB；运行目录必须有写入权限 |
-| Android APK | `SyncWatch同步观影-v版本.apk` | Android 用户 | 加入房间；支持的设备可以启动手机服务器 | 包含 `arm64-v8a`、`armeabi-v7a` 和 `x86_64` ABI |
+| Android APK | `SyncWatch-Android-v版本-universal.apk` | Android 用户 | 加入房间；支持的设备可以启动手机服务器 | 包含 `arm64-v8a`、`armeabi-v7a` 和 `x86_64` ABI |
 | 独立服务器 ZIP | `SyncWatch同步观影-Server-v版本.zip` | Windows/Linux/Docker 管理员 | 使用 Node.js、启动脚本或 Docker 长期部署 | 包含生产依赖、FFmpeg/FFprobe、cloudflared、客户端和 APK |
 | macOS 服务器 DMG/ZIP | `SyncWatch-Server-macOS-v版本-x64/arm64.*` | Mac 房主 | Intel 或 Apple Silicon 上运行服务器 | 必须由 macOS 主机或 macOS CI 生成，不能用 Windows 文件冒充 |
 | macOS 客户端 DMG/ZIP | `SyncWatch-Client-macOS-v版本-x64/arm64.*` | Mac 成员 | Intel 或 Apple Silicon 上加入房间 | 需要系统允许网络、麦克风或屏幕共享权限时按提示授权 |
@@ -37,7 +39,7 @@ Get-FileHash .\SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe -Algorithm SHA256
 Linux/macOS 使用：
 
 ```bash
-shasum -a 256 SyncWatch同步观影-v2.2.0.apk
+shasum -a 256 SyncWatch-Android-v2.2.0-universal.apk
 ```
 
 如果哈希不同、文件大小为 0，或者文件名中的版本与 Release 不一致，请删除文件并重新下载。
@@ -51,3 +53,5 @@ cloudflared 与 Node.js 的区别、官方地址、安装步骤和命令示例�
 ## Release 备注应包含的内容
 
 每次发布说明至少写明：版本号、构建提交、支持的平台和架构、服务器/客户端区别、默认登录后的安全动作、是否包含 cloudflared、已验证的测试、已知未提供的成品，以及数据备份和授权内容边界。
+
+17 个 SyncWatch 应用资产（Windows 4、Android 1、macOS 12）必须全部由最终 Tag 对应源码重新构建，逐项验证应用版本、平台/架构、非空大小、SHA-256、包内源码/资源闭包和实际启动/核心流程；不得复用、复制或改名上一版本成品。Node.js 4 项和 cloudflared 5 项是上游官方原始分发文件，必须另行核对官方来源、版本、平台/架构、大小和 SHA-256。只有根目录 `dist/` 恰好 28 个最终文件且全部门禁通过后，才允许一次性完整上传 26 个维护者资产。

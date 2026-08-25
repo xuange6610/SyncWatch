@@ -33,6 +33,7 @@ const express = require('express');
 const multer = require('multer');
 const QRCode = require('qrcode');
 const { Server: SocketIOServer } = require('socket.io');
+const networkQualityPolicy = require('../public/js/network-quality-policy');
 const { extractAiModelIds, extractAiText, modelEndpointCandidates, normalizeEndpointPath, proxyAiJson } = require('./ai-relay');
 const {
   createMacDistribution,
@@ -50,8 +51,164 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.2.0';
+const APP_VERSION = 'v2.2.1';
+
+function applyNetworkQualitySample(user, payload = {}) {
+  if (!user || user.connectionState === 'reconnecting') {
+    return { ignored: true, connectionState: user?.connectionState || 'reconnecting' };
+  }
+  const sequence = Number(payload.sequence);
+  const hasSequence = Number.isSafeInteger(sequence) && sequence > 0;
+  const lastSequence = Number(user.networkQualityLastSequence) || 0;
+  if (hasSequence && sequence <= lastSequence) {
+    return { ignored: true, connectionState: user.connectionState || 'online', sequence };
+  }
+  if (hasSequence) {
+    Object.defineProperty(user, 'networkQualityLastSequence', {
+      configurable: true, enumerable: false, writable: true, value: sequence
+    });
+  }
+  user.latency = Math.max(0, Math.min(9999, Number(payload.latency) || 0));
+  user.syncPercent = Math.max(0, Math.min(100, Number(payload.syncPercent) || 0));
+  user.drift = Math.max(-3600, Math.min(3600, Number(payload.drift) || 0));
+  user.playbackQuality = ['auto', 'smooth', 'original'].includes(String(payload.playbackQuality))
+    ? String(payload.playbackQuality) : (user.playbackQuality || 'original');
+  if (!user.networkQualityTracker || typeof user.networkQualityTracker.observe !== 'function') {
+    Object.defineProperty(user, 'networkQualityTracker', {
+      configurable: true, enumerable: false, writable: true,
+      value: networkQualityPolicy.createTracker({ initialState: user.connectionState })
+    });
+  }
+  const observation = user.networkQualityTracker.observe({
+    latencyMs: payload.latency,
+    timedOut: payload.sampleStatus === 'timeout'
+  });
+  user.connectionState = observation.state;
+  return {
+    ...observation, ignored: false, connectionState: user.connectionState,
+    sequence: hasSequence ? sequence : null
+  };
+}
 const DEFAULT_MARQUEE_TEXT = '欢迎使用SyncWatch同步观影~ 此软件由xuan独立开发  SyncWatch同步观影为您带来极致的同步观影体验~ 如需更改此公告请前往设置中进行修改哦~';
+// Legacy keys remain an explicit compatibility contract. Runtime-discovered
+// copy uses opaque ui.auto keys that can never be interpreted as selectors or
+// DOM paths, so full-surface customization does not create an HTML/DOM channel.
+const UI_COPY_DEFAULTS = Object.freeze({
+  'login.title': '登录 SyncWatch同步观影',
+  'login.usernameLabel': '账号或邮箱',
+  'login.passwordLabel': '密码',
+  'login.roomLabel': '房间号（可选）',
+  'login.submit': '登录并进入房间',
+  'login.register': '注册账号',
+  'login.guest': '游客模式 · 免注册',
+  'login.forgot': '忘记密码',
+  'login.admin': '服务器设置',
+  'login.connecting': '正在连接服务器…',
+  'topbar.appName': 'SyncWatch同步观影',
+  'topbar.serverSettings': '服务器设置',
+  'topbar.management': '管理中心',
+  'topbar.logoutKeepCredentials': '退出登录，保留账号密码',
+  'topbar.logout': '退出登录',
+  'topbar.room': '房间',
+  'topbar.online': '在线成员',
+  'topbar.download': '下载中心',
+  'player.play': '播放',
+  'player.pause': '暂停',
+  'player.clear': '清空画面',
+  'player.jump': '跳转',
+  'player.quality': '清晰度',
+  'player.rate': '倍速',
+  'player.emptyTitle': '还没有选择影片',
+  'player.emptyHint': '从左侧影片库选择文件，所有成员会看到同一播放状态。',
+  'player.syncStatus': '同步状态',
+  'closeDialog.title': '请选择关闭方式',
+  'closeDialog.description': '最小化到托盘后，服务器、房间和临时公网连接会继续运行；退出程序会停止本机服务。',
+  'closeDialog.minimize': '最小化到托盘',
+  'closeDialog.restart': '重新启动',
+  'closeDialog.quit': '退出程序',
+  'closeDialog.newServer': '打开新的服务器',
+  'closeDialog.cancel': '取消',
+  'management.title': '管理设置',
+  'management.verify': '验证并加载',
+  'management.server': '服务器设置',
+  'management.save': '保存设置',
+  'management.copyHint': '双击带标记的文字即可编辑；修改会实时同步到所有在线客户端。',
+  'management.import': '导入文案',
+  'management.export': '导出文案',
+  'management.reset': '恢复默认文案',
+  'management.status': '文案字典尚未加载',
+  'ai.messagesUnit': '条',
+  'common.closeNotice': '关闭提示',
+  'dialog.close': '关闭窗口',
+  'dialog.fillRisk': '一键填入确认文字',
+  'dialog.back': '上一步',
+  'dialog.cancel': '取消',
+  'dialog.confirm': '确定'
+});
+const UI_COPY_KEYS = new Set(Object.keys(UI_COPY_DEFAULTS));
+const UI_COPY_GENERATED_KEY_PATTERN = /^ui\.auto\.[a-z0-9][a-z0-9_-]{0,47}\.(?:text|option|placeholder|title|aria-label|alt|value)\.[a-f0-9]{8}$/;
+const UI_COPY_MAX_VALUE_LENGTH = 240;
+const UI_COPY_MAX_ENTRIES = 5000;
+const UI_COPY_MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+const UI_COPY_VERSION = 2;
+
+function validUiCopyKey(key) {
+  return UI_COPY_KEYS.has(key) || UI_COPY_GENERATED_KEY_PATTERN.test(String(key || ''));
+}
+
+function defaultUiCopy() {
+  return { ...UI_COPY_DEFAULTS };
+}
+
+function normalizeUiCopy(value, { partial = false } = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const output = partial ? {} : defaultUiCopy();
+  for (const [key, raw] of Object.entries(source).slice(0, UI_COPY_MAX_ENTRIES)) {
+    if (!validUiCopyKey(key)) continue;
+    if (typeof raw !== 'string') continue;
+    const text = cleanText(raw, UI_COPY_MAX_VALUE_LENGTH);
+    if (!text || /[<>]/.test(text) || /(?:javascript|data):/i.test(text)) continue;
+    output[key] = text;
+  }
+  return output;
+}
+
+function validateUiCopyPatch(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('文案字典必须是 JSON 对象');
+  const entries = Object.entries(value);
+  if (entries.length > UI_COPY_MAX_ENTRIES) throw new Error(`文案字典最多包含 ${UI_COPY_MAX_ENTRIES} 个键`);
+  const patch = {};
+  for (const [key, raw] of entries) {
+    if (!validUiCopyKey(key)) throw new Error(`不支持的 UI 文案键：${cleanText(key, 120)}`);
+    if (typeof raw !== 'string') throw new Error(`文案值必须是纯文本：${key}`);
+    if (raw.length > UI_COPY_MAX_VALUE_LENGTH) throw new Error(`文案过长（最多 ${UI_COPY_MAX_VALUE_LENGTH} 个字符）：${key}`);
+    if (/[<>]/.test(raw) || /(?:javascript|data):/i.test(raw)) throw new Error(`文案包含不允许的标记：${key}`);
+    const text = cleanText(raw, UI_COPY_MAX_VALUE_LENGTH);
+    if (!text) throw new Error(`文案不能为空：${key}`);
+    patch[key] = text;
+  }
+  if (!Object.keys(patch).length) throw new Error('至少提供一个受支持的文案键');
+  return patch;
+}
+
+function uiCopyPayload(value) {
+  let source = value;
+  if (typeof source === 'string') {
+    if (Buffer.byteLength(source, 'utf8') > UI_COPY_MAX_IMPORT_BYTES) throw new Error('文案导入内容不能超过 2 MB');
+    try { source = JSON.parse(source); }
+    catch (_) { throw new Error('文案导入内容不是有效 JSON'); }
+  }
+  if (source && typeof source === 'object' && !Array.isArray(source)) {
+    if (Object.prototype.hasOwnProperty.call(source, 'version')) {
+      const version = Number(source.version);
+      if (!Number.isInteger(version) || version < 1 || version > UI_COPY_VERSION) throw new Error(`不支持的文案配置版本：${cleanText(source.version, 20)}`);
+    }
+    if (source.uiCopy && typeof source.uiCopy === 'object' && !Array.isArray(source.uiCopy)) source = source.uiCopy;
+    else if (source.entries && typeof source.entries === 'object' && !Array.isArray(source.entries)) source = source.entries;
+    else if (source.dictionary && typeof source.dictionary === 'object' && !Array.isArray(source.dictionary)) source = source.dictionary;
+  }
+  return validateUiCopyPatch(source);
+}
 const LOGIN_CUBE_FACE_IDS = Object.freeze(['front', 'back', 'right', 'left', 'top', 'bottom']);
 const DEFAULT_LOGIN_CUBE_FACES = Object.freeze([
   { id: 'front', icon: '🎬', title: '同一帧，共此刻', text: '局域网 / 公网 · 智能同步 · SyncWatch同步观影 为您带来极致的观影体验', image: '' },
@@ -115,7 +272,7 @@ const DATA_LOCK_OWNER_FILE = 'owner.json';
 const DATA_LOCK_CONTROL_FILE = 'control.json';
 const DATA_LOCK_HEARTBEAT_MS = 10000;
 const ROOM_EMPTY_CLOSE_MS = 90 * 1000;
-const DEFAULT_LEGAL_AGREEMENT_VERSION = '2.2.0';
+const DEFAULT_LEGAL_AGREEMENT_VERSION = '2.2.1';
 const DANGEROUS_ACTION_CONFIRMATION = '我已知道这个风险';
 const SHARED_WEB_URL_LIMIT = 8192;
 const MAIL_TEMPLATE_HTML_LIMIT = 100000;
@@ -283,6 +440,23 @@ const PASSWORD_POLICY_MODES = new Set([
   'unrestricted', 'chinese', 'english', 'digits',
   'chinese_english', 'chinese_digits', 'english_digits', 'chinese_english_digits'
 ]);
+
+// Registration has no default business length or character-class restriction.
+// These byte ceilings exist only to bound payload, persistence and password
+// hashing work; administrators can opt into narrower character-count rules.
+const USERNAME_POLICY_MODES = new Set([
+  'unrestricted', 'safe', 'chinese', 'english', 'digits',
+  'chinese_english', 'chinese_digits', 'english_digits', 'chinese_english_digits'
+]);
+const USERNAME_MAX_UTF8_BYTES = 1024;
+const PASSWORD_MAX_UTF8_BYTES = 4096;
+const USERNAME_POLICY_MODE_LABELS = Object.freeze({
+  unrestricted: '任意 Unicode 字符、空格、标点和符号',
+  safe: 'Unicode 字母、数字、下划线和短横线',
+  chinese: '中文', english: '英文', digits: '数字',
+  chinese_english: '中文和英文', chinese_digits: '中文和数字',
+  english_digits: '英文和数字', chinese_english_digits: '中文、英文和数字'
+});
 
 const WATCH_LEVELS = [
   { level: 1, name: '初映小星', minExperience: 0 },
@@ -582,17 +756,64 @@ function normalizeLoginVideo(value = {}) {
   };
 }
 
-function cleanUsername(value) { return cleanText(value, 24); }
+function cleanUsername(value) {
+  const normalized = String(value ?? '').normalize('NFC').trim();
+  return Buffer.byteLength(normalized, 'utf8') <= USERNAME_MAX_UTF8_BYTES ? normalized : '';
+}
 function validUsername(value) { return /^[\p{L}\p{N}_-]{2,24}$/u.test(value); }
 function baseName(filename) { return path.basename(filename, path.extname(filename)).toLocaleLowerCase(); }
 
 function normalizePasswordPolicy(value = {}) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const mode = PASSWORD_POLICY_MODES.has(source.mode) ? source.mode : 'unrestricted';
-  const minLength = Math.max(1, Math.min(72, Math.floor(Number(source.minLength) || 6)));
-  const maxLength = Math.max(minLength, Math.min(72, Math.floor(Number(source.maxLength) || 72)));
+  const lengthRestricted = source.lengthRestricted === true;
+  const minLength = Math.max(1, Math.min(PASSWORD_MAX_UTF8_BYTES, Math.floor(Number(source.minLength) || 1)));
+  const maxLength = Math.max(minLength, Math.min(PASSWORD_MAX_UTF8_BYTES,
+    Math.floor(Number(source.maxLength) || PASSWORD_MAX_UTF8_BYTES)));
   const expiryDays = Math.max(0, Math.min(3650, Math.floor(Number.isFinite(Number(source.expiryDays)) ? Number(source.expiryDays) : 7)));
-  return { mode, minLength, maxLength, expiryDays };
+  return { mode, lengthRestricted, minLength, maxLength, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays };
+}
+
+function normalizeUsernamePolicy(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const mode = USERNAME_POLICY_MODES.has(source.mode) ? source.mode : 'unrestricted';
+  const lengthRestricted = source.lengthRestricted === true;
+  const rawMin = Number(source.minLength);
+  const rawMax = Number(source.maxLength);
+  const minLength = Math.max(1, Math.min(USERNAME_MAX_UTF8_BYTES,
+    Number.isFinite(rawMin) && rawMin > 0 ? Math.floor(rawMin) : 1));
+  const maxLength = Math.max(minLength, Math.min(USERNAME_MAX_UTF8_BYTES,
+    Number.isFinite(rawMax) && rawMax > 0 ? Math.floor(rawMax) : USERNAME_MAX_UTF8_BYTES));
+  return { mode, lengthRestricted, minLength, maxLength, maxBytes: USERNAME_MAX_UTF8_BYTES };
+}
+
+function usernamePolicyError(value, policyValue = {}) {
+  const text = String(value ?? '').normalize('NFC').trim();
+  const policy = normalizeUsernamePolicy(policyValue);
+  if (!text) return '请输入账号';
+  if (Buffer.byteLength(text, 'utf8') > USERNAME_MAX_UTF8_BYTES) {
+    return `账号不能超过 ${USERNAME_MAX_UTF8_BYTES} 个 UTF-8 字节（仅用于防止异常超大请求）`;
+  }
+  const length = Array.from(text).length;
+  if (policy.lengthRestricted && (length < policy.minLength || length > policy.maxLength)) {
+    return `账号长度需为 ${policy.minLength}-${policy.maxLength} 个字符`;
+  }
+  if (policy.mode === 'unrestricted') return '';
+  const chinese = '\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\u{20000}-\\u{2ebef}\\u{30000}-\\u{323af}';
+  const patterns = {
+    safe: new RegExp('^[\\p{L}\\p{M}\\p{N}_-]+$', 'u'),
+    chinese: new RegExp(`^[${chinese}]+$`, 'u'),
+    english: /^[A-Za-z]+$/,
+    digits: /^\d+$/,
+    chinese_english: new RegExp(`^[${chinese}A-Za-z]+$`, 'u'),
+    chinese_digits: new RegExp(`^[${chinese}\\d]+$`, 'u'),
+    english_digits: /^[A-Za-z\d]+$/,
+    chinese_english_digits: new RegExp(`^[${chinese}A-Za-z\\d]+$`, 'u')
+  };
+  if (!patterns[policy.mode]?.test(text)) {
+    return `账号只能使用${USERNAME_POLICY_MODE_LABELS[policy.mode] || '服务器允许的字符'}`;
+  }
+  return '';
 }
 
 function normalizeRoomIdPolicy(value = {}) {
@@ -702,6 +923,7 @@ function safeEqualText(left, right) {
 }
 
 function verifyPassword(password, storedHash) {
+  if (Buffer.byteLength(String(password ?? ''), 'utf8') > PASSWORD_MAX_UTF8_BYTES) return false;
   if (!storedHash) return password === '';
   const value = String(storedHash);
   if (value.startsWith('pbkdf2$')) {
@@ -718,6 +940,7 @@ function verifyPassword(password, storedHash) {
 }
 
 function verifyPasswordAsync(password, storedHash) {
+  if (Buffer.byteLength(String(password ?? ''), 'utf8') > PASSWORD_MAX_UTF8_BYTES) return Promise.resolve(false);
   if (!storedHash) return Promise.resolve(password === '');
   const value = String(storedHash);
   if (!value.startsWith('pbkdf2$')) return Promise.resolve(verifyPassword(password, value));
@@ -1050,8 +1273,9 @@ function freshState() {
       defaultPermissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
       mail: normalizeMailSettings(),
       branding: normalizeBranding(), loginCube: normalizeLoginCubeSettings(), loginMusic: normalizeLoginMusic(), loginVideo: normalizeLoginVideo(), marqueeNotice: normalizeMarqueeNotice(), roomEntryNotice: normalizeRoomEntryNotice(),
-      contact: normalizeAdminContact(), legalAgreement: normalizeLegalAgreement(), passwordPolicy: normalizePasswordPolicy(), roomIdPolicy: normalizeRoomIdPolicy(),
+      contact: normalizeAdminContact(), legalAgreement: normalizeLegalAgreement(), passwordPolicy: normalizePasswordPolicy(), usernamePolicy: normalizeUsernamePolicy(), roomIdPolicy: normalizeRoomIdPolicy(),
       accountNumberPolicy: normalizeAccountNumberPolicy(), verificationCodePolicy: normalizeVerificationCodePolicy(),
+      uiCopy: defaultUiCopy(), uiCopyUpdatedAt: '',
       requireRoomPasswordForPublicAccess: false,
       lanAccessEnabled: true,
       localPasswordlessManagementEnabled: true,
@@ -1073,7 +1297,7 @@ function freshState() {
       uploadPolicyRequests: [], storageQuotaRequests: [], mediaManagementRequests: [], mediaUploadBans: []
     },
     defaultRoomId: initialRoom.id, rooms: { [initialRoom.id]: initialRoom },
-    accounts: {
+    accounts: Object.assign(Object.create(null), {
       admin: {
         id: 'SW-000001', displayName: 'admin', email: '', emailVerified: false, passwordHash: makePasswordHash('admin888'), avatar: '',
         signature: '守护每一场放映', gender: 'private', age: null, registrationIp: '', createdAt: new Date().toISOString(), lastLogin: '',
@@ -1082,7 +1306,7 @@ function freshState() {
         experience: 0, experienceRemainderSeconds: 0, levelOverride: null, superAdmin: true, mustChangePassword: true, passwordChangedAt: new Date().toISOString(), roomCreationBlocked: false,
         roomQuota: 0, recentRooms: [], pinnedRooms: [], roomAccessGrants: {}, pendingNotifications: [], acceptedAgreementVersion: '', multiDeviceLogin: true, tierId: 's_node'
       }
-    }, blacklist: [], deletedUsernames: [], files: [], operations: [], serverLogs: [], accountAuditLogs: [], verificationCodeRecords: []
+    }), blacklist: [], deletedUsernames: [], files: [], operations: [], serverLogs: [], accountAuditLogs: [], verificationCodeRecords: []
   };
 }
 
@@ -1116,11 +1340,14 @@ function migrateState(input) {
       accountNumberPolicy: normalizeAccountNumberPolicy(input.admin.accountNumberPolicy),
       verificationCodePolicy: normalizeVerificationCodePolicy(input.admin.verificationCodePolicy)
     };
+    next.admin.uiCopy = normalizeUiCopy(input.admin.uiCopy);
+    next.admin.uiCopyUpdatedAt = cleanText(input.admin.uiCopyUpdatedAt, 60);
     next.admin.contact = normalizeAdminContact(input.admin.contact);
     next.admin.marqueeNotice = normalizeMarqueeNotice(input.admin.marqueeNotice);
     next.admin.roomEntryNotice = normalizeRoomEntryNotice(input.admin.roomEntryNotice);
     next.admin.legalAgreement = normalizeLegalAgreement(input.admin.legalAgreement);
     next.admin.passwordPolicy = normalizePasswordPolicy(input.admin.passwordPolicy);
+    next.admin.usernamePolicy = normalizeUsernamePolicy(input.admin.usernamePolicy);
     next.admin.passwordChangedAt = input.admin.passwordChangedAt || next.admin.passwordChangedAt;
     next.admin.roomIdPolicy = normalizeRoomIdPolicy(input.admin.roomIdPolicy);
     next.admin.requireRoomPasswordForPublicAccess = input.admin.requireRoomPasswordForPublicAccess === true;
@@ -1206,7 +1433,8 @@ function migrateState(input) {
   next.defaultRoomId = normalizeRoomId(input.defaultRoomId);
   if (!next.defaultRoomId || !next.rooms[next.defaultRoomId]) next.defaultRoomId = next.rooms[legacyRoomId] ? legacyRoomId : Object.keys(next.rooms)[0];
   next.admin.accessPasswordHash = next.rooms[next.defaultRoomId]?.passwordHash || next.admin.accessPasswordHash || '';
-  next.accounts = { ...next.accounts, ...(input.accounts && !Array.isArray(input.accounts) ? input.accounts : {}) };
+  next.accounts = Object.assign(Object.create(null), next.accounts,
+    input.accounts && !Array.isArray(input.accounts) ? input.accounts : {});
   if (Array.isArray(input.accounts)) {
     for (const [username, account] of input.accounts) next.accounts[username] = account;
   }
@@ -1264,7 +1492,11 @@ function migrateState(input) {
     next.accounts[username] = account;
   }
   next.blacklist = Array.isArray(input.blacklist) ? input.blacklist : [];
-  next.deletedUsernames = Array.isArray(input.deletedUsernames) ? [...new Set(input.deletedUsernames.map(cleanUsername).filter((name) => validUsername(name) && name !== 'admin'))] : [];
+  next.deletedUsernames = Array.isArray(input.deletedUsernames)
+    ? [...new Set(input.deletedUsernames.map(cleanUsername).filter((name) => !usernamePolicyError(name, {
+      mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES
+    }) && name !== 'admin'))]
+    : [];
   next.files = Array.isArray(input.files) ? input.files
     .filter((file) => !guestUsernames.has(file?.uploadedBy))
     .map((file) => ({
@@ -1826,10 +2058,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.0.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.1.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.0-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.1-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.1-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const macServerDownloadPaths = normalizeMacDownloadPaths(options.macServerDownloadPaths);
@@ -2475,9 +2707,15 @@ async function startSyncWatchServer(options = {}) {
   const roomRuntimes = new Map();
   function normalizeTextReadingState(value = {}) {
     const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const rawCharacterOffset = source.characterOffset ?? source.anchorOffset;
+    const hasCharacterOffset = rawCharacterOffset !== undefined && rawCharacterOffset !== null && String(rawCharacterOffset).trim() !== '';
+    const numericCharacterOffset = Number(rawCharacterOffset);
+    const characterOffset = hasCharacterOffset && Number.isSafeInteger(numericCharacterOffset) && numericCharacterOffset >= 0
+      ? Math.min(50_000_000, numericCharacterOffset) : null;
     return {
       fileId: cleanText(source.fileId, 80), position: Math.max(0, Math.min(1, Number(source.position) || 0)),
       page: Math.max(1, Math.min(1000000, Math.floor(Number(source.page) || 1))),
+      characterOffset,
       updatedAt: Math.max(0, Number(source.updatedAt) || Date.now()), changedBy: cleanUsername(source.changedBy),
       revision: Math.max(0, Math.floor(Number(source.revision) || 0))
     };
@@ -3440,7 +3678,8 @@ async function startSyncWatchServer(options = {}) {
       const email = cleanText(state.admin.mail?.recoveryEmail || state.admin.mail?.user, 254).toLowerCase();
       return email ? { scope: 'admin', username: '', email, key: 'admin' } : null;
     }
-    const value = cleanText(identifier, 120);
+    const value = String(identifier ?? '').normalize('NFC').trim();
+    if (Buffer.byteLength(value, 'utf8') > USERNAME_MAX_UTF8_BYTES) return null;
     const emailValue = value.toLowerCase();
     let username = state.accounts[value] ? value : '';
     if (!username) username = Object.keys(state.accounts).find((name) => String(state.accounts[name]?.email || '').toLowerCase() === emailValue) || '';
@@ -3482,7 +3721,7 @@ async function startSyncWatchServer(options = {}) {
   async function requestPasswordReset(socket, payload = {}) {
     const scope = payload.scope === 'admin' ? 'admin' : 'account';
     if (!mailRecoveryAvailable(scope)) return { success: false, error: scope === 'admin' ? '服务器尚未启用管理员邮箱找回密码' : '服务器尚未启用账号邮箱找回密码，请联系服务器管理员' };
-    const identifier = cleanText(payload.identifier, 120);
+    const identifier = String(payload.identifier ?? '').normalize('NFC').trim();
     const target = recoveryTarget(scope, identifier);
     const privacySubject = target?.key || `${scope}:${identifier.toLowerCase()}`;
     const privacyKey = crypto.createHash('sha256').update(privacySubject).digest('hex').slice(0, 24);
@@ -3493,7 +3732,7 @@ async function startSyncWatchServer(options = {}) {
       // Accounts created before mailbox verification was enabled may still
       // contain an address, but that address is not eligible for recovery.
       // Keep the response generic and do not enqueue a message.
-      const value = cleanText(identifier, 120).toLowerCase();
+      const value = identifier.toLowerCase();
       const unverified = Object.entries(state.accounts).some(([name, account]) => {
         return (name.toLowerCase() === value || String(account.email || '').toLowerCase() === value)
           && Boolean(account.email) && account.emailVerified !== true;
@@ -3602,6 +3841,12 @@ async function startSyncWatchServer(options = {}) {
     };
     const email = cleanText(payload.email, 254).toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { success: false, error: '请输入有效的注册邮箱' };
+    const rawAccountName = String(payload.username ?? '');
+    const accountName = cleanUsername(rawAccountName);
+    if (rawAccountName) {
+      const usernameError = usernamePolicyError(rawAccountName, state.admin.usernamePolicy);
+      if (usernameError) return { success: false, error: usernameError };
+    }
     if (Object.values(state.accounts).some((account) => String(account.email || '').toLowerCase() === email)) return { success: false, error: '邮箱已被其他账号使用' };
     const targetKey = crypto.createHash('sha256').update(email).digest('hex').slice(0, 24);
     if (!verificationRateAllowed(socket, 'registration', targetKey, payload)) {
@@ -3609,7 +3854,7 @@ async function startSyncWatchServer(options = {}) {
     }
     const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
     const nonce = crypto.randomBytes(16).toString('base64url');
-    const record = createVerificationRecord({ type: 'registration', accountName: cleanText(payload.username, 24) || '新用户', senderEmail: publicMailSettings().fromEmail, recipientEmail: email, socket, payload, expiresAt: passwordResetNow() + PASSWORD_RESET_CODE_TTL_MS });
+    const record = createVerificationRecord({ type: 'registration', accountName: accountName || '新用户', senderEmail: publicMailSettings().fromEmail, recipientEmail: email, socket, payload, expiresAt: passwordResetNow() + PASSWORD_RESET_CODE_TTL_MS });
     const entry = {
       email, nonce, digest: registrationEmailDigest(email, code, nonce),
       expiresAt: passwordResetNow() + PASSWORD_RESET_CODE_TTL_MS, attempts: 0, recordId: record.id
@@ -3617,8 +3862,8 @@ async function startSyncWatchServer(options = {}) {
     registrationEmailCodes.set(email, entry);
     try {
       await sendConfiguredMail({ to: email, ...renderMailTemplate('verification', {
-        recipientName: cleanText(payload.username, 24) || '新用户', recipientEmail: email,
-        verificationCode: code, actionName: '注册邮箱', accountName: cleanText(payload.username, 24) || 'SyncWatch同步观影 账号',
+        recipientName: accountName || '新用户', recipientEmail: email,
+        verificationCode: code, actionName: '注册邮箱', accountName: accountName || 'SyncWatch同步观影 账号',
         expiresInMinutes: Math.floor(PASSWORD_RESET_CODE_TTL_MS / 60000)
       }) });
     } catch (error) {
@@ -3629,7 +3874,7 @@ async function startSyncWatchServer(options = {}) {
       return { success: false, error: '注册验证码发送失败，请检查邮箱地址、SMTP 设置或服务器网络' };
     }
     const acceptedAt = new Date().toISOString(); updateVerificationRecord(record.id, { sentAt: acceptedAt, acceptedAt }); persist();
-    return { success: true, email, accountName: cleanText(payload.username, 24), maskedEmail: maskEmailAddressServer(email), expiresInSeconds: Math.floor(PASSWORD_RESET_CODE_TTL_MS / 1000), message: `注册验证码已发送至 ${maskEmailAddressServer(email)}，请检查收件箱和垃圾邮件` };
+    return { success: true, email, accountName, maskedEmail: maskEmailAddressServer(email), expiresInSeconds: Math.floor(PASSWORD_RESET_CODE_TTL_MS / 1000), message: `注册验证码已发送至 ${maskEmailAddressServer(email)}，请检查收件箱和垃圾邮件` };
   }
 
   function verifyRegistrationEmailCode(emailValue, codeValue) {
@@ -4428,10 +4673,18 @@ async function startSyncWatchServer(options = {}) {
   }
 
   function passwordPolicyError(password, { administrator = false } = {}) {
-    const value = String(password || '');
+    const value = String(password ?? '');
     const policy = normalizePasswordPolicy(state.admin.passwordPolicy);
-    const minimum = administrator ? Math.max(8, policy.minLength) : policy.minLength;
-    if (value.length < minimum || value.length > policy.maxLength) return `密码长度需为 ${minimum}-${policy.maxLength} 位`;
+    if (!value) return '请输入密码';
+    if (Buffer.byteLength(value, 'utf8') > PASSWORD_MAX_UTF8_BYTES) {
+      return `密码不能超过 ${PASSWORD_MAX_UTF8_BYTES} 个 UTF-8 字节（仅用于防止异常超大请求）`;
+    }
+    const minimum = administrator ? Math.max(8, policy.lengthRestricted ? policy.minLength : 1) : policy.minLength;
+    const length = Array.from(value).length;
+    if (administrator && length < minimum) return `管理员密码至少需要 ${minimum} 位`;
+    if (policy.lengthRestricted && (length < minimum || length > policy.maxLength)) {
+      return `密码长度需为 ${minimum}-${policy.maxLength} 位`;
+    }
     const patterns = {
       chinese: /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{2ebef}\u{30000}-\u{323af}]+$/u,
       english: /^[A-Za-z]+$/,
@@ -4841,7 +5094,7 @@ async function startSyncWatchServer(options = {}) {
   function resetTextReadingState(file, username, roomIdValue = currentRoomId()) {
     const runtime = roomRuntime(roomIdValue);
     runtime.roomState.textReading = normalizeTextReadingState({
-      fileId: file?.category === 'text' ? file.id : '', position: 0, page: 1,
+      fileId: file?.category === 'text' ? file.id : '', position: 0, page: 1, characterOffset: 0,
       updatedAt: Date.now(), changedBy: username, revision: Number(runtime.roomState.textReading?.revision || 0) + 1
     });
     return runtime.roomState.textReading;
@@ -5713,7 +5966,7 @@ async function startSyncWatchServer(options = {}) {
       const label = kind === 'macos-server' ? '服务器' : '客户端';
       return {
         kind, extension, architecture, label: `macOS ${label}`,
-        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.0-${architecture}${extension}`)
+        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.1-${architecture}${extension}`)
       };
     }
     return null;
@@ -5839,7 +6092,7 @@ async function startSyncWatchServer(options = {}) {
     passwordRecoveryAvailable: mailRecoveryAvailable('account') || mailRecoveryAvailable('admin'),
     accountPasswordRecoveryAvailable: mailRecoveryAvailable('account'), adminPasswordRecoveryAvailable: mailRecoveryAvailable('admin'),
     registrationEmailVerificationRequired: registrationEmailVerificationAvailable(), emailBindingAvailable: emailBindingAvailable(),
-    passwordPolicy: normalizePasswordPolicy(state.admin.passwordPolicy), experiencePerMinute: Math.max(0, Math.floor(Number(state.admin.experiencePerMinute) || 0)),
+    passwordPolicy: normalizePasswordPolicy(state.admin.passwordPolicy), usernamePolicy: normalizeUsernamePolicy(state.admin.usernamePolicy), experiencePerMinute: Math.max(0, Math.floor(Number(state.admin.experiencePerMinute) || 0)),
     contact: normalizeAdminContact(state.admin.contact), legalAgreement: normalizeLegalAgreement(state.admin.legalAgreement), marqueeNotice: normalizeMarqueeNotice(state.admin.marqueeNotice),
     loginCube: normalizeLoginCubeSettings(state.admin.loginCube),
     loginMusic: normalizeLoginMusic(state.admin.loginMusic),
@@ -5850,7 +6103,9 @@ async function startSyncWatchServer(options = {}) {
     locationStatusNoticesEnabled: state.admin.locationStatusNoticesEnabled !== false,
     locationAuthorizationRequestsEnabled: state.admin.locationAuthorizationRequestsEnabled !== false,
     roomEntryNotice: normalizeRoomEntryNotice(state.admin.roomEntryNotice),
-    defaultPlaybackQuality: (requestUsesForwardedHttps(req) || requestUsesPublicProxy(req) || requestUsesConfiguredPublicHost(req)) ? 'smooth' : 'original', branding: normalizeBranding(state.admin.branding), roomIdPolicy: normalizeRoomIdPolicy(state.admin.roomIdPolicy),
+    // Start every new client on source quality. Users may still choose and
+    // retain smooth/auto locally, but proxy headers must not downgrade them.
+    defaultPlaybackQuality: 'original', branding: normalizeBranding(state.admin.branding), uiCopy: normalizeUiCopy(state.admin.uiCopy), roomIdPolicy: normalizeRoomIdPolicy(state.admin.roomIdPolicy),
     clientIp: normalizeIp(getRequestIp(req))
     });
   });
@@ -5889,7 +6144,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.1-x64.exe');
   });
 
   app.get('/api/macos-server-download', httpRateLimit('macos-server-download', 12, 60 * 60 * 1000), (req, res) => {
@@ -5899,7 +6154,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macServerDistribution),
       error: '苹果服务器安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-服务器-v2.2.0-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-服务器-v2.2.1-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -5914,7 +6169,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macClientDistribution),
       error: '苹果客户端安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-客户端-v2.2.0-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-客户端-v2.2.1-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6000,7 +6255,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.0-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.1-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -7480,7 +7735,7 @@ async function startSyncWatchServer(options = {}) {
 
   async function streamBackupArchive(res, metadata, entries) {
     res.type('application/vnd.syncwatch.backup');
-    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.0-${metadata.scope}.swbackup`));
+    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.1-${metadata.scope}.swbackup`));
     const metadataBuffer = Buffer.from(JSON.stringify(metadata), 'utf8');
     const entryBuffers = entries.map((entry) => ({
       entry,
@@ -7735,7 +7990,7 @@ async function startSyncWatchServer(options = {}) {
         const entries = fullSnapshot ? backupDataEntries(scopes) : (scopes.includes('media-index') ? backupArtifactEntries(state.files) : []);
         return await streamBackupArchive(res, output, entries);
       }
-      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.0-${output.scope}.json`));
+      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.1-${output.scope}.json`));
       return res.json(output);
     } catch (error) { return next(error); }
   });
@@ -8079,7 +8334,15 @@ async function startSyncWatchServer(options = {}) {
         admin: isRoomAdmin(user), superAdmin: isSuperAdmin(user.username),
         mustChangeAdminPassword: Boolean(session.isServerHost && (state.admin.mustChangePassword || passwordExpired('admin', { adminSecret: true }))),
         mustChangeAccountPassword: Boolean(state.accounts[user.username]?.mustChangePassword || passwordExpired(user.username)),
-        canSetInitialAccountPassword: Boolean(session.isServerHost && user.username === 'admin' && state.accounts[user.username]?.mustChangePassword),
+        canSetInitialAccountPassword: Boolean(session.isServerHost && user.username === 'admin'
+          && state.admin.mustChangePassword === true && state.accounts[user.username]?.mustChangePassword),
+        // A password-authenticated admin session already verified the
+        // credential immediately before this first-login prompt.  Keep this
+        // separate from canSetInitialAccountPassword so local passwordless
+        // host sessions still require an explicit credential confirmation.
+        canSkipInitialAccountPasswordVerification: Boolean(session.isServerHost && user.username === 'admin'
+          && state.admin.mustChangePassword === true && state.accounts[user.username]?.mustChangePassword
+          && session.passwordAuthenticated === true),
         agreementRequired: !agreementAccepted(user.username)
       }, agreement, notifications, claimedRegistrationRequests,
       friendNotifications: friendUnreadNotifications(user.username),
@@ -8114,7 +8377,6 @@ async function startSyncWatchServer(options = {}) {
     socket.leave(roomChannel(previousRoomId));
     user.roomId = targetRoom.id;
     user.joinedAt = new Date().toISOString();
-    user.connectionState = 'online';
     session.roomId = targetRoom.id;
     session.roomAccessRevision = targetRoom.accessRevision;
     markRoomActive(targetRoom.id);
@@ -8427,8 +8689,8 @@ async function startSyncWatchServer(options = {}) {
     const defaultRoom = roomConfig(state.defaultRoomId);
     socket.emit('server-meta', {
       accessPasswordRequired: Boolean(defaultRoom.passwordHash), version: APP_VERSION, roomId: defaultRoom.id,
-      roomsEnabled: true, branding: normalizeBranding(state.admin.branding), loginCube: normalizeLoginCubeSettings(state.admin.loginCube),
-      passwordPolicy: normalizePasswordPolicy(state.admin.passwordPolicy), contact: normalizeAdminContact(state.admin.contact)
+      roomsEnabled: true, branding: normalizeBranding(state.admin.branding), uiCopy: normalizeUiCopy(state.admin.uiCopy), loginCube: normalizeLoginCubeSettings(state.admin.loginCube),
+      passwordPolicy: normalizePasswordPolicy(state.admin.passwordPolicy), usernamePolicy: normalizeUsernamePolicy(state.admin.usernamePolicy), contact: normalizeAdminContact(state.admin.contact)
     });
 
     function onSafe(eventName, handler, options = {}) {
@@ -8533,7 +8795,8 @@ async function startSyncWatchServer(options = {}) {
       if (socketRateLimited(socket, 'registration-request', 5, 60 * 60 * 1000, acknowledgement)) return;
       if (isIpBanned(clientIp)) return acknowledgement?.({ success: false, error: '此设备地址已被禁止访问' });
       const username = cleanUsername(payload.username);
-      if (!validUsername(username)) return acknowledgement?.({ success: false, error: '请先填写准备注册的新账号' });
+      const usernameError = usernamePolicyError(payload.username, state.admin.usernamePolicy);
+      if (usernameError) return acknowledgement?.({ success: false, error: usernameError });
       if (!registrationsForIp(clientIp).length || registrationIpWhitelisted(clientIp)) return acknowledgement?.({ success: true, approved: true, message: '当前 IP 无需额外批准，请直接注册' });
       const pending = state.admin.registrationRequests.find((entry) => entry.ip === clientIp && entry.username === username && entry.status === 'pending');
       if (pending) {
@@ -8586,7 +8849,8 @@ async function startSyncWatchServer(options = {}) {
         return;
       }
       if (isIpBanned(clientIp)) return finishRegistration({ success: false, error: '此设备地址已被禁止访问' });
-      if (!validUsername(username)) return finishRegistration({ success: false, error: '账号需为 2-24 位中文、字母、数字、下划线或短横线' });
+      const usernameError = usernamePolicyError(payload.username, state.admin.usernamePolicy);
+      if (usernameError) return finishRegistration({ success: false, error: usernameError });
       const passwordError = passwordPolicyError(password);
       if (passwordError) return finishRegistration({ success: false, error: passwordError });
       if (state.accounts[username]) return finishRegistration({ success: false, error: '账号已存在' });
@@ -8730,7 +8994,7 @@ async function startSyncWatchServer(options = {}) {
         return finishHostLogin(capacityError);
       }
       const token = crypto.randomBytes(32).toString('base64url');
-      const session = newSessionDetails({ token, username, roomId: room.id, socketId: socket.id, isServerHost: true, sessionMode: 'management', ipAddress: clientIp });
+      const session = newSessionDetails({ token, username, roomId: room.id, socketId: socket.id, isServerHost: true, sessionMode: 'management', passwordAuthenticated: true, ipAddress: clientIp });
       if (currentUser?.sessionToken) sessions.delete(currentUser.sessionToken);
       sessions.set(token, session);
       updateAccountLogin(username, payload, session);
@@ -8777,7 +9041,7 @@ async function startSyncWatchServer(options = {}) {
       const token = crypto.randomBytes(32).toString('base64url');
       const session = newSessionDetails({
         token, username, roomId: room.id, socketId: socket.id, isServerHost: true,
-        sessionMode: mode, localPasswordless: true, ipAddress: clientIp
+        sessionMode: mode, localPasswordless: true, passwordAuthenticated: false, ipAddress: clientIp
       });
       if (currentUser?.sessionToken) sessions.delete(currentUser.sessionToken);
       sessions.set(token, session);
@@ -8875,7 +9139,8 @@ async function startSyncWatchServer(options = {}) {
       const username = cleanUsername(payload.username);
       const password = String(payload.password || '');
       const email = cleanText(payload.email, 120).toLowerCase();
-      if (!validUsername(username)) return acknowledgement?.({ success: false, error: '账号需为 2-24 位中文、字母、数字、下划线或短横线' });
+      const usernameError = usernamePolicyError(payload.username, state.admin.usernamePolicy);
+      if (usernameError) return acknowledgement?.({ success: false, error: usernameError });
       const passwordError = passwordPolicyError(password);
       if (passwordError) return acknowledgement?.({ success: false, error: passwordError });
       if (state.accounts[username] || identityReserved(username)) return acknowledgement?.({ success: false, error: state.accounts[username] ? '账号已存在' : '此账号名属于已删除的历史账号，不能再次注册' });
@@ -8958,7 +9223,7 @@ async function startSyncWatchServer(options = {}) {
     });
 
     onSafe('user-login', async (payload = {}, acknowledgement) => {
-      const loginIdentifier = cleanText(payload.username || payload.email || payload.identifier, 120).trim();
+      const loginIdentifier = String(payload.username ?? payload.email ?? payload.identifier ?? '').normalize('NFC').trim();
       let username = cleanUsername(loginIdentifier);
       let account = state.accounts[username];
       // A verified account email is an alternate login identifier. Never
@@ -9032,7 +9297,7 @@ async function startSyncWatchServer(options = {}) {
       const token = crypto.randomBytes(32).toString('base64url');
       const session = newSessionDetails({
         token, username, roomId: room.id, socketId: socket.id,
-        isServerHost: serverHostLogin, ipAddress: clientIp
+        isServerHost: serverHostLogin, passwordAuthenticated: true, ipAddress: clientIp
       });
       if (currentSession?.token) sessions.delete(currentSession.token);
       sessions.set(token, session);
@@ -9120,6 +9385,7 @@ async function startSyncWatchServer(options = {}) {
           roomId: id,
           socketId: socket.id,
           isServerHost: Boolean(existingSession?.isServerHost || isHostToken(payload.hostToken)),
+          passwordAuthenticated: existingSession ? Boolean(existingSession.passwordAuthenticated) : true,
           ipAddress: clientIp
         });
         sessions.set(token, session);
@@ -9502,14 +9768,9 @@ async function startSyncWatchServer(options = {}) {
       if (socketRateLimited(socket, `network-quality:${socket.id}`, 5, 10 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement);
       if (!user) return;
-      user.latency = Math.max(0, Math.min(9999, Number(payload.latency) || 0));
-      user.syncPercent = Math.max(0, Math.min(100, Number(payload.syncPercent) || 0));
-      user.drift = Math.max(-3600, Math.min(3600, Number(payload.drift) || 0));
-      user.playbackQuality = ['auto', 'smooth', 'original'].includes(String(payload.playbackQuality))
-        ? String(payload.playbackQuality) : (user.playbackQuality || 'original');
-      user.connectionState = payload.connectionState === 'unstable' ? 'unstable' : 'online';
-      broadcastUsersSoon();
-      return acknowledgement?.({ success: true });
+      const quality = applyNetworkQualitySample(user, payload);
+      if (!quality.ignored) broadcastUsersSoon();
+      return acknowledgement?.({ success: true, ignored: quality.ignored, connectionState: user.connectionState });
     });
 
     onSafe('ai-config-sync-request', (payload = {}, acknowledgement) => {
@@ -9922,12 +10183,18 @@ async function startSyncWatchServer(options = {}) {
       }
       const position = Number(payload.position);
       const page = Number(payload.page);
-      if (!Number.isFinite(position) || position < 0 || position > 1 || !Number.isFinite(page) || page < 1 || page > 1000000) {
+      const rawCharacterOffset = payload.characterOffset ?? payload.anchorOffset;
+      const hasRawCharacterOffset = rawCharacterOffset !== undefined && rawCharacterOffset !== null && String(rawCharacterOffset).trim() !== '';
+      const characterOffset = Number(rawCharacterOffset);
+      const hasCharacterOffset = hasRawCharacterOffset && Number.isSafeInteger(characterOffset) && characterOffset >= 0 && characterOffset <= 50_000_000;
+      if (!Number.isFinite(position) || position < 0 || position > 1 || !Number.isFinite(page) || page < 1 || page > 1000000
+        || (hasRawCharacterOffset && !hasCharacterOffset)) {
         return acknowledgement?.({ success: false, error: '阅读位置无效' });
       }
       const runtime = roomRuntime(user.roomId);
       runtime.roomState.textReading = normalizeTextReadingState({
-        fileId, position, page, updatedAt: Date.now(), changedBy: user.username,
+        fileId, position, page, characterOffset: hasCharacterOffset ? characterOffset : null,
+        updatedAt: Date.now(), changedBy: user.username,
         revision: Number(runtime.roomState.textReading?.revision || 0) + 1
       });
       schedulePersist(300);
@@ -10274,12 +10541,30 @@ async function startSyncWatchServer(options = {}) {
       if (action === 'change-password') {
         const currentSession = validSession(user.sessionToken, false);
         if (!currentSession) return acknowledgement?.({ success: false, error: '登录已失效，请重新登录' });
-        const initialServerAdminSetup = Boolean(payload.initialSetup && currentSession.isServerHost && user.username === 'admin' && account.mustChangePassword);
-        if (!await verifyPasswordAsync(payload.currentPassword || '', account.passwordHash) || state.accounts[user.username] !== account) return acknowledgement?.({ success: false, code: 'CURRENT_PASSWORD_INVALID', error: '当前密码错误' });
+        const initialServerAdminSetup = Boolean(payload.initialSetup && currentSession.isServerHost && user.username === 'admin'
+          && state.admin.mustChangePassword === true && account.mustChangePassword);
+        // The password login that created this session already authenticated
+        // the bootstrap credential.  Permit the first-login wizard to omit a
+        // redundant current-password field, but never grant that bypass to
+        // local passwordless sessions or later password changes.
+        const skipCurrentPasswordVerification = Boolean(initialServerAdminSetup
+          && currentSession.passwordAuthenticated === true
+          && !String(payload.currentPassword || ''));
+        if ((!skipCurrentPasswordVerification && !await verifyPasswordAsync(payload.currentPassword || '', account.passwordHash))
+          || state.accounts[user.username] !== account) return acknowledgement?.({ success: false, code: 'CURRENT_PASSWORD_INVALID', error: '当前密码错误' });
         const nextPassword = String(payload.newPassword || '');
-        const passwordError = passwordPolicyError(nextPassword);
+        const passwordError = passwordPolicyError(nextPassword, { administrator: user.username === 'admin' });
         if (passwordError) return acknowledgement?.({ success: false, error: passwordError });
+        if (state.accounts[user.username] !== account || sessions.get(user.sessionToken) !== currentSession) {
+          return acknowledgement?.({ success: false, error: '登录已失效，请重新登录' });
+        }
+        if (await verifyPasswordAsync(nextPassword, account.passwordHash)) {
+          return acknowledgement?.({ success: false, code: 'PASSWORD_REUSE', error: '新密码不能与当前密码相同' });
+        }
         const nextPasswordHash = await makePasswordHashAsync(nextPassword);
+        if (state.accounts[user.username] !== account || sessions.get(user.sessionToken) !== currentSession) {
+          return acknowledgement?.({ success: false, error: '登录已失效，请重新登录' });
+        }
         account.passwordHash = nextPasswordHash;
         account.mustChangePassword = false;
         account.passwordChangedAt = new Date().toISOString();
@@ -10295,6 +10580,7 @@ async function startSyncWatchServer(options = {}) {
         const replacement = newSessionDetails({
           token, username: user.username, roomId: currentSession.roomId || user.roomId, socketId: socket.id, isServerHost: Boolean(currentSession.isServerHost),
           sessionMode: currentSession.sessionMode === 'management' ? 'management' : 'room', localPasswordless: Boolean(currentSession.localPasswordless),
+          passwordAuthenticated: Boolean(currentSession.passwordAuthenticated),
           ipAddress: getSocketIp(socket), deviceId: currentSession.deviceId || user.deviceId || ''
         });
         sessions.set(token, replacement);
@@ -11593,12 +11879,12 @@ async function startSyncWatchServer(options = {}) {
         'change-admin-password', 'set-upload-limits', 'set-mail-settings', 'test-mail-connection', 'test-mail-settings', 'restore-mail-template', 'reset-account-password',
         'delete-account', 'force-display-name', 'set-account-remark', 'unban', 'ban-user', 'approve-registration-request', 'deny-registration-request',
         'add-registration-whitelist', 'remove-registration-whitelist', 'set-branding', 'set-super-admin', 'set-room-creation-block',
-        'set-account-level', 'set-room-ban', 'batch-room-action', 'delete-room', 'delete-rooms', 'factory-reset', 'set-password-policy', 'set-admin-contact',
+        'set-account-level', 'set-room-ban', 'batch-room-action', 'delete-room', 'delete-rooms', 'factory-reset', 'set-password-policy', 'set-username-policy', 'set-admin-contact',
         'set-legal-agreement', 'set-admin-session-limit', 'set-local-passwordless-access', 'set-account-room-quota', 'resolve-room-quota-request', 'rename-room', 'set-marquee-notice', 'set-account-tier', 'save-account-tier', 'delete-account-tier', 'set-room-id-policy', 'set-public-password-policy',
         'set-upload-policy', 'set-text-upload-policy', 'resolve-upload-policy-request', 'set-experience-policy', 'set-default-account-password', 'batch-account-action', 'set-account-email', 'set-registration-account-notice',
         'set-blocked-words', 'set-lan-access', 'set-media-processing', 'set-login-cube-settings', 'set-login-cube-image', 'restart-server', 'get-account-audit-logs', 'delete-account-audit-logs',
         'set-account-number-policy', 'set-account-number', 'get-verification-codes', 'delete-verification-codes', 'set-verification-code-policy', 'unblock-verification-device', 'set-login-music', 'delete-login-music', 'set-login-video', 'delete-login-video', 'set-notice-preferences',
-        'delete-room-files', 'set-media-upload-ban'
+        'delete-room-files', 'set-media-upload-ban', 'get-ui-copy', 'set-ui-copy', 'import-ui-copy', 'export-ui-copy', 'reset-ui-copy'
       ]);
       // Audit records and super-admin grants are account-wide operations and
       // require an actual logged-in super-admin. Email overrides retain the
@@ -11612,11 +11898,47 @@ async function startSyncWatchServer(options = {}) {
       if (action === 'rename-room-id' && !serverAdmin && !(roomOwner && normalizeRoomId(payload.roomId) === currentRoomId())) {
         return acknowledgement?.({ success: false, error: '只有当前房主或超级管理员可以修改当前房间号' });
       }
+      if (['get-ui-copy', 'export-ui-copy'].includes(action)) {
+        const uiCopy = normalizeUiCopy(state.admin.uiCopy);
+        const result = { success: true, version: UI_COPY_VERSION, uiCopy, entries: uiCopy };
+        if (action === 'export-ui-copy') {
+          result.filename = `SyncWatch-ui-copy-${APP_VERSION}.json`;
+          result.json = JSON.stringify({ version: UI_COPY_VERSION, uiCopy }, null, 2);
+        }
+        return acknowledgement?.(result);
+      }
+      if (['set-ui-copy', 'import-ui-copy'].includes(action)) {
+        let patch;
+        try {
+          patch = uiCopyPayload(action === 'import-ui-copy'
+            ? (payload.json ?? payload.data ?? payload.entries ?? payload.uiCopy ?? payload.dictionary)
+            : (payload.entries ?? payload.uiCopy ?? payload.dictionary));
+        } catch (error) {
+          return acknowledgement?.({ success: false, code: 'UI_COPY_INVALID', error: error.message || '文案字典无效' });
+        }
+        const before = normalizeUiCopy(state.admin.uiCopy);
+        state.admin.uiCopy = normalizeUiCopy({ ...before, ...patch });
+        state.admin.uiCopyUpdatedAt = new Date().toISOString();
+        persist();
+        const snapshot = { version: UI_COPY_VERSION, uiCopy: normalizeUiCopy(state.admin.uiCopy), entries: normalizeUiCopy(state.admin.uiCopy), updatedAt: state.admin.uiCopyUpdatedAt };
+        recordOperation({ actor: user.username, action: action === 'import-ui-copy' ? 'ui-copy-import' : 'ui-copy-update', summary: action === 'import-ui-copy' ? '导入统一界面文案' : '更新统一界面文案', scope: 'server' });
+        io.emit('ui-copy-state', snapshot);
+        return acknowledgement?.({ success: true, ...snapshot, message: action === 'import-ui-copy' ? '界面文案已导入并同步' : '界面文案已保存并同步' });
+      }
+      if (action === 'reset-ui-copy') {
+        state.admin.uiCopy = defaultUiCopy();
+        state.admin.uiCopyUpdatedAt = new Date().toISOString();
+        persist();
+        const snapshot = { version: UI_COPY_VERSION, uiCopy: normalizeUiCopy(state.admin.uiCopy), entries: normalizeUiCopy(state.admin.uiCopy), updatedAt: state.admin.uiCopyUpdatedAt };
+        recordOperation({ actor: user.username, action: 'ui-copy-reset', summary: '恢复默认界面文案', scope: 'server' });
+        io.emit('ui-copy-state', snapshot);
+        return acknowledgement?.({ success: true, ...snapshot, message: '界面文案已恢复默认并同步' });
+      }
       if (action === 'get-settings') return acknowledgement?.({ success: true, admin: {
         serverAdmin, superAdmin, roomOwner, roomAdministrator, canManageSuperAdmins: user.username === 'admin',
         uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
         allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false, blockedWords: serverAdmin ? normalizeBlockedWords(state.admin.blockedWords) : [], roomStorageLimitBytes: Math.max(0, Number(state.room.storageLimitBytes) || 0),
-        branding: normalizeBranding(state.admin.branding), loginCube: normalizeLoginCubeSettings(state.admin.loginCube), loginMusic: normalizeLoginMusic(state.admin.loginMusic), loginVideo: normalizeLoginVideo(state.admin.loginVideo), marqueeNotice: normalizeMarqueeNotice(state.admin.marqueeNotice),
+        branding: normalizeBranding(state.admin.branding), uiCopy: normalizeUiCopy(state.admin.uiCopy), loginCube: normalizeLoginCubeSettings(state.admin.loginCube), loginMusic: normalizeLoginMusic(state.admin.loginMusic), loginVideo: normalizeLoginVideo(state.admin.loginVideo), marqueeNotice: normalizeMarqueeNotice(state.admin.marqueeNotice),
         f11PromptEnabled: state.admin.f11PromptEnabled !== false,
         initialPasswordReminderEnabled: state.admin.initialPasswordReminderEnabled !== false,
         downloadButtonsVisible: state.admin.downloadButtonsVisible !== false,
@@ -11631,7 +11953,7 @@ async function startSyncWatchServer(options = {}) {
             effectiveNotice: effectiveRoomEntryNotice(entry.id)
           })),
         contact: normalizeAdminContact(state.admin.contact), legalAgreement: normalizeLegalAgreement(state.admin.legalAgreement),
-        passwordPolicy: normalizePasswordPolicy(state.admin.passwordPolicy), roomIdPolicy: normalizeRoomIdPolicy(state.admin.roomIdPolicy), accountNumberPolicy: normalizeAccountNumberPolicy(state.admin.accountNumberPolicy), verificationCodePolicy: normalizeVerificationCodePolicy(state.admin.verificationCodePolicy), adminMaxConcurrentSessions: adminSessionLimit(),
+        passwordPolicy: normalizePasswordPolicy(state.admin.passwordPolicy), usernamePolicy: normalizeUsernamePolicy(state.admin.usernamePolicy), roomIdPolicy: normalizeRoomIdPolicy(state.admin.roomIdPolicy), accountNumberPolicy: normalizeAccountNumberPolicy(state.admin.accountNumberPolicy), verificationCodePolicy: normalizeVerificationCodePolicy(state.admin.verificationCodePolicy), adminMaxConcurrentSessions: adminSessionLimit(),
         requireRoomPasswordForPublicAccess: state.admin.requireRoomPasswordForPublicAccess === true,
         lanAccessEnabled: state.admin.lanAccessEnabled !== false,
         localPasswordlessManagementEnabled: state.admin.localPasswordlessManagementEnabled !== false,
@@ -11899,12 +12221,50 @@ async function startSyncWatchServer(options = {}) {
       }
       if (action === 'set-password-policy') {
         if (!PASSWORD_POLICY_MODES.has(payload.mode)) return acknowledgement?.({ success: false, error: '密码规则类型无效' });
-        const policy = normalizePasswordPolicy({ mode: payload.mode, minLength: payload.minLength, maxLength: payload.maxLength, expiryDays: payload.expiryDays });
+        const passwordLengthRestricted = Object.prototype.hasOwnProperty.call(payload, 'lengthRestricted')
+          ? payload.lengthRestricted === true
+          : ['minLength', 'maxLength'].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+        const policy = normalizePasswordPolicy({
+          mode: payload.mode, lengthRestricted: passwordLengthRestricted,
+          minLength: payload.minLength, maxLength: payload.maxLength, expiryDays: payload.expiryDays
+        });
+        const nestedUsernamePolicy = payload.usernamePolicy && typeof payload.usernamePolicy === 'object' && !Array.isArray(payload.usernamePolicy);
+        const hasUsernamePolicy = nestedUsernamePolicy
+          || ['usernameMode', 'usernameMinLength', 'usernameMaxLength'].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+        const usernameLengthRestricted = nestedUsernamePolicy && Object.prototype.hasOwnProperty.call(payload.usernamePolicy, 'lengthRestricted')
+          ? payload.usernamePolicy.lengthRestricted === true
+          : (nestedUsernamePolicy
+            ? ['minLength', 'maxLength'].some((key) => Object.prototype.hasOwnProperty.call(payload.usernamePolicy, key))
+            : ['usernameMinLength', 'usernameMaxLength'].some((key) => Object.prototype.hasOwnProperty.call(payload, key)));
+        const usernameInput = nestedUsernamePolicy
+          ? payload.usernamePolicy
+          : { mode: payload.usernameMode, minLength: payload.usernameMinLength, maxLength: payload.usernameMaxLength };
+        if (hasUsernamePolicy && !USERNAME_POLICY_MODES.has(usernameInput.mode)) return acknowledgement?.({ success: false, error: '账号规则类型无效' });
+        const usernamePolicy = hasUsernamePolicy
+          ? normalizeUsernamePolicy({ ...usernameInput, lengthRestricted: usernameLengthRestricted })
+          : normalizeUsernamePolicy(state.admin.usernamePolicy);
         state.admin.passwordPolicy = policy;
+        if (hasUsernamePolicy) state.admin.usernamePolicy = usernamePolicy;
         persist();
-        recordOperation({ actor: user.username, action: 'password-policy', summary: `更新用户密码规则：${policy.mode} / ${policy.minLength}-${policy.maxLength} 位`, scope: 'server' });
-        io.emit('server-policy-updated', { passwordPolicy: policy });
-        return acknowledgement?.({ success: true, passwordPolicy: policy, message: '用户密码规则已保存并同步' });
+        recordOperation({ actor: user.username, action: 'password-policy', summary: `更新用户密码规则：${policy.mode} / ${policy.lengthRestricted ? `${policy.minLength}-${policy.maxLength} 位` : '不限制字符长度'}${hasUsernamePolicy ? `；账号 ${usernamePolicy.mode} / ${usernamePolicy.lengthRestricted ? `${usernamePolicy.minLength}-${usernamePolicy.maxLength} 位` : '不限制字符长度'}` : ''}`, scope: 'server' });
+        const update = { passwordPolicy: policy };
+        if (hasUsernamePolicy) update.usernamePolicy = usernamePolicy;
+        io.emit('server-policy-updated', update);
+        return acknowledgement?.({ success: true, passwordPolicy: policy, usernamePolicy, message: hasUsernamePolicy ? '账号与密码规则已保存并同步' : '用户密码规则已保存并同步' });
+      }
+      if (action === 'set-username-policy') {
+        if (!USERNAME_POLICY_MODES.has(payload.mode)) return acknowledgement?.({ success: false, error: '账号规则类型无效' });
+        const lengthRestricted = Object.prototype.hasOwnProperty.call(payload, 'lengthRestricted')
+          ? payload.lengthRestricted === true
+          : ['minLength', 'maxLength'].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+        const policy = normalizeUsernamePolicy({
+          mode: payload.mode, lengthRestricted, minLength: payload.minLength, maxLength: payload.maxLength
+        });
+        state.admin.usernamePolicy = policy;
+        persist();
+        recordOperation({ actor: user.username, action: 'username-policy', summary: `更新注册账号规则：${policy.mode} / ${policy.lengthRestricted ? `${policy.minLength}-${policy.maxLength} 位` : '不限制字符长度'}`, scope: 'server' });
+        io.emit('server-policy-updated', { usernamePolicy: policy });
+        return acknowledgement?.({ success: true, usernamePolicy: policy, message: '注册账号规则已保存并同步' });
       }
       if (action === 'set-room-id-policy') {
         state.admin.roomIdPolicy = normalizeRoomIdPolicy(payload.policy || payload);
@@ -13394,7 +13754,7 @@ async function startSyncWatchServer(options = {}) {
       discoverySocket.on('message', (message, remote) => {
         if (!privateOrLoopbackAddress(remote.address) || String(message).trim() !== 'SYNCWATCH_DISCOVER_V1') return;
         const payload = Buffer.from(JSON.stringify({
-          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.0', server: os.hostname(), version: APP_VERSION,
+          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.1', server: os.hostname(), version: APP_VERSION,
           port: actualPort, addresses: advertisedNetworkAddresses(),
           rooms: Object.values(state.rooms).filter((room) => visibleRoom(room) && !room.archived).map((room) => ({
             id: room.id, name: room.name, maxUsers: room.maxUsers, online: roomUsers(room.id).length, passwordRequired: Boolean(room.passwordHash)
@@ -13588,6 +13948,7 @@ module.exports = {
     clampMediaRangeEnd, requestSkipsCompression, normalizeMacDownloadPaths, availableMacArchitectures, preferredMacArchitecture,
     OPEN_ENDED_MEDIA_RANGE_CHUNK_THRESHOLD_BYTES, MAX_OPEN_ENDED_MEDIA_RANGE_BYTES,
     resolveFileType, HLS_EXTENSIONS,
-    createMacDistribution, macDownloadSummary, selectMacArtifact
+    createMacDistribution, macDownloadSummary, selectMacArtifact,
+    applyNetworkQualitySample
   }
 };

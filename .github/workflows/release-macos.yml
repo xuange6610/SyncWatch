@@ -1,215 +1,446 @@
-name: Build macOS release
+name: Build macOS release artifacts
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      tag:
-        description: Existing v-prefixed release tag (for example v2.2.0)
+      phase:
+        description: base or full
         required: true
-        default: v2.2.0
+        type: string
+      tag:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      commit_sha:
+        required: true
+        type: string
+      source_tree:
+        required: true
+        type: string
+      artifact_prefix:
+        required: true
+        type: string
 
 permissions:
-  contents: write
-
-concurrency:
-  group: macos-release-${{ inputs.tag }}
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  build:
-    name: macOS ${{ matrix.kind }} x64 + arm64
-    runs-on: macos-14
-    timeout-minutes: 60
+  validate:
+    name: Validate immutable macOS build inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate caller inputs
+        shell: bash
+        env:
+          RELEASE_PHASE: ${{ inputs.phase }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit_sha }}
+          RELEASE_TREE: ${{ inputs.source_tree }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_PHASE" =~ ^(base|full)$ ]]
+          [[ "$RELEASE_TAG" == "v${RELEASE_VERSION}" ]]
+          [[ "$RELEASE_COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$RELEASE_TREE" =~ ^[a-f0-9]{40}$ ]]
+
+  base:
+    name: Build macOS ${{ matrix.role }} ${{ matrix.arch }}
+    if: inputs.phase == 'base'
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        kind: [client, server]
+        include:
+          - kind: client
+            role: Client
+            arch: x64
+            runner: macos-15-intel
+            selection: mac-client-x64
+          - kind: client
+            role: Client
+            arch: arm64
+            runner: macos-15
+            selection: mac-client-arm64
+          - kind: server
+            role: Server
+            arch: x64
+            runner: macos-15-intel
+            selection: mac-server-x64
+          - kind: server
+            role: Server
+            arch: arm64
+            runner: macos-15
+            selection: mac-server-arm64
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      VERSION: "2.2.0"
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_COMMIT: ${{ inputs.commit_sha }}
+      RELEASE_TREE: ${{ inputs.source_tree }}
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_KIND: ${{ matrix.kind }}
+      RELEASE_ROLE: ${{ matrix.role }}
+      RELEASE_SELECTION: ${{ matrix.selection }}
     steps:
-      - name: Checkout release source
+      - name: Checkout immutable source commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
-
-      - name: Validate v-prefixed release tag
-        run: |
-          tag='${{ inputs.tag }}'
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release workflow requires a v-prefixed SemVer tag such as v2.2.0; received '$tag'" >&2
-            exit 1
-          fi
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install locked package manager
-        run: npm install --global pnpm@11.9.0
-
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-
-      - name: Prepare verified Cloudflare Tunnel binaries
-        if: matrix.kind == 'server'
-        run: |
-          mkdir -p vendor
-          curl -fL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz -C vendor
-          mv vendor/cloudflared vendor/cloudflared-darwin-x64
-          curl -fL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-arm64.tgz | tar -xz -C vendor
-          mv vendor/cloudflared vendor/cloudflared-darwin-arm64
-          chmod 755 vendor/cloudflared-darwin-x64 vendor/cloudflared-darwin-arm64
-          test "$(stat -f %z vendor/cloudflared-darwin-x64)" -gt 1000000
-          test "$(stat -f %z vendor/cloudflared-darwin-arm64)" -gt 1000000
-
-      - name: Build DMG and ZIP
-        run: |
-          npx electron-builder \
-            --config electron-builder-mac-${{ matrix.kind }}.json \
-            --mac \
-            --publish never
-
-      - name: Verify package names, size and privacy
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify source commit, tree, and native runner
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${{ matrix.kind }}" == "client" ]]; then
-            release_role="Client"
-          else
-            release_role="Server"
-          fi
-          old_ascii="tang""jingxuan"
-          old_name="唐""靖轩"
-          for arch in x64 arm64; do
-            dmg="dist/SyncWatch-${release_role}-macOS-v${VERSION}-${arch}.dmg"
-            zip="dist/SyncWatch-${release_role}-macOS-v${VERSION}-${arch}.zip"
-            test -s "$dmg"
-            test -s "$zip"
-            ! grep -aEqi "${old_ascii}|${old_name}" "$dmg"
-            ! grep -aEqi "${old_ascii}|${old_name}" "$zip"
-            shasum -a 256 "$dmg" "$zip"
-          done
-
-      - name: Upload packages to draft release
-        env:
-          GH_TOKEN: ${{ github.token }}
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$RELEASE_TREE"
+          machine="$(uname -m)"
+          if [[ "$RELEASE_ARCH" == "x64" ]]; then test "$machine" = "x86_64"; else test "$machine" = "arm64"; fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - name: Install locked package manager
+        run: npm install --global pnpm@11.9.0
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Prepare pinned Cloudflare Tunnel binaries
+        if: matrix.kind == 'server'
         shell: bash
         run: |
-          if [[ "${{ matrix.kind }}" == "client" ]]; then
-            release_role="Client"
-          else
-            release_role="Server"
+          set -euo pipefail
+          node scripts/release-third-party-assets.js \
+            --output vendor \
+            --only cloudflared-macos-x64,cloudflared-macos-arm64
+      - name: Verify source and desktop contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run test:privacy
+          node tests/desktop-release-contract.test.js
+          if [[ "$RELEASE_KIND" == "server" ]]; then
+            node tests/server-package-contract.test.js
+            node tests/cloudflared-bundle.test.js
           fi
+      - name: Build native macOS DMG and ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx electron-builder --config "electron-builder-mac-${RELEASE_KIND}.json" --mac --${RELEASE_ARCH} --publish never
+      - name: Inspect and launch every macOS base container
+        shell: bash
+        run: |
+          set -euo pipefail
 
-          gh release upload "${{ inputs.tag }}" \
-            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-x64.dmg" \
-            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-x64.zip" \
-            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-arm64.dmg" \
-            "dist/SyncWatch-${release_role}-macOS-v${VERSION}-arm64.zip" \
-            --clobber
+          assert_native_bundle() {
+            local app="$1" descriptor candidate found=0
+            local bundle_version executable_name executable
+            bundle_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
+            test "$bundle_version" = "$RELEASE_VERSION"
+            executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+            executable="$app/Contents/MacOS/$executable_name"
+            test -x "$executable"
+            while IFS= read -r -d '' candidate; do
+              descriptor="$(file "$candidate")"
+              [[ "$descriptor" == *"Mach-O"* ]] || continue
+              found=1
+              if [[ "$RELEASE_ARCH" == "x64" ]]; then
+                [[ "$descriptor" == *"x86_64"* && "$descriptor" != *"arm64"* ]]
+              else
+                [[ "$descriptor" == *"arm64"* && "$descriptor" != *"x86_64"* ]]
+              fi
+            done < <(find "$app/Contents/MacOS" "$app/Contents/Frameworks" -type f -print0)
+            test "$found" -eq 1
+            if [[ -e "$app/Contents/Resources/vendor/cloudflared-darwin-x64" ]]; then
+              file "$app/Contents/Resources/vendor/cloudflared-darwin-x64" | grep -q 'x86_64'
+              file "$app/Contents/Resources/vendor/cloudflared-darwin-arm64" | grep -q 'arm64'
+            fi
+            printf '%s\n' "$executable"
+          }
+
+          smoke_client() {
+            local executable="$1" profile log pid
+            profile="$(mktemp -d "$RUNNER_TEMP/syncwatch-client.XXXXXX")"
+            log="$profile/client.log"
+            "$executable" --user-data-dir="$profile/profile" >"$log" 2>&1 &
+            pid=$!
+            sleep 15
+            if ! kill -0 "$pid" 2>/dev/null; then cat "$log"; return 1; fi
+            kill "$pid"
+            wait "$pid" || true
+            rm -rf "$profile"
+          }
+
+          smoke_server() {
+            local executable="$1" profile log port pid response="" attempt
+            profile="$(mktemp -d "$RUNNER_TEMP/syncwatch-server.XXXXXX")"
+            log="$profile/server.log"
+            port="$(node -e "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close()})")"
+            PORT="$port" SYNCWATCH_DATA_DIR="$profile/data" SYNCWATCH_SMOKE_MODE=1 SYNCWATCH_SMOKE_EXIT_MS=120000 \
+              "$executable" --user-data-dir="$profile/profile" >"$log" 2>&1 &
+            pid=$!
+            for attempt in $(seq 1 180); do
+              if ! kill -0 "$pid" 2>/dev/null; then cat "$log"; return 1; fi
+              if response="$(curl -fsS "http://127.0.0.1:${port}/api/public-config" 2>/dev/null)"; then break; fi
+              sleep 0.5
+            done
+            test -n "$response"
+            CONFIG_JSON="$response" node -e 'const c=JSON.parse(process.env.CONFIG_JSON);if(c.version!==`v${process.env.RELEASE_VERSION}`)process.exit(1)'
+            kill "$pid"
+            wait "$pid" || true
+            rm -rf "$profile"
+          }
+
+          verify_container() {
+            local archive="$1" format="$2" root app executable
+            root="$(mktemp -d "$RUNNER_TEMP/syncwatch-container.XXXXXX")"
+            if [[ "$format" == "zip" ]]; then
+              ditto -x -k "$archive" "$root"
+            else
+              hdiutil attach "$archive" -nobrowse -readonly -mountpoint "$root" >/dev/null
+            fi
+            app="$(find "$root" -maxdepth 2 -type d -name '*.app' -print -quit)"
+            test -n "$app"
+            executable="$(assert_native_bundle "$app")"
+            if [[ "$RELEASE_KIND" == "client" ]]; then smoke_client "$executable"; else smoke_server "$executable"; fi
+            if [[ "$format" == "dmg" ]]; then hdiutil detach "$root" >/dev/null; fi
+            rm -rf "$root"
+          }
+
+          dmg="dist/SyncWatch-${RELEASE_ROLE}-macOS-v${RELEASE_VERSION}-${RELEASE_ARCH}.dmg"
+          zip="dist/SyncWatch-${RELEASE_ROLE}-macOS-v${RELEASE_VERSION}-${RELEASE_ARCH}.zip"
+          test -s "$dmg"
+          test -s "$zip"
+          old_ascii="tang""jingxuan"
+          old_name="唐""靖轩"
+          ! LC_ALL=C grep -aEqi "${old_ascii}|${old_name}" "$dmg"
+          ! LC_ALL=C grep -aEqi "${old_ascii}|${old_name}" "$zip"
+          verify_container "$zip" zip
+          verify_container "$dmg" dmg
+          rm -f dist/*.blockmap dist/latest*.yml
+          node scripts/release-candidate-gate.js \
+            --selection "$RELEASE_SELECTION" \
+            --version "$RELEASE_VERSION" \
+            --directory dist \
+            --evidence ".build/evidence/${RELEASE_SELECTION}.json" \
+            --source-commit "$RELEASE_COMMIT" \
+            --source-tree "$RELEASE_TREE" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+          npm run test:privacy:release
+      - name: Upload native macOS base artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-mac-base-${{ matrix.kind }}-${{ matrix.arch }}
+          path: |
+            dist/SyncWatch-${{ matrix.role }}-macOS-v${{ inputs.version }}-${{ matrix.arch }}.dmg
+            dist/SyncWatch-${{ matrix.role }}-macOS-v${{ inputs.version }}-${{ matrix.arch }}.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+      - name: Upload native macOS base evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-evidence-mac-base-${{ matrix.kind }}-${{ matrix.arch }}
+          path: .build/evidence/${{ matrix.selection }}.json
+          if-no-files-found: error
+          retention-days: 3
 
   full:
-    name: macOS Full Offline ${{ matrix.arch }}
-    needs: build
-    runs-on: macos-14
-    timeout-minutes: 120
+    name: Build macOS Full Offline ${{ matrix.arch }}
+    if: inputs.phase == 'full'
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
-        arch: [x64, arm64]
+        include:
+          - arch: x64
+            runner: macos-15-intel
+            selection: mac-full-x64
+          - arch: arm64
+            runner: macos-15
+            selection: mac-full-arm64
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      VERSION: "2.2.0"
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_COMMIT: ${{ inputs.commit_sha }}
+      RELEASE_TREE: ${{ inputs.source_tree }}
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_SELECTION: ${{ matrix.selection }}
     steps:
-      - name: Checkout release source
+      - name: Checkout immutable source commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
-
-      - name: Validate v-prefixed release tag
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify source commit, tree, and native runner
+        shell: bash
         run: |
-          tag='${{ inputs.tag }}'
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release workflow requires a v-prefixed SemVer tag such as v2.2.0; received '$tag'" >&2
-            exit 1
-          fi
-
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$RELEASE_TREE"
+          machine="$(uname -m)"
+          if [[ "$RELEASE_ARCH" == "x64" ]]; then test "$machine" = "x86_64"; else test "$machine" = "arm64"; fi
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.19.0
           cache: npm
-
       - name: Install locked package manager
         run: npm install --global pnpm@11.9.0
-
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-
-      - name: Download platform runtimes and offline downloads
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Prepare pinned Cloudflare Tunnel binaries
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p vendor .build/offline-bundle/{windows,android,mac}
-
-          curl -fL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz -C vendor
-          mv vendor/cloudflared vendor/cloudflared-darwin-x64
-          curl -fL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-arm64.tgz | tar -xz -C vendor
-          mv vendor/cloudflared vendor/cloudflared-darwin-arm64
-          chmod 755 vendor/cloudflared-darwin-x64 vendor/cloudflared-darwin-arm64
-
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe' --dir .build/offline-bundle/windows --clobber
-
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Android-v2.2.0-universal.apk' --dir .build/offline-bundle/android --clobber
-
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Server-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
-          gh release download "${{ inputs.tag }}" --pattern 'SyncWatch-Client-macOS-v2.2.0-*.zip' --dir .build/offline-bundle/mac --clobber
+          node scripts/release-third-party-assets.js \
+            --output vendor \
+            --only cloudflared-macos-x64,cloudflared-macos-arm64
+      - name: Download same-run Windows base artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-windows-base
+          path: .build/offline-bundle/windows
+      - name: Download same-run Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-android
+          path: .build/offline-bundle/android
+      - name: Download same-run macOS base artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.artifact_prefix }}-mac-base-*
+          path: .build/offline-bundle/mac
+          merge-multiple: true
+      - name: Verify Full Offline inputs and source contracts
+        shell: bash
+        run: |
+          set -euo pipefail
           node scripts/verify-full-offline-bundle.js
-
-      - name: Build Full Offline DMG and ZIP
-        shell: bash
-        run: |
-          npx electron-builder \
-            --config electron-builder-mac-full.json \
-            --mac \
-            --${{ matrix.arch }} \
-            --publish never
-
-      - name: Verify and collect Full Offline packages
+          npm run test:privacy
+          node tests/server-package-contract.test.js
+          node tests/desktop-release-contract.test.js
+          node tests/cloudflared-bundle.test.js
+      - name: Build native macOS Full Offline DMG and ZIP
         shell: bash
         run: |
           set -euo pipefail
+          npx electron-builder --config electron-builder-mac-full.json --mac --${RELEASE_ARCH} --publish never
+      - name: Inspect and launch every macOS Full Offline container
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          assert_native_bundle() {
+            local app="$1" descriptor candidate found=0
+            local bundle_version executable_name executable
+            bundle_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
+            test "$bundle_version" = "$RELEASE_VERSION"
+            executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+            executable="$app/Contents/MacOS/$executable_name"
+            test -x "$executable"
+            while IFS= read -r -d '' candidate; do
+              descriptor="$(file "$candidate")"
+              [[ "$descriptor" == *"Mach-O"* ]] || continue
+              found=1
+              if [[ "$RELEASE_ARCH" == "x64" ]]; then
+                [[ "$descriptor" == *"x86_64"* && "$descriptor" != *"arm64"* ]]
+              else
+                [[ "$descriptor" == *"arm64"* && "$descriptor" != *"x86_64"* ]]
+              fi
+            done < <(find "$app/Contents/MacOS" "$app/Contents/Frameworks" -type f -print0)
+            test "$found" -eq 1
+            file "$app/Contents/Resources/vendor/cloudflared-darwin-x64" | grep -q 'x86_64'
+            file "$app/Contents/Resources/vendor/cloudflared-darwin-arm64" | grep -q 'arm64'
+            printf '%s\n' "$executable"
+          }
+
+          smoke_full_server() {
+            local executable="$1" profile log port pid response="" attempt
+            profile="$(mktemp -d "$RUNNER_TEMP/syncwatch-full.XXXXXX")"
+            log="$profile/server.log"
+            port="$(node -e "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close()})")"
+            PORT="$port" SYNCWATCH_DATA_DIR="$profile/data" SYNCWATCH_SMOKE_MODE=1 SYNCWATCH_SMOKE_EXIT_MS=120000 \
+              "$executable" --user-data-dir="$profile/profile" >"$log" 2>&1 &
+            pid=$!
+            for attempt in $(seq 1 180); do
+              if ! kill -0 "$pid" 2>/dev/null; then cat "$log"; return 1; fi
+              if response="$(curl -fsS "http://127.0.0.1:${port}/api/public-config" 2>/dev/null)"; then break; fi
+              sleep 0.5
+            done
+            test -n "$response"
+            CONFIG_JSON="$response" node -e '
+              const c=JSON.parse(process.env.CONFIG_JSON);
+              const ok=c.version===`v${process.env.RELEASE_VERSION}`
+                && c.androidApkAvailable===true
+                && c.clientDownloadAvailable===true
+                && Array.isArray(c.macServerDownloads) && c.macServerDownloads.length===2
+                && Array.isArray(c.macClientDownloads) && c.macClientDownloads.length===2;
+              if(!ok)process.exit(1);
+            '
+            kill "$pid"
+            wait "$pid" || true
+            rm -rf "$profile"
+          }
+
+          verify_container() {
+            local archive="$1" format="$2" root app executable
+            root="$(mktemp -d "$RUNNER_TEMP/syncwatch-container.XXXXXX")"
+            if [[ "$format" == "zip" ]]; then
+              ditto -x -k "$archive" "$root"
+            else
+              hdiutil attach "$archive" -nobrowse -readonly -mountpoint "$root" >/dev/null
+            fi
+            app="$(find "$root" -maxdepth 2 -type d -name '*.app' -print -quit)"
+            test -n "$app"
+            executable="$(assert_native_bundle "$app")"
+            smoke_full_server "$executable"
+            if [[ "$format" == "dmg" ]]; then hdiutil detach "$root" >/dev/null; fi
+            rm -rf "$root"
+          }
+
+          dmg="dist/SyncWatch-Full-Offline-macOS-v${RELEASE_VERSION}-${RELEASE_ARCH}.dmg"
+          zip="dist/SyncWatch-Full-Offline-macOS-v${RELEASE_VERSION}-${RELEASE_ARCH}.zip"
+          test -s "$dmg"
+          test -s "$zip"
           old_ascii="tang""jingxuan"
           old_name="唐""靖轩"
-          for extension in dmg zip; do
-            source="dist/SyncWatch-Full-Offline-macOS-v${VERSION}-${{ matrix.arch }}.${extension}"
-            test -s "$source"
-            size="$(stat -f %z "$source")"
-            test "$size" -ge 1073741824
-            test "$size" -lt 2147483648
-            ! grep -aEqi "${old_ascii}|${old_name}" "$source"
-            shasum -a 256 "$source"
-          done
-
-      - name: Upload Full Offline packages
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          if [[ "${{ matrix.arch }}" == "x64" ]]; then
-            files=(
-              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-x64.dmg"
-              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-x64.zip"
-            )
-          else
-            files=(
-              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-arm64.dmg"
-              "dist/SyncWatch-Full-Offline-macOS-v${VERSION}-arm64.zip"
-            )
-          fi
-          gh release upload "${{ inputs.tag }}" "${files[@]}" --clobber
+          ! LC_ALL=C grep -aEqi "${old_ascii}|${old_name}" "$dmg"
+          ! LC_ALL=C grep -aEqi "${old_ascii}|${old_name}" "$zip"
+          verify_container "$zip" zip
+          verify_container "$dmg" dmg
+          rm -f dist/*.blockmap dist/latest*.yml
+          node scripts/release-candidate-gate.js \
+            --selection "$RELEASE_SELECTION" \
+            --version "$RELEASE_VERSION" \
+            --directory dist \
+            --evidence ".build/evidence/${RELEASE_SELECTION}.json" \
+            --source-commit "$RELEASE_COMMIT" \
+            --source-tree "$RELEASE_TREE" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+          npm run test:privacy:release
+      - name: Upload native macOS Full Offline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-mac-full-${{ matrix.arch }}
+          path: |
+            dist/SyncWatch-Full-Offline-macOS-v${{ inputs.version }}-${{ matrix.arch }}.dmg
+            dist/SyncWatch-Full-Offline-macOS-v${{ inputs.version }}-${{ matrix.arch }}.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+      - name: Upload native macOS Full Offline evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-evidence-mac-full-${{ matrix.arch }}
+          path: .build/evidence/${{ matrix.selection }}.json
+          if-no-files-found: error
+          retention-days: 3

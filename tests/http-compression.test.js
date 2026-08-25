@@ -9,6 +9,7 @@ const os = require('node:os');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const { startSyncWatchServer, _test } = require('../server');
+const packageVersion = require('../package.json').version;
 
 function request(baseUrl, pathname, headers = {}) {
   const target = new URL(pathname, baseUrl);
@@ -66,7 +67,7 @@ async function main() {
     const publicConfig = await request(baseUrl, '/api/public-config', { 'Accept-Encoding': 'gzip' });
     assert.equal(publicConfig.status, 200);
     assert.equal(publicConfig.headers['content-encoding'], 'gzip');
-    assert.equal(JSON.parse(decodedBody(publicConfig).toString('utf8')).version, 'v2.2.0');
+    assert.equal(JSON.parse(decodedBody(publicConfig).toString('utf8')).version, `v${packageVersion}`);
 
     const localPlaybackConfig = JSON.parse(decodedBody(publicConfig).toString('utf8'));
     assert.equal(localPlaybackConfig.defaultPlaybackQuality, 'original');
@@ -82,8 +83,8 @@ async function main() {
       Host: 'public.example.test', 'Accept-Encoding': 'gzip'
     });
     assert.equal(configuredTunnelConfig.status, 200);
-    assert.equal(JSON.parse(decodedBody(configuredTunnelConfig).toString('utf8')).defaultPlaybackQuality, 'smooth',
-      'an explicitly configured HTTP tunnel host must default to smooth playback without X-Forwarded headers');
+    assert.equal(JSON.parse(decodedBody(configuredTunnelConfig).toString('utf8')).defaultPlaybackQuality, 'original',
+      'an explicitly configured HTTP tunnel host must keep source-quality playback by default');
     const stillLocalConfig = await request(baseUrl, '/api/public-config', { 'Accept-Encoding': 'gzip' });
     assert.equal(JSON.parse(decodedBody(stillLocalConfig).toString('utf8')).defaultPlaybackQuality, 'original',
       'configuring a public URL must not change direct local playback defaults');

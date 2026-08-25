@@ -8,6 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { io } = require('socket.io-client');
 const { startSyncWatchServer } = require('../server');
+const packageVersion = require('../package.json').version;
 
 function ack(socket, event, payload = {}, timeout = 12000) {
   return new Promise((resolve, reject) => {
@@ -79,7 +80,7 @@ async function main() {
     });
     const baseUrl = `http://127.0.0.1:${server.port}`;
     const publicConfig = await (await fetch(`${baseUrl}/api/public-config`)).json();
-    assert.equal(publicConfig.version, 'v2.2.0');
+    assert.equal(publicConfig.version, `v${packageVersion}`);
     const defaultRoomId = publicConfig.roomId;
 
     const admin = await connect(baseUrl); sockets.push(admin);
@@ -201,8 +202,8 @@ async function main() {
     assert.match(sentMails.at(-1).html, /123456/);
 
     const serverInfo = await (await fetch(`${baseUrl}/api/server-info`, { headers: { Authorization: `Bearer ${adminLogin.token}` } })).json();
-    assert.equal(serverInfo.version, 'v2.2.0');
-    console.log('SyncWatch同步观影 v2.2.0 backend admin/mail/media regression passed');
+    assert.equal(serverInfo.version, `v${packageVersion}`);
+    console.log(`SyncWatch同步观影 v${packageVersion} backend admin/mail/media regression passed`);
   } finally {
     for (const socket of sockets) socket.close();
     await server?.close().catch(() => {});
@@ -211,6 +212,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('SyncWatch同步观影 v2.2.0 backend regression failed:', error);
+  console.error(`SyncWatch同步观影 v${packageVersion} backend regression failed:`, error);
   process.exitCode = 1;
 });

@@ -167,7 +167,7 @@ check('mail templates', 'the fifty presets carry materially distinct layout/styl
   assert.ok(colors.size >= 10, `expected at least 10 distinct preset colors, got ${colors.size}`);
 });
 
-check('previous-step navigation', 'every first-step “next” dialog exposes a back action', () => {
+check('previous-step navigation', 'multi-step dialogs expose a back action when a previous step exists', () => {
   const flows = [
     ['requestRegistrationAllowance', 'async function recoverPasswordByEmail'],
     ['recoverPasswordByEmail', 'async function login'],
@@ -179,7 +179,13 @@ check('previous-step navigation', 'every first-step “next” dialog exposes a 
   for (const [name, end] of flows) {
     const flow = section(app, `function ${name}`, end);
     const nextDialogs = flow.match(/showApp(?:Input|Select)\(\{[\s\S]*?confirmText:\s*['"]下一步['"][\s\S]*?\}\)/g) || [];
-    for (const dialog of nextDialogs) assert.match(dialog, /allowBack:\s*true/);
+    for (const dialog of nextDialogs) {
+      if (name === 'promptRequiredAccountPasswordChange') {
+        assert.match(dialog, /allowBack:\s*(?:true|!skipCurrentPasswordVerification)/);
+      } else {
+        assert.match(dialog, /allowBack:\s*true/);
+      }
+    }
   }
 });
 

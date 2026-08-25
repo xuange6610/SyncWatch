@@ -3,7 +3,7 @@ Set-Location -LiteralPath $PSScriptRoot
 Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 
 $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot 'package.json') | ConvertFrom-Json
-if ([string]$manifest.version -ne '2.2.0') { throw 'package.json version must be 2.2.0.' }
+if ([string]$manifest.version -ne '2.2.1') { throw 'package.json version must be 2.2.1.' }
 $expectedProductName = [string]$manifest.build.productName
 if ([string]::IsNullOrWhiteSpace($expectedProductName)) { throw 'package.json build.productName is required.' }
 
@@ -66,21 +66,21 @@ if ($LASTEXITCODE -ne 0) { throw 'Regression suite failed.' }
 Write-Host 'Building the signed Android APK into dist/...' -ForegroundColor Cyan
 & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'mobile\build-apk.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Android build failed.' }
-$android = Assert-Artifact 'SyncWatch-Android-v2.2.0-universal.apk' 50MB
+$android = Assert-Artifact 'SyncWatch-Android-v2.2.1-universal.apk' 50MB
 
 Write-Host 'Building Windows Standard and Experience packages into dist/...' -ForegroundColor Cyan
 Invoke-Builder
-$standard = Assert-Artifact 'SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe' 50MB
+$standard = Assert-Artifact 'SyncWatch-Standard-Server-Portable-v2.2.1-x64.exe' 50MB
 & $node 'tests\split-desktop-artifact-smoke.js' $standard
 if ($LASTEXITCODE -ne 0) { throw 'Standard server artifact smoke test failed.' }
 Invoke-Builder 'electron-builder-client.json'
-$client = Assert-Artifact 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe' 50MB
+$client = Assert-Artifact 'SyncWatch-Experience-Client-Portable-v2.2.1-x64.exe' 50MB
 
 $requiredMacZips = @(
-    'SyncWatch-Server-macOS-v2.2.0-x64.zip',
-    'SyncWatch-Server-macOS-v2.2.0-arm64.zip',
-    'SyncWatch-Client-macOS-v2.2.0-x64.zip',
-    'SyncWatch-Client-macOS-v2.2.0-arm64.zip'
+    'SyncWatch-Server-macOS-v2.2.1-x64.zip',
+    'SyncWatch-Server-macOS-v2.2.1-arm64.zip',
+    'SyncWatch-Client-macOS-v2.2.1-x64.zip',
+    'SyncWatch-Client-macOS-v2.2.1-arm64.zip'
 )
 $missingMacZips = @($requiredMacZips | Where-Object { -not (Test-Path -LiteralPath (Join-Path $distRoot $_) -PathType Leaf) })
 if ($missingMacZips.Count) {
@@ -92,8 +92,8 @@ try {
     foreach ($folder in @('windows', 'android', 'mac')) {
         New-Item -ItemType Directory -Path (Join-Path $offlineRoot $folder) -Force | Out-Null
     }
-    Copy-Item -LiteralPath $client -Destination (Join-Path $offlineRoot 'windows\SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe')
-    Copy-Item -LiteralPath $android -Destination (Join-Path $offlineRoot 'android\SyncWatch-Android-v2.2.0-universal.apk')
+    Copy-Item -LiteralPath $client -Destination (Join-Path $offlineRoot 'windows\SyncWatch-Experience-Client-Portable-v2.2.1-x64.exe')
+    Copy-Item -LiteralPath $android -Destination (Join-Path $offlineRoot 'android\SyncWatch-Android-v2.2.1-universal.apk')
     foreach ($name in $requiredMacZips) {
         Copy-Item -LiteralPath (Join-Path $distRoot $name) -Destination (Join-Path $offlineRoot "mac\$name")
     }
@@ -102,9 +102,9 @@ try {
 
     Write-Host 'Building Windows Full Offline packages into dist/...' -ForegroundColor Cyan
     Invoke-Builder 'electron-builder-windows-installer.json'
-    Assert-Artifact 'SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe' 1GB | Out-Null
+    Assert-Artifact 'SyncWatch-v2.2.1-Full-Offline-Installer-x64.exe' 1GB | Out-Null
     Invoke-Builder 'electron-builder-windows-full-portable.json'
-    Assert-Artifact 'SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe' 1GB | Out-Null
+    Assert-Artifact 'SyncWatch-v2.2.1-Full-Offline-Portable-x64.exe' 1GB | Out-Null
 } finally {
     Remove-BuildPath $offlineRoot
 }
@@ -112,4 +112,4 @@ try {
 Get-ChildItem -LiteralPath $distRoot -File | Sort-Object Name | ForEach-Object {
     Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName
 }
-Write-Host 'Windows and Android v2.2.0 build assets are ready in root dist/.' -ForegroundColor Green
+Write-Host 'Windows and Android v2.2.1 build assets are ready in root dist/.' -ForegroundColor Green

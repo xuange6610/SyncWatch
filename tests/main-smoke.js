@@ -3,6 +3,7 @@
 require('./epipe-guard');
 
 const assert = require('assert/strict');
+const APP_VERSION = require('../package.json').version;
 
 process.env.SYNCWATCH_SMOKE_MODE = '1';
 process.env.SYNCWATCH_SMOKE_EXIT_MS = '2200';
@@ -14,8 +15,8 @@ const dataDir = process.env.SYNCWATCH_DATA_DIR;
 
 const { _test: electronSettings } = require('../electron-pink');
 
-const driveDRoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: 'D:\\SyncWatch同步观影\\SyncWatch同步观影-v2.2.0.exe' });
-const driveERoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: 'E:\\SyncWatch同步观影\\SyncWatch同步观影-v2.2.0.exe' });
+const driveDRoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: `D:\\SyncWatch同步观影\\SyncWatch同步观影-v${APP_VERSION}.exe` });
+const driveERoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: `E:\\SyncWatch同步观影\\SyncWatch同步观影-v${APP_VERSION}.exe` });
 assert.equal(driveDRoot, path.resolve('D:\\SyncWatch同步观影'));
 assert.equal(driveERoot, path.resolve('E:\\SyncWatch同步观影'));
 assert.notEqual(driveDRoot, driveERoot);
@@ -24,22 +25,22 @@ assert.equal(electronSettings.resolveApplicationRoot({
   userDataPath: '/Users/example/Library/Application Support/SyncWatch同步观影-服务器'
 }), path.resolve('/Users/example/Library/Application Support/SyncWatch同步观影-服务器'));
 fs.mkdirSync(dataDir, { recursive: true });
-const packagedServerPath = path.join(dataDir, 'SyncWatch同步观影-v2.2.0.exe');
-const packagedClientPath = path.join(dataDir, 'SyncWatch同步观影-Client-v2.2.0.exe');
+const packagedServerPath = path.join(dataDir, `SyncWatch同步观影-v${APP_VERSION}.exe`);
+const packagedClientPath = path.join(dataDir, `SyncWatch同步观影-Client-v${APP_VERSION}.exe`);
 fs.writeFileSync(packagedClientPath, 'smoke-client');
 assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: packagedServerPath }), '');
 assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, resourcesPath: dataDir }), '');
-const embeddedClientPath = path.join(dataDir, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe');
+const embeddedClientPath = path.join(dataDir, 'offline-downloads', 'windows', `SyncWatch-Experience-Client-Portable-v${APP_VERSION}-x64.exe`);
 fs.mkdirSync(path.dirname(embeddedClientPath), { recursive: true });
 fs.writeFileSync(embeddedClientPath, 'embedded-client');
 assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, resourcesPath: dataDir }), embeddedClientPath);
-assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: path.join(dataDir, 'missing', 'SyncWatch同步观影-v2.2.0.exe') }), '');
+assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: path.join(dataDir, 'missing', `SyncWatch同步观影-v${APP_VERSION}.exe`) }), '');
 const macArtifacts = path.join(dataDir, 'mac');
 fs.mkdirSync(macArtifacts);
-const macServerArm64 = path.join(macArtifacts, 'SyncWatch同步观影-服务器-v2.2.0-arm64.dmg');
-const macServerX64Zip = path.join(macArtifacts, 'SyncWatch同步观影-服务器-v2.2.0-x64.zip');
-const macClientX64 = path.join(macArtifacts, 'SyncWatch同步观影-客户端-v2.2.0-x64.dmg');
-const macClientX64Zip = path.join(macArtifacts, 'SyncWatch同步观影-客户端-v2.2.0-x64.zip');
+const macServerArm64 = path.join(macArtifacts, `SyncWatch同步观影-服务器-v${APP_VERSION}-arm64.dmg`);
+const macServerX64Zip = path.join(macArtifacts, `SyncWatch同步观影-服务器-v${APP_VERSION}-x64.zip`);
+const macClientX64 = path.join(macArtifacts, `SyncWatch同步观影-客户端-v${APP_VERSION}-x64.dmg`);
+const macClientX64Zip = path.join(macArtifacts, `SyncWatch同步观影-客户端-v${APP_VERSION}-x64.zip`);
 fs.writeFileSync(macServerArm64, 'server-arm64');
 fs.writeFileSync(macServerX64Zip, 'server-x64-zip');
 fs.writeFileSync(macClientX64, 'client-x64');

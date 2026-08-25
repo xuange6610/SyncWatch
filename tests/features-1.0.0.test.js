@@ -152,7 +152,8 @@ async function main() {
 
     result = await admin.ack('account-action', {
       action: 'change-password',
-      currentPassword: 'admin888',
+      initialSetup: true,
+      currentPassword: '',
       newPassword: 'admin-feature-2026'
     });
     assert.equal(result.success, true, result.error);
@@ -499,4 +500,3 @@ main().catch((error) => {
   console.error('\nv2.2.0 功能检查失败:', error);
   process.exitCode = 1;
 });
-
