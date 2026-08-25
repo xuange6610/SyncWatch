@@ -12,6 +12,7 @@ const mainPreload = read('electron-main-preload.js');
 const clientPreload = read('electron-client-preload.js');
 const serverElectron = read('electron-pink.js');
 const clientElectron = read('electron-client.js');
+const audioSmoke = read('tests/audio-source-electron-smoke.js');
 
 assert.match(html, /id="refreshAudioSourcesBtn"/);
 assert.match(app, /refreshAudioSourcesBtn[^\n]*startAudioSourceBtn/);
@@ -27,6 +28,8 @@ assert.match(serverElectron, /Get-Process \| Where-Object/);
 assert.match(clientElectron, /Get-Process \| Where-Object/);
 assert.match(serverElectron, /kind: 'process'/);
 assert.match(clientElectron, /kind: 'process'/);
+assert.match(audioSmoke, /process\.platform\s*!==\s*['"]win32['"]/,
+  'desktop audio smoke must declare its Windows-only platform boundary');
 
 assert.match(app, /option\.value = `native:\$\{source\.id\}`/);
 assert.match(app, /const selectedNativeId = selectedPlatform\.startsWith\('native:'\)/);

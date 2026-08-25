@@ -132,6 +132,11 @@ assert.match(workflows.atomic, /unzip -t \.build\/github-source\.zip/);
 assert.match(workflows.atomic, /tar -tzf \.build\/github-source\.tar\.gz/);
 
 assert.match(workflows.windows, /split-desktop-artifact-smoke\.js/);
+assert.match(
+  workflows.windows,
+  /name:\s*Verify Windows desktop audio capture[\s\S]*?npm run test:audio-source:electron/,
+  'Windows release runner must execute the real desktop audio capture smoke'
+);
 assert.match(workflows.windows, /android_startup:/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
 assert.match(workflows.windows, /adb install --no-streaming/);

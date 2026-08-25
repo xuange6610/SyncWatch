@@ -229,6 +229,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
           New-Item -ItemType Directory -Force -Path .\vendor | Out-Null
           Copy-Item -LiteralPath .\.build\embedded-cloudflared\cloudflared-windows-x64.exe -Destination .\vendor\cloudflared.exe
+      - name: Verify Windows desktop audio capture
+        shell: pwsh
+        run: |
+          npm run test:audio-source:electron
+          if ($LASTEXITCODE -ne 0) { throw 'Windows desktop audio capture smoke failed.' }
       - name: Verify source and desktop contracts
         shell: pwsh
         run: |
