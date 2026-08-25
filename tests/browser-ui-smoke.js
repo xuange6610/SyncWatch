@@ -195,6 +195,7 @@ async function main() {
     const debugPort = await findAvailablePort();
     chrome = spawn(chromePath, [
       '--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
+      '--window-size=1365,860',
       '--remote-allow-origins=*', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profileDir}`, 'about:blank'
     ], { stdio: 'ignore', windowsHide: true });
     const targets = await waitFor(async () => {
