@@ -62,6 +62,7 @@
 - 发布门禁在 Ubuntu runner 上为 Electron 冒烟流程设置 `ELECTRON_DISABLE_SANDBOX=1`，仅绕过 `npm ci` 丢失 `chrome-sandbox` SUID 位造成的 CI 启动错误，不改变应用内 WebView 的生产沙箱配置。
 - Linux 无 GPU 的登录立方体 WebGL 冒烟测试改用 Chromium SwiftShader 软件渲染并显式忽略 GPU 黑名单，仍要求读取像素和旋转帧变化；这只影响 CI 测试进程，不改变桌面应用的 GPU/WebGL 默认策略。
 - 原子发布的 Ubuntu 源码门禁会先用固定版本和 SHA-256 校验下载 `cloudflared-windows-x64.exe` 到临时 `vendor/cloudflared.exe`，再运行完整测试，避免新 checkout 因忽略的本地运行工具缺失而中断。
+- Windows 桌面音频捕获 smoke 明确只在 Windows runner 执行并保留真实回环音频断言；Ubuntu/macOS 源码门禁会记录平台跳过，不把缺少 ALSA/系统回环设备误报为产品通过。
 - 只有根目录 `dist/` 恰好形成 26 个维护者资产与两个最终 Tag 源码归档、全部门禁通过后，才允许处理当前版本旧资产并一次性完整上传；不得发布残缺集合或用占位文件凑数。
 
 ## 当前验证状态

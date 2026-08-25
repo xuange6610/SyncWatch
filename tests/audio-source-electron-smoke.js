@@ -4,10 +4,10 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const { app, BrowserWindow, desktopCapturer, session } = require('electron');
 
-const captureScript = (sourceId, includeAudio = true) => `
+const captureScript = (sourceId) => `
   (async () => {
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: ${includeAudio ? "{ mandatory: { chromeMediaSource: 'desktop' } }" : 'false'},
+      audio: { mandatory: { chromeMediaSource: 'desktop' } },
       video: { mandatory: {
         chromeMediaSource: 'desktop',
         chromeMediaSourceId: ${JSON.stringify(sourceId)},
@@ -37,6 +37,10 @@ async function listen(server) {
 }
 
 async function run() {
+  if (process.platform !== 'win32') {
+    console.log(`audio capture smoke skipped on ${process.platform}; Windows loopback validation runs on the Windows release runner.`);
+    return;
+  }
   await app.whenReady();
   const sources = await desktopCapturer.getSources({
     types: ['window', 'screen'],
@@ -59,7 +63,6 @@ async function run() {
 
   const attempts = [qishui, screen].filter(Boolean).filter((source, index, items) => items.findIndex((item) => item.id === source.id) === index);
   let captured = null;
-  let videoOnlyCapture = null;
   let lastError = null;
   for (const source of attempts) {
     try {
@@ -68,33 +71,11 @@ async function run() {
         captured = { source, result };
         break;
       }
-      if (process.platform === 'linux' && result.videoTracks > 0) {
-        videoOnlyCapture = { source, result };
-      }
     } catch (error) { lastError = error; }
-  }
-
-  // GitHub's Ubuntu images expose screen capture but do not provide an ALSA
-  // loopback device. Keep validating the capturable video source there while
-  // leaving the audio-track assertion to hosts that actually expose one.
-  if (!captured && process.platform === 'linux' && attempts.length > 0) {
-    for (const source of attempts) {
-      try {
-        const result = await window.webContents.executeJavaScript(captureScript(source.id, false), true);
-        if (result.videoTracks > 0) {
-          videoOnlyCapture = { source, result };
-          break;
-        }
-      } catch (error) { lastError = error; }
-    }
   }
 
   window.destroy();
   await new Promise((resolve) => webServer.close(resolve));
-  if (!captured && process.platform === 'linux' && videoOnlyCapture) {
-    console.log(`audio capture smoke skipped: Linux host has no desktop loopback audio device; video capture passed for ${videoOnlyCapture.source.name}`);
-    return;
-  }
   assert.ok(captured, lastError?.message || 'Electron did not expose a Windows loopback audio track');
   assert.ok(captured.result.videoTracks > 0);
   console.log(`audio capture smoke passed: selected=${qishui?.name || 'not-running'}, captured=${captured.source.name}, audio=${captured.result.audioLabel || 'loopback'}`);
