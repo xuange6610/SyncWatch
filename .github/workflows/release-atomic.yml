@@ -99,6 +99,15 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Prepare pinned Cloudflare binary for source smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/release-third-party-assets.js \
+            --output .build/source-cloudflared \
+            --only cloudflared-windows-x64.exe
+          mkdir -p vendor
+          cp .build/source-cloudflared/cloudflared-windows-x64.exe vendor/cloudflared.exe
       - name: Run release-specific source gates
         shell: bash
         run: |
