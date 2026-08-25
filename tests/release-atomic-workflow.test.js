@@ -61,6 +61,11 @@ assert.match(
   /source_tests:[\s\S]*?ELECTRON_DISABLE_SANDBOX:\s*['"]?1['"]?/,
   'Ubuntu release source gates must configure Electron for runners without the chrome-sandbox SUID bit'
 );
+assert.match(
+  workflows.atomic,
+  /source_tests:[\s\S]*?release-third-party-assets\.js[\s\S]*?--only cloudflared-windows-x64\.exe[\s\S]*?vendor\/cloudflared\.exe/,
+  'Ubuntu source gates must stage the pinned cloudflared fixture before test:all'
+);
 assert.match(workflows.atomic, /source_tree="\$\(git rev-parse "\$\{RELEASE_TAG\}\^\{tree\}"\)"/);
 assert.match(
   workflows.atomic,
