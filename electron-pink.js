@@ -562,7 +562,9 @@ async function migrateLegacyData() {
   fs.rmSync(progressFile, { force: true });
 }
 
-function iconPath() { return path.join(__dirname, 'assets', process.platform === 'darwin' ? 'app-icon.png' : 'app-icon.ico'); }
+// Linux Electron cannot decode the Windows ICO tray asset; use the shared PNG
+// everywhere except Windows, where the ICO remains the native tray format.
+function iconPath() { return path.join(__dirname, 'assets', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png'); }
 
 function serverSettingsHtml() {
   const port = activeServerSettings?.port || DEFAULT_PORT;
@@ -2486,7 +2488,7 @@ process.on('unhandledRejection', (error) => {
 });
 
 module.exports = { _test: {
-  validPort, commandLineValue, normalizePublicUrl, normalizeAllowedHost, normalizeServerSettings, resolvedStartPort,
+  validPort, commandLineValue, iconPath, normalizePublicUrl, normalizeAllowedHost, normalizeServerSettings, resolvedStartPort,
   selectableNetworkAdapters, resolveLanAddress,
   resolveApplicationRoot, resolveClientDownloadPath, resolveMacDownloadPaths, tunnelCommandArgs, tunnelEnvironment,
   tunnelConnectionStrategies, classifyTunnelFailure, isTunnelFakeIp, tunnelRepairRecommendations,
