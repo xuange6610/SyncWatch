@@ -12,6 +12,7 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const { fetch: undiciFetch, EnvHttpProxyAgent } = require('undici');
 const { ensureCloudflaredBinary } = require('./cloudflared-installer');
 
 const DEFAULT_BYPASS_PROXY = true;
@@ -21,6 +22,8 @@ const VERIFY_TIMEOUT_MS = 8000;
 const CLOUDFLARE_EDGE_PORT = 7844;
 const MAX_EDGE_ADDRESSES = 4;
 const QUICK_ATTEMPT_COUNT = 4;
+const TUNNEL_HEALTH_PATH = '/api/tunnel-health';
+const MAX_TUNNEL_HEALTH_BYTES = 8 * 1024;
 
 function atomicWrite(filename, value) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -143,14 +146,17 @@ async function runPreflight(bypassProxy) {
 function connectionStrategies(options, preflight = {}) {
   const direct = options.bypassProxy !== false; const bind = preflight.physicalIpv4 || '';
   const strategies = [];
-  if (direct && bind && preflight.edgeAddresses?.length) strategies.push({ id: 'direct-http2-pinned-edge', protocol: 'http2', bindAddress: bind, edgeAddresses: preflight.edgeAddresses, bypassProxy: true });
-  if (direct && bind) strategies.push({ id: 'direct-http2-bound', protocol: 'http2', bindAddress: bind, edgeAddresses: [], bypassProxy: true });
+  const quickMode = options.mode === 'quick';
+  if (quickMode && direct && bind && preflight.edgeAddresses?.length) strategies.push({ id: 'direct-auto-pinned-edge', protocol: 'auto', bindAddress: bind, edgeAddresses: preflight.edgeAddresses, bypassProxy: true });
+  if (quickMode) strategies.push({ id: direct ? 'direct-auto' : 'system-auto', protocol: 'auto', bindAddress: '', edgeAddresses: [], bypassProxy: direct });
+  if (!quickMode && direct && bind && preflight.edgeAddresses?.length) strategies.push({ id: 'direct-http2-pinned-edge', protocol: 'http2', bindAddress: bind, edgeAddresses: preflight.edgeAddresses, bypassProxy: true });
+  if (!quickMode && direct && bind) strategies.push({ id: 'direct-http2-bound', protocol: 'http2', bindAddress: bind, edgeAddresses: [], bypassProxy: true });
   strategies.push({ id: direct ? 'direct-http2' : 'system-http2', protocol: 'http2', bindAddress: '', edgeAddresses: [], bypassProxy: direct });
-  strategies.push({ id: direct ? 'direct-auto' : 'system-auto', protocol: 'auto', bindAddress: '', edgeAddresses: [], bypassProxy: direct });
-  const limit = options.mode === 'quick' ? QUICK_ATTEMPT_COUNT : 2;
-  if (options.mode === 'quick' && direct) {
+  if (!quickMode) strategies.push({ id: direct ? 'direct-auto' : 'system-auto', protocol: 'auto', bindAddress: '', edgeAddresses: [], bypassProxy: direct });
+  const limit = quickMode ? QUICK_ATTEMPT_COUNT : 2;
+  if (quickMode && direct) {
     return [...strategies.filter((strategy) => strategy.id !== 'direct-http2-bound').slice(0, limit - 1), {
-      id: 'system-http2-fallback', protocol: 'http2', bindAddress: '', edgeAddresses: [], bypassProxy: false
+      id: 'system-auto-fallback', protocol: 'auto', bindAddress: '', edgeAddresses: [], bypassProxy: false
     }].slice(0, limit);
   }
   return strategies.slice(0, limit);
@@ -204,27 +210,137 @@ function connectorRegistered(value) {
   return /registered tunnel connection|connection [^\r\n]* registered/i.test(String(value || ''));
 }
 
-function requestPublicConfig(publicUrl, timeoutMs = VERIFY_TIMEOUT_MS, { localAddress = '' } = {}) {
+function tunnelProxyAgentOptions(environment = process.env) {
+  const httpProxy = String(environment?.http_proxy || environment?.HTTP_PROXY
+    || environment?.all_proxy || environment?.ALL_PROXY || '').trim();
+  const httpsProxy = String(environment?.https_proxy || environment?.HTTPS_PROXY
+    || environment?.all_proxy || environment?.ALL_PROXY || httpProxy).trim();
+  const noProxy = String(environment?.no_proxy ?? environment?.NO_PROXY ?? '');
+  return { httpProxy, httpsProxy, noProxy };
+}
+
+function tunnelProxyConfigured(environment = process.env) {
+  const options = tunnelProxyAgentOptions(environment);
+  return Boolean(options.httpProxy || options.httpsProxy);
+}
+
+function parseTunnelHealthResponse(statusCode, body = '') {
+  if (statusCode < 200 || statusCode >= 300) return { ok: false, statusCode };
+  try {
+    const result = JSON.parse(body);
+    return {
+      ok: result?.name === 'SyncWatch同步观影' && typeof result.version === 'string' && Boolean(result.version),
+      statusCode
+    };
+  } catch (_) { return { ok: false, statusCode }; }
+}
+
+async function readBoundedTunnelHealthBody(response) {
+  const reader = response.body?.getReader?.();
+  if (!reader) throw new Error('公网健康检查响应不可读');
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = Buffer.from(value);
+      total += chunk.length;
+      if (total > MAX_TUNNEL_HEALTH_BYTES) {
+        await reader.cancel().catch(() => {});
+        throw new Error('公网健康检查响应过大');
+      }
+      chunks.push(chunk);
+    }
+  } finally {
+    reader.releaseLock?.();
+  }
+  return Buffer.concat(chunks, total).toString('utf8');
+}
+
+async function requestTunnelHealthThroughProxy(parsed, timeoutMs, environment) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('timeout')), timeoutMs);
+  let dispatcher = null;
+  try {
+    dispatcher = new EnvHttpProxyAgent({
+      ...tunnelProxyAgentOptions(environment),
+      // Plain HTTP health URLs can use a conventional forward proxy request;
+      // HTTPS targets still use CONNECT inside undici.
+      proxyTunnel: false
+    });
+    const response = await undiciFetch(parsed, {
+      method: 'GET', dispatcher, signal: controller.signal,
+      headers: { Accept: 'application/json', 'User-Agent': 'SyncWatch-Standalone' }
+    });
+    const body = await readBoundedTunnelHealthBody(response);
+    return parseTunnelHealthResponse(response.status, body);
+  } catch (error) {
+    return { ok: false, error: error?.message || '公网健康检查失败' };
+  } finally {
+    clearTimeout(timer);
+    if (dispatcher) await dispatcher.destroy().catch(() => {});
+  }
+}
+
+function requestTunnelHealth(publicUrl, timeoutMs = VERIFY_TIMEOUT_MS, {
+  localAddress = '', useSystemProxy = false, environment = process.env
+} = {}) {
+  let parsed;
+  try { parsed = new URL(`${String(publicUrl).replace(/\/$/, '')}${TUNNEL_HEALTH_PATH}`); }
+  catch (_) { return Promise.resolve({ ok: false, error: '公网地址无效' }); }
+  if (useSystemProxy && !localAddress && tunnelProxyConfigured(environment)) {
+    return requestTunnelHealthThroughProxy(parsed, timeoutMs, environment);
+  }
   return new Promise((resolve) => {
-    let parsed;
-    try { parsed = new URL(`${String(publicUrl).replace(/\/$/, '')}/api/public-config`); } catch (_) { return resolve({ ok: false, error: '公网地址无效' }); }
+    let settled = false;
+    let responseStarted = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
     const client = parsed.protocol === 'https:' ? https : http;
     const request = client.get(parsed, {
       family: 4,
       ...(localAddress ? { localAddress } : {}),
       headers: { Accept: 'application/json', 'User-Agent': 'SyncWatch-Standalone' }
     }, (response) => {
+      responseStarted = true;
       let body = '';
+      let bodyBytes = 0;
       response.setEncoding('utf8');
-      response.on('data', (chunk) => { body += chunk; if (body.length > 100000) response.destroy(); });
-      response.on('end', () => resolve({ ok: response.statusCode >= 200 && response.statusCode < 300, statusCode: response.statusCode || 0 }));
+      response.on('data', (chunk) => {
+        bodyBytes += Buffer.byteLength(chunk);
+        if (bodyBytes > MAX_TUNNEL_HEALTH_BYTES) {
+          finish({ ok: false, statusCode: response.statusCode || 0, error: '公网健康检查响应过大' });
+          response.destroy(new Error('公网健康检查响应过大'));
+          return;
+        }
+        body += chunk;
+      });
+      response.once('end', () => finish(parseTunnelHealthResponse(response.statusCode || 0, body)));
+      response.once('aborted', () => finish({ ok: false, error: '公网健康检查响应中断' }));
+      response.once('error', (error) => finish({ ok: false, error: error?.message || '公网健康检查响应失败' }));
+      response.once('close', () => {
+        if (!response.complete) finish({ ok: false, error: '公网健康检查连接提前关闭' });
+      });
     });
-    request.setTimeout(timeoutMs, () => { request.destroy(new Error('timeout')); });
-    request.on('error', (error) => resolve({ ok: false, error: error.message }));
+    request.setTimeout(timeoutMs, () => {
+      finish({ ok: false, error: 'timeout' });
+      request.destroy(new Error('timeout'));
+    });
+    request.once('error', (error) => finish({ ok: false, error: error?.message || '公网健康检查请求失败' }));
+    request.once('close', () => {
+      if (!responseStarted) finish({ ok: false, error: '公网健康检查请求已关闭' });
+    });
   });
 }
 
-function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloudflared = ensureCloudflaredBinary } = {}) {
+function createStandaloneTunnelManager({
+  rootDir, dataDir, getPort, installCloudflared = ensureCloudflaredBinary,
+  spawnProcess = spawn, requestTunnelHealthImpl = requestTunnelHealth
+} = {}) {
   const resolvedRoot = path.resolve(rootDir || process.cwd());
   const resolvedData = path.resolve(dataDir || path.join(resolvedRoot, 'SyncWatch同步观影-Data'));
   const startupFile = path.join(resolvedData, 'tunnel-startup.json');
@@ -233,7 +349,7 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
   let desired = null;
   let restartTimer = null;
   let logs = '';
-  let current = { state: 'stopped', mode: '', publicUrl: '', verified: false, bypassProxy: DEFAULT_BYPASS_PROXY, error: '', latencyMs: null, reconnectCount: 0 };
+  let current = { state: 'stopped', mode: '', publicUrl: '', verified: false, bypassProxy: DEFAULT_BYPASS_PROXY, activeNetworkMode: '', error: '', latencyMs: null, reconnectCount: 0 };
 
   function loadSettings() {
     try {
@@ -274,7 +390,7 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
     if (mode === 'named' && !options.token) throw new Error('稳定隧道需要 Cloudflare Tunnel 令牌');
     const attemptBypassProxy = Object.prototype.hasOwnProperty.call(strategy, 'bypassProxy')
       ? strategy.bypassProxy !== false : options.bypassProxy !== false;
-    const protocol = strategy.protocol || 'http2';
+    const protocol = strategy.protocol || 'auto';
     const args = mode === 'quick'
       ? ['tunnel', '--url', `http://127.0.0.1:${port}`, '--protocol', protocol, '--edge-ip-version', '4']
       : ['tunnel', '--protocol', protocol, '--edge-ip-version', '4'];
@@ -286,7 +402,7 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
     if (mode === 'named') env.TUNNEL_TOKEN = options.token;
     const startedAt = Date.now();
     const localGeneration = generation;
-    const processHandle = spawn(binary, args, { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const processHandle = spawnProcess(binary, args, { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     child = processHandle;
     let candidateUrl = mode === 'named' ? options.publicUrl : '';
     let registered = false;
@@ -323,8 +439,10 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
     let latencyMs = null;
     for (let index = 0; index < 4; index += 1) {
       const probeStarted = Date.now();
-      const probe = await requestPublicConfig(ready.candidateUrl, VERIFY_TIMEOUT_MS, {
-        localAddress: attemptBypassProxy ? strategy.bindAddress || '' : ''
+      const probe = await requestTunnelHealthImpl(ready.candidateUrl, VERIFY_TIMEOUT_MS, {
+        localAddress: attemptBypassProxy ? strategy.bindAddress || '' : '',
+        useSystemProxy: !attemptBypassProxy,
+        environment: env
       });
       if (probe.ok) { verified = true; latencyMs = Date.now() - probeStarted; break; }
       await new Promise((resolve) => setTimeout(resolve, 500 * (index + 1)));
@@ -333,7 +451,10 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
       try { processHandle.kill(); } catch (_) {}
       return { success: false, error: '公网地址已生成，但 Cloudflare 连接器尚未验证成功', process: processHandle, startedAt, output };
     }
-    return { success: true, publicUrl: ready.candidateUrl, process: processHandle, startedAt, latencyMs, output, strategy };
+    return {
+      success: true, publicUrl: ready.candidateUrl, process: processHandle, startedAt, latencyMs, output, strategy,
+      bypassProxy: attemptBypassProxy, activeNetworkMode: attemptBypassProxy ? 'direct' : 'system'
+    };
   }
 
   async function start(input = {}) {
@@ -366,11 +487,23 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
       if (startGeneration !== generation) throw new Error('公网隧道启动已取消');
       let result;
       const strategy = strategies[attempt] || {};
-      current = { ...current, state: attempt === 0 ? 'starting' : 'reconnecting', attempt: attempt + 1, maxAttempts: Math.min(MAX_ATTEMPTS, strategies.length), strategy: strategy.id, strategyLabel: strategy.label || strategy.id, error: attempt === 0 ? '正在启动公网连接器…' : '正在切换备用连接方式…' };
+      const attemptBypassProxy = Object.prototype.hasOwnProperty.call(strategy, 'bypassProxy')
+        ? strategy.bypassProxy !== false : options.bypassProxy !== false;
+      current = {
+        ...current, state: attempt === 0 ? 'starting' : 'reconnecting', attempt: attempt + 1, maxAttempts: Math.min(MAX_ATTEMPTS, strategies.length), strategy: strategy.id,
+        strategyLabel: strategy.label || strategy.id, bypassProxy: attemptBypassProxy,
+        activeNetworkMode: attemptBypassProxy ? 'direct' : 'system',
+        error: attempt === 0 ? '正在启动公网连接器…' : '正在切换备用连接方式…'
+      };
       try { result = await launch(options, attempt, strategy); }
       catch (error) { result = { success: false, error: error.message || '公网隧道启动失败' }; }
       if (result.success) {
-        current = { ...current, state: 'running', mode: options.mode, publicUrl: result.publicUrl, verified: true, bypassProxy: options.bypassProxy, latencyMs: result.latencyMs, error: '', startedAt: new Date().toISOString(), strategy: strategy.id, strategyLabel: strategy.label || strategy.id, diagnostics: preflight };
+        current = {
+          ...current, state: 'running', mode: options.mode, publicUrl: result.publicUrl, verified: true,
+          bypassProxy: result.bypassProxy, activeNetworkMode: result.activeNetworkMode,
+          latencyMs: result.latencyMs, error: '', startedAt: new Date().toISOString(),
+          strategy: strategy.id, strategyLabel: strategy.label || strategy.id, diagnostics: preflight
+        };
         child = result.process;
         result.process.once('exit', (code, signal) => {
           if (child !== result.process || startGeneration !== generation) return;
@@ -459,4 +592,8 @@ function createStandaloneTunnelManager({ rootDir, dataDir, getPort, installCloud
   };
 }
 
-module.exports = { createStandaloneTunnelManager, extractPublicUrl, connectorRegistered, resolveBinary, sanitizeEnvironment, requestPublicConfig, connectionStrategies };
+module.exports = {
+  createStandaloneTunnelManager, extractPublicUrl, connectorRegistered, resolveBinary, sanitizeEnvironment,
+  requestTunnelHealth, requestPublicConfig: requestTunnelHealth, connectionStrategies,
+  parseTunnelHealthResponse, TUNNEL_HEALTH_PATH
+};

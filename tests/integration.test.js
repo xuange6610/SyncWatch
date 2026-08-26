@@ -274,6 +274,15 @@ async function main() {
     assert.equal(config.payload.downloadButtonsVisible, true);
     assert.equal(config.payload.maxUploadBytes, 10 * 1024 * 1024 * 1024); assert.equal(config.payload.uploadTimeLimitSeconds, 0);
     assert.equal(config.payload.defaultPlaybackQuality, 'original');
+    const tunnelHealthResponse = await fetch(`${baseUrl}/api/tunnel-health`);
+    const tunnelHealthBody = await tunnelHealthResponse.text();
+    assert.equal(tunnelHealthResponse.status, 200);
+    assert.match(tunnelHealthResponse.headers.get('cache-control') || '', /no-store/);
+    assert.deepEqual(JSON.parse(tunnelHealthBody), {
+      status: 'ok', name: 'SyncWatch同步观影', version: `v${require('../package.json').version}`
+    });
+    assert.ok(Buffer.byteLength(tunnelHealthBody) < 256,
+      'Tunnel 健康探测必须保持固定小响应，不能随管理员自定义文案膨胀');
     const publicProxyConfig = await json(await fetch(`${baseUrl}/api/public-config`, {
       headers: { 'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'stable-address.trycloudflare.com' }
     }));

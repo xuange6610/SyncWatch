@@ -60,13 +60,12 @@
     };
   }
 
-  function roomStatus({ authenticated = false, socketConnected = false, socketAuthenticated = false, localConnectionState = 'online', members = [] } = {}) {
+  function roomStatus({ authenticated = false, socketConnected = false, socketAuthenticated = false, localConnectionState = 'online' } = {}) {
     if (authenticated && (!socketConnected || !socketAuthenticated)) {
       return { state: 'disconnected', label: '连接中断', healthy: false };
     }
-    if (localConnectionState === 'unstable'
-      || Array.isArray(members) && members.some((member) => member?.connectionState === 'unstable')) {
-      return { state: 'unstable', label: '网络波动', healthy: false };
+    if (localConnectionState === 'unstable') {
+      return { state: 'unstable', label: '本机网络波动', healthy: false };
     }
     return { state: 'healthy', label: '同步正常', healthy: true };
   }

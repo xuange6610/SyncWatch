@@ -16,7 +16,7 @@
 
 ## 连接失败
 
-新版依次尝试 DoH Edge 直连、HTTP/2 自动出口和系统网络回退。系统网络回退会恢复代理环境并取消物理网卡绑定，用于处理 `api.trycloudflare.com` 只有经过系统代理才能访问的网络。
+新版默认使用 `--protocol auto`：cloudflared 会优先协商 QUIC，失败或被拦截时自动回退 HTTP/2。桌面端按预检结果尝试物理 IPv4/DoH Edge 直连，必要时切换到继承系统代理的自动协议；每个候选连接器都要通过固定小响应 `/api/tunnel-health` 验证后才发布地址。应用配置仍可用 `/api/public-config` 检查。只有排查 QUIC/UDP 被拦截时，才临时使用 `--protocol http2` 做对照测试。
 
 允许 cloudflared 出站访问 TCP 443、TCP 7844 和 UDP 7844；VPN/TUN 或 Fake-IP DNS 可能拦截连接，建议对 cloudflared 和 Cloudflare 域名设置直连。必须经过代理时取消“绕过系统代理”，再运行“网络诊断与修复”。完整错误、平台和时间应从日志中心导出并脱敏。
 

@@ -408,11 +408,13 @@ function clampMediaRangeEnd(start, end, total, openEnded) {
 // drags the seek bar. Through a reverse proxy, sending the remainder of a
 // multi-gigabyte file keeps an abandoned request in flight and can starve the
 // Socket.IO control channel. Large files are therefore served in bounded
-// chunks; the browser will request the next chunk when it needs it. Small
+// chunks; the browser will request the next chunk when it needs it. Eight MiB
+// keeps high-latency original-quality playback fed without restoring an
+// unbounded multi-gigabyte response. Small
 // files retain the traditional full open-ended response for third-party port
 // forwarding compatibility.
 const OPEN_ENDED_MEDIA_RANGE_CHUNK_THRESHOLD_BYTES = 32 * 1024 * 1024;
-const MAX_OPEN_ENDED_MEDIA_RANGE_BYTES = 1024 * 1024;
+const MAX_OPEN_ENDED_MEDIA_RANGE_BYTES = 8 * 1024 * 1024;
 
 const COMPRESSION_EXCLUDED_PATH_PREFIXES = Object.freeze([
   '/media/',
@@ -6058,6 +6060,11 @@ async function startSyncWatchServer(options = {}) {
     } catch (error) {
       return res.status(502).json({ success: false, error: error?.name === 'AbortError' ? '连接 GitHub 超时' : '无法连接 GitHub' });
     } finally { clearTimeout(timeout); }
+  });
+
+  app.get('/api/tunnel-health', (_req, res) => {
+    res.set('Cache-Control', 'no-store, max-age=0');
+    return res.json({ status: 'ok', name: 'SyncWatch同步观影', version: APP_VERSION });
   });
 
   app.get('/api/public-config', async (req, res) => {

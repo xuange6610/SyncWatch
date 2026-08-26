@@ -848,6 +848,9 @@ function tunnelSystemProxyConfigured(environment = process.env) {
     .some((key) => Boolean(String(environment?.[key] || '').trim()));
 }
 
+const TUNNEL_HEALTH_PATH = '/api/tunnel-health';
+const MAX_TUNNEL_HEALTH_BYTES = 8 * 1024;
+
 function tunnelProbeTransport(localAddress = '', environment = process.env) {
   if (String(localAddress || '').trim()) return 'bound-native-https';
   return tunnelSystemProxyConfigured(environment) ? 'environment-proxy' : 'electron-system-network';
@@ -867,10 +870,10 @@ function parseTunnelProbeResponse(statusCode, body = '') {
   } catch (_) { return { ok: false, statusCode }; }
 }
 
-async function probeHttpsThroughSystemNetwork(url) {
+async function probeHttpsThroughSystemNetwork(url, environment = process.env) {
   const startedAt = Date.now();
-  const useEnvironmentProxy = tunnelSystemProxyConfigured();
-  const dispatcher = useEnvironmentProxy ? new EnvHttpProxyAgent() : null;
+  const useEnvironmentProxy = tunnelSystemProxyConfigured(environment);
+  let dispatcher = null;
   try {
     // Match cloudflared's system-network fallback: explicit proxy environment
     // variables take precedence, otherwise use Electron's OS proxy/PAC/TUN
@@ -879,15 +882,44 @@ async function probeHttpsThroughSystemNetwork(url) {
       method: 'GET', signal: AbortSignal.timeout(8000),
       headers: { 'User-Agent': `SyncWatch/${APP_VERSION}`, Accept: 'application/json,text/html' }
     };
+    if (useEnvironmentProxy) {
+      const httpProxy = environment.http_proxy || environment.HTTP_PROXY
+        || environment.all_proxy || environment.ALL_PROXY;
+      dispatcher = new EnvHttpProxyAgent({
+        httpProxy,
+        httpsProxy: environment.https_proxy || environment.HTTPS_PROXY || httpProxy,
+        noProxy: environment.no_proxy ?? environment.NO_PROXY ?? '',
+        proxyTunnel: false
+      });
+    }
     const response = useEnvironmentProxy
       ? await undiciFetch(url, { ...request, dispatcher })
       : await net.fetch(url, request);
-    const body = (await response.text()).slice(0, 64 * 1024);
+    const reader = response.body?.getReader?.();
+    if (!reader) throw new Error('公网健康检查响应不可读');
+    const chunks = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = Buffer.from(value);
+        total += chunk.length;
+        if (total > MAX_TUNNEL_HEALTH_BYTES) {
+          await reader.cancel().catch(() => {});
+          throw new Error('公网健康检查响应过大');
+        }
+        chunks.push(chunk);
+      }
+    } finally {
+      reader.releaseLock?.();
+    }
+    const body = Buffer.concat(chunks, total).toString('utf8');
     return { ...parseTunnelProbeResponse(response.status, body), latencyMs: Math.max(0, Date.now() - startedAt) };
   } catch (_) {
     return { ok: false, latencyMs: Math.max(0, Date.now() - startedAt) };
   } finally {
-    if (dispatcher) await dispatcher.close().catch(() => {});
+    if (dispatcher) await dispatcher.destroy().catch(() => {});
   }
 }
 
@@ -897,25 +929,35 @@ function probeHttpsDetailed(url, { localAddress = '' } = {}) {
   }
   return new Promise((resolve) => {
     let settled = false;
+    let responseStarted = false;
     const startedAt = Date.now();
     const finish = (value) => { if (!settled) { settled = true; resolve({ ...value, latencyMs: Math.max(0, Date.now() - startedAt) }); } };
     const request = https.get(url, {
       family: 4, ...(localAddress ? { localAddress } : {}),
       headers: { 'User-Agent': `SyncWatch/${APP_VERSION}`, Accept: 'application/json,text/html' }
     }, (response) => {
+      responseStarted = true;
       let body = '';
+      let bodyBytes = 0;
       response.on('data', (chunk) => {
-        if (body.length <= 64 * 1024) body += chunk.toString('utf8');
-        if (body.length > 64 * 1024) response.destroy();
+        bodyBytes += chunk.length;
+        if (bodyBytes > MAX_TUNNEL_HEALTH_BYTES) {
+          finish({ ok: false, statusCode: response.statusCode || 0 });
+          response.destroy(new Error('公网健康检查响应过大'));
+          return;
+        }
+        body += chunk.toString('utf8');
       });
       response.on('end', () => {
         finish(parseTunnelProbeResponse(response.statusCode, body));
       });
       response.on('aborted', () => finish({ ok: false }));
       response.on('error', () => finish({ ok: false }));
+      response.on('close', () => { if (!response.complete) finish({ ok: false }); });
     });
     request.setTimeout(8000, () => { request.destroy(); finish({ ok: false }); });
     request.on('error', () => finish({ ok: false }));
+    request.on('close', () => { if (!responseStarted) finish({ ok: false }); });
   });
 }
 
@@ -925,7 +967,7 @@ async function waitForPublicUrl(url, timeoutMs = 60000, { localAddress = '' } = 
   const started = Date.now();
   let lastProbe = { ok: false, latencyMs: 0 };
   while (Date.now() - started < timeoutMs) {
-    const probe = await probeHttpsDetailed(`${url}/api/public-config`, { localAddress });
+    const probe = await probeHttpsDetailed(`${url}${TUNNEL_HEALTH_PATH}`, { localAddress });
     if (probe.ok) return probe;
     lastProbe = probe;
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1101,7 +1143,7 @@ async function resolveCloudflareEdgeAddressesViaDoh({ query = queryDnsOverHttps 
 function tunnelCommandArgs(mode, port, {
   bypassProxy = false, bindAddress = '', protocol = '', edgeIpVersion = '4', retries = 12, edgeAddresses = []
 } = {}) {
-  const selectedProtocol = protocol || (mode === 'quick' ? 'http2' : 'auto');
+  const selectedProtocol = protocol || 'auto';
   const transport = ['--protocol', selectedProtocol, '--edge-ip-version', edgeIpVersion];
   const binding = bypassProxy && bindAddress ? ['--edge-bind-address', bindAddress] : [];
   const pinnedEdges = bypassProxy
@@ -1127,14 +1169,29 @@ function tunnelConnectionStrategies(mode, {
 } = {}) {
   const strategies = [];
   const pinnedEdges = normalizeTunnelEdgeAddresses(edgeAddresses);
-  if (bypassProxy && bindAddress && pinnedEdges.length) {
+  const quickMode = mode === 'quick';
+  if (quickMode && bypassProxy && bindAddress && pinnedEdges.length) {
     strategies.push({
+      id: 'direct-auto-pinned-edge',
+      label: `QUIC/HTTP/2 自动降级直连（DoH Edge ${pinnedEdges.length} 个）`,
+      protocol: 'auto', edgeIpVersion: '4', bindAddress, edgeAddresses: pinnedEdges, bypassProxy: true
+    });
+  }
+  if (quickMode) {
+    strategies.push({
+      id: bypassProxy ? 'direct-auto' : 'system-auto',
+      label: bypassProxy ? 'QUIC/HTTP/2 自动降级直连' : 'QUIC/HTTP/2 自动降级（系统网络）',
+      protocol: 'auto', edgeIpVersion: '4', bindAddress: '', bypassProxy: Boolean(bypassProxy)
+    });
+  }
+  if (bypassProxy && bindAddress && pinnedEdges.length) {
+    if (!quickMode) strategies.push({
       id: 'direct-http2-pinned-edge',
       label: `HTTP/2 IPv4 直连（DoH Edge ${pinnedEdges.length} 个）`,
       protocol: 'http2', edgeIpVersion: '4', bindAddress, edgeAddresses: pinnedEdges, bypassProxy: true
     });
   }
-  if (bypassProxy && bindAddress) {
+  if (!quickMode && bypassProxy && bindAddress) {
     strategies.push({ id: 'direct-http2-bound', label: `HTTP/2 IPv4 直连（${bindAddress}）`, protocol: 'http2', edgeIpVersion: '4', bindAddress, bypassProxy: true });
   }
   strategies.push({
@@ -1142,23 +1199,23 @@ function tunnelConnectionStrategies(mode, {
     label: bypassProxy ? 'HTTP/2 IPv4 直连（自动出口）' : 'HTTP/2 IPv4（系统网络）',
     protocol: 'http2', edgeIpVersion: '4', bindAddress: '', bypassProxy: Boolean(bypassProxy)
   });
-  strategies.push({
+  if (!quickMode) strategies.push({
     id: bypassProxy ? 'direct-auto' : 'system-auto',
     label: bypassProxy ? 'QUIC/HTTP/2 自动降级直连' : 'QUIC/HTTP/2 自动降级（系统网络）',
     protocol: 'auto', edgeIpVersion: '4', bindAddress: '', bypassProxy: Boolean(bypassProxy)
   });
-  if (mode === 'quick' && strategies.length < QUICK_TUNNEL_MAX_ATTEMPTS) {
+  if (quickMode && strategies.length < QUICK_TUNNEL_MAX_ATTEMPTS) {
     strategies.push({
       id: bypassProxy ? 'direct-http2-retry' : 'system-http2-retry',
       label: bypassProxy ? 'HTTP/2 IPv4 直连（DNS 刷新后重试）' : 'HTTP/2 IPv4（最终重试）',
       protocol: 'http2', edgeIpVersion: '4', bindAddress: '', retry: true, bypassProxy: Boolean(bypassProxy)
     });
   }
-  const limit = mode === 'quick' ? QUICK_TUNNEL_MAX_ATTEMPTS : 2;
-  if (mode === 'quick' && bypassProxy) {
+  const limit = quickMode ? QUICK_TUNNEL_MAX_ATTEMPTS : 2;
+  if (quickMode && bypassProxy) {
     return [...strategies.filter((strategy) => strategy.id !== 'direct-http2-bound').slice(0, limit - 1), {
-      id: 'system-http2-fallback', label: 'HTTP/2 IPv4（系统网络最终回退）',
-      protocol: 'http2', edgeIpVersion: '4', bindAddress: '', edgeAddresses: [], bypassProxy: false, retry: true
+      id: 'system-auto-fallback', label: 'QUIC/HTTP/2 自动降级（系统网络最终回退）',
+      protocol: 'auto', edgeIpVersion: '4', bindAddress: '', edgeAddresses: [], bypassProxy: false, retry: true
     }].slice(0, limit);
   }
   return strategies.slice(0, limit);
@@ -1364,7 +1421,7 @@ function applyTunnelHealthProbe(current, probe, healthFailures = 0, {
       error: explicitCloudflareFailure
         ? `Cloudflare 返回 ${probe?.cloudflareErrorCode === 1033 ? '1033' : 'HTTP 530'}：公网地址已生成，但连接器尚未在边缘网络注册；不会发布该地址，请等待自动恢复或运行网络诊断`
         : current.state === 'verifying'
-        ? '公网地址已生成且连接器已注册，但 /api/public-config 尚未验证成功；验证完成前不会发布该地址'
+        ? `公网地址已生成且连接器已注册，但 ${TUNNEL_HEALTH_PATH} 尚未验证成功；验证完成前不会发布该地址`
         : nextFailures >= 3
         ? '公网探测波动：连续超时，但隧道进程仍在运行；已保持原地址并等待 cloudflared 自动恢复'
         : '公网探测波动：暂时超时，隧道进程仍在运行；已保持原地址继续服务',
@@ -1969,7 +2026,7 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
       current = {
         ...current, state: verified ? 'running' : 'verifying', publicUrl: verified ? establishedUrl : '', verified, health: verified ? 'healthy' : 'verifying',
         latencyMs: verified ? Number(verifiedResult.latencyMs) || null : null,
-        error: verified ? '' : `公网地址已创建但尚未通过 /api/public-config 验证（${verifiedResult?.statusCode ? `HTTP ${verifiedResult.statusCode}` : '网络超时'}），验证成功前不会发布地址。`,
+        error: verified ? '' : `公网地址已创建但尚未通过 ${TUNNEL_HEALTH_PATH} 验证（${verifiedResult?.statusCode ? `HTTP ${verifiedResult.statusCode}` : '网络超时'}），验证成功前不会发布地址。`,
         lastCheckedAt: Date.now(), verificationStartedAt: verified ? 0 : Date.now(), reconnectCount: recoveryCount, nextRetryAt: null,
         attempts: [...attemptHistory], lastExit, lastLogTail
       };
@@ -2013,7 +2070,7 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
       ...preflight, ...(preflight.checks || {})
     };
     const publicProbeUrl = current.publicUrl || pendingPublicUrl;
-    const publicProbe = publicProbeUrl ? await probeHttpsDetailed(`${publicProbeUrl}/api/public-config`, {
+    const publicProbe = publicProbeUrl ? await probeHttpsDetailed(`${publicProbeUrl}${TUNNEL_HEALTH_PATH}`, {
       localAddress: bypassProxy ? physicalIpv4 : ''
     }) : { ok: false, latencyMs: null, skipped: true };
     const failureCode = current.failureCode || lastExit?.failureCode || preflight.failureCode || publicProbe.failureCode || '';
@@ -2082,7 +2139,7 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
         const probeOperationId = operationId;
         const probeProcess = child;
         current = { ...current, lastCheckedAt: now };
-        healthProbePromise = probeHttpsDetailed(`${publicUrl}/api/public-config`, {
+        healthProbePromise = probeHttpsDetailed(`${publicUrl}${TUNNEL_HEALTH_PATH}`, {
           localAddress: current.bypassProxy !== false ? (current.bindAddress || preferredPhysicalIpv4()) : ''
         }).then((probe) => {
           if (operationId !== probeOperationId || child !== probeProcess || (current.publicUrl !== publicUrl && pendingPublicUrl !== publicUrl)) return;
@@ -2421,6 +2478,7 @@ module.exports = { _test: {
   preferredPhysicalIpv4, tunnelRestartDelayMs, isPublicIpv4Address,
   normalizeTunnelEdgeAddresses, cloudflareEdgeTargetsFromSrv, publicIpv4AddressesFromDnsAnswer,
   queryDnsOverHttps, resolveCloudflareEdgeAddressesViaDoh, tunnelProbeLocalAddress, tunnelSystemProxyConfigured,
-  tunnelProbeTransport, parseTunnelProbeResponse, CLOUDFLARE_EDGE_PORT,
+  tunnelProbeTransport, parseTunnelProbeResponse, probeHttpsThroughSystemNetwork,
+  TUNNEL_HEALTH_PATH, CLOUDFLARE_EDGE_PORT,
   HELP_LINKS, HELP_LINK_ALLOWLIST, openHelpLink
 } };
