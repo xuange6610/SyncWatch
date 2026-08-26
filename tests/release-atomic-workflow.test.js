@@ -168,7 +168,11 @@ assert.match(workflows.windows, /actions:\s*read/);
 assert.match(workflows.windows, /github-token:\s*\$\{\{ github\.token \}\}/);
 assert.match(workflows.windows, /run-id:\s*\$\{\{ inputs\.node_mobile_runtime_run_id \}\}/);
 assert.match(workflows.windows, /name:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);
-assert.match(workflows.windows, /sourceRevision.*ff4e063f1f1911047c067335ad0a3d81336236ca/);
+assert.match(workflows.windows, /EXPECTED_SOURCE_REVISION:\s*ff4e063f1f1911047c067335ad0a3d81336236ca/);
+assert.match(workflows.windows, /jq -e[\s\S]*?sourceRevision == \$revision[\s\S]*?pageSize == 16384/,
+  'reused Node.js Mobile provenance must be parsed and checked by exact typed fields');
+assert.doesNotMatch(workflows.windows, /tr -d ['"]\\r\\n['"]/,
+  'runtime provenance must not depend on byte-for-byte JSON line formatting');
 for (const digest of [
   '5afcd3be4891f2fcf434f5218ce5faad08380789b6b080d30ea5d5867b1fc4f4',
   'd0c41551f6cfbb0efd5a6c94ed7c3efc0e74594fe60095147c4c20a6e81a1d58',
