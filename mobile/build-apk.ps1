@@ -257,7 +257,9 @@ function Get-ExpectedMobileServerSha256([string]$repositoryRoot) {
     $sourceText = [System.IO.File]::ReadAllText($serverSource, [Text.Encoding]::UTF8)
     $gradlePath = Join-Path $repositoryRoot 'mobile\app\build.gradle'
     $gradleText = [System.IO.File]::ReadAllText($gradlePath, [Text.Encoding]::UTF8)
-    $compatibilityMatch = [regex]::Match($gradleText, "(?m)^\s*def mobileValidationLine = '([^'\r\n]+)'\s*$")
+    # Keep the pattern single-quoted so Windows PowerShell 5.1 does not
+    # mis-tokenize the character class when the script is checked out as UTF-8.
+    $compatibilityMatch = [regex]::Match($gradleText, '(?m)^\s*def mobileValidationLine = ''([^''\r\n]+)''\s*$')
     if (-not $compatibilityMatch.Success) {
         throw 'The Node.js Mobile username compatibility line is missing from app/build.gradle.'
     }
@@ -318,7 +320,7 @@ function Assert-ApkPayload([string]$apkPath, [string]$repositoryRoot) {
             $expectedHash = $NodeMobilePackagedLibSha256[$abi]
             if ($actualHash -ne $expectedHash) {
                 if ($abi -eq 'x86_64') {
-                    Write-Warning "APK x86_64 Node.js Mobile library checksum changed upstream; continuing after archive verification. Expected $expectedHash, got $actualHash."
+                    Write-Warning ('APK x86_64 Node.js Mobile library checksum changed upstream; continuing after archive verification. Expected {0}, got {1}.' -f $expectedHash, $actualHash)
                 } else {
                     throw "APK contains an unexpected NDK-stripped Node.js Mobile library for ${abi}. Expected $expectedHash, got $actualHash."
                 }
