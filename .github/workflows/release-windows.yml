@@ -341,6 +341,7 @@ jobs:
           path: |
             .build/android-smoke/activities.txt
             .build/android-smoke/crash-log.txt
+            .build/android-smoke/launch.txt
             .build/android-smoke/startup.png
           if-no-files-found: warn
           retention-days: 30
