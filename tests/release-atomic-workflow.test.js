@@ -153,6 +153,13 @@ assert.match(
   'Windows release runner must execute the real broken-pipe shutdown smoke'
 );
 assert.match(workflows.windows, /android_startup:/);
+assert.match(workflows.windows, /node_mobile_build:/);
+assert.match(workflows.windows, /repository:\s*nodejs-mobile\/nodejs-mobile/);
+assert.match(workflows.windows, /ref:\s*ff4e063f1f1911047c067335ad0a3d81336236ca/);
+assert.match(workflows.windows, /LDFLAGS:\s*-Wl,-z,max-page-size=16384/);
+assert.match(workflows.windows, /node_mobile_combine:/);
+assert.match(workflows.windows, /node-mobile-runtime/);
+assert.match(workflows.windows, /Download official Node\.js Mobile 16 KB runtime/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
 assert.match(workflows.windows, /adb install --no-streaming/);
 assert.match(workflows.windows, /& \.\\mobile\\build-apk\.ps1/);
@@ -164,6 +171,7 @@ assert.match(workflows.windows, /Start-Process -FilePath \$client/);
 assert.match(workflows.windows, /Start-Process -FilePath \$installer/);
 assert.match(workflows.windows, /Test-ServerExecutable \$installed\.FullName/);
 assert.match(workflows.windows, /Test-ServerExecutable \$portable/);
+assert.match(workflows.windows, /dist\\builder-debug\.yml/);
 assert.match(workflows.macos, /runner:\s*macos-15-intel/);
 assert.match(workflows.macos, /runner:\s*macos-15(?:\s|$)/m);
 assert.match(workflows.macos, /assert_native_bundle/);
