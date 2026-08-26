@@ -154,6 +154,16 @@ assert.match(
 );
 assert.match(workflows.windows, /android_startup:/);
 assert.match(workflows.windows, /node_mobile_build:/);
+assert.match(
+  workflows.windows,
+  /android:\s*\n\s+name:\s*Build signed Android artifact[\s\S]*?if:\s*\$\{\{\s*always\(\)[\s\S]*?needs\.node_mobile_combine\.result\s*==\s*'success'/,
+  'Android signing must still run when the optional runtime build matrix is skipped'
+);
+assert.match(
+  workflows.windows,
+  /android_startup:\s*\n\s+name:\s*Install and launch Android artifact in an emulator[\s\S]*?if:\s*\$\{\{\s*always\(\)[\s\S]*?needs\.android\.result\s*==\s*'success'/,
+  'Android startup verification must run after the signed APK job'
+);
 assert.match(workflows.windows, /repository:\s*nodejs-mobile\/nodejs-mobile/);
 assert.match(workflows.windows, /ref:\s*ff4e063f1f1911047c067335ad0a3d81336236ca/);
 assert.match(workflows.windows, /LDFLAGS:\s*-Wl,-z,max-page-size=16384/);

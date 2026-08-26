@@ -205,7 +205,10 @@ jobs:
 
   android:
     name: Build signed Android artifact
-    if: inputs.phase == 'android'
+    # The optional node_mobile_build matrix is intentionally skipped when a
+    # previously verified runtime is supplied. Keep the signing job eligible
+    # in that case instead of inheriting the skipped matrix dependency.
+    if: ${{ always() && inputs.phase == 'android' && needs.validate.result == 'success' && needs.node_mobile_combine.result == 'success' }}
     needs: [validate, node_mobile_combine]
     runs-on: windows-2022
     timeout-minutes: 75
@@ -289,7 +292,7 @@ jobs:
 
   android_startup:
     name: Install and launch Android artifact in an emulator
-    if: inputs.phase == 'android'
+    if: ${{ always() && inputs.phase == 'android' && needs.validate.result == 'success' && needs.android.result == 'success' }}
     needs: [validate, android]
     runs-on: macos-15-intel
     timeout-minutes: 45
