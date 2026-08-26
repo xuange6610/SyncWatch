@@ -163,6 +163,7 @@ assert.match(workflows.atomic, /node_mobile_runtime_run_id:/);
 assert.match(workflows.atomic, /node_mobile_runtime_artifact_name:/);
 assert.match(workflows.atomic, /node_mobile_runtime_run_id:\s*\$\{\{ inputs\.node_mobile_runtime_run_id \}\}/);
 assert.match(workflows.atomic, /node_mobile_runtime_artifact_name:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);
+assert.match(workflows.atomic, /permissions:\s*\n\s+contents:\s*read\s*\n\s+actions:\s*read/);
 assert.match(workflows.windows, /actions:\s*read/);
 assert.match(workflows.windows, /github-token:\s*\$\{\{ github\.token \}\}/);
 assert.match(workflows.windows, /run-id:\s*\$\{\{ inputs\.node_mobile_runtime_run_id \}\}/);
