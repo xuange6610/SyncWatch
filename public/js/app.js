@@ -10959,8 +10959,18 @@ function beginMediaRecoveryStability() {
   return true;
 }
 function handleMediaRecoveryProgress() {
-  const recovery = state.mediaNetworkRecovery; const snapshot = recovery?.stability;
+  const recovery = state.mediaNetworkRecovery;
   const policy = globalThis.SyncWatchMediaNetworkRecovery; const video = elements.videoPlayer;
+  if (!recovery?.stability && recovery?.resume && !recovery.timer && !recovery.waitingForNetwork
+    && video.readyState >= 3 && !video.paused && !video.ended
+    && !video.seeking && !state.playerSeekDragging && mediaRecoveryTransportReady()) {
+    // Chromium may resume emitting timeupdate without a matching playing or
+    // canplay event after a network transition. Re-arm the same bounded
+    // stability observation here so a recovered session cannot retain stale
+    // recovery state forever.
+    beginMediaRecoveryStability();
+  }
+  const snapshot = recovery?.stability;
   if (!snapshot || !policy?.hasStableProgress) return;
   if (snapshot.fileId !== state.currentFile?.id || snapshot.source !== state.activeTimedSource
     || snapshot.generation !== state.mediaGeneration || state.screenShareActive) {

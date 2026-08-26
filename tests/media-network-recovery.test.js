@@ -372,4 +372,29 @@ function createRecoveryHarness() {
   assert.equal(harness.state.mediaNetworkRecovery.resume, null);
 }
 
+{
+  const harness = createRecoveryHarness();
+  harness.state.mediaNetworkRecovery.attempts = 2;
+  harness.state.mediaNetworkRecovery.resume = {
+    fileId: 'movie', source: harness.state.activeTimedSource,
+    generation: harness.state.mediaGeneration, currentTime: 42,
+    wasPlaying: true, volume: 0.8, muted: false
+  };
+  harness.state.socket.connected = true;
+  harness.state.socketAuthenticated = true;
+  harness.context.navigator.onLine = true;
+  harness.video.readyState = 3;
+  harness.video.currentTime = 42.2;
+  harness.setNow(100);
+  harness.context.handleMediaRecoveryProgress();
+  assert.ok(harness.state.mediaNetworkRecovery.stability,
+    '恢复后即使 Chromium 没有补发 playing/canplay，健康 timeupdate 也必须重建稳定观察点');
+  harness.video.currentTime = 45.3;
+  harness.setNow(3200);
+  harness.context.handleMediaRecoveryProgress();
+  assert.equal(harness.state.mediaNetworkRecovery.key, '',
+    '恢复播放继续推进三秒后不得遗留恢复键');
+  assert.equal(harness.state.mediaNetworkRecovery.resume, null);
+}
+
 console.log('media network recovery and tunnel transient retry policy passed.');
