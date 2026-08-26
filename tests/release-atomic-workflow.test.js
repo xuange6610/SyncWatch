@@ -164,6 +164,11 @@ assert.match(
   /android_startup:\s*\n\s+name:\s*Install and launch Android artifact in an emulator[\s\S]*?if:\s*\$\{\{\s*always\(\)[\s\S]*?needs\.android\.result\s*==\s*'success'/,
   'Android startup verification must run after the signed APK job'
 );
+assert.match(
+  workflows.windows,
+  /name:\s*Setup Java 17 for Android Gradle Plugin[\s\S]*?uses:\s*actions\/setup-java@v4[\s\S]*?distribution:\s*temurin[\s\S]*?java-version:\s*['"]17['"]/,
+  'Android release builds must use a supported Java runtime'
+);
 assert.match(workflows.windows, /repository:\s*nodejs-mobile\/nodejs-mobile/);
 assert.match(workflows.windows, /ref:\s*ff4e063f1f1911047c067335ad0a3d81336236ca/);
 assert.match(workflows.windows, /LDFLAGS:\s*-Wl,-z,max-page-size=16384/);

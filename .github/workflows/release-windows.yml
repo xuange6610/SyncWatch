@@ -228,6 +228,11 @@ jobs:
         run: |
           if ((git rev-parse HEAD).Trim() -ne $env:RELEASE_COMMIT) { throw 'Android checkout commit mismatch.' }
           if ((git rev-parse 'HEAD^{tree}').Trim() -ne $env:RELEASE_TREE) { throw 'Android checkout tree mismatch.' }
+      - name: Setup Java 17 for Android Gradle Plugin
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
