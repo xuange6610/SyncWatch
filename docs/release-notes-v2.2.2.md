@@ -1,25 +1,27 @@
-# SyncWatch同步观影 v2.2.1 未发布候选记录
+# SyncWatch同步观影 v2.2.2 候选发布说明
 
-和朋友、家人、情侣远程一起看电影。v2.2.1 是基于 v2.2.0 的修复候选，重点改善小说/文本跨视口同步、播放期间网络状态误报、首次管理员改密、账号密码策略、默认画质、头像交互、桌面关闭弹窗和统一界面文案。
+和朋友、家人、情侣远程一起看电影。v2.2.2 是基于 v2.2.0 的修复候选，重点改善小说/文本跨视口同步、播放期间网络状态误报、首次管理员改密、账号密码策略、默认画质、头像交互、桌面关闭弹窗和统一界面文案。
 
-> 当前状态：**已跳过，未发布 Release**。维护者已按最新要求直接升级到 `release/v2.2.2`；本文件仅保留 v2.2.1 候选阶段的变更记录，不提供下载资产，也不作为 Latest。当前可下载的正式版本在 v2.2.2 完成原子发布前仍是 [v2.2.0](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.0)。
+> 当前状态：**源码候选，尚未发布**。v2.2.2 Tag、Release、26 个维护者资产、两个源码归档和 Latest 标记均待最终测试、真实构建与上传验证。当前可下载的正式版本仍是 [v2.2.0](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.0)。
+
+> v2.2.1 仅形成候选源码和 Tag，未创建 Release、未上传资产，也未设为 Latest；本次按维护者要求直接升级到 `release/v2.2.2`。同一版本只保留一个正式 `release/vX.Y.Z` 工作分支，已合并或放弃的临时 `codex/*release*` 分支已清理。
 
 > 第一次使用服务器请用默认账号 `admin`、默认密码 `admin888` 登录，并立即修改默认密码。只有本次会话刚刚通过账号密码认证且处于首次初始化时，改密向导才可免于重复输入当前密码；本机免密管理会话和普通周期改密不会绕过校验。
 
 | 下载文件 | 版本标识 | 最适合谁 | 当前状态 |
 | --- | --- | --- | --- |
-| `SyncWatch-Experience-Client-Portable-v2.2.1-x64.exe` | 体验版 | Windows 普通成员 | 待从最终 Tag 重建、启动验证与上传 |
-| `SyncWatch-Standard-Server-Portable-v2.2.1-x64.exe` | 标准版 | Windows 房主 | 待从最终 Tag 重建、启动验证与上传 |
-| `SyncWatch-v2.2.1-Full-Offline-Installer-x64.exe` | 完整安装版 | Windows 房主 | 待从最终 Tag 重建、闭包验证与上传 |
-| `SyncWatch-v2.2.1-Full-Offline-Portable-x64.exe` | 完整便携版 | Windows 房主 | 待从最终 Tag 重建、闭包验证与上传 |
-| `SyncWatch-Android-v2.2.1-universal.apk` | Android | 手机成员或房主 | 待签名构建、ABI/安装验证与上传 |
-| `SyncWatch-Client-macOS-v2.2.1-{x64,arm64}.{dmg,zip}` | macOS 客户端 4 项 | Intel / Apple Silicon 成员 | 待真实 macOS runner 构建与验证 |
-| `SyncWatch-Server-macOS-v2.2.1-{x64,arm64}.{dmg,zip}` | macOS 服务器 4 项 | Intel / Apple Silicon 房主 | 待真实 macOS runner 构建与验证 |
-| `SyncWatch-Full-Offline-macOS-v2.2.1-{x64,arm64}.{dmg,zip}` | macOS 完整版 4 项 | Intel / Apple Silicon 房主 | 待真实 macOS runner 构建、闭包验证与上传 |
+| `SyncWatch-Experience-Client-Portable-v2.2.2-x64.exe` | 体验版 | Windows 普通成员 | 待从最终 Tag 重建、启动验证与上传 |
+| `SyncWatch-Standard-Server-Portable-v2.2.2-x64.exe` | 标准版 | Windows 房主 | 待从最终 Tag 重建、启动验证与上传 |
+| `SyncWatch-v2.2.2-Full-Offline-Installer-x64.exe` | 完整安装版 | Windows 房主 | 待从最终 Tag 重建、闭包验证与上传 |
+| `SyncWatch-v2.2.2-Full-Offline-Portable-x64.exe` | 完整便携版 | Windows 房主 | 待从最终 Tag 重建、闭包验证与上传 |
+| `SyncWatch-Android-v2.2.2-universal.apk` | Android | 手机成员或房主 | 待签名构建、ABI/安装验证与上传 |
+| `SyncWatch-Client-macOS-v2.2.2-{x64,arm64}.{dmg,zip}` | macOS 客户端 4 项 | Intel / Apple Silicon 成员 | 待真实 macOS runner 构建与验证 |
+| `SyncWatch-Server-macOS-v2.2.2-{x64,arm64}.{dmg,zip}` | macOS 服务器 4 项 | Intel / Apple Silicon 房主 | 待真实 macOS runner 构建与验证 |
+| `SyncWatch-Full-Offline-macOS-v2.2.2-{x64,arm64}.{dmg,zip}` | macOS 完整版 4 项 | Intel / Apple Silicon 房主 | 待真实 macOS runner 构建、闭包验证与上传 |
 | Node.js 24.19.0 官方环境包 4 项 | 第三方运行时 | 源码或独立服务器用户 | 待核对官方来源、平台、字节数和 SHA-256 |
 | cloudflared 官方工具 5 项 | 第三方公网工具 | 手工 Tunnel 用户 | 待核对官方来源、平台、字节数和 SHA-256 |
 
-## 从 v2.2.0 到 v2.2.1 的更新公告
+## 从 v2.2.0 到 v2.2.2 的更新公告
 
 下面只记录当前源码相对 v2.2.0 的真实变化。构建、测试、真机和线上状态没有证据时保留“待验证”，不会因文件名或文档已更新就写成已经发布。
 
@@ -42,6 +44,7 @@
 
 - 使用账号密码完成认证的内置 `admin` 首次改密时，向导直接填写新密码和确认密码，不再重复输入刚用于登录的当前密码；“暂不更改/稍后处理”仍保留。
 - 免重复校验能力由服务端按“账号密码已认证且仍处于首次初始化”一次性签发；新密码仍需至少 8 位且不能复用 `admin888`，成功后能力立即撤销。本机免密管理会话没有密码认证凭据，因此仍需当前密码；普通账号周期改密也继续校验当前密码，不能借首次初始化字段绕过。
+- 首次改密向导作为后台提醒触发时不再抢占用户已经打开的通用对话框；它会等待前台操作完成后重试，避免按钮文案、输入内容和焦点被异步覆盖。
 - 新注册账号和普通密码默认不限制业务字符类型或字符数，允许空格、标点、符号和 Unicode；服务端仍保留用户名 1024 UTF-8 字节、密码 4096 UTF-8 字节的异常请求防护上限。
 - 管理员可以在服务器设置中显式启用字符集及字符数范围；同一策略用于注册、改密、找回密码和游客转正式账号，并在重启后保留。
 
@@ -55,10 +58,11 @@
 
 ### 文档、构建、测试与发布流程
 
+- v2.2.1 未对外发布 Release 或下载资产；本轮直接以 v2.2.2 承载最终修复、构建与发布，避免把未完成候选冒充正式版本。
 - v2.2.0 的 Tag、Release、26 个维护者资产、哈希、大小、Actions 和 Latest 历史记录保持不变；本轮功能不再追写进 v2.2.0 公告。
-- README、PRODUCT、DESIGN、用户手册、部署/macOS/运行环境教程、发布清单、Wiki 镜像和 Pages HTML 按“v2.2.1 源码候选、v2.2.0 最新正式版”同步。
+- README、PRODUCT、DESIGN、用户手册、部署/macOS/运行环境教程、发布清单、Wiki 镜像和 Pages HTML 按“v2.2.2 源码候选、v2.2.0 最新正式版”同步。
 - 每个正式版本必须更新 Wiki 和仓库 `docs/wiki/` 镜像，并重新生成主要 HTML 阅读页；功能、UI、构建、测试或已知限制有变化时必须进入对应版本公告。
-- 17 个 SyncWatch 应用资产必须全部由最终 v2.2.1 Tag 对应源码真实重建，不能复用、改名或复制 v2.2.0 包。每项都要核对版本、平台/架构、非空大小、SHA-256、包内源码/资源闭包和实际启动/核心流程。
+- 17 个 SyncWatch 应用资产必须全部由最终 v2.2.2 Tag 对应源码真实重建，不能复用、改名或复制 v2.2.0 包。每项都要核对版本、平台/架构、非空大小、SHA-256、包内源码/资源闭包和实际启动/核心流程。
 - Node.js 4 项与 cloudflared 5 项是上游官方原始分发文件，不由 SyncWatch 源码构建；上传前必须核对官方来源、版本、平台/架构、非空大小与 SHA-256，且不得描述成 SyncWatch 启动程序。
 - 发布门禁在 Ubuntu runner 上为 Electron 冒烟流程设置 `ELECTRON_DISABLE_SANDBOX=1`，仅绕过 `npm ci` 丢失 `chrome-sandbox` SUID 位造成的 CI 启动错误，不改变应用内 WebView 的生产沙箱配置。
 - Linux 无 GPU 的登录立方体 WebGL 冒烟测试改用 Chromium SwiftShader 软件渲染并显式忽略 GPU 黑名单，仍要求读取像素和旋转帧变化；这只影响 CI 测试进程，不改变桌面应用的 GPU/WebGL 默认策略。
@@ -71,14 +75,14 @@
 
 | 项目 | 状态 |
 | --- | --- |
-| 源码版本字段 | 已进入 v2.2.1 候选分支；发布前仍需总门禁复核 |
+| 源码版本字段 | 已进入 v2.2.2 候选分支；发布前仍需总门禁复核 |
 | 小说精确字符锚点、网络状态迟滞、首次管理员改密、账号密码策略、统一文案隐私、头像交互、默认原画、关闭弹窗 | 已有对应源码和专项自动化；完整测试结果以本次发布门禁最终日志为准 |
 | Windows 4 个应用资产 | 待最终 Tag 后真实重建、启动和闭包验证 |
 | Android APK | 待最终签名构建、安装/启动/登录/连接验证 |
 | macOS 12 个应用资产 | 待真实 macOS runner 分 x64/arm64 构建与启动验证 |
 | Node.js / cloudflared 9 个上游资产 | 待重新下载或复核官方来源与 SHA-256 |
 | `dist/` 28 文件、Release API 26 项、页面 28 项 | 待所有成品就绪后核验 |
-| v2.2.1 Tag、Release、Latest、下载直链 | 尚未创建或发布 |
+| v2.2.2 Tag、Release、Latest、下载直链 | 尚未创建或发布 |
 | 小米 14 / HyperOS 真机 | 未验证 |
 
 ## 与 v2.2.0 保持不变
@@ -95,7 +99,7 @@
 - Windows 自己开房：标准服务器便携版；需要跨平台离线下载中心时选择完整安装版或完整便携版。
 - Mac 自己开房：按 Intel x64 或 Apple Silicon arm64 选择服务器版；需要离线下载中心时选择完整离线版。
 - 源码或独立服务器：安装官方 Node.js 22+；正式桌面包已内置运行时，无需重复安装。
-- v2.2.1 资产未完成前请继续使用 [v2.2.0 正式版](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.0)，不要把候选文件名当成下载链接。
+- v2.2.2 资产未完成前请继续使用 [v2.2.0 正式版](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.0)，不要把候选文件名当成下载链接。
 
 ## 跨平台完整套装
 
@@ -107,7 +111,7 @@ Windows 正式服务器包应内置 Electron/Node.js 运行时、应用前后端
 
 ## macOS
 
-v2.2.1 计划提供客户端、服务器和完整离线版各自的 Intel x64 与 Apple Silicon arm64 DMG/ZIP，共 12 项。它们必须由真实 macOS runner 从最终 Tag 构建；当前尚未生成或上传，不能用 Windows 产物、改名旧包或只更新应用显示版本替代。签名与公证状态应以最终构建记录和 Release 正文为准。
+v2.2.2 计划提供客户端、服务器和完整离线版各自的 Intel x64 与 Apple Silicon arm64 DMG/ZIP，共 12 项。它们必须由真实 macOS runner 从最终 Tag 构建；当前尚未生成或上传，不能用 Windows 产物、改名旧包或只更新应用显示版本替代。签名与公证状态应以最终构建记录和 Release 正文为准。
 
 ## 架构支持边界
 
@@ -130,7 +134,7 @@ v2.2.1 计划提供客户端、服务器和完整离线版各自的 Intel x64 �
 1. 首次启动使用 `admin` / `admin888` 登录并立即修改默认密码；公网部署前先完成局域网连接测试。
 2. 升级前停止旧服务器并备份整个 `SyncWatch同步观影-Data/`，不要只复制 `config.json`。
 3. 不公开数据目录、SMTP 密钥、Tunnel 令牌、签名文件、聊天记录、真实 IP 或带权限的房间链接。
-4. v2.2.1 尚未完成发布验收；在 Tag、资产、哈希、启动和在线链接全部验证前，不要用候选源码覆盖生产环境。
+4. v2.2.2 尚未完成发布验收；在 Tag、资产、哈希、启动和在线链接全部验证前，不要用候选源码覆盖生产环境。
 
 ## 已知限制
 

@@ -2,7 +2,7 @@
 
 SyncWatch同步观影 的 macOS 服务器和客户端使用 Electron，支持 Intel x64 与 Apple Silicon arm64。macOS 产物必须在 macOS 主机或 macOS CI 上构建，Windows 不能生成可运行、可签名和可 notarize 的 macOS DMG。
 
-当前源码候选为 v2.2.1，下面文件名是最终 Tag 构建时的预期输出，不表示已经生成或上传。最新正式下载仍为 v2.2.0；v2.2.1 的 12 个 macOS 应用资产必须在真实 macOS runner 上从最终 Tag 重新构建并逐项验证。
+当前源码候选为 v2.2.2，下面文件名是最终 Tag 构建时的预期输出，不表示已经生成或上传。最新正式下载仍为 v2.2.0；v2.2.2 的 12 个 macOS 应用资产必须在真实 macOS runner 上从最终 Tag 重新构建并逐项验证。
 
 ## 构建前
 
@@ -28,23 +28,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-macos-portab
 
 生成到根目录 `dist/` 的文件：
 
-- `SyncWatch-Server-macOS-v2.2.1-x64.dmg` / `.zip`
-- `SyncWatch-Server-macOS-v2.2.1-arm64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.2.1-x64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.2.1-arm64.dmg` / `.zip`
-- `SyncWatch-Full-Offline-macOS-v2.2.1-x64.dmg` / `.zip`
-- `SyncWatch-Full-Offline-macOS-v2.2.1-arm64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.2-x64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.2-arm64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.2-x64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.2-arm64.dmg` / `.zip`
+- `SyncWatch-Full-Offline-macOS-v2.2.2-x64.dmg` / `.zip`
+- `SyncWatch-Full-Offline-macOS-v2.2.2-arm64.dmg` / `.zip`
 
 不再在项目根目录或 `dist-mac-*` 保留重复副本。ZIP 适合企业内部分发和完整离线包内嵌；Windows 发布机不会伪造 macOS 文件。
 
 GitHub Release 使用仅含 ASCII 的公共下载名，避免平台上传接口删除中文后造成客户端与服务器同名覆盖：
 
-- `SyncWatch-Server-macOS-v2.2.1-x64.dmg` / `.zip`
-- `SyncWatch-Server-macOS-v2.2.1-arm64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.2.1-x64.dmg` / `.zip`
-- `SyncWatch-Client-macOS-v2.2.1-arm64.dmg` / `.zip`
-- `SyncWatch-Full-Offline-macOS-v2.2.1-x64.dmg` / `.zip`
-- `SyncWatch-Full-Offline-macOS-v2.2.1-arm64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.2-x64.dmg` / `.zip`
+- `SyncWatch-Server-macOS-v2.2.2-arm64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.2-x64.dmg` / `.zip`
+- `SyncWatch-Client-macOS-v2.2.2-arm64.dmg` / `.zip`
+- `SyncWatch-Full-Offline-macOS-v2.2.2-x64.dmg` / `.zip`
+- `SyncWatch-Full-Offline-macOS-v2.2.2-arm64.dmg` / `.zip`
 
 ## 下载产物如何发布
 
@@ -55,7 +55,7 @@ GitHub Release 使用仅含 ASCII 的公共下载名，避免平台上传接口�
 - 部署包中的 `mac/` 目录。
 
 文件名必须与以下格式一致：
-v2.2.1 候选资产预期使用 `SyncWatch-Server-macOS-v2.2.1-x64.dmg`、`SyncWatch-Server-macOS-v2.2.1-arm64.zip`（客户端同理）。旧的中文本地文件名仍可被服务器兼容读取；只有来自最终 Tag、真实存在、非空且通过平台/架构/闭包/启动/SHA-256 验证的文件才允许出现在下载按钮和 `/api/public-config` 中。
+v2.2.2 候选资产预期使用 `SyncWatch-Server-macOS-v2.2.2-x64.dmg`、`SyncWatch-Server-macOS-v2.2.2-arm64.zip`（客户端同理）。旧的中文本地文件名仍可被服务器兼容读取；只有来自最终 Tag、真实存在、非空且通过平台/架构/闭包/启动/SHA-256 验证的文件才允许出现在下载按钮和 `/api/public-config` 中。
 
 ### 从 HTTPS 发布站点提供产物
 

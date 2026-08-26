@@ -50,6 +50,7 @@
 ## Git 提交规范
 
 - 提交信息使用 `feat:`、`fix:`、`perf:`、`style:`、`refactor:`、`docs:` 等清晰前缀。
+- 版本发布工作统一使用一个 `release/vX.Y.Z` 分支并通过 Pull Request 合并；不要为同一版本长期保留多个 `codex/*release*` 临时分支，已合并或放弃的临时分支应及时删除。
 
 ## GitHub 发布规范
 

@@ -13,7 +13,7 @@
 | Android 构建与手机服务器 | [Android README](../mobile/README.md)、[Android/Wiki 教程](wiki/23-运行环境完整教程.md) |
 | macOS 构建与发布 | [macOS 构建](macos-build.md)、[macOS Wiki](wiki/18-macOS构建与发布.md) |
 | 错误、诊断、备份和安全 | [故障排查](troubleshooting.md)、[安全策略](../SECURITY.md) |
-| Release、文件地图和贡献 | [v2.2.1 候选发布说明](release-notes-v2.2.1.md)、[v2.2.0 正式发布说明](release-notes-v2.2.0.md)、[发布文件说明](release-artifacts.md)、[仓库文件地图](repository-map.md)、[参与贡献](contributing.html)、[CONTRIBUTING.md](../CONTRIBUTING.md) |
+| Release、文件地图和贡献 | [v2.2.2 候选发布说明](release-notes-v2.2.2.md)、[v2.2.0 正式发布说明](release-notes-v2.2.0.md)、[发布文件说明](release-artifacts.md)、[仓库文件地图](repository-map.md)、[参与贡献](contributing.html)、[CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Codex 长期维护、版本与交付要求 | [维护者长期要求](maintenance/maintainer-requirements.md)、[Release 固定资产清单](release/release-manifest.md) |
 
 ## 文档分层

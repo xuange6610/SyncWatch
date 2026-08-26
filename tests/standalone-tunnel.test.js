@@ -77,7 +77,7 @@ if (originalProxy === undefined) delete process.env.HTTP_PROXY; else process.env
       response.write('{"name":');
       return;
     }
-    response.end(JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.1' }));
+    response.end(JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.2' }));
   });
   const proxyServer = http.createServer((request, response) => {
     proxyServer.requestCount += 1;
@@ -87,7 +87,7 @@ if (originalProxy === undefined) delete process.env.HTTP_PROXY; else process.env
       for (let index = 0; index < 32; index += 1) response.write(Buffer.alloc(1024, 0x61));
       return;
     }
-    response.end(JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.1' }));
+    response.end(JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.2' }));
   });
   proxyServer.requestCount = 0;
   proxyServer.lastUrl = '';
