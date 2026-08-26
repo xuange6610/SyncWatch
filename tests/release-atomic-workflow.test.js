@@ -176,6 +176,7 @@ assert.doesNotMatch(workflows.windows, /(?:tr -d ['"]\\r\\n['"]|jq -e)/,
 assert.match(workflows.windows, /sha256sum --check --strict/,
   'reused Node.js Mobile digest failures must identify the exact file');
 for (const digest of [
+  '6b7970057e8382e6e8cabeecb8637929054c28d168c3755cb1160b0062fac4c9',
   '5afcd3be4891f2fcf434f5218ce5faad08380789b6b080d30ea5d5867b1fc4f4',
   'd0c41551f6cfbb0efd5a6c94ed7c3efc0e74594fe60095147c4c20a6e81a1d58',
   '57bad09ba77ff33bb0a518eb57ed52cba21a24bdc9f99042a3c407bfdc2f907d'
