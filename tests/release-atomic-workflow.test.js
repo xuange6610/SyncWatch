@@ -175,6 +175,11 @@ assert.match(workflows.atomic, /node_mobile_runtime_run_id:\s*\$\{\{ inputs\.nod
 assert.match(workflows.atomic, /node_mobile_runtime_artifact_name:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);
 assert.match(workflows.atomic, /permissions:\s*\n\s+contents:\s*read\s*\n\s+actions:\s*read/);
 assert.match(workflows.windows, /actions:\s*read/);
+assert.match(
+  workflows.atomic,
+  /name:\s*Prepare pinned Cloudflare binary for source smoke[\s\S]*?env:\s*\n\s+GH_TOKEN:\s*\$\{\{\s*github\.token\s*\}\}/,
+  'Source release gates must authenticate official Cloudflare downloads'
+);
 assert.match(workflows.windows, /github-token:\s*\$\{\{ github\.token \}\}/);
 assert.match(workflows.windows, /run-id:\s*\$\{\{ inputs\.node_mobile_runtime_run_id \}\}/);
 assert.match(workflows.windows, /name:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);

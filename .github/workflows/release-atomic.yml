@@ -121,6 +121,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Prepare pinned Cloudflare binary for source smoke
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           node scripts/release-third-party-assets.js \
