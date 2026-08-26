@@ -237,6 +237,18 @@ assert.match(workflows.windows, /Start-Process -FilePath \$installer/);
 assert.match(workflows.windows, /Test-ServerExecutable \$installed\.FullName/);
 assert.match(workflows.windows, /Test-ServerExecutable \$portable/);
 assert.match(workflows.windows, /dist\\builder-debug\.yml/);
+for (const source of [workflows.windows, workflows.macos]) {
+  assert.match(source, /path:\s*\.build\/full-inputs\/windows/);
+  assert.match(source, /path:\s*\.build\/full-inputs\/android/);
+  assert.match(source, /path:\s*\.build\/full-inputs\/mac/);
+  assert.match(
+    source,
+    /prepare-full-offline-bundle\.js[\s\S]{0,180}verify-full-offline-bundle\.js/,
+    'Full Offline builds must curate exactly six inputs before packaging'
+  );
+}
+assert.doesNotMatch(workflows.windows, /path:\s*\.build\/offline-bundle\/(?:windows|android|mac)/);
+assert.doesNotMatch(workflows.macos, /path:\s*\.build\/offline-bundle\/(?:windows|android|mac)/);
 assert.match(workflows.macos, /runner:\s*macos-15-intel/);
 assert.match(workflows.macos, /runner:\s*macos-15(?:\s|$)/m);
 assert.match(workflows.macos, /assert_native_bundle/);

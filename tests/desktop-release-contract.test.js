@@ -22,6 +22,8 @@ const launcher = read('client-launcher.html');
 const macReleaseWorkflow = read('.github/workflows/release-macos.yml');
 const windowsReleaseWorkflow = read('.github/workflows/release-windows.yml');
 const atomicReleaseWorkflow = read('.github/workflows/release-atomic.yml');
+const fullOfflinePreparation = read('scripts/prepare-full-offline-bundle.js');
+const fullOfflineVerification = read('scripts/verify-full-offline-bundle.js');
 const windowsBuildPath = path.join(root, 'build-windows.ps1');
 const windowsBuildBytes = fs.readFileSync(windowsBuildPath);
 const windowsBuild = windowsBuildBytes.toString('utf8').replace(/^\uFEFF/, '');
@@ -116,6 +118,11 @@ for (const [label, config] of [
     assert.ok(resources.some((entry) => entry.includes(directory)), `${label} must embed ${directory}`);
   }
 }
+assert.match(fullOfflinePreparation, /SyncWatch-Experience-Client-Portable/);
+assert.match(fullOfflinePreparation, /SyncWatch-Android/);
+assert.equal((fullOfflinePreparation.match(/macOS-v\$\{version\}/g) || []).length, 4);
+assert.doesNotMatch(fullOfflinePreparation, /Standard-Server|\.dmg/);
+assert.match(fullOfflineVerification, /exactly the six curated platform files/);
 assert.equal(fullInstallerConfig.nsis.artifactName, `SyncWatch-v${manifest.version}-Full-Offline-Installer-\${arch}.exe`);
 assert.equal(fullPortableConfig.portable.artifactName, `SyncWatch-v${manifest.version}-Full-Offline-Portable-\${arch}.exe`);
 assert.equal(manifest.build.portable.artifactName, `SyncWatch-Standard-Server-Portable-v${manifest.version}-\${arch}.exe`);
