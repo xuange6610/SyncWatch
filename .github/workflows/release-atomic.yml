@@ -77,6 +77,9 @@ jobs:
     # flows, while this CI-only setting avoids a runner-specific SIGTRAP.
     env:
       ELECTRON_DISABLE_SANDBOX: '1'
+      # Linux smoke mode intentionally has no cloudflared tunnel manager;
+      # the real public-tunnel flow is exercised on supported desktop runners.
+      SYNCWATCH_SKIP_PUBLIC_TUNNEL_SMOKE: '1'
     steps:
       - name: Checkout immutable release commit
         uses: actions/checkout@v4
