@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: atomic-release-${{ inputs.tag }}
