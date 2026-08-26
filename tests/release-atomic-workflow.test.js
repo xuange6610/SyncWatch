@@ -14,6 +14,8 @@ const filenames = {
 const workflows = Object.fromEntries(
   Object.entries(filenames).map(([key, filename]) => [key, fs.readFileSync(filename, 'utf8')])
 );
+const androidEmulatorSmokePath = path.join(root, 'scripts', 'android-emulator-smoke.sh');
+const androidEmulatorSmoke = fs.readFileSync(androidEmulatorSmokePath, 'utf8');
 
 function count(text, pattern) {
   return [...text.matchAll(pattern)].length;
@@ -210,12 +212,24 @@ for (const digest of [
 }
 assert.match(workflows.windows, /Download official Node\.js Mobile 16 KB runtime/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
-assert.match(workflows.windows, /adb install --no-streaming/);
+assert.match(
+  workflows.windows,
+  /script:\s*bash scripts\/android-emulator-smoke\.sh/,
+  'the emulator runner must invoke one script because it executes inline lines in separate shells'
+);
+assert.doesNotMatch(workflows.windows, /script:\s*\|[\s\S]{0,300}apk=/);
+assert.ok(fs.statSync(androidEmulatorSmokePath).isFile(), 'Android emulator smoke script must exist');
+assert.match(androidEmulatorSmoke, /GITHUB_WORKSPACE:\?GITHUB_WORKSPACE is required/);
+assert.match(androidEmulatorSmoke, /SyncWatch-Android-v\$\{version\}-universal\.apk/);
+assert.match(androidEmulatorSmoke, /adb install --no-streaming/);
 assert.match(workflows.windows, /& \.\\mobile\\build-apk\.ps1/);
 assert.doesNotMatch(workflows.windows, /powershell\.exe[^\r\n]*build-apk\.ps1/i);
-assert.match(workflows.windows, /am start -W -n com\.xuan\.syncwatch\/\.MainActivity/);
-assert.match(workflows.windows, /pidof com\.xuan\.syncwatch/);
-assert.match(workflows.windows, /logcat -d -b crash/);
+assert.match(androidEmulatorSmoke, /dumpsys package com\.xuan\.syncwatch/);
+assert.match(androidEmulatorSmoke, /am start -W -n com\.xuan\.syncwatch\/\.MainActivity/);
+assert.match(androidEmulatorSmoke, /pidof com\.xuan\.syncwatch/);
+assert.match(androidEmulatorSmoke, /logcat -d -b crash/);
+assert.match(androidEmulatorSmoke, /dumpsys activity activities/);
+assert.match(androidEmulatorSmoke, /screencap -p/);
 assert.match(workflows.windows, /Start-Process -FilePath \$client/);
 assert.match(workflows.windows, /Start-Process -FilePath \$installer/);
 assert.match(workflows.windows, /Test-ServerExecutable \$installed\.FullName/);

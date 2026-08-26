@@ -332,29 +332,7 @@ jobs:
           arch: x86_64
           profile: pixel_7
           emulator-boot-timeout: 900
-          script: |
-            set -euo pipefail
-            apk=".build/android-smoke/SyncWatch-Android-v${RELEASE_VERSION}-universal.apk"
-            test -s "$apk"
-            adb install --no-streaming "$apk"
-            installed_version="$(adb shell dumpsys package com.xuan.syncwatch | sed -n 's/^[[:space:]]*versionName=//p' | head -n 1 | tr -d '\r')"
-            test "$installed_version" = "$RELEASE_VERSION"
-            adb logcat -c
-            adb shell am force-stop com.xuan.syncwatch
-            launch="$(adb shell am start -W -n com.xuan.syncwatch/.MainActivity | tr -d '\r')"
-            printf '%s\n' "$launch"
-            grep -q '^Status: ok$' <<< "$launch"
-            grep -q '^Activity: com.xuan.syncwatch/.MainActivity$' <<< "$launch"
-            sleep 15
-            test -n "$(adb shell pidof com.xuan.syncwatch | tr -d '\r')"
-            adb shell dumpsys activity activities > .build/android-smoke/activities.txt
-            grep -q 'com.xuan.syncwatch/.MainActivity' .build/android-smoke/activities.txt
-            if adb logcat -d -b crash | grep -q 'com.xuan.syncwatch'; then
-              adb logcat -d -b crash
-              exit 1
-            fi
-            adb exec-out screencap -p > .build/android-smoke/startup.png
-            test -s .build/android-smoke/startup.png
+          script: bash scripts/android-emulator-smoke.sh
       - name: Preserve Android startup evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -362,6 +340,7 @@ jobs:
           name: ${{ inputs.artifact_prefix }}-android-startup-evidence
           path: |
             .build/android-smoke/activities.txt
+            .build/android-smoke/crash-log.txt
             .build/android-smoke/startup.png
           if-no-files-found: warn
           retention-days: 30
