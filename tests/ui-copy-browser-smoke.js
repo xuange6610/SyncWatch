@@ -11,6 +11,7 @@ const { spawn } = require('node:child_process');
 const WebSocket = require('ws');
 const { io } = require('socket.io-client');
 const { startSyncWatchServer } = require('../server');
+const { waitForChromeDebugTarget } = require('./chrome-debug-target');
 
 const browserCandidates = [
   process.env.SYNCWATCH_CHROME_PATH,
@@ -121,7 +122,7 @@ async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-ui-copy-browser-'));
   const dataDir = path.join(root, 'data');
   const sockets = [];
-  let server; let chrome; let cdp;
+  let server; let chrome; let cdp; let profile; let chromeStderr = '';
   try {
     server = await startSyncWatchServer({ host: '127.0.0.1', port: 0, dataDir, discovery: false, publicDir: path.resolve(__dirname, '..', 'public'), ffprobePath: '', ffmpegPath: '', hostControlToken: 'ui-copy-browser-host' });
     const baseUrl = `http://127.0.0.1:${server.port}`;
@@ -145,17 +146,14 @@ async function main() {
     assert.equal(memberLogin.success, true, memberLogin.error);
 
     const debugPort = await availablePort();
-    const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-ui-copy-chrome-'));
-    chrome = spawn(chromePath, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--remote-allow-origins=*', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore', windowsHide: true });
-    let target;
-    for (let attempt = 0; attempt < 100 && !target; attempt += 1) {
-      try {
-        const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
-        target = response.ok ? (await response.json()).find((entry) => entry.type === 'page') : null;
-      } catch (_) {}
-      if (!target) await delay(100);
-    }
-    if (!target?.webSocketDebuggerUrl) throw new Error('没有可用的 Chrome 调试页面');
+    profile = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-ui-copy-chrome-'));
+    chrome = spawn(chromePath, ['--headless=new', '--disable-gpu', '--disable-dev-shm-usage', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--remote-allow-origins=*', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
+    chrome.stderr?.on('data', (chunk) => { chromeStderr = `${chromeStderr}${chunk}`.slice(-12000); });
+    const target = await waitForChromeDebugTarget({
+      port: debugPort,
+      child: chrome,
+      stderrTail: () => chromeStderr
+    });
     cdp = new CdpClient(target.webSocketDebuggerUrl); await cdp.open();
     await cdp.send('Page.enable');
     await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `
@@ -354,6 +352,7 @@ async function main() {
     await stopProcess(chrome);
     await server?.close().catch(() => {});
     fs.rmSync(root, { recursive: true, force: true });
+    if (profile) { try { fs.rmSync(profile, { recursive: true, force: true }); } catch (_) {} }
   }
 }
 
