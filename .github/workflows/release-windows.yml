@@ -268,7 +268,9 @@ jobs:
         shell: pwsh
         run: |
           & .\mobile\build-apk.ps1
-          if ($LASTEXITCODE -ne 0) { throw 'Android release build failed.' }
+          $buildExitCode = $LASTEXITCODE
+          Set-Location -LiteralPath $env:GITHUB_WORKSPACE
+          if ($buildExitCode -ne 0) { throw 'Android release build failed.' }
           $apk = ".\dist\SyncWatch-Android-v$env:RELEASE_VERSION-universal.apk"
           if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) { throw "Missing exact Android output: $apk" }
           node tests/android-package.test.js $apk
