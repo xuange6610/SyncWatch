@@ -59,6 +59,9 @@
 
 - Windows 体验版、标准版、完整安装版、完整便携版的配置和内嵌文件名统一为 v2.2.3；Android 下载名、Java User-Agent、内嵌服务器路径和 APK 验证规则同步升级。
 - macOS 客户端、服务器、完整离线版的 x64/arm64 DMG/ZIP 文件名统一为 v2.2.3；它们必须由真实 macOS runner 构建，Windows 工作站不能伪造或重命名旧包。
+- 修复 macOS 发布 runner 的平台差异：服务器按当前架构校验对应的 Cloudflare 二进制，固定下载使用 GitHub token；客户端基础包按矩阵只生成当前架构，并在候选门禁前移除调试元数据，避免 x64/arm64 混包。
+- 修复 Windows 托管 runner 没有 loopback 音频设备时的发布阻塞：仍验证桌面视频捕获，仅在 GitHub Windows runner 且显式开启受控开关时记录缺少音频设备的警告；本地和自托管环境仍要求真实音轨。
+- 修复 Windows PowerShell 5.1 解析 Android 构建脚本中正则和长字符串的兼容性，保留 APK 签名、ABI、内容闭包和版本门禁。
 - 根目录 `dist/` 仍是唯一正式输出目录。17 个 SyncWatch 应用资产必须由最终 v2.2.3 Tag 源码真实重建；9 个 Node.js/cloudflared 文件必须核对官方来源和 SHA-256，不能描述成 SyncWatch 启动程序。
 - 发布前必须先满足 26 个维护者资产、两个源码归档、非空大小、版本/平台/架构、包内闭包、SHA-256、启动/核心流程和 26+2 数量门禁；资产不齐时 Release 保持未发布，不上传残缺集合。
 

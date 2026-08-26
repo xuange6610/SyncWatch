@@ -231,6 +231,11 @@ jobs:
           Copy-Item -LiteralPath .\.build\embedded-cloudflared\cloudflared-windows-x64.exe -Destination .\vendor\cloudflared.exe
       - name: Verify Windows desktop audio capture
         shell: pwsh
+        env:
+          # Hosted Windows runners can lack an audio output device. The smoke
+          # still requires desktop video capture; local and self-hosted runs
+          # continue to require a real loopback audio track.
+          SYNCWATCH_ALLOW_MISSING_AUDIO_LOOPBACK: '1'
         run: |
           npm run test:audio-source:electron
           if ($LASTEXITCODE -ne 0) { throw 'Windows desktop audio capture smoke failed.' }
