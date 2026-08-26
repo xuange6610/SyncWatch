@@ -115,9 +115,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          mkdir -p .build/cloudflared vendor
           node scripts/release-third-party-assets.js \
-            --output vendor \
+            --output .build/cloudflared \
             --only cloudflared-macos-x64,cloudflared-macos-arm64
+          install -m 755 .build/cloudflared/cloudflared-macos-x64 vendor/cloudflared-darwin-x64
+          install -m 755 .build/cloudflared/cloudflared-macos-arm64 vendor/cloudflared-darwin-arm64
       - name: Verify source and desktop contracts
         shell: bash
         run: |
@@ -320,9 +323,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          mkdir -p .build/cloudflared vendor
           node scripts/release-third-party-assets.js \
-            --output vendor \
+            --output .build/cloudflared \
             --only cloudflared-macos-x64,cloudflared-macos-arm64
+          install -m 755 .build/cloudflared/cloudflared-macos-x64 vendor/cloudflared-darwin-x64
+          install -m 755 .build/cloudflared/cloudflared-macos-arm64 vendor/cloudflared-darwin-arm64
       - name: Download same-run Windows base artifact
         uses: actions/download-artifact@v4
         with:

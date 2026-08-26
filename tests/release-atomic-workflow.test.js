@@ -155,6 +155,8 @@ assert.match(
 assert.match(workflows.windows, /android_startup:/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
 assert.match(workflows.windows, /adb install --no-streaming/);
+assert.match(workflows.windows, /& \.\\mobile\\build-apk\.ps1/);
+assert.doesNotMatch(workflows.windows, /powershell\.exe[^\r\n]*build-apk\.ps1/i);
 assert.match(workflows.windows, /am start -W -n com\.xuan\.syncwatch\/\.MainActivity/);
 assert.match(workflows.windows, /pidof com\.xuan\.syncwatch/);
 assert.match(workflows.windows, /logcat -d -b crash/);
@@ -170,6 +172,8 @@ assert.match(workflows.macos, /find "\$app\/Contents\/MacOS" "\$app\/Contents\/F
 assert.match(workflows.macos, /cloudflared-darwin-x64" \| grep -q 'x86_64'/);
 assert.match(workflows.macos, /cloudflared-darwin-arm64" \| grep -q 'arm64'/);
 assert.match(workflows.macos, /Prepare pinned Cloudflare Tunnel binaries[\s\S]{0,220}GH_TOKEN: \$\{\{ github\.token \}\}/);
+assert.match(workflows.macos, /cloudflared-macos-x64 vendor\/cloudflared-darwin-x64/);
+assert.match(workflows.macos, /cloudflared-macos-arm64 vendor\/cloudflared-darwin-arm64/);
 assert.match(workflows.macos, /name: Select matrix architecture for native macOS build/);
 assert.match(workflows.macos, /electron-builder --config "\.build\/electron-builder-mac-\$\{RELEASE_KIND\}-\$\{RELEASE_ARCH\}\.json"/);
 assert.match(workflows.macos, /dist\/builder-debug\.yml/);
