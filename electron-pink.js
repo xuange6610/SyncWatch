@@ -154,7 +154,7 @@ function resolveMacDownloadPaths(kind, {
 
 function resolveClientDownloadPath({ isPackaged = false, resourcesPath = '', portableExecutableDir = '', portableExecutableFile = '', developmentClientPath = '' } = {}) {
   const candidates = isPackaged
-    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.2-x64.exe') : '', resourcesPath ? path.join(resourcesPath, 'client', 'SyncWatch同步观影-Client-v2.2.2.exe') : '']
+    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe') : '', resourcesPath ? path.join(resourcesPath, 'client', 'SyncWatch同步观影-Client-v2.2.3.exe') : '']
     : [developmentClientPath];
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
@@ -306,13 +306,20 @@ function userFacingDesktopError(error, fallback = '操作失败，请稍后重�
   return fallback;
 }
 
-function commandLinePort() {
+function commandLineValue(name) {
   for (let index = 0; index < process.argv.length; index += 1) {
     const current = String(process.argv[index] || '');
-    if (current.startsWith('--port=')) return current.slice('--port='.length);
-    if (current === '--port' && index + 1 < process.argv.length) return process.argv[index + 1];
+    if (current.startsWith(`--${name}=`)) return current.slice(name.length + 3);
+    if (current === `--${name}`) {
+      const next = index + 1 < process.argv.length ? String(process.argv[index + 1] || '') : '';
+      return next.startsWith('--') ? '' : next;
+    }
   }
-  return '';
+  return undefined;
+}
+
+function commandLinePort() {
+  return commandLineValue('port') ?? '';
 }
 
 function atomicWriteJson(filename, value) {
@@ -2384,12 +2391,16 @@ async function startApplication() {
   activeServerSettings = loadServerSettings({ create: !process.env.SYNCWATCH_DATA_DIR && commandLinePort() === '' && process.env.PORT === undefined });
   applyAutostartSetting(activeServerSettings.autostart);
   const startPort = resolvedStartPort(activeServerSettings);
+  const trustedProxies = commandLineValue('trusted-proxies');
+  if (trustedProxies !== undefined && !trustedProxies.trim()) {
+    throw new Error('--trusted-proxies 必须后跟至少一个精确代理 IP 或 CIDR');
+  }
   const lanAddress = resolveLanAddress(activeServerSettings);
   const dataDir = process.env.SYNCWATCH_DATA_DIR || DEFAULT_DATA_DIR;
   const androidApkPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'offline-downloads', 'android', 'SyncWatch-Android-v2.2.2-universal.apk')
-    : path.join(__dirname, 'dist', 'SyncWatch-Android-v2.2.2-universal.apk');
-  const developmentClientPath = path.join(__dirname, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.2-x64.exe');
+    ? path.join(process.resourcesPath, 'offline-downloads', 'android', 'SyncWatch-Android-v2.2.3-universal.apk')
+    : path.join(__dirname, 'dist', 'SyncWatch-Android-v2.2.3-universal.apk');
+  const developmentClientPath = path.join(__dirname, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe');
   const clientDownloadPath = resolveClientDownloadPath({
     isPackaged: app.isPackaged,
     resourcesPath: process.resourcesPath,
@@ -2430,6 +2441,7 @@ async function startApplication() {
   serverController = await startSyncWatchServer({
     host: '0.0.0.0', port: startPort, strictPort: false, dataDir, allowedHosts: configuredHosts,
     publicUrl: activeServerSettings.publicUrl, lanAddress,
+    ...(trustedProxies !== undefined ? { trustedProxies } : {}),
     publicDir: path.join(__dirname, 'public'), hostControlToken: HOST_CONTROL_TOKEN, tunnelManager, androidApkPath, clientDownloadPath,
     macServerDownloadPaths, macClientDownloadPaths,
     onFactoryResetRequested: factoryResetAndRestart, onRestartRequested: restartApplication
@@ -2474,7 +2486,7 @@ process.on('unhandledRejection', (error) => {
 });
 
 module.exports = { _test: {
-  validPort, normalizePublicUrl, normalizeAllowedHost, normalizeServerSettings, resolvedStartPort,
+  validPort, commandLineValue, normalizePublicUrl, normalizeAllowedHost, normalizeServerSettings, resolvedStartPort,
   selectableNetworkAdapters, resolveLanAddress,
   resolveApplicationRoot, resolveClientDownloadPath, resolveMacDownloadPaths, tunnelCommandArgs, tunnelEnvironment,
   tunnelConnectionStrategies, classifyTunnelFailure, isTunnelFakeIp, tunnelRepairRecommendations,

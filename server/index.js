@@ -51,7 +51,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.2.2';
+const APP_VERSION = 'v2.2.3';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -101,6 +101,7 @@ const UI_COPY_DEFAULTS = Object.freeze({
   'login.submit': '登录并进入房间',
   'login.register': '注册账号',
   'login.guest': '游客模式 · 免注册',
+  'login.guestIpOccupied': '当前 IP 已有游客在线，请先退出后再进入',
   'login.forgot': '忘记密码',
   'login.admin': '服务器设置',
   'login.connecting': '正在连接服务器…',
@@ -272,7 +273,7 @@ const DATA_LOCK_OWNER_FILE = 'owner.json';
 const DATA_LOCK_CONTROL_FILE = 'control.json';
 const DATA_LOCK_HEARTBEAT_MS = 10000;
 const ROOM_EMPTY_CLOSE_MS = 90 * 1000;
-const DEFAULT_LEGAL_AGREEMENT_VERSION = '2.2.2';
+const DEFAULT_LEGAL_AGREEMENT_VERSION = '2.2.3';
 const DANGEROUS_ACTION_CONFIRMATION = '我已知道这个风险';
 const SHARED_WEB_URL_LIMIT = 8192;
 const MAIL_TEMPLATE_HTML_LIMIT = 100000;
@@ -900,6 +901,73 @@ function normalizeIp(value) {
   if (raw === '::1') return '127.0.0.1';
   const zone = raw.indexOf('%');
   return zone >= 0 ? raw.slice(0, zone) : raw || 'unknown';
+}
+
+function normalizeTrustedProxyEntries(value) {
+  const source = Array.isArray(value) ? value : String(value || '').split(/[\s,;]+/);
+  const entries = [];
+  for (const rawEntry of source) {
+    const entry = String(rawEntry || '').trim();
+    if (!entry) continue;
+    const slash = entry.lastIndexOf('/');
+    const address = normalizeIp(slash >= 0 ? entry.slice(0, slash) : entry);
+    const family = net.isIP(address);
+    if (!family) continue;
+    if (slash < 0) {
+      entries.push(address);
+      continue;
+    }
+    const prefixText = entry.slice(slash + 1);
+    if (!/^\d+$/.test(prefixText)) continue;
+    const prefix = Number(prefixText);
+    // A /0 entry trusts every address in that family and would let any direct
+    // client forge proxy headers. Treat wildcard CIDRs as invalid so a typo or
+    // overly broad deployment setting fails closed.
+    if (prefix <= 0 || prefix > (family === 4 ? 32 : 128)) continue;
+    entries.push(`${address}/${prefix}`);
+  }
+  return [...new Set(entries)];
+}
+
+function createTrustedProxyMatcher(value) {
+  const entries = normalizeTrustedProxyEntries(value);
+  const blockList = new net.BlockList();
+  for (const entry of entries) {
+    const slash = entry.lastIndexOf('/');
+    const address = slash >= 0 ? entry.slice(0, slash) : entry;
+    const family = net.isIP(address);
+    const type = family === 6 ? 'ipv6' : 'ipv4';
+    try {
+      if (slash >= 0) blockList.addSubnet(address, Number(entry.slice(slash + 1)), type);
+      else blockList.addAddress(address, type);
+    } catch (_) {}
+  }
+  const matcher = (valueToCheck) => {
+    const address = normalizeIp(valueToCheck);
+    const family = net.isIP(address);
+    if (!family) return false;
+    try { return blockList.check(address, family === 6 ? 'ipv6' : 'ipv4'); }
+    catch (_) { return false; }
+  };
+  matcher.entries = entries;
+  return matcher;
+}
+
+function resolveClientIp(peerAddress, headers = {}, trustedProxy = () => false) {
+  const peer = normalizeIp(peerAddress);
+  if (!net.isIP(peer) || !trustedProxy(peer)) return peer;
+  const forwardedChain = String(headers['x-forwarded-for'] || '')
+    .split(',').map(normalizeIp).filter((address) => net.isIP(address));
+  if (forwardedChain.length) {
+    let current = peer;
+    for (let index = forwardedChain.length - 1; index >= 0 && trustedProxy(current); index -= 1) {
+      current = forwardedChain[index];
+    }
+    return current;
+  }
+  const singleHop = [headers['cf-connecting-ip'], headers['x-real-ip']]
+    .map(normalizeIp).find((address) => net.isIP(address));
+  return singleHop || peer;
 }
 
 function makePasswordHash(password) {
@@ -2060,10 +2128,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.2.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.3.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.2-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.2-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.3-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.3-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const macServerDownloadPaths = normalizeMacDownloadPaths(options.macServerDownloadPaths);
@@ -2202,6 +2270,10 @@ async function startSyncWatchServer(options = {}) {
     }
     return addresses;
   }
+  const trustedProxyMatcher = createTrustedProxyMatcher([
+    ...currentLocalAddresses(),
+    ...normalizeTrustedProxyEntries(options.trustedProxies ?? process.env.SYNCWATCH_TRUSTED_PROXIES)
+  ]);
   async function socketHostIsLocal(hostHeader, { allowMissingPort = false } = {}) {
     const parts = hostHeaderParts(hostHeader);
     if (!parts || (parts.port ? parts.port !== actualPort : (!allowMissingPort && ![80, 443].includes(actualPort)))) return false;
@@ -3343,13 +3415,7 @@ async function startSyncWatchServer(options = {}) {
   }
   const isIpBanned = (ip) => state.blacklist.some((item) => item?.ip === ip);
   function sourceIp(peerAddress, headers = {}) {
-    const peer = normalizeIp(peerAddress);
-    const forwarded = [
-      headers['cf-connecting-ip'],
-      String(headers['x-forwarded-for'] || '').split(',')[0],
-      headers['x-real-ip']
-    ].map(normalizeIp).find((value) => net.isIP(value));
-    return peer === '127.0.0.1' && net.isIP(forwarded) ? forwarded : peer;
+    return resolveClientIp(peerAddress, headers, trustedProxyMatcher);
   }
   const getRequestIp = (req) => sourceIp(req.socket?.remoteAddress, req.headers);
   const getSocketIp = (socket) => sourceIp(socket.handshake?.address, socket.handshake?.headers);
@@ -5968,7 +6034,7 @@ async function startSyncWatchServer(options = {}) {
       const label = kind === 'macos-server' ? '服务器' : '客户端';
       return {
         kind, extension, architecture, label: `macOS ${label}`,
-        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.2-${architecture}${extension}`)
+        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.3-${architecture}${extension}`)
       };
     }
     return null;
@@ -6151,7 +6217,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.2-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.3-x64.exe');
   });
 
   app.get('/api/macos-server-download', httpRateLimit('macos-server-download', 12, 60 * 60 * 1000), (req, res) => {
@@ -6161,7 +6227,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macServerDistribution),
       error: '苹果服务器安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-服务器-v2.2.2-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-服务器-v2.2.3-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6176,7 +6242,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macClientDistribution),
       error: '苹果客户端安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-客户端-v2.2.2-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-客户端-v2.2.3-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6262,7 +6328,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.2-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.3-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -7742,7 +7808,7 @@ async function startSyncWatchServer(options = {}) {
 
   async function streamBackupArchive(res, metadata, entries) {
     res.type('application/vnd.syncwatch.backup');
-    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.2-${metadata.scope}.swbackup`));
+    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.3-${metadata.scope}.swbackup`));
     const metadataBuffer = Buffer.from(JSON.stringify(metadata), 'utf8');
     const entryBuffers = entries.map((entry) => ({
       entry,
@@ -7997,7 +8063,7 @@ async function startSyncWatchServer(options = {}) {
         const entries = fullSnapshot ? backupDataEntries(scopes) : (scopes.includes('media-index') ? backupArtifactEntries(state.files) : []);
         return await streamBackupArchive(res, output, entries);
       }
-      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.2-${output.scope}.json`));
+      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.3-${output.scope}.json`));
       return res.json(output);
     } catch (error) { return next(error); }
   });
@@ -9080,7 +9146,8 @@ async function startSyncWatchServer(options = {}) {
       if (existingGuest) {
         const existingSession = sessions.get(existingGuest.token);
         if (existingSession && state.accounts[existingSession.username]?.guest) {
-          return finishGuestLogin({ success: false, code: 'GUEST_IP_OCCUPIED', error: '当前IP已有游客在线，请先退出后再进入' });
+          const occupiedMessage = normalizeUiCopy(state.admin.uiCopy)['login.guestIpOccupied'];
+          return finishGuestLogin({ success: false, code: 'GUEST_IP_OCCUPIED', error: occupiedMessage });
         }
         guestSessionsByIp.delete(clientIp);
       }
@@ -13761,7 +13828,7 @@ async function startSyncWatchServer(options = {}) {
       discoverySocket.on('message', (message, remote) => {
         if (!privateOrLoopbackAddress(remote.address) || String(message).trim() !== 'SYNCWATCH_DISCOVER_V1') return;
         const payload = Buffer.from(JSON.stringify({
-          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.2', server: os.hostname(), version: APP_VERSION,
+          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.3', server: os.hostname(), version: APP_VERSION,
           port: actualPort, addresses: advertisedNetworkAddresses(),
           rooms: Object.values(state.rooms).filter((room) => visibleRoom(room) && !room.archived).map((room) => ({
             id: room.id, name: room.name, maxUsers: room.maxUsers, online: roomUsers(room.id).length, passwordRequired: Boolean(room.passwordHash)
@@ -13951,6 +14018,7 @@ module.exports = {
   APP_VERSION, FILE_TYPES, startSyncWatchServer, resolveDefaultDataDir,
   _test: {
     captureProcess, requestHostHeader, requestUsesForwardedHttps, requestUsesPublicProxy, socketOriginAllowed, pipeMediaFileResponse,
+    createTrustedProxyMatcher, normalizeTrustedProxyEntries, resolveClientIp,
     attachmentContentDisposition, downloadMimeType,
     clampMediaRangeEnd, requestSkipsCompression, normalizeMacDownloadPaths, availableMacArchitectures, preferredMacArchitecture,
     OPEN_ENDED_MEDIA_RANGE_CHUNK_THRESHOLD_BYTES, MAX_OPEN_ENDED_MEDIA_RANGE_BYTES,

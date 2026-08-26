@@ -1843,6 +1843,79 @@ body.android-client .account-dropdown {
 }
 body.android-client .account-dropdown button { min-height: 48px; }
 
+/* The account actions live inside the mobile sheet so sign-out remains reachable
+   without shrinking the watch surface. Visual density is reduced while Android
+   touch targets keep their 48px interaction height. */
+body.android-client .topbar-actions > .account-dropdown {
+  position: static;
+  z-index: auto;
+  inset: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-column: 1 / -1;
+  gap: 4px;
+  width: 100%;
+  padding: 6px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+body.android-client .topbar-actions > .account-dropdown button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 7px 8px;
+  font-size: .72rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+body.android-client .topbar-actions > .account-dropdown #logoutKeepCredentialsBtn,
+body.android-client .topbar-actions > .account-dropdown #logoutBtn { order: -2; }
+
+@media (min-width: 390px) {
+  body.android-client .topbar-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    max-height: calc(100dvh - var(--android-appbar) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  }
+  body.android-client .topbar-scroll-actions,
+  body.android-client .topbar-fixed-actions { display: contents; }
+}
+
+@media (max-width: 540px) {
+  body:not(.android-client) .topbar-actions > .account-dropdown {
+    position: static;
+    z-index: auto;
+    inset: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
+    gap: 4px;
+    width: 100%;
+    padding: 6px;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  body:not(.android-client) .topbar-actions > .account-dropdown button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 7px 8px;
+    font-size: .72rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  body:not(.android-client) .topbar-actions > .account-dropdown #logoutKeepCredentialsBtn,
+  body:not(.android-client) .topbar-actions > .account-dropdown #logoutBtn { order: -2; }
+}
+
+@media (min-width: 390px) and (max-width: 540px) {
+  body:not(.android-client) .topbar-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    max-height: calc(100dvh - var(--mobile-web-appbar) - 24px);
+  }
+}
+
 /* Final control cascade: legacy responsive rules above target the old
    single-row toolbar, so the split strip is finalized at the end. */
 button { appearance: none; -webkit-appearance: none; color: var(--text); background: var(--theme-button, #ffffff0c); border: 1px solid var(--line); border-radius: 7px; }

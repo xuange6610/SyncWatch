@@ -11,6 +11,7 @@
       PORT: "${SYNCWATCH_PORT:-5000}"
       SYNCWATCH_PUBLIC_URL: "${SYNCWATCH_PUBLIC_URL:-}"
       SYNCWATCH_ALLOWED_HOSTS: "${SYNCWATCH_ALLOWED_HOSTS:-}"
+      SYNCWATCH_TRUSTED_PROXIES: "${SYNCWATCH_TRUSTED_PROXIES:-}"
       SYNCWATCH_DATA_DIR: /app/SyncWatch同步观影-Data
     volumes:
       - ./SyncWatch同步观影-Data:/app/SyncWatch同步观影-Data

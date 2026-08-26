@@ -28,4 +28,4 @@ if [ "$dependencies_ready" -ne 1 ]; then
   npm ci --omit=dev --no-audit --no-fund
 fi
 
-exec node ./server-standalone.js
+exec node ./server-standalone.js "$@"

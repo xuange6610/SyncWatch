@@ -176,9 +176,9 @@ assert.match(releaseNotes, /## Node\.js 官方环境包/);
 const candidateReleaseNotesPath = `docs/release-notes-${sourceTag}.md`;
 assert.ok(exists(candidateReleaseNotesPath), `missing candidate release notes: ${candidateReleaseNotesPath}`);
 const candidateReleaseNotes = read(candidateReleaseNotesPath);
-assert.match(candidateReleaseNotes, new RegExp(`SyncWatch同步观影 ${escapeRegExp(sourceTag)} 候选发布说明`));
+assert.match(candidateReleaseNotes, new RegExp(`SyncWatch同步观影 ${escapeRegExp(sourceTag)} 发布说明`));
 assert.match(candidateReleaseNotes, /17 个 SyncWatch 应用资产/);
-assert.match(candidateReleaseNotes, /最终 Tag.*真实重建/s);
+assert.match(candidateReleaseNotes, /最终.*Tag.*真实重建/s);
 
 const pages = read('.github/workflows/pages.yml');
 assert.match(pages, /pages:\s*write/);

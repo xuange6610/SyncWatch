@@ -1,6 +1,6 @@
 # SyncWatch同步观影 技术架构、模块与依赖说明
 
-适用版本：v2.2.2 源码候选（最新正式发布仍为 v2.2.0）
+适用版本：v2.2.3 源码候选（最新正式发布仍为 v2.2.0）
 文档日期：2026-08-26
 
 ## 1. 项目定位
@@ -122,6 +122,8 @@ sequenceDiagram
 
 `cloudflared` 只负责网络入口，不保存账号、房间或影片。程序优先使用安装包中的已校验二进制，缺失时才按平台下载 Cloudflare 官方 Release 并校验 SHA-256；临时地址重启后可能变化。
 
+代理后的客户端身份由 `server/index.js` 统一解析，HTTP 请求和 Socket.IO 握手共用同一算法。回环地址和服务器启动时采样的本机网卡地址默认可信，Docker/Nginx/frp 等额外代理使用 `SYNCWATCH_TRUSTED_PROXIES` 或 `--trusted-proxies` 声明精确 IP/CIDR，命令行值优先于环境变量。IPv4/IPv6 `/0` 会被当作无效条目忽略，不会开启全网段信任。`X-Forwarded-For` 从右向左剥离可信 hop，首个不可信地址才是客户端；直连 TCP 对端不可信时忽略全部转发头。`CF-Connecting-IP` / `X-Real-IP` 只作为可信单跳代理且没有有效 XFF 时的兼容回退。
+
 ## 3. 目录与模块职责
 
 ### 3.1 Windows Electron 桌面端
@@ -139,7 +141,7 @@ Electron 安全设置包括 `nodeIntegration: false`、`contextIsolation: true`�
 
 | 文件 | 职责 |
 | --- | --- |
-| `server/index.js` | Express/HTTP 服务、Socket.IO 实时通道、账户认证、管理员、房间、权限、聊天、通知、媒体、队列、播放同步、屏幕共享、网页共享、文件上传、字幕、转码、回收站、操作历史、邮件验证码、安全策略和持久化。 |
+| `server/index.js` | Express/HTTP 服务、Socket.IO 实时通道、可信代理链客户端 IP、账户认证、管理员、房间、权限、聊天、通知、媒体、队列、播放同步、屏幕共享、网页共享、文件上传、字幕、转码、回收站、操作历史、邮件验证码、安全策略和持久化。 |
 | `server/ai-relay.js` | AI HTTPS 中转、接口路径规范化、DNS/内网地址拦截、重定向复核、超时与响应大小限制，以及 Responses/Chat Completions 返回解析。 |
 | `server-standalone.js` | 独立服务器启动入口；读取端口和公网配置；生成并保存服务器主机令牌；定位 `SyncWatch同步观影-Data`；写入服务器运行信息；处理 SIGINT/SIGTERM 安全关闭。 |
 | `start-server.cmd` / `.ps1` / `.sh` | Windows 和 Linux 的启动包装器。 |

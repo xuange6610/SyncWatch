@@ -539,7 +539,7 @@ public final class MobileServerService extends Service {
                 + "process.on('SIGTERM',()=>shutdown(0)); process.on('SIGINT',()=>shutdown(0));\n"
                 + "process.on('uncaughtException',error=>{report(error);shutdown(1);});\n"
                 + "process.on('unhandledRejection',error=>{report(error);shutdown(1);});\n"
-                + "(async()=>{try{const requestedPort=" + configuredPort + ";await assertPortAvailable(requestedPort);const {startSyncWatchServer}=require(path.join(runtimeRoot,'server','mobile-index.js'));instance=await startSyncWatchServer({host:'0.0.0.0',port:requestedPort,publicDir:path.join(runtimeRoot,'public'),dataDir:dataRoot,hostControlToken:hostToken,tunnelManager,androidApkPath:path.join(dataRoot,'SyncWatch同步观影-v2.2.2.apk'),ffprobePath:'',ffmpegPath:''});atomic(readyFile,{port:instance.port,addresses:instance.addresses||[]});}catch(error){report(error);shutdown(1);}})();\n";
+                + "(async()=>{try{const requestedPort=" + configuredPort + ";await assertPortAvailable(requestedPort);const {startSyncWatchServer}=require(path.join(runtimeRoot,'server','mobile-index.js'));instance=await startSyncWatchServer({host:'0.0.0.0',port:requestedPort,publicDir:path.join(runtimeRoot,'public'),dataDir:dataRoot,hostControlToken:hostToken,tunnelManager,androidApkPath:path.join(dataRoot,'SyncWatch同步观影-v2.2.3.apk'),ffprobePath:'',ffmpegPath:''});atomic(readyFile,{port:instance.port,addresses:instance.addresses||[]});}catch(error){report(error);shutdown(1);}})();\n";
     }
 
     private boolean publishReportedStartupError(File runtimeRoot) {

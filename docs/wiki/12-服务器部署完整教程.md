@@ -1,8 +1,8 @@
 # SyncWatch同步观影 服务器部署与使用教程
 
-适用版本：v2.2.2 源码候选（最新正式发布仍为 v2.2.0，文档更新于 2026-08-26）
+适用版本：v2.2.3 源码候选（最新正式发布仍为 v2.2.0，文档更新于 2026-08-26）
 
-本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；当前正式下载使用 v2.2.0，v2.2.2 独立服务器候选必须等最终 Tag 构建与验证后才可使用。
+本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；当前正式下载使用 v2.2.0，v2.2.3 独立服务器候选必须等最终 Tag 构建与验证后才可使用。
 
 ## 1. 先理解“程序”和“数据”
 
@@ -143,7 +143,7 @@ $env:PORT = '7000'
 PORT=7000 ./start-server.sh
 ```
 
-注意：`start-server.cmd` 和 `start-server.ps1` 不转发额外命令行参数；需要 `--port` 时请直接运行 `node server-standalone.js --port 端口`。
+三个独立包启动器 `start-server.cmd` / `start-server.ps1` / `start-server.sh` 都会把额外参数转发给 `server-standalone.js`，因此可直接使用 `--port=5000` 和 `--trusted-proxies=IP/CIDR,...`。
 
 使用域名或反向代理时，建议同时设置：
 
@@ -156,6 +156,25 @@ PORT=7000 ./start-server.sh
 ```
 
 `publicUrl` 必须是完整的 `http://` 或 `https://` 根地址，不要附加 `/syncwatch` 等子路径；`allowedHosts` 只写 `主机名` 或 `主机名:端口`，不要写协议和路径。环境变量 `SYNCWATCH_ALLOWED_HOSTS` 可使用英文逗号分隔多个值。
+
+代理与 SyncWatch 不在同一回环/本机网卡路径时，还要声明受控代理地址，才能恢复真实客户端 IP：
+
+```powershell
+$env:SYNCWATCH_TRUSTED_PROXIES = '172.18.0.0/16,10.0.0.5'
+node .\server-standalone.js --port 5000
+
+# 也可直接使用启动参数；它会优先于同名环境变量
+.\start-server.ps1 --trusted-proxies '172.18.0.0/16,10.0.0.5' --port 5000
+```
+
+```bash
+SYNCWATCH_TRUSTED_PROXIES=172.18.0.0/16,10.0.0.5 node ./server-standalone.js --port 5000
+
+# 独立包 POSIX 启动器同样转发参数
+./start-server.sh --trusted-proxies=172.18.0.0/16,10.0.0.5 --port=5000
+```
+
+只填写真实运行 Nginx、Caddy、Docker ingress 或 frp 的精确 IP/CIDR。不得使用 `0.0.0.0/0`、`::/0`、整个办公网或不受控网段；两个 `/0` 全网段会被源码当作无效条目 fail-closed 忽略。参数存在但没有值时服务器会拒绝启动，避免误把后续开关当成地址。不可信 TCP 对端的 `X-Forwarded-For`、`CF-Connecting-IP` 和 `X-Real-IP` 会被故意忽略。内置 cloudflared 回源到本机时无需手工设置。
 
 Windows EXE 可直接在“系统 → 服务器启动设置 → 公网根地址”填写同一值。正确填写顺序是：
 
@@ -320,6 +339,7 @@ SYNCWATCH_PORT=5000
 SYNCWATCH_BIND_ADDRESS=127.0.0.1
 SYNCWATCH_PUBLIC_URL=https://watch.example.com
 SYNCWATCH_ALLOWED_HOSTS=watch.example.com
+SYNCWATCH_TRUSTED_PROXIES=172.18.0.1
 ```
 
 然后执行：
@@ -334,6 +354,7 @@ docker compose up -d --build
 SYNCWATCH_PORT=5000 \
 SYNCWATCH_PUBLIC_URL=https://watch.example.com \
 SYNCWATCH_ALLOWED_HOSTS=watch.example.com \
+SYNCWATCH_TRUSTED_PROXIES=172.18.0.1 \
 docker compose up -d --build
 ```
 
@@ -353,7 +374,7 @@ docker compose down
 docker compose up -d --build
 ```
 
-自定义端口使用 `SYNCWATCH_PORT`，Compose 会同时修改宿主机映射端口和容器内 `PORT`。不要只改 `Dockerfile` 的 `EXPOSE`。
+自定义端口使用 `SYNCWATCH_PORT`，Compose 会同时修改宿主机映射端口和容器内 `PORT`。`SYNCWATCH_TRUSTED_PROXIES` 也会由 Compose 明确映射到容器；这里填的应是容器看到的实际反向代理对端，不是任意公网来源。不要只改 `Dockerfile` 的 `EXPOSE`。
 
 ## 8. 云服务器安全组
 
@@ -437,6 +458,8 @@ server {
 
 `client_max_body_size 0` 表示不让 Nginx 另加请求体大小限制；SyncWatch同步观影 管理界面的“最大文件 MB”设置为 0 表示不增加用户配置限制，但服务端仍有 32 GiB 安全上限，语音消息上限为 25 MB。上传时长设置为 0 表示不增加管理员自定义限制，但单次 HTTP 请求仍有 2 小时安全上限。
 
+示例中的 `$proxy_add_x_forwarded_for` 会追加完整代理链。若 Nginx 与 SyncWatch 位于不同主机或容器网段，还要按第 4 章设置 `SYNCWATCH_TRUSTED_PROXIES`；服务端从 XFF 右侧向左剥离可信 hop，首个不可信地址作为真实客户端。不要把 `X-Forwarded-For` 固定写成代理 IP，也不要为了“能读到头”而信任所有来源。
+
 修改后执行：
 
 ```bash
@@ -503,7 +526,8 @@ cloudflared tunnel --url http://127.0.0.1:5000 --protocol auto --no-autoupdate
 无论使用哪种穿透，都必须满足：
 
 - HTTP、Socket.IO polling 和 WebSocket 都转发到同一个 SyncWatch同步观影 端口。
-- 公网网页客户端会优先连接 WebSocket，失败时自动回退 polling；v2.2.2 源码候选的新客户端默认播放原画，反向代理或 Tunnel 不会自动改成流畅版。网络受限时可在播放器手动选择流畅版；该 H.264/AAC 低带宽兼容版本目标不高于 854×480、视频约 900 kbps、音频 96 kbps。即使源文件已经是浏览器可解码的 H.264 MP4，只要分辨率或平均码率超过预算也会生成低带宽版本。
+- 内置 cloudflared 的本机回源会自动按可信代理链恢复真实来源 IP；外置代理/容器必须通过 `SYNCWATCH_TRUSTED_PROXIES` 精确声明。HTTP 与 Socket.IO 使用同一解析结果，所以账号审计、封禁和同 IP 游客限制不会把所有公网客户端误归为代理本身。
+- 公网网页客户端会优先连接 WebSocket，失败时自动回退 polling；v2.2.3 源码候选的新客户端默认播放原画，反向代理或 Tunnel 不会自动改成流畅版。网络受限时可在播放器手动选择流畅版；该 H.264/AAC 低带宽兼容版本目标不高于 854×480、视频约 900 kbps、音频 96 kbps。即使源文件已经是浏览器可解码的 H.264 MP4，只要分辨率或平均码率超过预算也会生成低带宽版本。
 - 稳定域名应写入 `publicUrl` 和 `allowedHosts`。临时域名每次会变化，可以先通过该地址进行一次正常页面导航，让本机/内网代理转发的同源主机自动加入当前进程；服务器重启或地址变化后需要重新访问。
 - 所有房间设置强密码，不公开带 `#host=` 的房主链接。
 - 穿透服务需要长期运行时交给 systemd、Windows 任务计划或对应服务管理器。

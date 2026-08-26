@@ -22,6 +22,10 @@ const embeddedMacReadme = read('mac/README.md');
 const windowsBuild = read('build-windows.ps1');
 const dockerfile = read('Dockerfile');
 const dockerignore = read('.dockerignore');
+const dockerCompose = read('docker-compose.yml');
+const powershellServerLauncher = read('start-server.ps1');
+const cmdServerLauncher = read('start-server.cmd');
+const shellServerLauncher = read('start-server.sh');
 
 assert.match(serverPreload, /readClipboardText:\s*\(\)\s*=>\s*ipcRenderer\.invoke\(['"]syncwatch:read-clipboard-text['"]\)/);
 assert.match(clientPreload, /readClipboardText:\s*\(\)\s*=>\s*ipcRenderer\.invoke\(['"]syncwatch-client:read-clipboard-text['"]\)/);
@@ -75,6 +79,18 @@ assert.ok(dockerfile.includes(`COPY dist/SyncWatch-Experience-Client-Portable-v$
   'Docker deployment must include the Windows client download artifact');
 assert.ok(dockerignore.indexOf(`!dist/SyncWatch-Experience-Client-Portable-v${packageManifest.version}-x64.exe`) > dockerignore.indexOf('*.exe'),
   'Docker ignore rules must re-include the canonical Windows client after the executable wildcard');
+assert.match(standalone, /commandLineValue\(['"]trusted-proxies['"]\)/,
+  'the standalone Node entry must accept --trusted-proxies');
+assert.match(electronServer, /commandLineValue\(['"]trusted-proxies['"]\)/,
+  'the Electron server entry must accept --trusted-proxies');
+assert.match(powershellServerLauncher, /server-standalone\.js['"]?\s+@args/,
+  'the PowerShell launcher must forward standalone server arguments');
+assert.match(cmdServerLauncher, /start-server\.ps1['"]?\s+%\*/,
+  'the CMD launcher must forward arguments into PowerShell');
+assert.match(shellServerLauncher, /server-standalone\.js\s+"\$@"/,
+  'the POSIX launcher must forward standalone server arguments');
+assert.match(dockerCompose, /SYNCWATCH_TRUSTED_PROXIES:\s*["']\$\{SYNCWATCH_TRUSTED_PROXIES:-\}["']/,
+  'Docker Compose must map SYNCWATCH_TRUSTED_PROXIES into the container');
 
 for (const [config, main] of [[macServerConfig, 'electron-pink.js'], [macClientConfig, 'electron-client.js']]) {
   assert.ok(config.files.includes(main));

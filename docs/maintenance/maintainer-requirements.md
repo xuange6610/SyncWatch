@@ -114,7 +114,7 @@
 
 ## 13. 当前发布基线
 
-- 当前正式版本：`v2.2.0`；`main` 与 `v2.2.0` annotated tag 解引用后均指向提交 `97491a87eb548c25d4f87950ca449c8b9ad18826`，Release 标题和发布说明使用同一版本标识。
+- 当前正式版本：`v2.2.0`，Release 标题和发布说明使用同一版本标识；远端 `main` 指向提交 `3096a41e65f062c98f96064f3dcd7246010cc374`，同一提交已有不可移动的 `v2.2.2` annotated tag，但没有对应 Release。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
 - v2.1.7、v2.1.8、v2.1.9 与 v2.2.0 均已验证为 26 个维护者资产，加 2 个 GitHub 源码归档，每个版本共 28 个可见文件；v2.2.0 已于 2026-08-25 设为 Latest，后续正式版本继续沿用同一门禁。
