@@ -15,6 +15,8 @@ const dataDir = process.env.SYNCWATCH_DATA_DIR;
 
 const { _test: electronSettings } = require('../electron-pink');
 
+assert.equal(path.basename(electronSettings.iconPath()), process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png');
+
 const portableRootCases = process.platform === 'win32'
   ? [
       { file: `D:\\SyncWatch同步观影\\SyncWatch同步观影-v${APP_VERSION}.exe`, expected: path.resolve('D:\\SyncWatch同步观影') },
