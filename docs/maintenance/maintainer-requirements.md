@@ -49,6 +49,7 @@
 
 ## 6. 版本升级
 
+- 同一个版本只保留一个正式 `release/vX.Y.Z` 工作分支；不要并行遗留多个 `codex/*release*` 临时分支，临时分支在合并或放弃后立即精确删除。
 1. 使用 `release/vX.Y.Z` 分支承载待发布更新；`main` 保持可验证的最新稳定源码。
 2. 同步更新 `package.json`、锁文件/构建配置中的版本、Android `versionName`/`versionCode`、协议或公开配置版本、文件名、下载链接、文档、Wiki、tag 和 Release 标题。Git 标签、Release 标题/URL、发布分支和用户可见版本必须使用 `vX.Y.Z`；不得同时保留 `X.Y.Z` 与 `vX.Y.Z` 两个标签。`package.json` 和 Android `versionName` 按工具链要求继续使用纯数字 SemVer `X.Y.Z`。
 3. 不能只修改显示文字或旧文件名冒充新版本；所有包必须从目标提交真实构建。

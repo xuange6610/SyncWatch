@@ -36,6 +36,6 @@
     "signExecutable": false
   },
   "portable": {
-    "artifactName": "SyncWatch-v2.2.1-Full-Offline-Portable-${arch}.exe"
+    "artifactName": "SyncWatch-v2.2.2-Full-Offline-Portable-${arch}.exe"
   }
 }
