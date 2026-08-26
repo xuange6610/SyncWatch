@@ -62,6 +62,7 @@
 - 修复 macOS 发布 runner 的平台差异：服务器按当前架构校验对应的 Cloudflare 二进制，固定下载使用 GitHub token，并把 Release 资产名映射为应用运行时文件名；客户端基础包按矩阵只生成当前架构，并在候选门禁前移除调试元数据，避免 x64/arm64 混包。
 - 修复 Windows 托管 runner 没有 loopback 音频设备时的发布阻塞：仍验证桌面视频捕获，仅在 GitHub Windows runner 且显式开启受控开关时记录缺少音频设备的警告；本地和自托管环境仍要求真实音轨。
 - 修复 Windows PowerShell 5.1 解析 Android 构建脚本中正则和长字符串的兼容性，保留 APK 签名、ABI、内容闭包和版本门禁。
+- Android 内嵌运行库固定由 `nodejs-mobile/nodejs-mobile` 提交 `ff4e063f1f1911047c067335ad0a3d81336236ca`、NDK r24 和 16 KB linker flag 构建。发布重试可以复用此前 Actions 生成的同一运行库 artifact，但必须重新核对 provenance、头文件和三 ABI 原始 SHA-256；最终 APK 仍由新的 v2.2.3 Tag 源码重新构建、正式签名，并对 Gradle/NDK 处理后的三 ABI 哈希逐项严格校验。
 - 根目录 `dist/` 仍是唯一正式输出目录。17 个 SyncWatch 应用资产必须由最终 v2.2.3 Tag 源码真实重建；9 个 Node.js/cloudflared 文件必须核对官方来源和 SHA-256，不能描述成 SyncWatch 启动程序。
 - 发布前必须先满足 26 个维护者资产、两个源码归档、非空大小、版本/平台/架构、包内闭包、SHA-256、启动/核心流程和 26+2 数量门禁；资产不齐时 Release 保持未发布，不上传残缺集合。
 
@@ -71,6 +72,7 @@
 - 新增 `tests/trusted-proxy-ip.test.js`，覆盖不可信直连伪造、服务器本机回源、可信 CIDR、多跳右向左剥离、恶意最左项、IPv6、两类 `/0` 拒绝，以及真实 HTTP `/api/public-config` 与 Socket.IO 游客登录/审计 IP 一致性。平台契约还覆盖双入口参数和三个独立包启动器/Compose 传递。
 - 游客生命周期回归覆盖不同真实 IP 并存、同 IP 阻止、文案实时广播、服务端错误和重启持久化。
 - 浏览器 UI 回归覆盖 390×844 三列菜单、375×667 小屏滚动、48px 触控、账号菜单无横向溢出、两个退出操作、保留凭据重新登录和普通退出清空表单。模拟视口不等同于物理手机。
+- 浏览器与 Electron 烟测在根目录 `dist/` 已生成当前 Android APK 时，会把同一绝对路径显式传给测试服务器；构建后执行完整回归不再出现“测试期望下载入口可见、服务器却未加载 APK”的环境耦合误报。
 
 ## 发布门禁与验证状态
 

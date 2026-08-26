@@ -301,6 +301,12 @@ HTTP 与 Socket.IO 使用同一套客户端 IP 解析：只有 TCP 对端属于�
 6. `cloudflared` 是可选边缘入口，只转发本地 HTTP、WebSocket 和 Range 请求，不保存 SyncWatch 账号或媒体。
 7. 统一界面文案保存在 `admin.uiCopy`。显式 key 与前端为固定控件生成的不可解释 `ui.auto.*` key 都经过格式校验；扫描器只收录系统标签、按钮和受控属性，排除影片名、账号/IP、Toast、动态对话正文等运行数据。`login.guestIpOccupied` 是服务端游客占用错误的稳定键，保存后下一次拒绝响应直接读取新值，同时通过 `ui-copy-state` 广播在线客户端。服务端限制最多 5000 项、每项 240 个字符、导入 JSON 不超过 2 MB，拒绝未知 key、HTML 标记和可执行协议；前端只使用 `textContent` 或受控文本属性应用，不接受选择器、DOM 路径或 HTML。
 
+### 发布供应链
+
+- Android 的 Node.js Mobile 运行库固定到上游源码提交、NDK 版本和 16 KB linker 参数。Actions 重试可以读取此前成功构建的运行库 artifact 以避免不可重复的 ELF build-id 漂移，但必须先严格核对 provenance、头文件和三个 ABI 的原始 SHA-256，再作为输入交给最终 Tag 的 APK 构建。
+- 运行库复用不等于复用 SyncWatch 应用包：APK、Windows 和 macOS 应用资产仍必须从最终 Tag 的源码重新构建，并完成各平台签名、闭包、启动和核心流程验证。
+- 原子发布器只在 28 个本地交付文件、26 个维护者资产、两份源码归档、SHA-256 清单和远端下载回读全部一致后，才把 Release 从草稿切换为公开并设为 Latest。
+
 ### 待确认边界
 
 - macOS runner 的最终窗口行为、签名和权限必须在 macOS 设备/Actions 成品上验证；Windows 工作站不能替代该验证。

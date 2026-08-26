@@ -159,6 +159,22 @@ assert.match(workflows.windows, /ref:\s*ff4e063f1f1911047c067335ad0a3d81336236ca
 assert.match(workflows.windows, /LDFLAGS:\s*-Wl,-z,max-page-size=16384/);
 assert.match(workflows.windows, /node_mobile_combine:/);
 assert.match(workflows.windows, /node-mobile-runtime/);
+assert.match(workflows.atomic, /node_mobile_runtime_run_id:/);
+assert.match(workflows.atomic, /node_mobile_runtime_artifact_name:/);
+assert.match(workflows.atomic, /node_mobile_runtime_run_id:\s*\$\{\{ inputs\.node_mobile_runtime_run_id \}\}/);
+assert.match(workflows.atomic, /node_mobile_runtime_artifact_name:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);
+assert.match(workflows.windows, /actions:\s*read/);
+assert.match(workflows.windows, /github-token:\s*\$\{\{ github\.token \}\}/);
+assert.match(workflows.windows, /run-id:\s*\$\{\{ inputs\.node_mobile_runtime_run_id \}\}/);
+assert.match(workflows.windows, /name:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);
+assert.match(workflows.windows, /sourceRevision.*ff4e063f1f1911047c067335ad0a3d81336236ca/);
+for (const digest of [
+  '5afcd3be4891f2fcf434f5218ce5faad08380789b6b080d30ea5d5867b1fc4f4',
+  'd0c41551f6cfbb0efd5a6c94ed7c3efc0e74594fe60095147c4c20a6e81a1d58',
+  '57bad09ba77ff33bb0a518eb57ed52cba21a24bdc9f99042a3c407bfdc2f907d'
+]) {
+  assert.ok(workflows.windows.includes(digest), `reused Node.js Mobile runtime must pin ${digest}`);
+}
 assert.match(workflows.windows, /Download official Node\.js Mobile 16 KB runtime/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
 assert.match(workflows.windows, /adb install --no-streaming/);

@@ -7,15 +7,15 @@ $NodeMobileArchiveUrl = 'https://github.com/nodejs-mobile/nodejs-mobile/releases
 $NodeMobileArchiveSha256 = 'BD7321EAA1A7602FBE0BB87302DF2D79D87835CF4363FBDD17C350DBB485C2AF'
 $NodeMobileHeaderSha256 = '6B7970057E8382E6E8CABEECB8637929054C28D168C3755CB1160B0062FAC4C9'
 $NodeMobileLibSha256 = @{
-    'arm64-v8a' = 'CB62710FDCC501ACD3322D4EF8C3327CC364E5475DC618A3FC115C6D564AB2F0'
-    'armeabi-v7a' = '51EACE74DC3EE2BB614347F55CE90B0E1BFD4099A3E8ED53E3CA1530CA953305'
-    'x86_64' = '981680CB2351F2CCCAA82E6256EEE39CE12D0DAAC1E4F28C9E2186FC6C3F27A5'
+    'arm64-v8a' = '5AFCD3BE4891F2FCF434F5218CE5FAAD08380789B6B080D30EA5D5867B1FC4F4'
+    'armeabi-v7a' = 'D0C41551F6CFBB0EFD5A6C94ED7C3EFC0E74594FE60095147C4C20A6E81A1D58'
+    'x86_64' = '57BAD09BA77FF33BB0A518EB57ED52CBA21A24BDC9F99042A3C407BFDC2F907D'
 }
 $NodeMobilePackagedLibSha256 = @{
     # Android Gradle Plugin packages JNI libraries after NDK 28.2 llvm-strip --strip-unneeded.
-    'arm64-v8a' = 'CDB0F170A6A08AEB6D634275DFCB7EAEB6A79159F3BAF3CE846B7D125AD34BF6'
-    'armeabi-v7a' = 'A96E40AAC01ACD092A807CE8FD584975A7DBAEC3B414D3C681B0A9C1DB68D833'
-    'x86_64' = 'EBC186CCAE038F41C8F92B796879EEE90FFED7479DAEFB36E87A1FDA232FF45B'
+    'arm64-v8a' = '4ACF028FD4EE6FAF97CE4672CE8174CF01E7B55AF9D84CBAAE801F85D04804C5'
+    'armeabi-v7a' = '9EB306E8467D4B5AC600022B0052718398AFBFD0CBFECA52B11BF7B03E9319F5'
+    'x86_64' = '0F83FC6720E51FE115B928F0A04D2D8EDC0E227D1E517A398C00381F14ED4B6D'
 }
 
 function Get-Sha256([string]$path) {
@@ -48,11 +48,7 @@ function Assert-NodeMobileRuntime([string]$root) {
         $actualHash = Get-Sha256 $library
         $expectedHash = $NodeMobileLibSha256[$abi]
         if ($actualHash -ne $expectedHash) {
-            if ($abi -eq 'x86_64') {
-                Write-Warning "Node.js Mobile $abi checksum changed upstream; continuing with the verified archive contents. Expected $expectedHash, got $actualHash."
-            } else {
-                throw "Node.js Mobile $abi checksum mismatch in ${root}. Expected $expectedHash, got $actualHash."
-            }
+            throw "Node.js Mobile $abi checksum mismatch in ${root}. Expected $expectedHash, got $actualHash."
         }
     }
 
@@ -319,11 +315,7 @@ function Assert-ApkPayload([string]$apkPath, [string]$repositoryRoot) {
             $actualHash = Get-ZipEntrySha256 $entries[$entryName]
             $expectedHash = $NodeMobilePackagedLibSha256[$abi]
             if ($actualHash -ne $expectedHash) {
-                if ($abi -eq 'x86_64') {
-                    Write-Warning ('APK x86_64 Node.js Mobile library checksum changed upstream; continuing after archive verification. Expected {0}, got {1}.' -f $expectedHash, $actualHash)
-                } else {
-                    throw "APK contains an unexpected NDK-stripped Node.js Mobile library for ${abi}. Expected $expectedHash, got $actualHash."
-                }
+                throw "APK contains an unexpected NDK-stripped Node.js Mobile library for ${abi}. Expected $expectedHash, got $actualHash."
             }
         }
 

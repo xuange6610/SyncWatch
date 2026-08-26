@@ -12,7 +12,8 @@ const { startSyncWatchServer } = require('../server');
 const releaseVersion = String(require('../package.json').version);
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), `syncwatch-electron-v${releaseVersion}-`));
-const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'dist', `SyncWatch-Android-v${releaseVersion}-universal.apk`));
+const androidApkPath = path.join(__dirname, '..', 'dist', `SyncWatch-Android-v${releaseVersion}-universal.apk`);
+const expectedAndroidDownloadAvailable = fs.existsSync(androidApkPath);
 app.setPath('userData', path.join(dataDir, 'electron-profile'));
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 let controller;
@@ -62,7 +63,7 @@ function socketAck(socket, eventName, payload, timeout = 30000) {
 
 async function run() {
   controller = await startSyncWatchServer({
-    host: '0.0.0.0', port: 0, dataDir, publicDir: path.resolve(__dirname, '..', 'public'), ffprobePath: '', ffmpegPath: '', hostControlToken: 'renderer-host',
+    host: '0.0.0.0', port: 0, dataDir, publicDir: path.resolve(__dirname, '..', 'public'), ffprobePath: '', ffmpegPath: '', androidApkPath, hostControlToken: 'renderer-host',
     mailSender: async (message) => { sentMails.push(message); return { messageId: `electron-mail-${sentMails.length}` }; }
   });
   const baseUrl = controller.addresses[0];
