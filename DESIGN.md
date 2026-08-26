@@ -303,7 +303,7 @@ HTTP 与 Socket.IO 使用同一套客户端 IP 解析：只有 TCP 对端属于�
 
 ### 发布供应链
 
-- Android 的 Node.js Mobile 运行库固定到上游源码提交、NDK 版本和 16 KB linker 参数。Actions 重试可以读取此前成功构建的运行库 artifact 以避免不可重复的 ELF build-id 漂移，但必须先解析 provenance JSON 并严格核对固定 schema、仓库、提交、页大小和精确键集合，再核对头文件与三个 ABI 的原始 SHA-256，最后才作为输入交给最终 Tag 的 APK 构建；JSON 空白或单行排版不参与来源判定。
+- Android 的 Node.js Mobile 运行库固定到上游源码提交、NDK 版本和 16 KB linker 参数。Actions 重试可以读取此前成功构建的运行库 artifact 以避免不可重复的 ELF build-id 漂移，但必须先用 runner 自带的标准解析器读取 provenance JSON 并严格核对固定 schema、仓库、提交、页大小和精确键集合，再核对头文件与三个 ABI 的原始 SHA-256，最后才作为输入交给最终 Tag 的 APK 构建；JSON 空白、单行排版或额外 CLI 可用性不参与来源判定。
 - 运行库复用不等于复用 SyncWatch 应用包：APK、Windows 和 macOS 应用资产仍必须从最终 Tag 的源码重新构建，并完成各平台签名、闭包、启动和核心流程验证。
 - 原子发布器只在 28 个本地交付文件、26 个维护者资产、两份源码归档、SHA-256 清单和远端下载回读全部一致后，才把 Release 从草稿切换为公开并设为 Latest。
 
