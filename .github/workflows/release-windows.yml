@@ -51,10 +51,105 @@ jobs:
           [[ "$RELEASE_COMMIT" =~ ^[a-f0-9]{40}$ ]]
           [[ "$RELEASE_TREE" =~ ^[a-f0-9]{40}$ ]]
 
+  node_mobile_build:
+    name: Build official Node.js Mobile 16 KB runtime (${{ matrix.target_arch }})
+    if: inputs.phase == 'android'
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        target_arch: [arm, arm64, x86_64]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout pinned Node.js Mobile source
+        uses: actions/checkout@v4
+        with:
+          repository: nodejs-mobile/nodejs-mobile
+          ref: ff4e063f1f1911047c067335ad0a3d81336236ca
+          fetch-depth: 1
+      - name: Install build utils
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
+      - name: Setup Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r24
+          add-to-path: false
+      - name: Build pinned 16 KB Node.js Mobile library
+        shell: bash
+        env:
+          MY_ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          TARGET_ARCH: ${{ matrix.target_arch }}
+          LDFLAGS: -Wl,-z,max-page-size=16384
+        run: |
+          set -euo pipefail
+          ./tools/android_build.sh "$MY_ANDROID_NDK_HOME" 24 "$TARGET_ARCH"
+          rm -rf ./out_android/libnode
+          test -s "./out_android/$(case "$TARGET_ARCH" in arm) echo armeabi-v7a;; arm64) echo arm64-v8a;; x86_64) echo x86_64;; esac)/libnode.so"
+      - name: Upload Node.js Mobile ABI candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-node-mobile-${{ matrix.target_arch }}
+          path: out_android
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+
+  node_mobile_combine:
+    name: Combine official Node.js Mobile 16 KB runtime
+    if: inputs.phase == 'android'
+    needs: [validate, node_mobile_build]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout pinned Node.js Mobile source
+        uses: actions/checkout@v4
+        with:
+          repository: nodejs-mobile/nodejs-mobile
+          ref: ff4e063f1f1911047c067335ad0a3d81336236ca
+          fetch-depth: 1
+      - name: Download Node.js Mobile ABI candidates
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.artifact_prefix }}-node-mobile-*
+          path: out_android
+          merge-multiple: true
+      - name: Assemble runtime and provenance
+        shell: bash
+        env:
+          RELEASE_SOURCE_REVISION: ff4e063f1f1911047c067335ad0a3d81336236ca
+        run: |
+          set -euo pipefail
+          test -s out_android/arm64-v8a/libnode.so
+          test -s out_android/armeabi-v7a/libnode.so
+          test -s out_android/x86_64/libnode.so
+          ./configure
+          rm -rf node-mobile-runtime
+          mkdir -p node-mobile-runtime/bin node-mobile-runtime/include
+          cp -R out_android/* node-mobile-runtime/bin/
+          ./tools/copy_libnode_headers.sh android
+          cp -R out_android/libnode/include/* node-mobile-runtime/include/
+          test -s node-mobile-runtime/include/node/node.h
+          sha256sum node-mobile-runtime/bin/*/libnode.so > node-mobile-runtime/libnode-sha256.txt
+          printf '{"schema":"nodejs-mobile-runtime-v1","sourceRepository":"https://github.com/nodejs-mobile/nodejs-mobile","sourceRevision":"%s","pageSize":16384}\n' "$RELEASE_SOURCE_REVISION" > node-mobile-runtime/provenance.json
+      - name: Upload combined Node.js Mobile runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-node-mobile-runtime
+          path: node-mobile-runtime
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+
   android:
     name: Build signed Android artifact
     if: inputs.phase == 'android'
-    needs: validate
+    needs: [validate, node_mobile_combine]
     runs-on: windows-2022
     timeout-minutes: 75
     env:
@@ -80,6 +175,18 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Download official Node.js Mobile 16 KB runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-node-mobile-runtime
+          path: mobile/app/libnode
+      - name: Verify downloaded Node.js Mobile runtime
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath .\mobile\app\libnode\bin\arm64-v8a\libnode.so -PathType Leaf)) { throw 'Missing arm64-v8a Node.js Mobile runtime.' }
+          if (-not (Test-Path -LiteralPath .\mobile\app\libnode\bin\armeabi-v7a\libnode.so -PathType Leaf)) { throw 'Missing armeabi-v7a Node.js Mobile runtime.' }
+          if (-not (Test-Path -LiteralPath .\mobile\app\libnode\bin\x86_64\libnode.so -PathType Leaf)) { throw 'Missing x86_64 Node.js Mobile runtime.' }
+          if (-not (Test-Path -LiteralPath .\mobile\app\libnode\include\node\node.h -PathType Leaf)) { throw 'Missing Node.js Mobile headers.' }
       - name: Restore ephemeral Android release signing material
         shell: pwsh
         env:
@@ -271,7 +378,7 @@ jobs:
           if ($process.HasExited) { throw "Windows Experience client exited during startup smoke ($($process.ExitCode))." }
           taskkill.exe /PID $process.Id /T /F | Out-Null
           npm run test:privacy:release
-          Remove-Item -Path .\dist\*.blockmap, .\dist\latest*.yml -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path .\dist\*.blockmap, .\dist\latest*.yml, .\dist\builder-debug.yml -Force -ErrorAction SilentlyContinue
           node scripts/release-candidate-gate.js --selection windows-base --version $env:RELEASE_VERSION --directory .\dist --evidence .\.build\evidence\windows-base.json --source-commit $env:RELEASE_COMMIT --source-tree $env:RELEASE_TREE --run-id $env:GITHUB_RUN_ID --run-attempt $env:GITHUB_RUN_ATTEMPT
           if ($LASTEXITCODE -ne 0) { throw 'Windows base release gate failed.' }
       - name: Upload Windows base candidate artifacts
@@ -402,7 +509,7 @@ jobs:
           Test-ServerExecutable $installed.FullName 'Installed Full Offline server'
           Test-ServerExecutable $portable 'Portable Full Offline server'
           npm run test:privacy:release
-          Remove-Item -Path .\dist\*.blockmap, .\dist\latest*.yml -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path .\dist\*.blockmap, .\dist\latest*.yml, .\dist\builder-debug.yml -Force -ErrorAction SilentlyContinue
           node scripts/release-candidate-gate.js --selection windows-full --version $env:RELEASE_VERSION --directory .\dist --evidence .\.build\evidence\windows-full.json --source-commit $env:RELEASE_COMMIT --source-tree $env:RELEASE_TREE --run-id $env:GITHUB_RUN_ID --run-attempt $env:GITHUB_RUN_ATTEMPT
           if ($LASTEXITCODE -ne 0) { throw 'Windows Full Offline release gate failed.' }
       - name: Upload Windows Full Offline candidate artifacts
