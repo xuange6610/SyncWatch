@@ -594,7 +594,7 @@ textarea:focus { border-color: var(--pink); box-shadow: 0 0 0 3px #52c7b820; }
 .desktop-close-actions > .primary-button small { color: var(--theme-accent-ink, #251b08); font-weight: 600; }
 .desktop-close-actions > .danger-button { color: var(--red); background: color-mix(in srgb, var(--red) 12%, var(--theme-button, #292721)); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
 .desktop-close-actions > .text-button { min-height: 40px; grid-column: 1 / -1; place-items: center; color: var(--muted); text-align: center; }
-#desktopCloseModal .desktop-close-actions > button:is(:hover, :focus) { color: var(--theme-accent-ink, #251b08); background: var(--pink); border-color: var(--pink-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pink) 28%, transparent), 0 10px 24px color-mix(in srgb, var(--pink) 20%, transparent); filter: none; outline: none; transform: translateY(-1px); }
+#desktopCloseModal .desktop-close-actions > button:is(:hover, :focus) { color: var(--theme-accent-ink, #251b08); background: var(--pink) !important; border-color: var(--pink-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pink) 28%, transparent), 0 10px 24px color-mix(in srgb, var(--pink) 20%, transparent); filter: none; outline: none; transform: translateY(-1px); }
 #desktopCloseModal .desktop-close-actions > button:is(:hover, :focus) strong, #desktopCloseModal .desktop-close-actions > button:is(:hover, :focus) small { color: var(--theme-accent-ink, #251b08); }
 #desktopCloseModal .desktop-close-actions > button:active { transform: translateY(0); }
 .desktop-close-card .setting-status { min-height: 0; margin: 10px 0 0; color: var(--red); }
