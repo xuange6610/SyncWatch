@@ -109,8 +109,16 @@ assert.equal(
 assert.match(workflows.atomic, /gh release upload "\$RELEASE_TAG" "\$\{files\[@\]\}"/);
 assert.doesNotMatch(workflows.atomic, /gh release upload[^\n]*(?:\*|--clobber)/);
 assert.match(workflows.atomic, /test "\$\{#files\[@\]\}" -eq 26/);
-assert.match(workflows.atomic, /gh release delete-asset "\$RELEASE_TAG" "\$name"/);
-assert.match(workflows.atomic, /--draft=true/);
+assert.match(workflows.atomic, /releases\?per_page=100/);
+assert.match(workflows.atomic, /release_id="\$\(RELEASES_JSON=/);
+assert.match(workflows.atomic, /releases\/\$\{release_id\}/);
+assert.ok(
+  count(workflows.atomic, /-f tag_name="\$RELEASE_TAG"/g) >= 4,
+  'draft creation and every draft update must preserve the requested tag name'
+);
+assert.match(workflows.atomic, /--method DELETE "repos\/\$\{GITHUB_REPOSITORY\}\/releases\/assets\/\$\{asset_id\}"/);
+assert.doesNotMatch(workflows.atomic, /releases\/tags\/\$\{RELEASE_TAG\}" > \.build\/(?:pre-upload|uploaded)-release\.json/);
+assert.match(workflows.atomic, /-F draft=true/);
 assert.match(workflows.atomic, /Atomic publication failed/);
 assert.ok(
   count(workflows.atomic, /--expected-manifest \.build\/SHA256SUMS-release-26\.txt/g) >= 2,

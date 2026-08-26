@@ -235,7 +235,7 @@ assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_REF\" = \"refs\/tags\/\$\
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_SHA\" = \"\$commit_sha\"/);
 assert.match(atomicReleaseWorkflow, /Generate source archives directly in dist and verify exact 28/);
 assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{files\[@\]\}\"/);
-assert.match(atomicReleaseWorkflow, /--draft=false[\s\S]*--latest/);
+assert.match(atomicReleaseWorkflow, /-F draft=false[\s\S]*-f make_latest=true/);
 assert.match(atomicReleaseWorkflow, /Atomic publication failed; this run's 26 expected names were removed/);
 
 const site = read('docs/index.html');
