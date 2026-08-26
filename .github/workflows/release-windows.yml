@@ -95,7 +95,7 @@ jobs:
       - name: Build and verify signed Android artifact
         shell: pwsh
         run: |
-          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\mobile\build-apk.ps1
+          & .\mobile\build-apk.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Android release build failed.' }
           $apk = ".\dist\SyncWatch-Android-v$env:RELEASE_VERSION-universal.apk"
           if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) { throw "Missing exact Android output: $apk" }
