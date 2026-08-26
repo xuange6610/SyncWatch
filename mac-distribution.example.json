@@ -2,22 +2,22 @@
   "manifestVersion": 1,
   "server": {
     "arm64": {
-      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.2-arm64.dmg",
-      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.2-arm64.zip"
+      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.3-arm64.dmg",
+      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.3-arm64.zip"
     },
     "x64": {
-      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.2-x64.dmg",
-      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.2-x64.zip"
+      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.3-x64.dmg",
+      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Server-macOS-v2.2.3-x64.zip"
     }
   },
   "client": {
     "arm64": {
-      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.2-arm64.dmg",
-      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.2-arm64.zip"
+      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.3-arm64.dmg",
+      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.3-arm64.zip"
     },
     "x64": {
-      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.2-x64.dmg",
-      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.2-x64.zip"
+      "dmg": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.3-x64.dmg",
+      "zip": "https://downloads.example.com/syncwatch/SyncWatch-Client-macOS-v2.2.3-x64.zip"
     }
   }
 }

@@ -4,7 +4,8 @@ const HOST_TOKEN_SESSION_KEY = 'syncwatchHostToken';
 const UI_COPY_DEFAULTS = Object.freeze({
   'login.title': '登录 SyncWatch同步观影', 'login.usernameLabel': '账号或邮箱', 'login.passwordLabel': '密码',
   'login.roomLabel': '房间号（可选）', 'login.submit': '登录并进入房间', 'login.register': '注册账号',
-  'login.guest': '游客模式 · 免注册', 'login.forgot': '忘记密码', 'login.admin': '服务器设置', 'login.connecting': '正在连接服务器…',
+  'login.guest': '游客模式 · 免注册', 'login.guestIpOccupied': '当前 IP 已有游客在线，请先退出后再进入',
+  'login.forgot': '忘记密码', 'login.admin': '服务器设置', 'login.connecting': '正在连接服务器…',
   'topbar.appName': 'SyncWatch同步观影', 'topbar.serverSettings': '服务器设置', 'topbar.management': '管理中心',
   'topbar.logoutKeepCredentials': '退出登录，保留账号密码', 'topbar.logout': '退出登录',
   'topbar.room': '房间', 'topbar.online': '在线成员', 'topbar.download': '下载中心',
@@ -57,7 +58,7 @@ try {
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.2', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.3', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -344,7 +345,7 @@ async function initialize() {
   initializeLoginCube();
   applyLiveVoiceCollapsed();
   applyLiveVoiceFloatingCollapsed();
-  if (elements.accountDropdown?.parentElement !== document.body) document.body.appendChild(elements.accountDropdown);
+  mountAccountDropdownForViewport();
   bindUiEvents();
   if (sessionStorage.getItem('syncwatchGuestLogoutNotice') === '1') {
     sessionStorage.removeItem('syncwatchGuestLogoutNotice');
@@ -1087,12 +1088,33 @@ async function refreshAllApplications() {
   }
 }
 
+function usesMobileActionMenu() {
+  return document.body.classList.contains('android-client') || window.matchMedia('(max-width: 540px)').matches;
+}
+
+function mountAccountDropdownForViewport() {
+  const dropdown = elements.accountDropdown;
+  if (!dropdown) return;
+  const mobileActions = document.querySelector('.topbar-actions');
+  const target = usesMobileActionMenu() && mobileActions ? mobileActions : document.body;
+  if (dropdown.parentElement !== target) target.appendChild(dropdown);
+  if (target === mobileActions) {
+    for (const property of ['top', 'right', 'bottom', 'left', 'width']) dropdown.style.removeProperty(property);
+  }
+}
+
+function setAccountDropdownOpen(open) {
+  elements.accountDropdown?.classList.toggle('is-hidden', !open);
+  elements.accountMenuBtn?.setAttribute('aria-expanded', String(Boolean(open)));
+}
+
 function toggleMobileActionMenu(force) {
+  mountAccountDropdownForViewport();
   const open = typeof force === 'boolean' ? force : !document.body.classList.contains('mobile-actions-open');
   document.body.classList.toggle('mobile-actions-open', open);
   elements.mobileMenuBtn?.setAttribute('aria-expanded', String(open));
   elements.mobileMenuBtn?.setAttribute('aria-label', open ? '关闭功能菜单' : '打开功能菜单');
-  if (!open) elements.accountDropdown?.classList.add('is-hidden');
+  if (!open) setAccountDropdownOpen(false);
 }
 
 function normalizeClientLoginCube(value = {}) {
@@ -1486,7 +1508,7 @@ function bindUiEvents() {
   elements.mobileMenuBtn?.addEventListener('click', () => toggleMobileActionMenu());
   elements.mobileMenuBackdrop?.addEventListener('click', () => toggleMobileActionMenu(false));
   document.querySelector('.topbar-actions')?.addEventListener('click', (event) => {
-    if (!document.body.classList.contains('android-client') || !event.target.closest('button') || event.target.closest('#accountMenuBtn')) return;
+    if (!usesMobileActionMenu() || !event.target.closest('button') || event.target.closest('#accountMenuBtn')) return;
     toggleMobileActionMenu(false);
   });
   elements.closeLoginStatusBtn?.addEventListener('click', () => setLoginStatus(''));
@@ -1665,23 +1687,27 @@ function bindUiEvents() {
   elements.showQrBtn.addEventListener('click', showQr);
   elements.accountMenuBtn.addEventListener('click', (event) => {
     event.stopPropagation();
-    if (document.body.classList.contains('android-client') || window.matchMedia('(max-width: 540px)').matches) {
-      toggleMobileActionMenu(false);
-      elements.accountDropdown.classList.add('is-hidden');
-      void openAccount('home');
+    if (usesMobileActionMenu()) {
+      mountAccountDropdownForViewport();
+      toggleMobileActionMenu(true);
+      const opening = elements.accountDropdown.classList.contains('is-hidden');
+      setAccountDropdownOpen(opening);
+      if (opening) requestAnimationFrame(() => elements.accountDropdown.scrollIntoView({ block: 'nearest' }));
       return;
     }
     const opening = elements.accountDropdown.classList.contains('is-hidden');
-    elements.accountDropdown.classList.toggle('is-hidden', !opening);
+    setAccountDropdownOpen(opening);
     if (opening) positionAccountDropdown();
   });
   elements.accountDropdown.addEventListener('click', handleAccountMenu);
   document.addEventListener('click', (event) => {
-    if (!elements.accountDropdown.contains(event.target) && event.target !== elements.accountMenuBtn) elements.accountDropdown.classList.add('is-hidden');
+    if (!elements.accountDropdown.contains(event.target) && event.target !== elements.accountMenuBtn) setAccountDropdownOpen(false);
     if (!event.target.closest('.select-shell') && !event.target.closest('#enhancedSelectMenu')) closeEnhancedSelect();
     if (!event.target.closest('#friendChatContextMenu')) elements.friendChatContextMenu?.classList.add('is-hidden');
   });
   window.addEventListener('resize', () => {
+    mountAccountDropdownForViewport();
+    if (!usesMobileActionMenu() && document.body.classList.contains('mobile-actions-open')) toggleMobileActionMenu(false);
     positionAccountDropdown(); positionEnhancedSelectMenu();
     clearTimeout(state.textReadingResizeTimer);
     state.textReadingResizeTimer = setTimeout(() => {
@@ -2109,12 +2135,28 @@ function bindUiEvents() {
     event.preventDefault(); event.stopPropagation(); settleAppDialog(null);
   });
   elements.ownerExitModal?.addEventListener('click', handleOwnerExitChoice);
+  elements.ownerExitModal?.addEventListener('keydown', (event) => {
+    if (!state.ownerExitResolver) return;
+    if (event.key === 'Escape') {
+      event.preventDefault(); event.stopPropagation(); settleOwnerExitChoice(null); return;
+    }
+    if (event.key !== 'Tab') return;
+    const buttons = [...elements.ownerExitModal.querySelectorAll('button:not([disabled])')]
+      .filter((button) => button.getClientRects().length > 0);
+    if (!buttons.length) return;
+    const first = buttons[0]; const last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
   elements.desktopCloseModal?.addEventListener('click', handleDesktopCloseChoice);
   document.addEventListener('fullscreenchange', handleFullscreenChange);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     if (!elements.permissionGroupEditor?.classList.contains('is-hidden')) closePermissionGroupEditor();
     else if (!elements.accountTierEditor?.classList.contains('is-hidden')) closeAccountTierEditor();
+    else if (!elements.accountDropdown?.classList.contains('is-hidden')) {
+      setAccountDropdownOpen(false); elements.accountMenuBtn?.focus();
+    }
     else if (document.body.classList.contains('mobile-actions-open')) toggleMobileActionMenu(false);
     else if (state.pseudoFullscreen) void togglePlayerFullscreen();
   });
@@ -2145,6 +2187,10 @@ function positionAccountDropdown() {
   const button = elements.accountMenuBtn;
   const menu = elements.accountDropdown;
   if (!button || !menu || menu.classList.contains('is-hidden')) return;
+  if (usesMobileActionMenu()) {
+    for (const property of ['top', 'right', 'bottom', 'left', 'width']) menu.style.removeProperty(property);
+    return;
+  }
   const rect = button.getBoundingClientRect();
   const width = Math.min(window.innerWidth - 16, Math.max(190, Math.min(260, rect.width + 80)));
   const left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width));
@@ -3702,7 +3748,7 @@ async function guestLogin() {
     }
     if (!result.success) {
       const message = result.code === 'GUEST_IP_OCCUPIED'
-        ? (result.error || '当前 IP 已有游客在线，请先退出后再进入')
+        ? (result.error || uiCopyText('login.guestIpOccupied', '当前 IP 已有游客在线，请先退出后再进入'))
         : loginErrorMessage(result, '游客模式登录失败');
       setLoginStatus(message);
       toast(message, 'error', 7000);
@@ -4647,17 +4693,35 @@ function restoreLocationStatusNotices(announce = true) {
 function requestOwnerExitChoice() {
   if (!elements.ownerExitModal) return Promise.resolve('leave');
   if (state.ownerExitResolver) return Promise.resolve(null);
+  state.ownerExitPreviousFocus = usesMobileActionMenu()
+    ? elements.mobileMenuBtn
+    : (document.activeElement instanceof HTMLElement ? document.activeElement : elements.accountMenuBtn);
   elements.ownerExitModal.classList.remove('is-hidden');
+  queueMicrotask(() => elements.ownerExitModal.querySelector('[data-owner-exit="leave"]')?.focus());
   return new Promise((resolve) => { state.ownerExitResolver = resolve; });
+}
+
+function settleOwnerExitChoice(choice) {
+  if (!state.ownerExitResolver) return;
+  const resolve = state.ownerExitResolver;
+  const previousFocus = state.ownerExitPreviousFocus;
+  state.ownerExitResolver = null;
+  state.ownerExitPreviousFocus = null;
+  elements.ownerExitModal.classList.add('is-hidden');
+  resolve(choice);
+  if (choice !== null) return;
+  requestAnimationFrame(() => {
+    const previousVisible = previousFocus?.isConnected && previousFocus.getClientRects().length > 0;
+    const fallback = usesMobileActionMenu() ? elements.mobileMenuBtn : elements.accountMenuBtn;
+    (previousVisible ? previousFocus : fallback)?.focus();
+  });
 }
 
 function handleOwnerExitChoice(event) {
   const button = event.target.closest('[data-owner-exit]');
   if (!button || !state.ownerExitResolver) return;
   const choice = button.dataset.ownerExit;
-  const resolve = state.ownerExitResolver; state.ownerExitResolver = null;
-  elements.ownerExitModal.classList.add('is-hidden');
-  resolve(choice === 'cancel' ? null : choice);
+  settleOwnerExitChoice(choice === 'cancel' ? null : choice);
 }
 
 function showDesktopClosePrompt() {
@@ -4780,10 +4844,10 @@ async function loadPublicConfig(silent = false) {
 
 function applyPublicConfig() {
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.2.2';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.2.3';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.2'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.3'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -4973,7 +5037,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', {}, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.2';
+    const current = state.publicConfig.version || 'v2.2.3';
     const latest = String(release.tag_name || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -5435,7 +5499,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.2.apk';
+    link.download = 'SyncWatch同步观影-v2.2.3.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -5452,7 +5516,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch同步观影-v2.2.2.apk';
+    link.href = url; link.download = 'SyncWatch同步观影-v2.2.3.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -6021,7 +6085,7 @@ async function batchDeleteManagedVideos() {
 
 function exportVideoManagement() {
   const files = manageableMediaFiles().map((file) => ({ id: file.id, originalName: file.originalName, collection: fileCollectionName(file), note: file.note || '', uploadedAt: file.uploadedAt, size: file.size }));
-  downloadJsonFile(`SyncWatch同步观影-影片管理-${new Date().toISOString().slice(0, 10)}.json`, { version: '2.2.2', type: 'syncwatch-media-management', files });
+  downloadJsonFile(`SyncWatch同步观影-影片管理-${new Date().toISOString().slice(0, 10)}.json`, { version: '2.2.3', type: 'syncwatch-media-management', files });
 }
 
 async function importVideoManagement() {
@@ -11523,7 +11587,7 @@ async function loadAdminSettings({ silent = false } = {}) {
     elements.adminContactWechat.value = contact.wechat || ''; elements.adminContactEmail.value = contact.email || '';
     elements.adminContactPhone.value = contact.phone || ''; elements.adminContactNote.value = contact.note || '';
     const agreement = result.admin.legalAgreement || state.publicConfig.legalAgreement || {};
-    elements.legalAgreementVersion.value = agreement.version || '2.2.2'; elements.legalAgreementTitle.value = agreement.title || '';
+    elements.legalAgreementVersion.value = agreement.version || '2.2.3'; elements.legalAgreementTitle.value = agreement.title || '';
     elements.legalAgreementText.value = agreement.text || '';
     const marquee = result.admin.marqueeNotice || {};
     elements.marqueeEnabled.checked = Boolean(marquee.enabled);
@@ -12336,7 +12400,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.2-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.3-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
@@ -13754,7 +13818,7 @@ async function deleteSelectedAccountAuditLogs() {
   await loadAccountAuditLogs(true);
 }
 
-async function handleAccountMenu(event) { if (['logoutBtn', 'logoutKeepCredentialsBtn', 'androidApkBtn', 'downloadClientMainBtn', 'downloadMacServerMainBtn', 'downloadMacClientMainBtn'].includes(event.target.id)) return; const button = event.target.closest('[data-account-page]'); if (!button) return; elements.accountDropdown.classList.add('is-hidden'); await openAccount(button.dataset.accountPage); }
+async function handleAccountMenu(event) { if (['logoutBtn', 'logoutKeepCredentialsBtn', 'androidApkBtn', 'downloadClientMainBtn', 'downloadMacServerMainBtn', 'downloadMacClientMainBtn'].includes(event.target.id)) return; const button = event.target.closest('[data-account-page]'); if (!button) return; setAccountDropdownOpen(false); await openAccount(button.dataset.accountPage); }
 async function openAccount(page = 'home') { const result = await emitAck('account-action', { action: 'get-profile' }); if (!result.success) return toast(result.error, 'error'); state.profile = result.profile; updateAccountAvatar(result.profile?.avatar); elements.accountModal.classList.remove('is-hidden'); renderAccountPage(page); }
 
 async function refreshProfile() {
@@ -14567,7 +14631,7 @@ async function profileDeleteSelected(kind) {
 
 function exportProfileCollection(kind) {
   const p = state.profile || {}; const data = kind === 'room' ? p.recentRooms : kind === 'favorites' ? p.favoriteFiles : kind === 'history' ? p.history : p.myFiles;
-  downloadJsonFile(`SyncWatch同步观影-${kind}-${new Date().toISOString().slice(0, 10)}.json`, { type: `syncwatch-profile-${kind}`, version: '2.2.2', data, meta: { favoriteMeta: p.favoriteMeta, roomMeta: p.roomMeta } });
+  downloadJsonFile(`SyncWatch同步观影-${kind}-${new Date().toISOString().slice(0, 10)}.json`, { type: `syncwatch-profile-${kind}`, version: '2.2.3', data, meta: { favoriteMeta: p.favoriteMeta, roomMeta: p.roomMeta } });
 }
 
 async function importProfileCollection(kind, file) {

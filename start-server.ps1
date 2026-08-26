@@ -48,5 +48,5 @@ if (-not $dependenciesReady) {
 }
 
 Write-Host 'Starting the standalone SyncWatch同步观影 server. Press Ctrl+C for a safe shutdown.' -ForegroundColor Green
-& node '.\server-standalone.js'
+& node '.\server-standalone.js' @args
 exit $LASTEXITCODE

@@ -6,12 +6,12 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..', '.build', 'offline-bundle');
 const expected = [
-  ['windows/SyncWatch-Experience-Client-Portable-v2.2.2-x64.exe', 50 * 1024 * 1024],
-  ['android/SyncWatch-Android-v2.2.2-universal.apk', 50 * 1024 * 1024],
-  ['mac/SyncWatch-Server-macOS-v2.2.2-x64.zip', 100 * 1024 * 1024],
-  ['mac/SyncWatch-Server-macOS-v2.2.2-arm64.zip', 100 * 1024 * 1024],
-  ['mac/SyncWatch-Client-macOS-v2.2.2-x64.zip', 100 * 1024 * 1024],
-  ['mac/SyncWatch-Client-macOS-v2.2.2-arm64.zip', 100 * 1024 * 1024]
+  ['windows/SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe', 50 * 1024 * 1024],
+  ['android/SyncWatch-Android-v2.2.3-universal.apk', 50 * 1024 * 1024],
+  ['mac/SyncWatch-Server-macOS-v2.2.3-x64.zip', 100 * 1024 * 1024],
+  ['mac/SyncWatch-Server-macOS-v2.2.3-arm64.zip', 100 * 1024 * 1024],
+  ['mac/SyncWatch-Client-macOS-v2.2.3-x64.zip', 100 * 1024 * 1024],
+  ['mac/SyncWatch-Client-macOS-v2.2.3-arm64.zip', 100 * 1024 * 1024]
 ];
 
 let total = 0;

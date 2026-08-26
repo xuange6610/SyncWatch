@@ -20,7 +20,7 @@ const {
   writeBuildEvidence
 } = require('../scripts/release-candidate-gate');
 
-const version = '2.2.2';
+const version = '2.2.3';
 const manifest = manifestForVersion(version);
 const sourceArchives = sourceArchivesForVersion(version);
 assert.equal(manifest.length, 26);
@@ -38,7 +38,7 @@ assert.equal(assetsForSelection('mac-full-x64', version).length, 2);
 
 assert.equal(requiredForPhase('android', version).length, 0);
 assert.deepEqual(requiredForPhase('mac-base', version).map((entry) => entry.name), [
-  'SyncWatch-Android-v2.2.2-universal.apk'
+  'SyncWatch-Android-v2.2.3-universal.apk'
 ]);
 assert.equal(requiredForPhase('windows-base', version).length, 9);
 assert.equal(requiredForPhase('windows-full', version).length, 11);

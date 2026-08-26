@@ -33,7 +33,10 @@ function commandLineValue(name) {
   for (let index = 0; index < process.argv.length; index += 1) {
     const value = String(process.argv[index] || '');
     if (value.startsWith(`--${name}=`)) return value.slice(name.length + 3);
-    if (value === `--${name}`) return index + 1 < process.argv.length ? process.argv[index + 1] : '';
+    if (value === `--${name}`) {
+      const next = index + 1 < process.argv.length ? String(process.argv[index + 1] || '') : '';
+      return next.startsWith('--') ? '' : next;
+    }
   }
   return undefined;
 }
@@ -139,6 +142,10 @@ async function main() {
     : (process.env.PORT !== undefined ? process.env.PORT : settings.port);
   const port = validPort(requestedPort);
   if (!port) throw new Error('端口必须是 1-65535 之间的整数');
+  const trustedProxies = commandLineValue('trusted-proxies');
+  if (trustedProxies !== undefined && !trustedProxies.trim()) {
+    throw new Error('--trusted-proxies 必须后跟至少一个精确代理 IP 或 CIDR');
+  }
   const publicUrl = publicBaseUrl(settings);
   const allowedHosts = [...settings.allowedHosts];
   for (const entry of String(process.env.SYNCWATCH_ALLOWED_HOSTS || '').split(',')) if (entry.trim()) allowedHosts.push(entry.trim().toLowerCase());
@@ -146,11 +153,11 @@ async function main() {
   const token = hostToken();
   const tunnelManager = createStandaloneTunnelManager({ rootDir: ROOT_DIR, dataDir: DATA_DIR, getPort: () => controller?.port || port });
   // Keep the standalone server aligned with the packaged Android artifact.
-  const androidApkPath = path.join(ROOT_DIR, 'dist', 'SyncWatch-Android-v2.2.2-universal.apk');
+  const androidApkPath = path.join(ROOT_DIR, 'dist', 'SyncWatch-Android-v2.2.3-universal.apk');
   const clientDownloadCandidates = [
-    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.2-x64.exe'),
-    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.2.exe'),
-    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.2.exe')
+    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe'),
+    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.3.exe'),
+    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.3.exe')
   ];
   const clientDownloadPath = clientDownloadCandidates.find((candidate) => fs.existsSync(candidate)) || '';
   const macArtifactCandidates = (prefix) => ({
@@ -165,11 +172,12 @@ async function main() {
       path.join(ROOT_DIR, 'mac', `${prefix}-arm64.dmg`)
     ].find((candidate) => fs.existsSync(candidate)) || ''
   });
-  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.2');
-  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.2');
+  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.3');
+  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.3');
   const controller = await startSyncWatchServer({
     host: '0.0.0.0', port, strictPort: false, portFallbackCount: 20, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
     hostControlToken: token, allowedHosts, publicUrl, androidApkPath, clientDownloadPath, tunnelManager,
+    ...(trustedProxies !== undefined ? { trustedProxies } : {}),
     macServerDownloadPaths, macClientDownloadPaths, macDistributionRoots: [path.join(ROOT_DIR, 'dist'), ROOT_DIR, path.join(ROOT_DIR, 'mac')]
   });
   const local = `http://127.0.0.1:${controller.port}`;
@@ -224,4 +232,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main, _test: { validPort, normalizePublicUrl, normalizeSettings, publicBaseUrl } };
+module.exports = { main, _test: { validPort, commandLineValue, normalizePublicUrl, normalizeSettings, publicBaseUrl } };

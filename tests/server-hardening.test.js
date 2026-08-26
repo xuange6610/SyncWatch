@@ -231,6 +231,15 @@ async function testStateConfigFailsClosed() {
   ]) {
     assert.throws(() => standaloneSettings.normalizeSettings({ publicUrl }), /publicUrl/);
   }
+  const originalArgv = process.argv;
+  try {
+    process.argv = ['node', 'server-standalone.js', '--trusted-proxies=172.18.0.0/16,10.0.0.5'];
+    assert.equal(standaloneSettings.commandLineValue('trusted-proxies'), '172.18.0.0/16,10.0.0.5');
+    process.argv = ['node', 'server-standalone.js', '--trusted-proxies', '172.19.0.0/16'];
+    assert.equal(standaloneSettings.commandLineValue('trusted-proxies'), '172.19.0.0/16');
+  } finally {
+    process.argv = originalArgv;
+  }
   console.log('✓ config.json 解析/迁移/写盘失败均 fail closed，独立服务器端口和 publicUrl 严格校验');
 }
 

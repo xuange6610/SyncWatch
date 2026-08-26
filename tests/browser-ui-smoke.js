@@ -1059,7 +1059,80 @@ async function main() {
     const aiLandscapePath = path.join(outputDir, 'ai-chat-812x375.png'); await capture(cdp, aiLandscapePath); images.push(aiLandscapePath);
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }); await delay(120);
     await evaluate(cdp, `aiCloseWorkbench(); true`);
-    await evaluate(cdp, `document.body.classList.add('android-client'); elements.toastRegion.innerHTML = ''; elements.mobileMenuBtn.click(); true`); await delay(200);
+    await evaluate(cdp, `document.body.classList.add('android-client'); mountAccountDropdownForViewport(); elements.toastRegion.innerHTML = ''; elements.mobileMenuBtn.click(); true`); await delay(200);
+    const androidAccountActions = await evaluate(cdp, `(() => {
+      const actions = document.querySelector('.topbar-actions');
+      const mainBefore = elements.mainPage.getBoundingClientRect();
+      const initialRect = actions.getBoundingClientRect();
+      const initialColumns = getComputedStyle(actions).gridTemplateColumns.split(' ').filter(Boolean).length;
+      elements.accountMenuBtn.click();
+      const dropdown = elements.accountDropdown;
+      const dropdownRect = dropdown.getBoundingClientRect();
+      const keep = elements.logoutKeepCredentialsBtn.getBoundingClientRect();
+      const plain = elements.logoutBtn.getBoundingClientRect();
+      const profile = dropdown.querySelector('[data-account-page="home"]').getBoundingClientRect();
+      const visibleButtons = [...dropdown.querySelectorAll('button:not(.is-hidden)')]
+        .filter((button) => button.getBoundingClientRect().width > 0 && button.getBoundingClientRect().height > 0);
+      const mainAfter = elements.mainPage.getBoundingClientRect();
+      return {
+        open: document.body.classList.contains('mobile-actions-open'),
+        parentClass: dropdown.parentElement?.className || '',
+        dropdownVisible: !dropdown.classList.contains('is-hidden'),
+        accountExpanded: elements.accountMenuBtn.getAttribute('aria-expanded'),
+        accountControls: elements.accountMenuBtn.getAttribute('aria-controls'),
+        accountHasPopup: elements.accountMenuBtn.hasAttribute('aria-haspopup'),
+        dropdownRole: dropdown.getAttribute('role'),
+        initialColumns,
+        initialHeight: initialRect.height,
+        expandedHeight: actions.getBoundingClientRect().height,
+        dropdownWidth: dropdownRect.width,
+        dropdownScrollWidth: dropdown.scrollWidth,
+        minDropdownTarget: Math.min(...visibleButtons.map((button) => button.getBoundingClientRect().height)),
+        logoutSameRow: Math.abs(keep.top - plain.top) <= 2,
+        logoutBeforeProfile: Math.max(keep.bottom, plain.bottom) <= profile.top + 2,
+        noMainResize: Math.abs(mainBefore.height - mainAfter.height) <= 1,
+        bodyWidth: document.body.scrollWidth,
+        viewport: innerWidth
+      };
+    })()`);
+    assert.equal(androidAccountActions.open, true, JSON.stringify(androidAccountActions));
+    assert.match(androidAccountActions.parentClass, /topbar-actions/, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.dropdownVisible, true, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.accountExpanded, 'true', JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.accountControls, 'accountDropdown', JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.accountHasPopup, false, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.dropdownRole, 'group', JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.initialColumns, 3, JSON.stringify(androidAccountActions));
+    assert.ok(androidAccountActions.initialHeight <= 480, JSON.stringify(androidAccountActions));
+    assert.ok(androidAccountActions.expandedHeight < 762, JSON.stringify(androidAccountActions));
+    assert.ok(androidAccountActions.dropdownScrollWidth <= androidAccountActions.dropdownWidth + 2, JSON.stringify(androidAccountActions));
+    assert.ok(androidAccountActions.minDropdownTarget >= 47.5, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.logoutSameRow, true, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.logoutBeforeProfile, true, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.noMainResize, true, JSON.stringify(androidAccountActions));
+    assert.ok(androidAccountActions.bodyWidth <= androidAccountActions.viewport + 2, JSON.stringify(androidAccountActions));
+    const androidAccountActionsPath = path.join(outputDir, 'android-account-actions-390x844.png'); await capture(cdp, androidAccountActionsPath); images.push(androidAccountActionsPath);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 667, deviceScaleFactor: 1, mobile: true }); await delay(140);
+    const androidSmallAccountActions = await evaluate(cdp, `(() => {
+      const actions = document.querySelector('.topbar-actions'); const rect = actions.getBoundingClientRect();
+      return {
+        columns: getComputedStyle(actions).gridTemplateColumns.split(' ').filter(Boolean).length,
+        maxHeight: Number.parseFloat(getComputedStyle(actions).maxHeight),
+        height: rect.height,
+        scrollable: actions.scrollHeight > actions.clientHeight,
+        inside: rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
+        bodyWidth: document.body.scrollWidth,
+        viewport: innerWidth
+      };
+    })()`);
+    assert.equal(androidSmallAccountActions.columns, 2, JSON.stringify(androidSmallAccountActions));
+    assert.equal(androidSmallAccountActions.inside, true, JSON.stringify(androidSmallAccountActions));
+    assert.ok(androidSmallAccountActions.height <= androidSmallAccountActions.maxHeight + 1, JSON.stringify(androidSmallAccountActions));
+    assert.equal(androidSmallAccountActions.scrollable, true, JSON.stringify(androidSmallAccountActions));
+    assert.ok(androidSmallAccountActions.bodyWidth <= androidSmallAccountActions.viewport + 2, JSON.stringify(androidSmallAccountActions));
+    const androidSmallAccountActionsPath = path.join(outputDir, 'android-account-actions-375x667.png'); await capture(cdp, androidSmallAccountActionsPath); images.push(androidSmallAccountActionsPath);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }); await delay(140);
+    await evaluate(cdp, `elements.accountMenuBtn.click(); true`);
     const androidToastClearance = await evaluate(cdp, `(() => {
       const item = toastWithActions('Location permission denied', [
         { label: '\u91cd\u65b0\u6388\u6743', callback: () => {} },
@@ -1171,8 +1244,56 @@ async function main() {
     assert.deepEqual(androidLandscape.fullscreen.player.map(Math.round), [0, 0, 844, 390], JSON.stringify(androidLandscape));
     assert.deepEqual(androidLandscape.fullscreen.video.map(Math.round), [0, 0, 844, 390], JSON.stringify(androidLandscape));
     const androidLandscapePath = path.join(outputDir, 'android-landscape.png'); await capture(cdp, androidLandscapePath); images.push(androidLandscapePath);
-    await evaluate(cdp, `sessionStorage.setItem('syncwatchSkipSmokeAutologin', '1'); sessionStorage.removeItem('syncwatchRoomId'); location.assign(${JSON.stringify(baseUrl)}); true`);
-    await waitFor(() => evaluate(cdp, `Boolean(typeof state !== 'undefined' && state.socket?.connected && !elements.loginPage.classList.contains('is-hidden'))`), '登录页服务器设置入口');
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }); await delay(120);
+    await evaluate(cdp, `(() => {
+      sessionStorage.setItem('syncwatchSkipSmokeAutologin', '1');
+      sessionStorage.removeItem('syncwatchRoomId');
+      elements.username.value = 'BrowserUiOwner'; elements.password.value = '123456';
+      toggleMobileActionMenu(true);
+      if (elements.accountDropdown.classList.contains('is-hidden')) elements.accountMenuBtn.click();
+      elements.logoutKeepCredentialsBtn.click();
+      return true;
+    })()`);
+    await waitFor(() => evaluate(cdp, `!elements.ownerExitModal.classList.contains('is-hidden')`), '保留凭据退出时显示房主处理选择');
+    assert.equal(await evaluate(cdp, `document.activeElement?.dataset?.ownerExit || ''`), 'leave', '房主退出弹窗应聚焦安全的只退出操作');
+    assert.equal(await evaluate(cdp, `(() => { const cancel = elements.ownerExitModal.querySelector('[data-owner-exit="cancel"]'); cancel.focus(); cancel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })); return document.activeElement?.dataset?.ownerExit || ''; })()`), 'leave', 'Tab 应从最后一个操作回到第一个操作');
+    assert.equal(await evaluate(cdp, `(() => { const leave = elements.ownerExitModal.querySelector('[data-owner-exit="leave"]'); leave.focus(); leave.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })); return document.activeElement?.dataset?.ownerExit || ''; })()`), 'cancel', 'Shift+Tab 应从第一个操作回到最后一个操作');
+    await evaluate(cdp, `elements.ownerExitModal.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
+    await waitFor(() => evaluate(cdp, `elements.ownerExitModal.classList.contains('is-hidden') && document.activeElement === elements.mobileMenuBtn`), 'Escape 取消退出并恢复到手机功能菜单按钮');
+    await evaluate(cdp, `toggleMobileActionMenu(true); elements.accountMenuBtn.click(); elements.logoutKeepCredentialsBtn.click(); true`);
+    await waitFor(() => evaluate(cdp, `!elements.ownerExitModal.classList.contains('is-hidden') && document.activeElement?.dataset?.ownerExit === 'leave'`), '再次打开保留凭据退出选择');
+    await evaluate(cdp, `elements.ownerExitModal.querySelector('[data-owner-exit="leave"]').click(); true`);
+    await waitFor(() => evaluate(cdp, `Boolean(typeof state !== 'undefined' && state.socket?.connected && !state.authenticated && !elements.loginPage.classList.contains('is-hidden'))`), '保留凭据退出并返回登录页');
+    const retainedLogout = await evaluate(cdp, `({
+      username: elements.username.value,
+      password: elements.password.value,
+      token: localStorage.getItem('syncwatchToken'),
+      retainedStorage: sessionStorage.getItem('syncwatchRetainedLogin'),
+      notice: elements.loginStatus.textContent
+    })`);
+    assert.deepEqual(retainedLogout, {
+      username: 'BrowserUiOwner', password: '123456', token: null, retainedStorage: null,
+      notice: '已保留上次登录的账号密码，可直接选择房间再登录。'
+    });
+    await evaluate(cdp, `(() => {
+      elements.roomIdInput.value = 'BROWSER1'; elements.autoLogin.checked = false;
+      elements.loginForm.requestSubmit(); return true;
+    })()`);
+    await waitFor(() => evaluate(cdp, `Boolean(state.authenticated && !elements.mainPage.classList.contains('is-hidden'))`), '使用保留凭据重新登录');
+    await evaluate(cdp, `(() => {
+      document.body.classList.add('android-client'); mountAccountDropdownForViewport();
+      toggleMobileActionMenu(true); elements.accountMenuBtn.click(); elements.logoutBtn.click(); return true;
+    })()`);
+    await waitFor(() => evaluate(cdp, `!elements.ownerExitModal.classList.contains('is-hidden')`), '普通退出时显示房主处理选择');
+    await evaluate(cdp, `elements.ownerExitModal.querySelector('[data-owner-exit="leave"]').click(); true`);
+    await waitFor(() => evaluate(cdp, `Boolean(typeof state !== 'undefined' && state.socket?.connected && !state.authenticated && !elements.loginPage.classList.contains('is-hidden'))`), '普通退出并返回登录页');
+    const plainLogout = await evaluate(cdp, `({
+      username: elements.username.value,
+      password: elements.password.value,
+      token: localStorage.getItem('syncwatchToken'),
+      retainedStorage: sessionStorage.getItem('syncwatchRetainedLogin')
+    })`);
+    assert.deepEqual(plainLogout, { username: '', password: '', token: null, retainedStorage: null });
     const macDownloads = await evaluate(cdp, `(() => {
       const ids = ['downloadMacServerBtn', 'downloadMacClientBtn'];
       const buttons = ids.map((id) => document.getElementById(id));
