@@ -487,21 +487,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact_prefix }}-windows-base
-          path: .build/offline-bundle/windows
+          path: .build/full-inputs/windows
       - name: Download same-run Android artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact_prefix }}-android
-          path: .build/offline-bundle/android
+          path: .build/full-inputs/android
       - name: Download same-run macOS base artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: ${{ inputs.artifact_prefix }}-mac-base-*
-          path: .build/offline-bundle/mac
+          path: .build/full-inputs/mac
           merge-multiple: true
       - name: Verify Full Offline inputs and source contracts
         shell: pwsh
         run: |
+          node scripts/prepare-full-offline-bundle.js
+          if ($LASTEXITCODE -ne 0) { throw 'Full Offline input selection failed.' }
           node scripts/verify-full-offline-bundle.js
           if ($LASTEXITCODE -ne 0) { throw 'Full Offline inputs failed verification.' }
           npm run test:privacy

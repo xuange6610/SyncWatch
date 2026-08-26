@@ -4,15 +4,25 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const root = path.resolve(__dirname, '..', '.build', 'offline-bundle');
+const repositoryRoot = path.resolve(__dirname, '..');
+const root = path.join(repositoryRoot, '.build', 'offline-bundle');
+const version = String(require(path.join(repositoryRoot, 'package.json')).version);
 const expected = [
-  ['windows/SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe', 50 * 1024 * 1024],
-  ['android/SyncWatch-Android-v2.2.3-universal.apk', 50 * 1024 * 1024],
-  ['mac/SyncWatch-Server-macOS-v2.2.3-x64.zip', 100 * 1024 * 1024],
-  ['mac/SyncWatch-Server-macOS-v2.2.3-arm64.zip', 100 * 1024 * 1024],
-  ['mac/SyncWatch-Client-macOS-v2.2.3-x64.zip', 100 * 1024 * 1024],
-  ['mac/SyncWatch-Client-macOS-v2.2.3-arm64.zip', 100 * 1024 * 1024]
+  [`windows/SyncWatch-Experience-Client-Portable-v${version}-x64.exe`, 50 * 1024 * 1024],
+  [`android/SyncWatch-Android-v${version}-universal.apk`, 50 * 1024 * 1024],
+  [`mac/SyncWatch-Server-macOS-v${version}-x64.zip`, 100 * 1024 * 1024],
+  [`mac/SyncWatch-Server-macOS-v${version}-arm64.zip`, 100 * 1024 * 1024],
+  [`mac/SyncWatch-Client-macOS-v${version}-x64.zip`, 100 * 1024 * 1024],
+  [`mac/SyncWatch-Client-macOS-v${version}-arm64.zip`, 100 * 1024 * 1024]
 ];
+
+function listFiles(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolute = path.join(directory, entry.name);
+    if (entry.isDirectory()) return listFiles(absolute);
+    return entry.isFile() ? [path.relative(root, absolute).split(path.sep).join('/')] : [];
+  });
+}
 
 let total = 0;
 for (const [relative, minimum] of expected) {
@@ -22,5 +32,10 @@ for (const [relative, minimum] of expected) {
   assert.ok(size >= minimum, `Full offline bundle file is unexpectedly small: ${relative} (${size} bytes)`);
   total += size;
 }
+assert.deepEqual(
+  listFiles(root).sort(),
+  expected.map(([relative]) => relative).sort(),
+  'Full Offline bundle must contain exactly the six curated platform files'
+);
 assert.ok(total >= 900 * 1024 * 1024, `Full offline payload is unexpectedly small (${total} bytes)`);
 console.log(`Full offline bundle verified: ${expected.length} platform files, ${total} bytes.`);
