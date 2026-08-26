@@ -31,7 +31,8 @@ const browserCandidates = [
 const chromePath = browserCandidates.find((candidate) => fs.existsSync(candidate));
 if (!chromePath) throw new Error('Chrome or Microsoft Edge is required for the browser UI smoke test.');
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const expectedAndroidDownloadAvailable = fs.existsSync(path.join(__dirname, '..', 'dist', `SyncWatch-Android-${publicReleaseVersion}-universal.apk`));
+const androidApkPath = path.join(__dirname, '..', 'dist', `SyncWatch-Android-${publicReleaseVersion}-universal.apk`);
+const expectedAndroidDownloadAvailable = fs.existsSync(androidApkPath);
 
 function findAvailablePort() {
   return new Promise((resolve, reject) => {
@@ -152,7 +153,7 @@ async function main() {
   try {
     server = await startSyncWatchServer({
       host: '127.0.0.1', port: 0, dataDir, publicDir: path.resolve(__dirname, '..', 'public'),
-      ffprobePath: '', ffmpegPath: '', hostControlToken: 'browser-ui-host',
+      ffprobePath: '', ffmpegPath: '', androidApkPath, hostControlToken: 'browser-ui-host',
       mailSender: async (message) => { sentMails.push(message); return { messageId: `browser-ui-mail-${sentMails.length}` }; }
     });
     const baseUrl = `http://127.0.0.1:${server.port}`;

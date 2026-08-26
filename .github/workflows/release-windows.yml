@@ -22,6 +22,14 @@ on:
       artifact_prefix:
         required: true
         type: string
+      node_mobile_runtime_run_id:
+        required: false
+        default: ''
+        type: string
+      node_mobile_runtime_artifact_name:
+        required: false
+        default: ''
+        type: string
     secrets:
       android_keystore_base64:
         required: false
@@ -30,6 +38,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   validate:
@@ -44,16 +53,23 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_COMMIT: ${{ inputs.commit_sha }}
           RELEASE_TREE: ${{ inputs.source_tree }}
+          NODE_MOBILE_RUNTIME_RUN_ID: ${{ inputs.node_mobile_runtime_run_id }}
+          NODE_MOBILE_RUNTIME_ARTIFACT_NAME: ${{ inputs.node_mobile_runtime_artifact_name }}
         run: |
           set -euo pipefail
           [[ "$RELEASE_PHASE" =~ ^(android|base|full)$ ]]
           [[ "$RELEASE_TAG" == "v${RELEASE_VERSION}" ]]
           [[ "$RELEASE_COMMIT" =~ ^[a-f0-9]{40}$ ]]
           [[ "$RELEASE_TREE" =~ ^[a-f0-9]{40}$ ]]
+          if [[ -n "$NODE_MOBILE_RUNTIME_RUN_ID" || -n "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" ]]; then
+            [[ "$RELEASE_PHASE" == "android" ]]
+            [[ "$NODE_MOBILE_RUNTIME_RUN_ID" =~ ^[0-9]+$ ]]
+            [[ "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" =~ ^[A-Za-z0-9._-]+$ ]]
+          fi
 
   node_mobile_build:
     name: Build official Node.js Mobile 16 KB runtime (${{ matrix.target_arch }})
-    if: inputs.phase == 'android'
+    if: inputs.phase == 'android' && inputs.node_mobile_runtime_run_id == ''
     needs: validate
     strategy:
       fail-fast: false
@@ -102,24 +118,36 @@ jobs:
 
   node_mobile_combine:
     name: Combine official Node.js Mobile 16 KB runtime
-    if: inputs.phase == 'android'
+    if: ${{ always() && inputs.phase == 'android' && needs.validate.result == 'success' && (inputs.node_mobile_runtime_run_id != '' || needs.node_mobile_build.result == 'success') }}
     needs: [validate, node_mobile_build]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - name: Checkout pinned Node.js Mobile source
+        if: inputs.node_mobile_runtime_run_id == ''
         uses: actions/checkout@v4
         with:
           repository: nodejs-mobile/nodejs-mobile
           ref: ff4e063f1f1911047c067335ad0a3d81336236ca
           fetch-depth: 1
+      - name: Download previously built pinned Node.js Mobile runtime
+        if: inputs.node_mobile_runtime_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.node_mobile_runtime_run_id }}
+          name: ${{ inputs.node_mobile_runtime_artifact_name }}
+          path: node-mobile-runtime
       - name: Download Node.js Mobile ABI candidates
+        if: inputs.node_mobile_runtime_run_id == ''
         uses: actions/download-artifact@v4
         with:
           pattern: ${{ inputs.artifact_prefix }}-node-mobile-*
           path: out_android
           merge-multiple: true
       - name: Assemble runtime and provenance
+        if: inputs.node_mobile_runtime_run_id == ''
         shell: bash
         env:
           RELEASE_SOURCE_REVISION: ff4e063f1f1911047c067335ad0a3d81336236ca
@@ -137,6 +165,18 @@ jobs:
           test -s node-mobile-runtime/include/node/node.h
           sha256sum node-mobile-runtime/bin/*/libnode.so > node-mobile-runtime/libnode-sha256.txt
           printf '{"schema":"nodejs-mobile-runtime-v1","sourceRepository":"https://github.com/nodejs-mobile/nodejs-mobile","sourceRevision":"%s","pageSize":16384}\n' "$RELEASE_SOURCE_REVISION" > node-mobile-runtime/provenance.json
+      - name: Verify pinned runtime provenance and exact digests
+        shell: bash
+        env:
+          EXPECTED_PROVENANCE: '{"schema":"nodejs-mobile-runtime-v1","sourceRepository":"https://github.com/nodejs-mobile/nodejs-mobile","sourceRevision":"ff4e063f1f1911047c067335ad0a3d81336236ca","pageSize":16384}'
+        run: |
+          set -euo pipefail
+          test "$(tr -d '\r\n' < node-mobile-runtime/provenance.json)" = "$EXPECTED_PROVENANCE"
+          test "$(sha256sum node-mobile-runtime/include/node/node.h | awk '{print $1}')" = "6b7970057e8382e6e8cabeeccb8637929054c28d168c3755cb1160b0062fac4c9"
+          test "$(sha256sum node-mobile-runtime/bin/arm64-v8a/libnode.so | awk '{print $1}')" = "5afcd3be4891f2fcf434f5218ce5faad08380789b6b080d30ea5d5867b1fc4f4"
+          test "$(sha256sum node-mobile-runtime/bin/armeabi-v7a/libnode.so | awk '{print $1}')" = "d0c41551f6cfbb0efd5a6c94ed7c3efc0e74594fe60095147c4c20a6e81a1d58"
+          test "$(sha256sum node-mobile-runtime/bin/x86_64/libnode.so | awk '{print $1}')" = "57bad09ba77ff33bb0a518eb57ed52cba21a24bdc9f99042a3c407bfdc2f907d"
+          sha256sum --check node-mobile-runtime/libnode-sha256.txt
       - name: Upload combined Node.js Mobile runtime
         uses: actions/upload-artifact@v4
         with:
