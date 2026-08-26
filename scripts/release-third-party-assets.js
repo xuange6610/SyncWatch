@@ -106,6 +106,7 @@ function digest(bytes) {
 
 async function download(url) {
   let lastError;
+  const githubToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
   for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt += 1) {
     try {
       const response = await fetch(url, {
@@ -113,7 +114,7 @@ async function download(url) {
         dispatcher: getProxyDispatcher(),
         headers: {
           'User-Agent': `SyncWatch-release-builder/${PROJECT_VERSION}`,
-          ...(process.env.GH_TOKEN ? { Authorization: `Bearer ${process.env.GH_TOKEN}` } : {})
+          ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {})
         },
         signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
       });

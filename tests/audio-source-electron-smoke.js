@@ -4,10 +4,10 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const { app, BrowserWindow, desktopCapturer, session } = require('electron');
 
-const captureScript = (sourceId) => `
+const captureScript = (sourceId, includeAudio = true) => `
   (async () => {
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { mandatory: { chromeMediaSource: 'desktop' } },
+      audio: ${includeAudio ? "{ mandatory: { chromeMediaSource: 'desktop' } }" : 'false'},
       video: { mandatory: {
         chromeMediaSource: 'desktop',
         chromeMediaSourceId: ${JSON.stringify(sourceId)},
@@ -63,6 +63,7 @@ async function run() {
 
   const attempts = [qishui, screen].filter(Boolean).filter((source, index, items) => items.findIndex((item) => item.id === source.id) === index);
   let captured = null;
+  let videoOnlyCapture = null;
   let lastError = null;
   for (const source of attempts) {
     try {
@@ -71,11 +72,34 @@ async function run() {
         captured = { source, result };
         break;
       }
+      if (result.videoTracks > 0) videoOnlyCapture = { source, result };
     } catch (error) { lastError = error; }
+  }
+
+  // GitHub-hosted Windows runners may enumerate desktop sources but have no
+  // audio output device. Keep validating desktop video there, while requiring
+  // a loopback track everywhere else and on self-hosted runners.
+  const allowMissingLoopback = process.env.SYNCWATCH_ALLOW_MISSING_AUDIO_LOOPBACK === '1'
+    && process.env.GITHUB_ACTIONS === 'true'
+    && process.env.RUNNER_OS === 'Windows';
+  if (!captured && allowMissingLoopback && !videoOnlyCapture) {
+    for (const source of attempts) {
+      try {
+        const result = await window.webContents.executeJavaScript(captureScript(source.id, false), true);
+        if (result.videoTracks > 0) {
+          videoOnlyCapture = { source, result };
+          break;
+        }
+      } catch (error) { lastError = error; }
+    }
   }
 
   window.destroy();
   await new Promise((resolve) => webServer.close(resolve));
+  if (!captured && allowMissingLoopback && videoOnlyCapture) {
+    console.log(`audio capture smoke skipped: GitHub-hosted Windows runner has no loopback audio device; video capture passed for ${videoOnlyCapture.source.name}`);
+    return;
+  }
   assert.ok(captured, lastError?.message || 'Electron did not expose a Windows loopback audio track');
   assert.ok(captured.result.videoTracks > 0);
   console.log(`audio capture smoke passed: selected=${qishui?.name || 'not-running'}, captured=${captured.source.name}, audio=${captured.result.audioLabel || 'loopback'}`);

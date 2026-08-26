@@ -139,6 +139,16 @@ assert.match(
 );
 assert.match(
   workflows.windows,
+  /name:\s*Verify Windows desktop audio capture[\s\S]*?SYNCWATCH_ALLOW_MISSING_AUDIO_LOOPBACK:\s*['"]?1['"]?/,
+  'Windows hosted audio fallback must be explicitly enabled and visible in the workflow'
+);
+assert.match(
+  fs.readFileSync(path.join(root, 'tests', 'audio-source-electron-smoke.js'), 'utf8'),
+  /GITHUB_ACTIONS.*RUNNER_OS.*Windows/s,
+  'Audio fallback must remain restricted to GitHub-hosted Windows runners'
+);
+assert.match(
+  workflows.windows,
   /name:\s*Verify Windows broken-pipe shutdown handling[\s\S]*?node tests\/epipe-smoke\.js/,
   'Windows release runner must execute the real broken-pipe shutdown smoke'
 );
@@ -159,6 +169,10 @@ assert.match(workflows.macos, /Mach-O/);
 assert.match(workflows.macos, /find "\$app\/Contents\/MacOS" "\$app\/Contents\/Frameworks" -type f/);
 assert.match(workflows.macos, /cloudflared-darwin-x64" \| grep -q 'x86_64'/);
 assert.match(workflows.macos, /cloudflared-darwin-arm64" \| grep -q 'arm64'/);
+assert.match(workflows.macos, /Prepare pinned Cloudflare Tunnel binaries[\s\S]{0,220}GH_TOKEN: \$\{\{ github\.token \}\}/);
+assert.match(workflows.macos, /name: Select matrix architecture for native macOS build/);
+assert.match(workflows.macos, /electron-builder --config "\.build\/electron-builder-mac-\$\{RELEASE_KIND\}-\$\{RELEASE_ARCH\}\.json"/);
+assert.match(workflows.macos, /dist\/builder-debug\.yml/);
 assert.match(workflows.macos, /verify_container "\$zip" zip/);
 assert.match(workflows.macos, /verify_container "\$dmg" dmg/);
 assert.match(workflows.macos, /smoke_client/);

@@ -111,6 +111,8 @@ jobs:
       - name: Prepare pinned Cloudflare Tunnel binaries
         if: matrix.kind == 'server'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           node scripts/release-third-party-assets.js \
@@ -126,11 +128,27 @@ jobs:
             node tests/server-package-contract.test.js
             node tests/cloudflared-bundle.test.js
           fi
+      - name: Select matrix architecture for native macOS build
+        shell: bash
+        env:
+          MAC_CONFIG: electron-builder-mac-${{ matrix.kind }}.json
+          MAC_SELECTED_CONFIG: .build/electron-builder-mac-${{ matrix.kind }}-${{ matrix.arch }}.json
+        run: |
+          set -euo pipefail
+          mkdir -p .build
+          MAC_CONFIG="$MAC_CONFIG" MAC_SELECTED_CONFIG="$MAC_SELECTED_CONFIG" node <<'NODE'
+          const fs = require('node:fs');
+          const config = JSON.parse(fs.readFileSync(process.env.MAC_CONFIG, 'utf8'));
+          for (const target of config.mac?.target || []) {
+            if (target && typeof target === 'object') delete target.arch;
+          }
+          fs.writeFileSync(process.env.MAC_SELECTED_CONFIG, `${JSON.stringify(config, null, 2)}\n`);
+          NODE
       - name: Build native macOS DMG and ZIP
         shell: bash
         run: |
           set -euo pipefail
-          npx electron-builder --config "electron-builder-mac-${RELEASE_KIND}.json" --mac --${RELEASE_ARCH} --publish never
+          npx electron-builder --config ".build/electron-builder-mac-${RELEASE_KIND}-${RELEASE_ARCH}.json" --mac --${RELEASE_ARCH} --publish never
       - name: Inspect and launch every macOS base container
         shell: bash
         run: |
@@ -221,7 +239,7 @@ jobs:
           ! LC_ALL=C grep -aEqi "${old_ascii}|${old_name}" "$zip"
           verify_container "$zip" zip
           verify_container "$dmg" dmg
-          rm -f dist/*.blockmap dist/latest*.yml
+          rm -f dist/*.blockmap dist/latest*.yml dist/builder-debug.yml
           node scripts/release-candidate-gate.js \
             --selection "$RELEASE_SELECTION" \
             --version "$RELEASE_VERSION" \
@@ -298,6 +316,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Prepare pinned Cloudflare Tunnel binaries
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           node scripts/release-third-party-assets.js \
@@ -416,7 +436,7 @@ jobs:
           ! LC_ALL=C grep -aEqi "${old_ascii}|${old_name}" "$zip"
           verify_container "$zip" zip
           verify_container "$dmg" dmg
-          rm -f dist/*.blockmap dist/latest*.yml
+          rm -f dist/*.blockmap dist/latest*.yml dist/builder-debug.yml
           node scripts/release-candidate-gate.js \
             --selection "$RELEASE_SELECTION" \
             --version "$RELEASE_VERSION" \

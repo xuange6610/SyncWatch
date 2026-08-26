@@ -9,19 +9,30 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const repositoryRoot = path.resolve(__dirname, '..');
-const binary = path.join(repositoryRoot, 'vendor', 'cloudflared.exe');
+const isDarwin = process.platform === 'darwin';
+const runtimeArchitecture = process.arch === 'arm64' ? 'arm64' : 'x64';
+const binary = isDarwin
+  ? path.join(repositoryRoot, 'vendor', `cloudflared-darwin-${runtimeArchitecture}`)
+  : path.join(repositoryRoot, 'vendor', 'cloudflared.exe');
 const source = fs.readFileSync(path.join(repositoryRoot, 'electron-pink.js'), 'utf8');
 const serverSource = fs.readFileSync(path.join(repositoryRoot, 'server', 'index.js'), 'utf8');
 const pageSource = fs.readFileSync(path.join(repositoryRoot, 'public', 'index.html'), 'utf8');
 const packageJson = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'));
 const macServerConfig = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'electron-builder-mac-server.json'), 'utf8'));
 
-assert.ok(fs.existsSync(binary), 'vendor/cloudflared.exe is missing');
+assert.ok(fs.existsSync(binary), `${path.relative(repositoryRoot, binary)} is missing`);
 const stats = fs.statSync(binary);
-assert.ok(stats.size > 1_000_000, 'bundled cloudflared.exe is empty or truncated');
-assert.ok(packageJson.build?.extraResources?.some((entry) =>
-  entry.from === 'vendor/cloudflared.exe' && entry.to === 'vendor/cloudflared.exe'),
+assert.ok(stats.size > 1_000_000, 'bundled cloudflared binary is empty or truncated');
+if (isDarwin) {
+  assert.ok(macServerConfig.extraResources?.some((entry) =>
+    entry.from === `vendor/cloudflared-darwin-${runtimeArchitecture}`
+      && entry.to === `vendor/cloudflared-darwin-${runtimeArchitecture}`),
+  `electron-builder does not package the macOS ${runtimeArchitecture} cloudflared binary as an extra resource`);
+} else {
+  assert.ok(packageJson.build?.extraResources?.some((entry) =>
+    entry.from === 'vendor/cloudflared.exe' && entry.to === 'vendor/cloudflared.exe'),
   'electron-builder does not package vendor/cloudflared.exe as an extra resource');
+}
 assert.match(source, /const roots = \[process\.resourcesPath \|\| '', __dirname\]/);
 assert.match(source, /path\.join\(root, 'vendor', name\)/);
 assert.match(source, /cloudflared-darwin-\$\{runtime\.arch\}/);
@@ -74,4 +85,4 @@ if (process.platform === 'win32') {
   assert.equal(verification.status, 0, verification.stderr || 'cloudflared Authenticode signature is invalid');
 }
 
-console.log(`cloudflared bundle verification passed (${stats.size} bytes, ${crypto.createHash('sha256').update(fs.readFileSync(binary)).digest('hex')}).`);
+console.log(`cloudflared bundle verification passed (${path.basename(binary)}, ${stats.size} bytes, ${crypto.createHash('sha256').update(fs.readFileSync(binary)).digest('hex')}).`);
