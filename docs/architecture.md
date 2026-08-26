@@ -210,14 +210,14 @@ Android APK 内嵌与桌面端相同的 `server/index.js`、`public/**` 和生�
 - FFprobe 读取编码、分辨率、时长、音轨和字幕信息。
 - FFmpeg 生成缩略图、把不兼容视频转换为 H.264/yuv420p + AAC MP4，并把 SRT/ASS/SSA/GBK/GB18030 字幕转换为 VTT。
 - 转换进度包括百分比、速度、已用时间和预计完成时间；删除文件会终止关联任务并清理临时文件。
-- HTTP Range 支持浏览器拖动、断点和大文件分段读取。
+- HTTP Range 支持浏览器拖动、断点和大文件分段读取；超过 32 MiB 的媒体把开放请求限制为每段 8 MiB，避免高延迟链路频繁续段，也避免拖动后遗留无限大响应。
 - 默认共享清晰度为原画，用户可切换自动、流畅版和原画。
 
 ### 4.4 同步、共享与播放
 
 - 播放、暂停、定位、音量、缓冲状态和版本号通过 Socket.IO 同步。
 - 使用服务器时钟和网络延迟修正客户端时间，支持断线重连和晚加入恢复。
-- 网络质量由独立的顺序 `network-ping` 探测判断，4 秒定时器不会与最长 5 秒的在途探测重叠；连续 3 次超过 500 毫秒或超时才从 `online` 降为 `unstable`，连续 2 次健康样本才恢复。探测带递增 sequence 和连接 epoch，服务端忽略乱序样本，客户端以 volatile 遥测避免重连后回放旧质量数据。HTMLMediaElement 的 `waiting/stalled` 只进入媒体恢复流程，不直接触发“网络波动”；本机 socket 断开单独显示“连接中断”。
+- 网络质量由独立的顺序 `network-ping` 探测判断，4 秒定时器不会与最长 5 秒的在途探测重叠；连续 3 次超过 500 毫秒或超时才从 `online` 降为 `unstable`，连续 2 次健康样本才恢复。页面进入后台后不发起探测，后台返回的旧 ACK 被丢弃，回前台重置状态并立即重新测量。探测带递增 sequence 和连接 epoch，服务端忽略乱序样本，客户端以 volatile 遥测避免重连后回放旧质量数据。HTMLMediaElement 的 `waiting/stalled` 只进入最多 5 次的渐进媒体恢复流程，离线等待不消耗预算，恢复用尽后可降级到已有流畅版；它不直接触发“网络波动”，本机 socket 断开单独显示“连接中断”。
 - 文本/小说阅读使用独立的 `text-reading-update` 与 `text-reading-state` 事件。服务端保存当前文本 `fileId`、UTF-16 `characterOffset`、归一化位置、页码、更新时间、操作者和递增 `revision`，不把正文放进 Socket 消息；晚加入和重连客户端按 `room.textReading` 恢复。
 - 只有房主或被授予控制权的成员可以更新阅读位置；切换/删除文本会重置状态。客户端忽略旧 revision，并始终保留服务端下发或页码计算出的精确逻辑 `characterOffset`。Range 只把该字符所在的本地视觉行滚动到顶部，窗口 resize 后重新校准；桌面与手机的视觉行首可以不同，但不得回写覆盖权威偏移，房间文件、revision、逻辑锚点和锚点字符必须一致。
 - 屏幕共享支持 Electron 桌面捕获、浏览器能力和 Android MediaProjection。
@@ -373,7 +373,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build-server-package.ps1
 | `tests/account-credential-policy.test.js` | 账号/密码默认 unrestricted、UTF-8 字节上限、可配置限制和持久化。 |
 | `tests/ui-copy.test.js` | 文案权限、受控 key（含 `ui.auto.*`）、纯文本安全、广播、导入导出和持久化。 |
 | `tests/ui-copy-browser-smoke.js` | 自动文案键稳定性、按钮覆盖率、动态隐私数据排除、双击编辑和桌面/390px 视口应用。 |
-| `tests/network-quality.test.js` | 单次尖峰抑制、连续异常/健康迟滞、乱序忽略、真实断线语义，以及活动媒体 Range 下控制通道响应。 |
+| `tests/network-quality.test.js` | 单次尖峰抑制、连续异常/健康迟滞、后台节流隔离、乱序忽略、真实断线语义，以及 40 MiB 媒体的 8 MiB 有界 Range 下控制通道响应。 |
 | `tests/browser-ui-smoke.js` | 小说任意精确锚点的桌面/移动一致性、页码边界，以及头像单击/双击/触摸和列表重绘竞态。 |
 | `tests/android-package.test.js` | APK 签名、ABI、依赖闭包和内置源码一致性。 |
 | `tests/artifact-smoke.js` | 最终 EXE 启动、HTTP、WebSocket、上传播放和内置 APK。 |

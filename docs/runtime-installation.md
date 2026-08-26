@@ -27,7 +27,7 @@ cloudflared --version
 5. 手工创建临时地址：
 
 ```powershell
-cloudflared tunnel --url http://127.0.0.1:5000 --protocol http2
+cloudflared tunnel --url http://127.0.0.1:5000 --protocol auto
 ```
 
 6. 等待终端显示 `https://随机名称.trycloudflare.com`，用另一网络的手机测试登录和媒体播放。
@@ -42,7 +42,7 @@ cloudflared tunnel --url http://127.0.0.1:5000 --protocol http2
 ```bash
 brew install cloudflared
 cloudflared --version
-cloudflared tunnel --url http://127.0.0.1:5000 --protocol http2
+cloudflared tunnel --url http://127.0.0.1:5000 --protocol auto
 ```
 
 使用 Release 中的独立文件时，Intel Mac 下载 `cloudflared-macos-x64`，Apple Silicon 下载 `cloudflared-macos-arm64`：
@@ -50,12 +50,12 @@ cloudflared tunnel --url http://127.0.0.1:5000 --protocol http2
 ```bash
 chmod +x ./cloudflared-macos-arm64
 ./cloudflared-macos-arm64 --version
-./cloudflared-macos-arm64 tunnel --url http://127.0.0.1:5000 --protocol http2
+./cloudflared-macos-arm64 tunnel --url http://127.0.0.1:5000 --protocol auto
 ```
 
 ## Cloudflare 临时地址超时怎么处理
 
-新版会按顺序尝试 DoH Edge 直连、HTTP/2 自动出口以及系统网络回退。最后一种会恢复系统代理，不再绑定物理网卡，解决“必须经过系统代理才能访问 `api.trycloudflare.com`”时三次都超时的问题。
+新版默认使用 `--protocol auto`：cloudflared 会优先协商 QUIC，失败或被拦截时自动回退 HTTP/2。桌面端还会按预检尝试物理 IPv4/DoH Edge 直连，必要时切换到继承系统代理的自动协议；每个候选连接器都要通过固定小响应 `/api/tunnel-health` 验证后才发布地址。应用配置仍可用 `/api/public-config` 检查。只有排查 QUIC/UDP 被拦截时，才临时使用 `--protocol http2` 做对照测试。
 
 仍然失败时按顺序检查：
 

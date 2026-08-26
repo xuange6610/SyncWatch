@@ -147,6 +147,10 @@ async function runCase(mode) {
 
 async function main() {
   const auditedEntries = assertElectronEntryGuards();
+  if (process.platform !== 'win32') {
+    console.log(`✓ EPIPE 静态审计通过：${auditedEntries} 个 Electron 测试入口；真实 Windows 断管与退出验证由 Windows release runner 执行`);
+    return;
+  }
   const productionMs = await runCase('production');
   const testEntryMs = await runCase('test-entry');
   console.log(`✓ EPIPE 回归通过：静态审计 ${auditedEntries} 个 Electron 测试入口；生产主入口 ${productionMs}ms、测试入口 ${testEntryMs}ms；父进程关闭 stdout/stderr 后均触发真实 EPIPE、无错误弹窗并以 0 退出`);

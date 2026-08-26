@@ -103,7 +103,7 @@ assert.deepEqual(electronSettings.selectableNetworkAdapters(networkInterfaces).m
 console.log('✓ 启动网卡支持自动优选、手动指定与断线回退');
 
 assert.deepEqual(electronSettings.tunnelCommandArgs('quick', 5000), [
-  'tunnel', '--url', 'http://127.0.0.1:5000', '--protocol', 'http2', '--edge-ip-version', '4', '--retries', '12', '--no-autoupdate'
+  'tunnel', '--url', 'http://127.0.0.1:5000', '--protocol', 'auto', '--edge-ip-version', '4', '--retries', '12', '--no-autoupdate'
 ]);
 assert.deepEqual(electronSettings.tunnelCommandArgs('named', 5000), [
   'tunnel', '--protocol', 'auto', '--edge-ip-version', '4', '--retries', '12', '--no-autoupdate', 'run'
@@ -153,7 +153,7 @@ assert.match(launchTunnelAttemptSource, /tunnelConnectorRegistered\(log\)[\s\S]*
   '临时地址必须等 cloudflared 连接器注册后才发布，避免 Cloudflare 1033');
 assert.match(electronSource, /cloudflareErrorCode === 1033/,
   '公网探针应把 Cloudflare 1033 显示为连接器未注册，而不是普通超时');
-console.log('✓ Quick Tunnel 使用代理/TUN 兼容的 HTTP/2，探测超时保持原进程与临时地址');
+console.log('✓ Quick Tunnel 首选 QUIC/HTTP/2 自动选择并保留 HTTP/2、系统网络回退，探测超时保持原进程与临时地址');
 
 const closeHandlerSource = electronSource.match(/mainWindow\.on\('close',[\s\S]*?mainWindow\.on\('closed'/)?.[0] || '';
 assert.ok(closeHandlerSource, '应能定位主窗口关闭处理器');

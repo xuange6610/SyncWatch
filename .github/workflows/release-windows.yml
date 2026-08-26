@@ -234,6 +234,11 @@ jobs:
         run: |
           npm run test:audio-source:electron
           if ($LASTEXITCODE -ne 0) { throw 'Windows desktop audio capture smoke failed.' }
+      - name: Verify Windows broken-pipe shutdown handling
+        shell: pwsh
+        run: |
+          node tests/epipe-smoke.js
+          if ($LASTEXITCODE -ne 0) { throw 'Windows broken-pipe shutdown smoke failed.' }
       - name: Verify source and desktop contracts
         shell: pwsh
         run: |

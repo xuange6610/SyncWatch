@@ -137,6 +137,11 @@ assert.match(
   /name:\s*Verify Windows desktop audio capture[\s\S]*?npm run test:audio-source:electron/,
   'Windows release runner must execute the real desktop audio capture smoke'
 );
+assert.match(
+  workflows.windows,
+  /name:\s*Verify Windows broken-pipe shutdown handling[\s\S]*?node tests\/epipe-smoke\.js/,
+  'Windows release runner must execute the real broken-pipe shutdown smoke'
+);
 assert.match(workflows.windows, /android_startup:/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
 assert.match(workflows.windows, /adb install --no-streaming/);

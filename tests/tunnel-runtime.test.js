@@ -5,6 +5,7 @@ require('./epipe-guard');
 const assert = require('assert/strict');
 const crypto = require('crypto');
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
@@ -134,10 +135,11 @@ assert.deepEqual(_test.tunnelCommandArgs('quick', 5000, {
 const pinnedStrategies = _test.tunnelConnectionStrategies('quick', {
   bypassProxy: true, bindAddress: '192.168.110.188', edgeAddresses: ['198.41.192.7']
 });
-assert.equal(pinnedStrategies[0].id, 'direct-http2-pinned-edge');
+assert.equal(pinnedStrategies[0].id, 'direct-auto-pinned-edge');
+assert.equal(pinnedStrategies[0].protocol, 'auto');
 assert.deepEqual(pinnedStrategies[0].edgeAddresses, ['198.41.192.7']);
 assert.deepEqual(pinnedStrategies.map((strategy) => strategy.id), [
-  'direct-http2-pinned-edge', 'direct-http2', 'system-http2-fallback'
+  'direct-auto-pinned-edge', 'direct-auto', 'system-auto-fallback'
 ]);
 assert.equal(pinnedStrategies.at(-1).bypassProxy, false,
   'quick tunnels must finally retry with the system network when every direct attempt times out');
@@ -153,6 +155,9 @@ assert.equal(_test.tunnelProbeTransport('', {}), 'electron-system-network',
   'an unbound/system fallback probe must honor the operating-system proxy and TUN route');
 assert.equal(_test.tunnelProbeTransport('', { HTTPS_PROXY: 'http://127.0.0.1:7890' }), 'environment-proxy',
   'an unbound/system fallback probe must honor the proxy inherited by cloudflared');
+assert.equal(_test.TUNNEL_HEALTH_PATH, '/api/tunnel-health');
+assert.match(source, /waitForPublicUrl[\s\S]*?TUNNEL_HEALTH_PATH/,
+  'Electron public URL verification must use the fixed-size tunnel health endpoint');
 assert.deepEqual(_test.parseTunnelProbeResponse(200, JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.0' })), {
   ok: true, statusCode: 200
 });
@@ -220,4 +225,55 @@ process.on('exit', () => {
   try { fs.rmSync(temporaryRoot, { recursive: true, force: true }); } catch (_) {}
 });
 
-console.log('Tunnel runtime, platform selection, archive verification, adapter filtering, and recovery contracts passed.');
+async function settleWithin(promise, timeoutMs = 1000) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => { timer = setTimeout(() => resolve({ hung: true }), timeoutMs); })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+(async () => {
+  let responseMode = 'healthy';
+  let requestedUrl = '';
+  const proxyServer = http.createServer((request, response) => {
+    requestedUrl = request.url;
+    response.setHeader('Content-Type', 'application/json');
+    if (responseMode === 'oversized') {
+      for (let index = 0; index < 32; index += 1) response.write(Buffer.alloc(1024, 0x61));
+      return;
+    }
+    response.end(JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.1' }));
+  });
+  try {
+    await new Promise((resolve, reject) => {
+      proxyServer.once('error', reject);
+      proxyServer.listen(0, '127.0.0.1', resolve);
+    });
+    const proxyUrl = `http://127.0.0.1:${proxyServer.address().port}`;
+    const environment = { HTTP_PROXY: proxyUrl, HTTPS_PROXY: proxyUrl, NO_PROXY: '' };
+    const healthy = await _test.probeHttpsThroughSystemNetwork(
+      'http://electron-proxy-only.invalid:65530/api/tunnel-health', environment
+    );
+    assert.equal(healthy.ok, true);
+    assert.equal(requestedUrl, 'http://electron-proxy-only.invalid:65530/api/tunnel-health');
+
+    responseMode = 'oversized';
+    const oversized = await settleWithin(_test.probeHttpsThroughSystemNetwork(
+      'http://electron-proxy-only.invalid:65530/api/tunnel-health', environment
+    ));
+    assert.equal(oversized.hung, undefined,
+      'Electron system-proxy verification must settle when the health response exceeds its limit');
+    assert.equal(oversized.ok, false);
+  } finally {
+    await new Promise((resolve) => proxyServer.close(resolve));
+  }
+  console.log('Tunnel runtime, platform selection, archive verification, adapter filtering, and recovery contracts passed.');
+})().catch((error) => {
+  console.error(error.stack || error.message);
+  process.exitCode = 1;
+});

@@ -87,7 +87,7 @@ const state = {
   rememberSession: Boolean(localStorage.getItem('syncwatchToken')), authGeneration: 0,
   hostToken: windowHostToken, lastWatchReport: Date.now(),
   lastPlaybackProgress: 0, volumeEmitTimer: null, mediaFailed: false, lastConnectionError: '',
-  mediaNetworkRecovery: { key: '', attempts: 0, timer: null, stallTimer: null, resume: null },
+  mediaNetworkRecovery: { key: '', attempts: 0, timer: null, stallTimer: null, resume: null, stability: null, waitingForNetwork: false },
   compatibilityFallbackFileId: '', compatibilityFallbackGeneration: -1,
   uploadBatch: null, libraryCollapsed: localStorage.getItem('syncwatchFilesCollapsed') === '1',
   uploadProgressBackgrounded: false,
@@ -1891,14 +1891,17 @@ function bindUiEvents() {
   elements.videoPlayer.addEventListener('loadedmetadata', onMediaMetadata);
   elements.videoPlayer.addEventListener('durationchange', updatePlayerProgressBar);
   elements.videoPlayer.addEventListener('timeupdate', updatePlayerProgressBar);
+  elements.videoPlayer.addEventListener('timeupdate', handleMediaRecoveryProgress);
   elements.videoPlayer.addEventListener('canplay', onMediaCanPlay);
   elements.videoPlayer.addEventListener('play', () => handleLocalPlaybackEvent(true));
   elements.videoPlayer.addEventListener('pause', () => handleLocalPlaybackEvent(false));
   elements.videoPlayer.addEventListener('seeking', () => {
+    invalidateMediaRecoveryStability();
     state.seekInteractionUntil = performance.now() + 2600;
     state.suppressPlaybackNoticeUntil = Date.now() + 3200;
   });
   elements.videoPlayer.addEventListener('seeked', handleLocalSeeked);
+  elements.videoPlayer.addEventListener('seeked', beginMediaRecoveryStability);
   elements.videoPlayer.addEventListener('volumechange', handleNativeVolumeChange);
   elements.videoPlayer.addEventListener('ended', handlePlaybackEnded);
   elements.videoPlayer.addEventListener('error', handleMediaError);
@@ -4432,6 +4435,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   refreshSelfAccess(); renderUsers();
   applyFiles(files);
   applyRoom(result.room);
+  resumeWaitingMediaRecovery();
   if (result.room?.passwordEnforcementRequired && result.capabilities?.owner && !result.room?.passwordRequired) {
     setTimeout(() => toastWithAction('服务器要求当前房间设置访问密码。完成设置前，房主的播放控制会暂停；其他成员可以继续观看。', '现在设置', () => {
       openManagementHub('room'); setTimeout(() => elements.accessPassword?.focus(), 160);
@@ -6599,7 +6603,7 @@ function updateRoomHeader() {
   const roomStatus = window.SyncWatchNetworkQuality.roomStatus({
     authenticated: state.authenticated, socketConnected: Boolean(state.socket?.connected),
     socketAuthenticated: state.socketAuthenticated,
-    localConnectionState: state.networkProbe.localConnectionState, members: state.users
+    localConnectionState: state.networkProbe.localConnectionState
   });
   elements.headerStatus.textContent = roomStatus.label;
   elements.headerStatus.dataset.state = roomStatus.state;
@@ -7126,6 +7130,7 @@ async function loadTextPreview(file) {
 function teardownTimedMedia() {
   const video = elements.videoPlayer;
   clearMediaNetworkRecovery(false);
+  clearMediaBufferingState();
   state.mediaGeneration += 1; state.activeTimedFileId = null; state.activeTimedSource = ''; state.activeMediaVariant = 'auto';
   state.expectedSeek = null; state.syncSeekCooldownUntil = 0; state.expectedPlaybackEvent = null; state.mediaEventBlockUntil = performance.now() + 750;
   state.mediaFailed = false; video.playbackRate = 1;
@@ -7328,6 +7333,10 @@ function adaptiveSynchronize(playback, force = false) {
   if (state.currentFile?.id !== file.id) loadFile(file);
   if (!isTimedFile(file)) { state.pendingPlayback = null; clearAutoplayRecovery(); updateControlAccess(); return; }
   if (state.screenShareActive) { state.pendingPlayback = { playback: accepted, force }; suspendMediaForScreenShare(); updateControlAccess(); return; }
+  if (!accepted.isPlaying) {
+    clearMediaBufferingState();
+    clearMediaNetworkRecovery();
+  }
   elements.videoPlayer.classList.remove('is-hidden'); elements.emptyStage.classList.add('is-hidden');
   if (elements.videoPlayer.readyState < 1) { state.pendingPlayback = { playback: accepted, force }; showSyncNotice('影片加载中，准备好后自动同步…'); return; }
   state.pendingPlayback = null; state.applyingPlayback = true;
@@ -7394,6 +7403,10 @@ function consumeExpectedPlaybackEvent(playing) {
 }
 
 function handleLocalPlaybackEvent(playing) {
+  if (!playing) {
+    clearMediaBufferingState();
+    clearMediaNetworkRecovery();
+  }
   if (consumeExpectedPlaybackEvent(playing)) return;
   if (!isActiveTimedMedia() || state.screenShareActive) return;
   // Native media controls can emit play/pause without passing through our
@@ -7468,15 +7481,24 @@ function showMuteWarmHint() {
 function handleMediaBuffering() {
   if (!state.room?.playback?.isPlaying || !isActiveTimedMedia()) return;
   state.localBuffering = true;
+  invalidateMediaRecoveryStability();
   showSyncNotice('网络延迟不等于缓冲，当前正在补充播放数据…');
   updatePlayerBufferState();
   scheduleMediaStallRecovery();
+}
+
+function clearMediaBufferingState() {
+  state.localBuffering = false;
+  state.bufferedAheadSeconds = 0;
+  invalidateMediaRecoveryStability();
+  clearMediaStallRecovery();
 }
 
 function handleMediaBufferRecovered() {
   state.localBuffering = false;
   clearMediaStallRecovery();
   updatePlayerBufferState();
+  beginMediaRecoveryStability();
   if (state.room?.playback?.isPlaying) elements.syncNotice.classList.add('is-hidden');
 }
 
@@ -10634,7 +10656,7 @@ function emitNetworkQualityObservation(sequence, observation, latency) {
 }
 
 async function measureNetwork() {
-  if (!state.socketAuthenticated || !state.socket.connected) return;
+  if (document.hidden || !state.socketAuthenticated || !state.socket.connected) return;
   const probe = state.networkProbe;
   if (probe.inFlightSequence) return;
   const sequence = ++probe.sequence;
@@ -10643,7 +10665,7 @@ async function measureNetwork() {
   const wallStarted = Date.now(); const started = performance.now();
   try {
     const result = await emitAck('network-ping', { sequence }, 5000);
-    if (connectionEpoch !== probe.connectionEpoch || sequence !== probe.inFlightSequence
+    if (document.hidden || connectionEpoch !== probe.connectionEpoch || sequence !== probe.inFlightSequence
       || sequence <= probe.appliedSequence || !state.socketAuthenticated || !state.socket.connected) return;
     probe.appliedSequence = sequence;
     if (!result.success) {
@@ -10666,9 +10688,11 @@ async function measureNetwork() {
 }
 function recoverFromBackground() {
   if (document.hidden || !navigator.onLine) return;
+  resetNetworkQualityTracking();
   if (!state.socket.connected) state.socket.connect();
   else if (state.token && !state.socketAuthenticated) queueSessionResume(state.authenticated);
   else if (state.authenticated) refreshRoom();
+  void measureNetwork();
 }
 function reportWatchProgress() {
   const now = Date.now(); const elapsed = Math.max(0, Math.min(30, (now - state.lastWatchReport) / 1000)); state.lastWatchReport = now;
@@ -10705,14 +10729,28 @@ function onMediaMetadata() {
 function onMediaCanPlay() {
   if (!isActiveTimedMedia()) return;
   const recovery = state.mediaNetworkRecovery.resume;
+  const playback = state.room?.playback;
+  const recovering = Boolean(recovery
+    && recovery.fileId === state.currentFile?.id
+    && recovery.source === state.activeTimedSource
+    && recovery.generation === state.mediaGeneration);
   state.mediaFailed = false;
   updatePlayerProgressBar();
-  if (state.pendingPlayback) applyPendingPlayback(true);
-  else if (state.currentFile && state.room?.playback?.fileId === state.currentFile.id && !state.screenShareActive) adaptiveSynchronize(state.room.playback, false);
-  else if (recovery && recovery.fileId === state.currentFile?.id && recovery.generation === state.mediaGeneration && recovery.wasPlaying) {
+  if (recovering && playback?.fileId === state.currentFile?.id && playback?.stalled
+    && state.capabilities.owner && recovery.wasPlaying && !state.screenShareActive) {
+    state.pendingPlayback = null;
+    const target = projectedTime(playback);
+    if (Math.abs((Number(elements.videoPlayer.currentTime) || 0) - target) > .12) {
+      setProgrammaticTime(target, playback.revision);
+    }
+    setProgrammaticVolume(recovery.volume, recovery.muted);
+    setProgrammaticPlaying(true, playback.revision);
+  } else if (state.pendingPlayback) applyPendingPlayback(true);
+  else if (state.currentFile && playback?.fileId === state.currentFile.id && !state.screenShareActive) adaptiveSynchronize(playback, false);
+  else if (recovering && recovery.wasPlaying) {
     setProgrammaticPlaying(true, state.playbackRevision);
   }
-  clearMediaNetworkRecovery(true);
+  if (recovering) beginMediaRecoveryStability();
 }
 
 function beginPlayerSeekDrag() {
@@ -10780,24 +10818,37 @@ function updatePlayerProgressBar(explicitTime = null) {
   elements.playerCurrentTime.textContent = formatTime(current);
   elements.playerDuration.textContent = formatTime(duration);
 }
-function tryCompatibilityFallback() {
+function tryCompatibilityFallback(previousRecovery = null) {
   const file = state.currentFile; const compatibility = file?.compatibility || {};
   if (!file || file.sourceType === 'remote' || !compatibility.required || !compatibility.ready) return false;
   if (!['original', 'original-fallback'].includes(state.activeMediaVariant)) return false;
   if (state.compatibilityFallbackFileId === file.id) return false;
   const fallbackUrl = file.url;
   if (!fallbackUrl) return false;
-  const playback = state.pendingPlayback || state.room?.playback;
+  const playback = state.pendingPlayback?.playback || state.room?.playback;
   const preservedTarget = playback?.fileId === file.id ? { ...playback } : {
     fileId: file.id, isPlaying: !elements.videoPlayer.paused, currentTime: elements.videoPlayer.currentTime || 0,
     volume: elements.videoPlayer.volume, updatedAt: Date.now(), revision: state.playbackRevision
   };
+  const recoverySnapshot = previousRecovery?.fileId === file.id ? previousRecovery : null;
+  const resumeTime = Math.max(0, Number(preservedTarget.currentTime ?? recoverySnapshot?.currentTime) || 0);
+  const resumeVolume = Number.isFinite(Number(preservedTarget.volume ?? recoverySnapshot?.volume))
+    ? Math.max(0, Math.min(1, Number(preservedTarget.volume ?? recoverySnapshot?.volume)))
+    : elements.videoPlayer.volume;
+  const resumeMuted = Boolean(preservedTarget.muted ?? recoverySnapshot?.muted ?? elements.videoPlayer.muted);
+  const resumePlaying = recoverySnapshot ? Boolean(recoverySnapshot.wasPlaying) : Boolean(preservedTarget.isPlaying);
   state.compatibilityFallbackFileId = file.id;
   teardownTimedMedia();
   const source = new URL(mediaUrlWithSessionToken(fallbackUrl), location.href).href;
   state.activeTimedFileId = file.id; state.activeTimedSource = source; state.activeMediaVariant = 'smooth';
   state.compatibilityFallbackGeneration = state.mediaGeneration;
-  state.mediaFailed = false; state.pendingPlayback = preservedTarget;
+  state.mediaNetworkRecovery.key = `${file.id}:${source}`;
+  state.mediaNetworkRecovery.attempts = 0;
+  state.mediaNetworkRecovery.resume = {
+    fileId: file.id, source, variant: 'smooth', generation: state.mediaGeneration,
+    currentTime: resumeTime, wasPlaying: resumePlaying, volume: resumeVolume, muted: resumeMuted
+  };
+  state.mediaFailed = false; state.pendingPlayback = { playback: preservedTarget, force: true };
   elements.videoPlayer.src = source; attachSubtitleTracks(file); elements.videoPlayer.load();
   showSyncNotice('原画加载失败，正在自动切换公网兼容版…');
   return true;
@@ -10807,13 +10858,60 @@ function clearMediaNetworkRecovery(success) {
   if (!recovery) return;
   if (recovery.timer) clearTimeout(recovery.timer);
   clearMediaStallRecovery();
-  recovery.timer = null; recovery.resume = null;
+  recovery.timer = null; recovery.resume = null; recovery.stability = null; recovery.waitingForNetwork = false;
   if (success || success === false) { recovery.key = ''; recovery.attempts = 0; }
 }
 function clearMediaStallRecovery() {
   const recovery = state.mediaNetworkRecovery;
   if (recovery?.stallTimer) clearTimeout(recovery.stallTimer);
   if (recovery) recovery.stallTimer = null;
+}
+function invalidateMediaRecoveryStability() {
+  const recovery = state.mediaNetworkRecovery;
+  if (recovery) recovery.stability = null;
+}
+function beginMediaRecoveryStability() {
+  const recovery = state.mediaNetworkRecovery; const resume = recovery?.resume;
+  const video = elements.videoPlayer;
+  if (!resume || resume.fileId !== state.currentFile?.id || resume.source !== state.activeTimedSource
+    || resume.generation !== state.mediaGeneration) return false;
+  if (!resume.wasPlaying) {
+    clearMediaNetworkRecovery(true);
+    return true;
+  }
+  if (!recovery.stability) {
+    recovery.stability = {
+      fileId: resume.fileId, source: resume.source, generation: resume.generation,
+      currentTime: Number(video.currentTime) || 0, startedAt: performance.now()
+    };
+  }
+  return true;
+}
+function handleMediaRecoveryProgress() {
+  const recovery = state.mediaNetworkRecovery; const snapshot = recovery?.stability;
+  const policy = globalThis.SyncWatchMediaNetworkRecovery; const video = elements.videoPlayer;
+  if (!snapshot || !policy?.hasStableProgress) return;
+  if (snapshot.fileId !== state.currentFile?.id || snapshot.source !== state.activeTimedSource
+    || snapshot.generation !== state.mediaGeneration || state.screenShareActive) {
+    recovery.stability = null;
+    return;
+  }
+  if (policy.hasStableProgress(snapshot, {
+    currentTime: video.currentTime, readyState: video.readyState,
+    paused: video.paused, ended: video.ended, seeking: video.seeking || state.playerSeekDragging,
+    elapsedMs: performance.now() - snapshot.startedAt
+  })) clearMediaNetworkRecovery(true);
+}
+function mediaRecoveryTransportReady() {
+  return navigator.onLine !== false && Boolean(state.socket?.connected)
+    && Boolean(state.socketAuthenticated);
+}
+function resumeWaitingMediaRecovery() {
+  const recovery = state.mediaNetworkRecovery;
+  if (!recovery?.waitingForNetwork || !recovery.resume || !mediaRecoveryTransportReady()) return;
+  if (recovery.timer) clearTimeout(recovery.timer);
+  recovery.timer = null; recovery.waitingForNetwork = false;
+  if (!scheduleMediaNetworkRecovery({ code: 2 })) finishMediaNetworkRecovery({ code: 2 });
 }
 function scheduleMediaStallRecovery() {
   const recovery = state.mediaNetworkRecovery; const policy = globalThis.SyncWatchMediaNetworkRecovery;
@@ -10823,10 +10921,12 @@ function scheduleMediaStallRecovery() {
   const generation = state.mediaGeneration;
   recovery.stallTimer = setTimeout(() => {
     recovery.stallTimer = null;
-    if (!state.localBuffering || state.currentFile?.id !== file?.id || state.activeTimedSource !== source || state.mediaGeneration !== generation || state.screenShareActive) return;
+    if (!state.localBuffering || !state.room?.playback?.isPlaying || video.paused || video.ended
+      || state.currentFile?.id !== file?.id || state.activeTimedSource !== source
+      || state.mediaGeneration !== generation || state.screenShareActive) return;
     updatePlayerBufferState();
     if (policy.isStillStalled(snapshot, { currentTime: video.currentTime, bufferedAhead: state.bufferedAheadSeconds, readyState: video.readyState })) {
-      scheduleMediaNetworkRecovery({ code: 2 });
+      if (!scheduleMediaNetworkRecovery({ code: 2 })) finishMediaNetworkRecovery({ code: 2 });
     } else scheduleMediaStallRecovery();
   }, policy.STALL_TIMEOUT_MS);
 }
@@ -10838,28 +10938,44 @@ function scheduleMediaNetworkRecovery(mediaError) {
   const key = `${file.id}:${source}`;
   if (recovery.key !== key) {
     if (recovery.timer) clearTimeout(recovery.timer);
-    recovery.key = key; recovery.attempts = 0; recovery.timer = null; recovery.resume = null;
+    recovery.key = key; recovery.attempts = 0; recovery.timer = null; recovery.resume = null; recovery.stability = null;
   }
   if (recovery.timer) return true;
-  const next = policy.nextAttempt(recovery.attempts);
+  const next = policy.nextStep(recovery.attempts, { transportReady: mediaRecoveryTransportReady() });
   if (!next) return false;
+  recovery.stability = null;
   const video = elements.videoPlayer; const playback = state.room?.playback;
   const currentTime = Number(video.currentTime) || Math.max(0, Number(playback?.currentTime) || 0);
   const wasPlaying = playback?.fileId === file.id ? Boolean(playback.isPlaying) : !video.paused && !video.ended;
-  recovery.attempts = next.attempt;
+  recovery.waitingForNetwork = next.waitingForNetwork;
   recovery.resume = {
     fileId: file.id, source, variant: state.activeMediaVariant, generation: state.mediaGeneration,
     currentTime, wasPlaying, volume: video.volume, muted: video.muted
   };
   state.mediaFailed = true; video.playbackRate = 1;
-  elements.syncStatus.textContent = `网络恢复 ${next.attempt}/${policy.MAX_ATTEMPTS}`;
-  showSyncNotice(`媒体连接短暂波动，${Math.ceil(next.delayMs / 100) / 10} 秒后自动恢复…`);
+  elements.syncStatus.textContent = next.waitingForNetwork ? '等待网络' : `网络恢复 ${next.attempt}/${policy.MAX_ATTEMPTS}`;
+  showSyncNotice(next.waitingForNetwork
+    ? '连接已中断，将在网络恢复后继续当前影片…'
+    : `媒体连接短暂波动，${Math.ceil(next.delayMs / 100) / 10} 秒后自动恢复…`);
   recovery.timer = setTimeout(() => {
     recovery.timer = null;
     if (state.currentFile?.id !== file.id || state.activeTimedSource !== source || state.screenShareActive) {
       clearMediaNetworkRecovery(false);
       return;
     }
+    const authoritativePlayback = state.room?.playback;
+    if (authoritativePlayback?.fileId === file.id && !authoritativePlayback.isPlaying) {
+      clearMediaNetworkRecovery();
+      return;
+    }
+    if (!mediaRecoveryTransportReady()) {
+      recovery.waitingForNetwork = true;
+      scheduleMediaNetworkRecovery({ code: 2 });
+      return;
+    }
+    recovery.waitingForNetwork = false;
+    recovery.attempts = next.attempt;
+    recovery.stability = null;
     state.mediaGeneration += 1;
     recovery.resume.generation = state.mediaGeneration;
     state.expectedSeek = null; state.expectedPlaybackEvent = null;
@@ -10868,10 +10984,12 @@ function scheduleMediaNetworkRecovery(mediaError) {
   }, next.delayMs);
   return true;
 }
-function handleMediaError() {
-  const mediaError = elements.videoPlayer.error; if (!mediaError || !isActiveTimedMedia()) return;
-  if (scheduleMediaNetworkRecovery(mediaError)) return;
-  if (Number(mediaError.code) !== 2 && tryCompatibilityFallback()) return;
+function finishMediaNetworkRecovery(mediaError = { code: 2 }) {
+  const recovery = state.mediaNetworkRecovery;
+  const recoveryResume = recovery?.resume ? { ...recovery.resume } : null;
+  if (recovery?.timer) clearTimeout(recovery.timer);
+  if (recovery) { recovery.timer = null; recovery.resume = null; recovery.stability = null; recovery.waitingForNetwork = false; }
+  if (tryCompatibilityFallback(recoveryResume)) return true;
   state.mediaFailed = true; elements.videoPlayer.playbackRate = 1; elements.syncStatus.textContent = '媒体错误';
   const compatibility = state.currentFile.compatibility || {};
   const extension = String(state.currentFile.originalName || '').split('.').pop()?.toUpperCase();
@@ -10887,7 +11005,13 @@ function handleMediaError() {
       ? `当前浏览器可能不支持 ${extension} 内的音视频编码，请等待服务器生成公网兼容版。`
       : '请检查服务器网络、登录状态和 HTTP Range 支持，或确认文件完整。';
   toast(`无法播放“${state.currentFile.originalName}”。${compatibilityHint}`, 'error', 9000);
-  showSyncNotice(`媒体加载失败（错误码 ${mediaError.code || '--'}）`);
+  showSyncNotice(`媒体加载失败（错误码 ${mediaError?.code || '--'}）`);
+  return false;
+}
+function handleMediaError() {
+  const mediaError = elements.videoPlayer.error; if (!mediaError || !isActiveTimedMedia()) return;
+  if (scheduleMediaNetworkRecovery(mediaError)) return;
+  finishMediaNetworkRecovery(mediaError);
 }
 async function updatePlayerInfo(file) {
   if (!['video', 'audio'].includes(file.category)) return elements.playerInfo.classList.add('is-hidden');

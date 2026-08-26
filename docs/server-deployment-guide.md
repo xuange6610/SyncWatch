@@ -482,7 +482,7 @@ sudo systemctl status caddy
 
 Windows 桌面 EXE 的“管理 → 公网访问”包含 Cloudflare Tunnel 管理器：
 
-- 临时模式会启动 Quick Tunnel，生成 `trycloudflare.com` HTTPS 地址；Windows 服务器使用 HTTP/2，并根据预检在物理直连与系统网络之间选择。检测到系统出口可用而物理网卡访问 Cloudflare 超时时，会优先系统网络。
+- 临时模式会启动 Quick Tunnel，生成 `trycloudflare.com` HTTPS 地址。连接器默认使用 `--protocol auto`，由 cloudflared 优先协商 QUIC，无法使用时回退 HTTP/2；程序会根据预检和失败结果，在物理 IPv4/DoH Edge 直连、HTTP/2 与继承系统代理的自动协议之间切换。若系统出口可用而绑定物理网卡失败，会优先系统网络；界面会显示实际连接策略。
 - 连接器已注册但新地址在启动验证窗口内仍不可访问时，会停止该未发布连接器并切换下一连接策略；已经验证成功的地址只会在短暂探测波动时显示降级，不会因为一次超时立即更换。
 - Clash/FlClash/VPN/TUN Fake-IP 环境下，如果浏览器可联网但“绕过系统代理”失败，请取消勾选；并确保 `cloudflared.exe`、`api.trycloudflare.com`、`*.trycloudflare.com` 与 `*.argotunnel.com` 使用同一条可用网络规则。
 - 稳定模式使用 Cloudflare Tunnel 令牌和已经绑定的 HTTPS 域名；令牌只传给子进程，不保存到配置。
@@ -495,8 +495,10 @@ Windows 桌面 EXE 的“管理 → 公网访问”包含 Cloudflare Tunnel 管�
 Cloudflare 临时隧道可在服务器外部单独运行：
 
 ```bash
-cloudflared tunnel --url http://127.0.0.1:5000 --protocol http2 --no-autoupdate
+cloudflared tunnel --url http://127.0.0.1:5000 --protocol auto --no-autoupdate
 ```
+
+`auto` 是推荐的默认值；只有排查 QUIC/UDP 被拦截时，才临时改用 `--protocol http2` 做对照测试。Quick Tunnel 仍是临时入口，不提供固定域名、带宽或可用性保证。
 
 无论使用哪种穿透，都必须满足：
 

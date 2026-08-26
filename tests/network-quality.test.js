@@ -86,16 +86,22 @@ function testClientPolicy() {
   assert.deepEqual(policy.roomStatus({
     authenticated: true, socketConnected: true, socketAuthenticated: true,
     members: [{ connectionState: 'unstable' }]
-  }), { state: 'unstable', label: '网络波动', healthy: false });
+  }), { state: 'healthy', label: '同步正常', healthy: true },
+  'another member high latency must stay on that member card instead of poisoning the local room header');
   assert.deepEqual(policy.roomStatus({
     authenticated: true, socketConnected: true, socketAuthenticated: true,
     localConnectionState: 'unstable', members: [{ connectionState: 'online' }]
-  }), { state: 'unstable', label: '网络波动', healthy: false },
+  }), { state: 'unstable', label: '本机网络波动', healthy: false },
   'a half-open client must show its own sustained probe failure without waiting for server echo');
   assert.deepEqual(policy.roomStatus({
     authenticated: true, socketConnected: false, socketAuthenticated: false, members: []
   }), { state: 'disconnected', label: '连接中断', healthy: false },
   'a real local socket disconnect must remain explicit');
+  assert.deepEqual(policy.roomStatus({
+    authenticated: true, socketConnected: false, socketAuthenticated: false,
+    localConnectionState: 'unstable', members: [{ connectionState: 'unstable' }]
+  }), { state: 'disconnected', label: '连接中断', healthy: false },
+  'a disconnected local socket must take precedence over all latency labels');
 }
 
 function testServerPolicy() {
@@ -127,6 +133,10 @@ function testSourceContracts() {
     'network quality policy must load before the application');
   assert.match(appSource, /networkProbe:\s*\{[^}]*inFlightSequence:\s*0[^}]*connectionEpoch:\s*0/s);
   const measureSource = section(appSource, 'async function measureNetwork()', 'function recoverFromBackground()');
+  assert.match(measureSource, /if \(document\.hidden \|\| !state\.socketAuthenticated/,
+    'background tabs and throttled Android WebViews must not start a latency probe');
+  assert.match(measureSource, /document\.hidden\s*\|\|\s*connectionEpoch !== probe\.connectionEpoch/,
+    'a probe completed after the page moved to the background must be discarded');
   assert.match(measureSource, /if \(probe\.inFlightSequence\) return/,
     'the four-second timer must not overlap a five-second probe');
   assert.match(measureSource, /const sequence = \+\+probe\.sequence/);
@@ -141,12 +151,16 @@ function testSourceContracts() {
     'local degraded/recovered state must update the UI before attempting the potentially damaged uplink');
   assert.match(appSource, /function clearSession\(\) \{\s*resetNetworkQualityTracking\(\)/,
     'logging into another account on the same socket must not inherit the previous quality streak');
+  assert.match(appSource, /function recoverFromBackground\(\)[\s\S]{0,300}resetNetworkQualityTracking\(\)[\s\S]{0,300}void measureNetwork\(\)/,
+    'returning to the foreground must discard throttled samples and take a fresh probe');
 
   const bufferingSource = section(appSource, 'function handleMediaBuffering()', 'function handleMediaBufferRecovered()');
   assert.doesNotMatch(bufferingSource, /network-quality|observeNetworkQuality/,
     'HTMLMediaElement buffering must stay separate from control-channel quality');
   const headerSource = section(appSource, 'function updateRoomHeader()', 'function syncPlayPauseButton');
   assert.match(headerSource, /SyncWatchNetworkQuality\.roomStatus/);
+  assert.doesNotMatch(headerSource, /\bmembers\s*:/,
+    'the local room header must not depend on another member network state');
   assert.match(appSource, /持续高延迟 · 正在恢复/);
   assert.match(appSource, /连接中断 · 正在重新连接/);
   assert.doesNotMatch(serverSource, /user\.connectionState\s*=\s*payload\.connectionState/,
@@ -183,6 +197,7 @@ function createClientProbeHarness() {
   };
   const context = vm.createContext({
     window: { SyncWatchNetworkQuality: policy },
+    document: { hidden: false },
     state,
     elements: { localLatency: { textContent: '' } },
     Date,
@@ -203,7 +218,8 @@ function createClientProbeHarness() {
   return {
     state, reports, acknowledgements, ackCalls,
     measureNetwork: () => context.measureNetwork(),
-    reset: () => context.resetNetworkQualityTracking()
+    reset: () => context.resetNetworkQualityTracking(),
+    setHidden: (hidden) => { context.document.hidden = Boolean(hidden); }
   };
 }
 
@@ -215,6 +231,25 @@ async function testClientProbeLifecycle() {
     'eight simulated minutes of healthy probes while buffering must not report network jitter');
   assert.equal(harness.reports.length, 120);
   assert.ok(harness.reports.every(({ payload }) => payload.connectionState === 'online'));
+
+  harness.setHidden(true);
+  const callsBeforeHiddenProbe = harness.ackCalls.length;
+  await harness.measureNetwork();
+  assert.equal(harness.ackCalls.length, callsBeforeHiddenProbe,
+    'a background timer tick must not issue a network probe');
+  harness.setHidden(false);
+
+  harness.reset();
+  harness.reports.length = 0;
+  const backgroundedAck = deferred();
+  harness.acknowledgements.push(backgroundedAck.promise);
+  const backgroundedProbe = harness.measureNetwork();
+  harness.setHidden(true);
+  backgroundedAck.resolve({ success: true, serverTime: Date.now() });
+  await backgroundedProbe;
+  assert.equal(harness.reports.length, 0,
+    'a foreground probe whose callback was throttled in the background must be discarded');
+  harness.setHidden(false);
 
   harness.reset();
   harness.reports.length = 0;
@@ -284,7 +319,8 @@ async function testRangePlaybackKeepsControlChannelResponsive() {
     assert.equal(login.success, true, login.error);
 
     const form = new FormData();
-    form.append('file', new Blob([Buffer.alloc(8 * 1024 * 1024, 0x61)], { type: 'video/mp4' }), 'range-control-test.mp4');
+    const mediaSize = 40 * 1024 * 1024;
+    form.append('file', new Blob([Buffer.alloc(mediaSize, 0x61)], { type: 'video/mp4' }), 'range-control-test.mp4');
     const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
       method: 'POST', headers: { Authorization: `Bearer ${login.token}` }, body: form
     });
@@ -295,6 +331,9 @@ async function testRangePlaybackKeepsControlChannelResponsive() {
       headers: { Authorization: `Bearer ${login.token}`, Range: 'bytes=0-' }
     });
     assert.equal(rangeResponse.status, 206);
+    assert.equal(rangeResponse.headers.get('content-range'), `bytes 0-${8 * 1024 * 1024 - 1}/${mediaSize}`,
+      'large original media should use an 8 MiB bounded open-ended Range');
+    assert.equal(Number(rangeResponse.headers.get('content-length')), 8 * 1024 * 1024);
     rangeReader = rangeResponse.body.getReader();
     let rangeFinished = false;
     const slowRead = (async () => {
