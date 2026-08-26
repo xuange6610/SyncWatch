@@ -68,17 +68,18 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           test "$RELEASE_TAG" = "v${version}"
           test -s "docs/release-notes-v${version}.md"
-          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .release-target.json 2> .release-target.err; then
-            RELEASE_JSON=.release-target.json node -e '
-              const r=require(`./${process.env.RELEASE_JSON}`);
-              if(r.draft!==true || !Array.isArray(r.assets) || r.assets.length!==0) {
+          gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" > .release-targets.json
+          RELEASES_JSON=.release-targets.json node -e '
+            const releases=require(`./${process.env.RELEASES_JSON}`);
+            const matches=releases.filter((release)=>release.tag_name===process.env.RELEASE_TAG);
+            if(matches.length>1)throw new Error(`Multiple Releases target ${process.env.RELEASE_TAG}.`);
+            if(matches.length===1) {
+              const release=matches[0];
+              if(release.draft!==true || !Array.isArray(release.assets) || release.assets.length!==0) {
                 throw new Error(`The existing Release must be an empty draft before this run starts.`);
               }
-            '
-          elif ! grep -q 'HTTP 404' .release-target.err; then
-            cat .release-target.err >&2
-            exit 1
-          fi
+            }
+          '
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "commit_sha=$commit_sha" >> "$GITHUB_OUTPUT"
           echo "source_tree=$source_tree" >> "$GITHUB_OUTPUT"
@@ -416,21 +417,28 @@ jobs:
           assert_remote_tag
 
           release_touched=0
+          release_id=""
           rollback_release() {
             status=$?
             if [[ "$status" -ne 0 && "$release_touched" -eq 1 ]]; then
               set +e
-              for name in "${asset_names[@]}"; do
-                gh release delete-asset "$RELEASE_TAG" "$name" --repo "$GITHUB_REPOSITORY" --yes
-              done
-              if ! gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=true; then
-                gh release delete "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --yes
-                gh release create "$RELEASE_TAG" \
-                  --repo "$GITHUB_REPOSITORY" \
-                  --verify-tag \
-                  --title "SyncWatch同步观影 $RELEASE_TAG" \
-                  --notes-file "$NOTES_FILE" \
-                  --draft
+              gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" --jq '.assets[].id' > .build/rollback-asset-ids.txt
+              while IFS= read -r asset_id; do
+                [[ -z "$asset_id" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+              done < .build/rollback-asset-ids.txt
+              if ! gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+                -f tag_name="$RELEASE_TAG" \
+                -f name="SyncWatch同步观影 $RELEASE_TAG" \
+                -F "body=@${NOTES_FILE}" \
+                -F draft=true \
+                -F prerelease=false > /dev/null; then
+                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
+                gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
+                  -f tag_name="$RELEASE_TAG" \
+                  -f name="SyncWatch同步观影 $RELEASE_TAG" \
+                  -F "body=@${NOTES_FILE}" \
+                  -F draft=true \
+                  -F prerelease=false > /dev/null
               fi
               echo "Atomic publication failed; this run's 26 expected names were removed and the Release was restored to draft." >&2
             fi
@@ -438,31 +446,41 @@ jobs:
           }
           trap rollback_release EXIT
 
-          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .build/pre-upload-release.json 2> .build/pre-upload-release.err; then
+          gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" > .build/pre-upload-releases.json
+          release_id="$(RELEASES_JSON=.build/pre-upload-releases.json node -e '
+            const releases=require(`./${process.env.RELEASES_JSON}`);
+            const matches=releases.filter((release)=>release.tag_name===process.env.RELEASE_TAG);
+            if(matches.length>1)throw new Error(`Multiple Releases target ${process.env.RELEASE_TAG}.`);
+            if(matches.length===1)process.stdout.write(String(matches[0].id));
+          ')"
+          if [[ -n "$release_id" ]]; then
+            gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/pre-upload-release.json
             RELEASE_JSON=.build/pre-upload-release.json node -e '
               const r=require(`./${process.env.RELEASE_JSON}`);
               if(r.draft!==true || !Array.isArray(r.assets) || r.assets.length!==0) {
                 throw new Error(`Release target changed after preparation; refusing to replace it.`);
               }
             '
-            gh release edit "$RELEASE_TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "SyncWatch同步观影 $RELEASE_TAG" \
-              --notes-file "$NOTES_FILE" \
-              --draft=true
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+              -f tag_name="$RELEASE_TAG" \
+              -f name="SyncWatch同步观影 $RELEASE_TAG" \
+              -F "body=@${NOTES_FILE}" \
+              -F draft=true \
+              -F prerelease=false > .build/pre-upload-release.json
           else
-            grep -q 'HTTP 404' .build/pre-upload-release.err
-            gh release create "$RELEASE_TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --verify-tag \
-              --title "SyncWatch同步观影 $RELEASE_TAG" \
-              --notes-file "$NOTES_FILE" \
-              --draft
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
+              -f tag_name="$RELEASE_TAG" \
+              -f name="SyncWatch同步观影 $RELEASE_TAG" \
+              -F "body=@${NOTES_FILE}" \
+              -F draft=true \
+              -F prerelease=false > .build/pre-upload-release.json
+            release_id="$(node -p "require('./.build/pre-upload-release.json').id")"
           fi
+          test "$release_id" -gt 0
           release_touched=1
 
           gh release upload "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY"
-          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .build/uploaded-release.json
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/uploaded-release.json
           node scripts/release-candidate-gate.js \
             --selection release \
             --version "$RELEASE_VERSION" \
@@ -502,15 +520,13 @@ jobs:
             fi
           done < .build/download-verification.tsv
 
-          gh release edit "$RELEASE_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "SyncWatch同步观影 $RELEASE_TAG" \
-            --notes-file "$NOTES_FILE" \
-            --draft=false \
-            --prerelease=false \
-            --latest
-
-          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > .build/published-release.json
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+            -f tag_name="$RELEASE_TAG" \
+            -f name="SyncWatch同步观影 $RELEASE_TAG" \
+            -F "body=@${NOTES_FILE}" \
+            -F draft=false \
+            -F prerelease=false \
+            -f make_latest=true > .build/published-release.json
           RELEASE_JSON=.build/published-release.json node -e '
             const r=require(`./${process.env.RELEASE_JSON}`);
             if(r.draft || r.prerelease || r.tag_name!==process.env.RELEASE_TAG || r.name!==`SyncWatch同步观影 ${process.env.RELEASE_TAG}`) {
