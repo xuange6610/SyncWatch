@@ -2413,7 +2413,13 @@ async function startApplication() {
   if (activeServerSettings.publicUrl) {
     try { configuredHosts.push(new URL(activeServerSettings.publicUrl).host.toLowerCase()); } catch (_) {}
   }
-  tunnelManager = createTunnelManager(dataDir, () => serverController?.port || startPort, {
+  // Linux/macOS source smoke runs only exercise the desktop shell and server
+  // lifecycle.  cloudflared is intentionally unsupported on Linux, so avoid
+  // failing the whole smoke process before the Electron window can start.
+  // Production builds still construct the real tunnel manager on supported
+  // Windows/macOS platforms.
+  const smokeTunnelDisabled = SMOKE_MODE && process.platform !== 'win32' && process.platform !== 'darwin';
+  tunnelManager = smokeTunnelDisabled ? null : createTunnelManager(dataDir, () => serverController?.port || startPort, {
     onAutoStartChanged: async (enabled) => {
       if (!enabled || activeServerSettings?.autostart) return;
       activeServerSettings = { ...activeServerSettings, autostart: true };

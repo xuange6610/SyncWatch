@@ -15,10 +15,19 @@ const dataDir = process.env.SYNCWATCH_DATA_DIR;
 
 const { _test: electronSettings } = require('../electron-pink');
 
-const driveDRoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: `D:\\SyncWatch同步观影\\SyncWatch同步观影-v${APP_VERSION}.exe` });
-const driveERoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: `E:\\SyncWatch同步观影\\SyncWatch同步观影-v${APP_VERSION}.exe` });
-assert.equal(driveDRoot, path.resolve('D:\\SyncWatch同步观影'));
-assert.equal(driveERoot, path.resolve('E:\\SyncWatch同步观影'));
+const portableRootCases = process.platform === 'win32'
+  ? [
+      { file: `D:\\SyncWatch同步观影\\SyncWatch同步观影-v${APP_VERSION}.exe`, expected: path.resolve('D:\\SyncWatch同步观影') },
+      { file: `E:\\SyncWatch同步观影\\SyncWatch同步观影-v${APP_VERSION}.exe`, expected: path.resolve('E:\\SyncWatch同步观影') }
+    ]
+  : [
+      { file: path.join(dataDir, 'drive-d', `SyncWatch同步观影-v${APP_VERSION}.exe`), expected: path.resolve(dataDir, 'drive-d') },
+      { file: path.join(dataDir, 'drive-e', `SyncWatch同步观影-v${APP_VERSION}.exe`), expected: path.resolve(dataDir, 'drive-e') }
+    ];
+const driveDRoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: portableRootCases[0].file });
+const driveERoot = electronSettings.resolveApplicationRoot({ portableExecutableFile: portableRootCases[1].file });
+assert.equal(driveDRoot, portableRootCases[0].expected);
+assert.equal(driveERoot, portableRootCases[1].expected);
 assert.notEqual(driveDRoot, driveERoot);
 assert.equal(electronSettings.resolveApplicationRoot({
   isPackaged: true, platform: 'darwin', execPath: '/Applications/SyncWatch同步观影.app/Contents/MacOS/SyncWatch同步观影',
