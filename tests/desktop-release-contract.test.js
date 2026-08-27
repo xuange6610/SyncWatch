@@ -96,7 +96,8 @@ const mainUnpacked = (manifest.build.asarUnpack || []).map(String);
 const mainResources = (manifest.build.extraResources || []).map((entry) => String(entry.from || ''));
 for (const required of [
   'electron-pink.js', 'electron-main-preload.js', 'electron-settings-preload.js',
-  'server/index.js', 'server/ai-relay.js', 'public/**/*', 'package.json'
+  'server/index.js', 'server/ai-relay.js', 'server/latest-release.js',
+  'server/client-address-privacy.js', 'public/**/*', 'package.json'
 ]) assert.ok(mainFiles.includes(required), `main desktop package missing ${required}`);
 for (const value of [...mainFiles, ...mainUnpacked, ...mainResources]) {
   assert.doesNotMatch(value, /(^|[\\/])(?:mobile|mac)(?:[\\/]|$)|SyncWatch同步观影-Client-v2\.1\.7\.exe/i,

@@ -1,5 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+contextBridge.exposeInMainWorld('SyncWatchPlatform', Object.freeze({
+  version: 1,
+  runtime: 'electron',
+  role: 'server',
+  serverApp: true,
+  clientApp: false
+}));
+
 contextBridge.exposeInMainWorld('SyncWatchDesktop', {
   openExternal: (value) => ipcRenderer.invoke('syncwatch:open-external', String(value || '')),
   readClipboardText: () => ipcRenderer.invoke('syncwatch:read-clipboard-text'),

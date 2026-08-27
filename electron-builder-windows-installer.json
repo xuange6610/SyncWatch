@@ -14,6 +14,8 @@
     "server/index.js",
     "server/ai-relay.js",
     "server/macos-distribution.js",
+    "server/latest-release.js",
+    "server/client-address-privacy.js",
     "public/**/*",
     "package.json",
     "assets/app-icon.ico"
@@ -43,6 +45,6 @@
     "shortcutName": "SyncWatch同步观影",
     "runAfterFinish": true,
     "deleteAppDataOnUninstall": false,
-    "artifactName": "SyncWatch-v2.2.3-Full-Offline-Installer-${arch}.exe"
+    "artifactName": "SyncWatch-v2.2.4-Full-Offline-Installer-${arch}.exe"
   }
 }

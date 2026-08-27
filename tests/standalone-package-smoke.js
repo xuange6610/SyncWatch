@@ -12,21 +12,30 @@ const root = path.resolve(process.argv[2] || '');
 if (!root || !fs.existsSync(path.join(root, 'server-standalone.js'))) {
   throw new Error('Usage: node tests/standalone-package-smoke.js <extracted-server-root>');
 }
-if (!/path\.join\(ROOT_DIR,\s*['"]mobile['"],\s*['"]SyncWatch同步观影-v2\.1\.8\.apk['"]\)/.test(fs.readFileSync(path.join(root, 'server-standalone.js'), 'utf8'))) {
-  throw new Error('standalone server must expose the packaged SyncWatch同步观影-v2.2.0.apk');
+const packageManifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const version = packageManifest.version;
+const standaloneSource = fs.readFileSync(path.join(root, 'server-standalone.js'), 'utf8');
+const packagedAndroidPath = path.join(root, 'mobile', `SyncWatch同步观影-v${version}.apk`);
+if (!fs.existsSync(packagedAndroidPath) || fs.statSync(packagedAndroidPath).size < 1024 * 1024) {
+  throw new Error(`standalone package must contain the v${version} Android APK`);
+}
+if (!standaloneSource.includes("path.join(ROOT_DIR, 'mobile', `SyncWatch同步观影-v${releaseVersion}.apk`)")) {
+  throw new Error('standalone server must resolve the versioned packaged Android APK');
 }
 if (!fs.existsSync(path.join(root, 'server', 'standalone-tunnel.js'))
   || !fs.existsSync(path.join(root, 'vendor', 'cloudflared.exe'))) {
   throw new Error('standalone server must ship the cloudflared supervisor and bundled Windows binary');
 }
-if (!fs.readFileSync(path.join(root, 'server-standalone.js'), 'utf8').includes('createStandaloneTunnelManager')) {
+if (!standaloneSource.includes('createStandaloneTunnelManager')) {
   throw new Error('standalone server must wire the cloudflared supervisor into startSyncWatchServer');
 }
-const packagedClientPath = path.join(root, 'SyncWatch同步观影-Client-v2.2.0.exe');
+const packagedClientPath = path.join(root, `SyncWatch同步观影-Client-v${version}.exe`);
 if (!fs.existsSync(packagedClientPath) || fs.statSync(packagedClientPath).size < 1024 * 1024) {
   throw new Error('standalone package must contain the canonical Windows client at its Docker context root');
 }
-if (!fs.readFileSync(path.join(root, 'Dockerfile'), 'utf8').includes('COPY SyncWatch同步观影-Client-v2.2.0.exe ./client/SyncWatch同步观影-Client-v2.2.0.exe')) {
+if (!fs.readFileSync(path.join(root, 'Dockerfile'), 'utf8').includes(
+  `COPY SyncWatch同步观影-Client-v${version}.exe ./client/SyncWatch同步观影-Client-v${version}.exe`
+)) {
   throw new Error('standalone Dockerfile must copy the packaged Windows client into the runtime client directory');
 }
 

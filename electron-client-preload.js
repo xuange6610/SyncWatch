@@ -1,5 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+contextBridge.exposeInMainWorld('SyncWatchPlatform', Object.freeze({
+  version: 1,
+  runtime: 'electron',
+  role: 'client',
+  serverApp: false,
+  clientApp: true
+}));
+
 contextBridge.exposeInMainWorld('SyncWatchClient', {
   inspect: (address) => ipcRenderer.invoke('syncwatch-client:inspect', address),
   loadLoginModel: (address) => ipcRenderer.invoke('syncwatch-client:load-login-model', address),

@@ -189,10 +189,10 @@ async function main() {
       deviceId: 'round29-first-admin'
     });
     assert.equal(firstAdminLogin.success, true, firstAdminLogin.error);
-    assert.equal(firstAdminLogin.capabilities.mustChangeAccountPassword, true,
-      'the first administrator still requires a password change while the reminder is disabled');
-    assert.deepEqual(firstAdminLogin.claimedRegistrationRequests.map((request) => request.id), [pendingRequest.request.id],
-      'the first administrator login must claim the pending popup');
+    assert.equal(firstAdminLogin.capabilities.mustChangeAccountPassword, false,
+      'promoted administrators must not inherit the built-in admin first-login password reset');
+    assert.deepEqual(firstAdminLogin.claimedRegistrationRequests, [],
+      'delegated administrators must not receive built-in-admin system request popups');
 
     const secondAdmin = await connect(baseUrl); sockets.push(secondAdmin);
     const secondAdminLogin = await ack(secondAdmin, 'user-login', {
@@ -201,13 +201,13 @@ async function main() {
     });
     assert.equal(secondAdminLogin.success, true, secondAdminLogin.error);
     assert.deepEqual(secondAdminLogin.claimedRegistrationRequests, [],
-      'later administrator logins must not receive a duplicate popup claim');
+      'delegated administrator logins must not claim sensitive system request popups');
     const secondAdminSettings = await ack(secondAdmin, 'admin-action', { action: 'get-settings' });
     assert.equal(secondAdminSettings.success, true, secondAdminSettings.error);
     const visiblePendingRequest = secondAdminSettings.admin.registrationRequests
       .find((request) => request.id === pendingRequest.request.id);
     assert.ok(visiblePendingRequest, 'later administrators must still see the request in the application center');
-    assert.equal(visiblePendingRequest.popupClaimedBy, 'Round29FirstAdmin');
+    assert.equal(visiblePendingRequest.popupClaimedBy, '');
 
     const blockedGuest = await connect(baseUrl); sockets.push(blockedGuest);
     const denied = await ack(blockedGuest, 'guest-login', { roomId: systemRoomId, deviceId: 'round29-blocked' });

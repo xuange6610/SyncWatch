@@ -46,6 +46,8 @@ const LOGIN_CUBE_FACE_DEFAULTS = Object.freeze([
 const SYNCWATCH_SUPPORT_EMAIL = '2590813506@qq.com';
 const PLAYBACK_RATE_PROMPT_KEY = 'syncwatchPlaybackRatePrompt';
 const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
+const ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX = 'syncwatchAccountViewPreferences:';
+const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20 });
 const USERNAME_MAX_UTF8_BYTES = 1024;
 const PASSWORD_MAX_UTF8_BYTES = 4096;
 const hostTokenFromHash = new URLSearchParams(location.hash.slice(1)).get('host') || '';
@@ -58,7 +60,7 @@ try {
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.3', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.4', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -77,6 +79,7 @@ const state = {
   pendingScreenFrame: null, decodingScreenFrame: false, lastScreenFrameSequence: 0, screenFrameGeneration: 0,
   chatMode: 'danmaku', messages: [], chatHasMore: true, chatLoading: false, chatBeforeId: '', chatBefore: '',
   chatViewFilter: { channel: '', username: '', userMode: 'include', query: '' },
+  accountViewPreferences: { ...DEFAULT_ACCOUNT_VIEW_PREFERENCES }, accountViewPreferencesServerKnown: false,
   chatManageAccounts: [], chatManageAccountsLoading: false, chatManageMessages: [], chatManageSelectedUsers: new Set(),
   chatManageHasMore: true, chatManageLoading: false, chatManageBeforeId: '', chatManageBefore: '', chatManageGeneration: 0,
   latestDrift: 0, localLatency: null, syncPercent: 100, localBuffering: false, bufferedAheadSeconds: 0,
@@ -98,7 +101,7 @@ const state = {
   uiFont: localStorage.getItem('syncwatchUiFont') || '',
   topbarDisplayMode: localStorage.getItem('syncwatchTopbarDisplayModeV2') === 'compact' ? 'compact' : 'text',
   mobileChatCollapsed: localStorage.getItem('syncwatchMobileChatCollapsed') !== '0',
-  fullscreenHideTimer: null, fullscreenRevealTimer: null, f11PromptTimer: null, f11PromptEndsAt: 0, playbackRatePromptTimer: null, lastShownPlaybackRate: 0, appliedPlaybackRate: null, pseudoFullscreen: false, fullscreenMessageId: '', chatContextMessageId: '',
+  fullscreenHideTimer: null, fullscreenRevealTimer: null, fullscreenPlaybackGestureTimer: null, fullscreenGestureBlockUntil: 0, f11PromptTimer: null, f11PromptEndsAt: 0, playbackRatePromptTimer: null, lastShownPlaybackRate: 0, appliedPlaybackRate: null, pseudoFullscreen: false, fullscreenMessageId: '', chatContextMessageId: '',
   chatContextMenuHomeParent: null, chatContextMenuHomeNextSibling: null, lightsInFlight: false, roomSwitchSuccessTimer: null,
   tunnelPollTimer: null, tunnelPollInFlight: false, tunnelPollGeneration: 0, tunnelLastStatus: null, tunnelStopRequested: false,
   tunnelOperationStartedAt: 0, tunnelProgressDismissed: false, tunnelProgressHideTimer: null,
@@ -121,7 +124,7 @@ const state = {
   webShare: { active: false, url: '', title: '', updatedAt: 0 }, floatingPlayerActive: false, documentPipWindow: null, pipDanmakuLayer: null, ownerExitResolver: null, recentNoticeKeys: new Map(),
   desktopClosePending: false,
   pendingJoinRoomId: '', mediaCategoryFilter: '', mediaCategories: [], roomMarquee: null,
-  selectedProfileRooms: new Set(), selectedMediaFiles: new Set(), selectedManagementFiles: new Set(), selectedGlobalRooms: new Set(), selectedRoomMediaPreviewFiles: new Set(), roomMediaPreviewRoomId: '', roomMediaPreviewFiles: [],
+  selectedProfileRooms: new Set(), selectedMediaFiles: new Set(), selectedLibraryQueueFiles: new Set(), selectedQueueFiles: new Set(), selectedManagementFiles: new Set(), selectedGlobalRooms: new Set(), selectedRoomMediaPreviewFiles: new Set(), roomMediaPreviewRoomId: '', roomMediaPreviewFiles: [],
   selectedProfileMedia: new Set(), selectedProfileFavorites: new Set(), selectedProfileHistory: new Set(), profileQueries: {}, profileCategoryFilters: {},
   mediaManagementSearch: '', mediaManagementCategory: '', videoManagementVisible: false, mediaManagementRequestPending: false,
   resolvedPlaybackRequests: new Set(), activePlaybackRequestId: '',
@@ -139,7 +142,7 @@ const state = {
   memberDetailsCollapsed: localStorage.getItem('syncwatchMemberDetailsCollapsed') === '1',
   memberDetailOverrides: new Map(),
   selfMemberHighlight: localStorage.getItem('syncwatchSelfMemberHighlight') !== '0',
-  selectedAdminAccounts: new Set(), selectedPermissionGroups: new Set(), accountViewMode: localStorage.getItem('syncwatchAccountViewMode') || 'cards', registrationViewMode: localStorage.getItem('syncwatchRegistrationViewMode') || 'cards', registrationRequests: [],
+  selectedAdminAccounts: new Set(), selectedPermissionGroups: new Set(), selectedRegistrationRequests: new Set(), accountViewMode: localStorage.getItem('syncwatchAccountViewMode') || 'cards', registrationViewMode: localStorage.getItem('syncwatchRegistrationViewMode') || 'cards', registrationRequests: [],
   networkUploadBytes: 0, networkDownloadBytes: 0, networkLastUploadBytes: 0, networkLastDownloadBytes: 0, networkSpeedTimer: null,
   themeSyncQueue: [], themeSyncPromptActive: false, persistentRequests: new Map(), dismissedPersistentRequests: new Set(),
   accountOverviewQuery: '', accountOverviewPresence: 'all', accountOverviewSort: 'name-asc',
@@ -150,7 +153,7 @@ const state = {
   roomEntryNotice: null, roomEntryNoticeTimer: null, roomEntryNoticeEndsAt: 0,
   clipboardPasteFallbacks: new WeakMap(), switchOwnedRoomsLoading: false, switchOwnedRoomSnapshot: [], selectedSwitchOwnedRooms: new Set(),
   loginRoomSnapshot: [], selectedLoginRooms: new Set(), loginRoomQuota: 1, loginOwnedRoomCount: 0, loginRoomPromptActive: false, macDownloadKind: 'client',
-  applicationRefreshInFlight: false, modalLayerCounter: 500,
+  applicationRefreshInFlight: false, modalLayerCounter: 500, pendingQualityRequest: null, skipOutroHandledGeneration: -1,
   loginCubeRotationX: -12, loginCubeRotationY: 28, loginCubeDragging: false, loginCubePointerId: null,
   loginCubeLastX: 0, loginCubeLastY: 0, loginCubeLastPointerAt: 0, loginCubeVelocityX: 0, loginCubeVelocityY: 0,
   loginCubeMotionFrame: 0, loginCubeMotionLastAt: 0, loginCubeEditorObjectUrls: new Map(), loginCubeRandomDirection: 'right', loginCubeRandomDirectionUntil: 0,
@@ -286,23 +289,23 @@ const deviceId = localStorage.getItem('syncwatchDeviceId') || createDeviceId();
 localStorage.setItem('syncwatchDeviceId', deviceId);
 
 const elements = {};
-const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn
+const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn
   loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
- loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
+ loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
- fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText
- playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
+ fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText
+ playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn skipSettingsBtn skipSettingsModal closeSkipSettingsBtn skipSettingsForm skipSettingsEnabled skipIntroSeconds skipOutroSeconds skipSettingsStatus saveSkipSettingsBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
  playerContainer emptyStage emptyStageHint videoPlayer imageViewer documentViewer textViewer textReaderControls textReaderPreviousBtn textReaderPage textReaderPageCount textReaderNextBtn textReaderProgress sharedWebViewer sharedWebEmpty downloadViewer downloadTitle downloadLink screenShareCanvas screenShareVideo screenShareStatus syncNotice resumePlaybackBtn danmakuContainer reactionLayer friendVideoNoticeLayer playerInfo playerResolution playerCodec hardwareDecode
  controlRequestOverlay controlRequestTitle controlRequestDetail controlRequestSuppress controlRequestDenyBtn controlRequestAllowBtn permissionNotice permissionNoticeTitle permissionNoticeText permissionNoticeCloseBtn
- chatPanel chatHistory chatForm chatInput privateRecipient voiceBtn voiceFileInput chatImageInput chatImageBtn chatEmojiBtn chatEmojiBar chatEmojiCollapseBtn loadHistoryBtn chatToggleBtn chatViewFilterBtn chatViewFilters chatViewChannel chatViewUser chatViewUserMode chatViewQuery chatViewResetBtn reactionBar userList userCount roomCode roomScheme roomShareUrl applyShareDomainBtn copyShareLinkBtn copyRoomCodeBtn copyLanAddressBtn copyPublicAddressBtn resetShareAddressBtn showQrBtn qrBox currentRoomBanner globalRoomSearch
+ chatPanel chatHistory chatForm chatInput privateRecipient voiceBtn voiceFileInput chatImageInput chatImageBtn chatEmojiBtn chatEmojiBar chatEmojiCollapseBtn loadHistoryBtn chatToggleBtn chatOnlyToggle danmakuSettingsBtn danmakuSettingsPanel danmakuColorInput danmakuFontSizeInput danmakuFontSizeValue resetDanmakuSettingsBtn chatViewFilterBtn chatViewFilters chatViewChannel chatViewUser chatViewUserMode chatViewQuery chatViewResetBtn reactionBar userList userCount roomCode roomScheme roomShareUrl applyShareDomainBtn copyShareLinkBtn copyRoomCodeBtn copyLanAddressBtn copyPublicAddressBtn resetShareAddressBtn showQrBtn qrBox currentRoomBanner globalRoomSearch
  liveVoiceBar liveVoiceStatus voiceRoomBtn voicePrivateBtn voiceMuteBtn voiceLeaveBtn voiceAudioDock voiceDockToggleBtn liveVoiceFloating voiceFloatingStatus voiceFloatingMuteBtn voicePushToTalkBtn voiceFloatingLeaveBtn voiceFloatingCollapseBtn collapseMembersBtn
   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicAudio
    usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus localPasswordlessCard localPasswordlessManagementEnabled localPasswordlessRoomEnabled saveLocalPasswordlessBtn localPasswordlessStatus downloadAssetSettingsCard openDownloadCenterSettingsBtn downloadAssetUploadProgress downloadAssetUploadStatus windowsServerAssetStatus androidClientAssetStatus macServerAssetStatus macClientAssetStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
   mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
- roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSendNotice savePermissionsBtn
- permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
- pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus accountAdminList refreshAccountsBtn accountViewMode registrationRequestList refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
+ roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn roomCopyCard roomCopySourceId roomCopyTargetName roomCopyReason requestRoomCopyBtn roomCopyStatus roomCopyRequestList roomMigrationCard roomMigrationSource roomMigrationTarget migrateRoomBtn roomMigrationStatus uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permSeek permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSendNotice savePermissionsBtn
+ permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermSeek groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
+ pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus loginLimitRequestCard loginLimitRequestList accountAdminList refreshAccountsBtn accountViewMode registrationRequestList registrationRequestSelectAll registrationRequestSelectionCount deleteSelectedRegistrationRequestsBtn refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
   passwordPolicyCard usernamePolicyMode usernamePolicyLengthRestricted usernamePolicyMin usernamePolicyMax usernamePolicyStatus passwordPolicyMode passwordPolicyLengthRestricted passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
  toastRegion clearAllToastsBtn reconnectOverlay reconnectMessage reconnectRetryBtn closeReconnectOverlayBtn accountModal closeAccountBtn accountNav accountContent theater guestConvertBtn guestConvertModal closeGuestConvertBtn guestConvertForm guestConvertUsername guestConvertPassword guestConvertPasswordConfirm guestConvertEmail guestConvertEmailCode sendGuestConvertEmailCodeBtn guestConvertStatus
  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn downloadMacServerMainBtn downloadMacClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
@@ -352,6 +355,7 @@ async function initialize() {
     setTimeout(() => toast('游客数据已清除，欢迎再次体验', 'success', 5000), 700);
   }
   initializeEmojiBars();
+  hydrateAccountViewPreferences(null, { serverAuthoritative: false });
   loadControlSuppressions();
   applyUiTheme(state.uiTheme);
   applyTopbarDisplayMode(state.topbarDisplayMode);
@@ -374,6 +378,117 @@ async function initialize() {
   connectSocket();
   await loadPublicConfig();
   void loadRoomInfo();
+}
+
+function normalizeAccountViewPreferences(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const color = /^#[0-9a-f]{6}$/i.test(String(source.danmakuColor || '')) ? String(source.danmakuColor).toLowerCase() : DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuColor;
+  const fontSize = Math.max(14, Math.min(42, Math.round(Number(source.danmakuFontSize) || DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuFontSize)));
+  return { conciseMode: source.conciseMode === true, chatOnly: source.chatOnly === true, danmakuColor: color, danmakuFontSize: fontSize };
+}
+
+function accountViewPreferenceStorageKey(username = state.user?.username) {
+  const account = String(username || 'anonymous').trim().toLocaleLowerCase();
+  return `${ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX}${account}`;
+}
+
+function accountViewPreferencesFromProfile(profile) {
+  const candidates = [profile?.viewPreferences, profile?.preferences?.view, profile?.preferences];
+  return candidates.find((candidate) => candidate && typeof candidate === 'object'
+    && ['conciseMode', 'chatOnly', 'danmakuColor', 'danmakuFontSize'].some((key) => Object.prototype.hasOwnProperty.call(candidate, key))) || null;
+}
+
+function readCachedAccountViewPreferences(username = state.user?.username) {
+  try { return normalizeAccountViewPreferences(JSON.parse(localStorage.getItem(accountViewPreferenceStorageKey(username)) || '{}')); }
+  catch (_) { return { ...DEFAULT_ACCOUNT_VIEW_PREFERENCES }; }
+}
+
+function cacheAccountViewPreferences(preferences = state.accountViewPreferences) {
+  try { localStorage.setItem(accountViewPreferenceStorageKey(), JSON.stringify(normalizeAccountViewPreferences(preferences))); } catch (_) {}
+}
+
+function applyDanmakuPreferences(preferences = state.accountViewPreferences) {
+  const normalized = normalizeAccountViewPreferences(preferences);
+  document.documentElement.style.setProperty('--account-danmaku-color', normalized.danmakuColor);
+  document.documentElement.style.setProperty('--account-danmaku-size', `${normalized.danmakuFontSize}px`);
+  if (elements.danmakuColorInput) elements.danmakuColorInput.value = normalized.danmakuColor;
+  if (elements.danmakuFontSizeInput) elements.danmakuFontSizeInput.value = String(normalized.danmakuFontSize);
+  if (elements.danmakuFontSizeValue) elements.danmakuFontSizeValue.textContent = `${normalized.danmakuFontSize} 像素`;
+}
+
+function applyAccountViewPreferences(preferences = state.accountViewPreferences) {
+  const normalized = normalizeAccountViewPreferences(preferences);
+  state.accountViewPreferences = normalized;
+  document.body.classList.toggle('concise-mode', normalized.conciseMode);
+  elements.conciseModeBtn?.setAttribute('aria-pressed', String(normalized.conciseMode));
+  elements.conciseModeBtn?.classList.toggle('active', normalized.conciseMode);
+  if (elements.conciseModeBtn) elements.conciseModeBtn.title = normalized.conciseMode ? '退出简洁模式' : '只保留核心观影功能';
+  if (elements.chatOnlyToggle) elements.chatOnlyToggle.checked = normalized.chatOnly;
+  applyDanmakuPreferences(normalized);
+  renderChat();
+}
+
+function hydrateAccountViewPreferences(profile, { serverAuthoritative = true } = {}) {
+  const remote = accountViewPreferencesFromProfile(profile);
+  if (remote) {
+    state.accountViewPreferencesServerKnown = serverAuthoritative;
+    state.accountViewPreferences = normalizeAccountViewPreferences(remote);
+    cacheAccountViewPreferences(state.accountViewPreferences);
+  } else if (!state.accountViewPreferencesServerKnown) {
+    state.accountViewPreferences = readCachedAccountViewPreferences(profile?.username || state.user?.username);
+  }
+  applyAccountViewPreferences(state.accountViewPreferences);
+}
+
+async function saveAccountViewPreferences(patch = {}) {
+  const previous = { ...state.accountViewPreferences };
+  const next = normalizeAccountViewPreferences({ ...previous, ...patch });
+  applyAccountViewPreferences(next);
+  cacheAccountViewPreferences(next);
+  if (!state.socketAuthenticated || state.user?.guest) return true;
+  const result = await emitAck('account-action', {
+    action: 'set-view-preferences',
+    conciseMode: next.conciseMode,
+    chatOnly: next.chatOnly,
+    danmakuColor: next.danmakuColor,
+    danmakuFontSize: next.danmakuFontSize
+  });
+  if (!result.success) {
+    applyAccountViewPreferences(previous); cacheAccountViewPreferences(previous);
+    toast(result.error || '账户界面偏好保存失败', 'error'); return false;
+  }
+  if (result.profile) state.profile = result.profile;
+  hydrateAccountViewPreferences(result.profile || { viewPreferences: result.viewPreferences || next }, { serverAuthoritative: true });
+  return true;
+}
+
+function conciseNoticeAllowed(message) {
+  const text = String(message || '');
+  return /(?:进入|加入|进房|上线)|(?:离开|退出|退房|下线)|(?:进度|拖动|跳转|定位|快进|后退)/.test(text);
+}
+
+function toggleDanmakuSettings() {
+  const opening = elements.danmakuSettingsPanel?.classList.contains('is-hidden');
+  elements.danmakuSettingsPanel?.classList.toggle('is-hidden', !opening);
+  elements.danmakuSettingsBtn?.setAttribute('aria-expanded', String(Boolean(opening)));
+}
+
+function previewDanmakuFontSize() {
+  const danmakuFontSize = Number(elements.danmakuFontSizeInput?.value) || DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuFontSize;
+  applyDanmakuPreferences({ ...state.accountViewPreferences, danmakuFontSize });
+}
+
+function fullscreenInterruptionsSuppressed() {
+  return isPlayerFullscreen() || document.body.classList.contains('fullscreen-open');
+}
+
+function suppressFullscreenInterruptions() {
+  if (!fullscreenInterruptionsSuppressed()) return false;
+  clearAllToasts();
+  hideScreenNotice();
+  for (const modal of document.querySelectorAll('.modal:not(#appDialog)')) modal.classList.add('is-hidden');
+  if (activeAppDialog) settleAppDialog(null);
+  return true;
 }
 
 function restoreRetainedLoginCredentials() {
@@ -1496,6 +1611,7 @@ function bindUiEvents() {
   elements.saveLocalPasswordlessBtn?.addEventListener('click', saveLocalPasswordlessSettings);
   elements.adminContactBtn?.addEventListener('click', openAdminContact);
   elements.adminProfileBtn?.addEventListener('click', openAdminProfileEditor);
+  elements.conciseModeBtn?.addEventListener('click', () => saveAccountViewPreferences({ conciseMode: !state.accountViewPreferences.conciseMode }));
   elements.checkUpdateBtn?.addEventListener('click', () => openDownloadCenter(true));
   elements.downloadCenterBtn?.addEventListener('click', () => openDownloadCenter(false));
   elements.openDownloadCenterLoginBtn?.addEventListener('click', () => openDownloadCenter(false));
@@ -1512,6 +1628,7 @@ function bindUiEvents() {
     toggleMobileActionMenu(false);
   });
   elements.closeLoginStatusBtn?.addEventListener('click', () => setLoginStatus(''));
+  elements.requestLoginLimitClearBtn?.addEventListener('click', requestLoginLimitClear);
   elements.closeReconnectOverlayBtn?.addEventListener('click', () => setReconnectState(false));
   elements.closeRoomSwitchSuccessBtn?.addEventListener('click', hideRoomSwitchSuccess);
   elements.downloadClientBtn?.addEventListener('click', downloadDesktopClient);
@@ -1570,6 +1687,9 @@ function bindUiEvents() {
   elements.cancelUploadBtn?.addEventListener('click', cancelUpload);
   elements.collapseFilesBtn?.addEventListener('click', toggleLibraryCollapsed);
   elements.fileList.addEventListener('click', handleFileAction);
+  elements.fileList.addEventListener('change', handleLibraryQueueSelection);
+  elements.libraryQueueSelectAll?.addEventListener('change', toggleLibraryQueueSelectAll);
+  elements.addSelectedToQueueBtn?.addEventListener('click', addSelectedFilesToQueue);
   elements.mediaCategoryFilter?.addEventListener('change', () => { state.mediaCategoryFilter = elements.mediaCategoryFilter.value; renderFiles(); });
   elements.manageMediaCategoriesBtn?.addEventListener('click', manageMediaCategories);
   elements.batchMoveMediaCategoryBtn?.addEventListener('click', batchMoveMediaCategory);
@@ -1595,6 +1715,9 @@ function bindUiEvents() {
   document.querySelectorAll('[data-media-tab]').forEach((button) => button.addEventListener('click', () => switchMediaTab(button.dataset.mediaTab)));
   elements.addCurrentQueueBtn.addEventListener('click', () => state.currentFile && queueAction('add', state.currentFile.id));
   elements.queueList.addEventListener('click', handleQueueAction);
+  elements.queueList.addEventListener('change', handleQueueSelection);
+  elements.queueSelectAll?.addEventListener('change', toggleQueueSelectAll);
+  elements.removeSelectedQueueBtn?.addEventListener('click', removeSelectedQueueFiles);
   elements.queueModeSelect?.addEventListener('change', updateQueueMode);
   elements.queueCategorySelect?.addEventListener('change', updateQueueMode);
   elements.playPauseBtn.addEventListener('click', togglePlayPause);
@@ -1617,6 +1740,9 @@ function bindUiEvents() {
     if (enabled) scheduleVolumeCommand(elements.videoPlayer.volume, elements.videoPlayer.muted);
   });
   elements.fullscreenBtn.addEventListener('click', togglePlayerFullscreen);
+  elements.skipSettingsBtn?.addEventListener('click', openSkipSettings);
+  elements.closeSkipSettingsBtn?.addEventListener('click', () => elements.skipSettingsModal?.classList.add('is-hidden'));
+  elements.skipSettingsForm?.addEventListener('submit', saveSkipSettings);
   elements.resumePlaybackBtn.addEventListener('click', resumeBlockedPlayback);
   elements.reconnectRetryBtn.addEventListener('click', retryConnectionNow);
   elements.screenShareBtn.addEventListener('click', openDesktopShareSettings);
@@ -1654,6 +1780,13 @@ function bindUiEvents() {
     toggleMobileChat();
     setMobileModuleActive(state.mobileChatCollapsed ? 'watch' : 'chat');
   });
+  elements.chatOnlyToggle?.addEventListener('change', () => saveAccountViewPreferences({ chatOnly: elements.chatOnlyToggle.checked }));
+  elements.danmakuSettingsBtn?.addEventListener('click', toggleDanmakuSettings);
+  elements.danmakuColorInput?.addEventListener('input', () => applyDanmakuPreferences({ ...state.accountViewPreferences, danmakuColor: elements.danmakuColorInput.value }));
+  elements.danmakuColorInput?.addEventListener('change', () => saveAccountViewPreferences({ danmakuColor: elements.danmakuColorInput.value }));
+  elements.danmakuFontSizeInput?.addEventListener('input', previewDanmakuFontSize);
+  elements.danmakuFontSizeInput?.addEventListener('change', () => saveAccountViewPreferences({ danmakuFontSize: Number(elements.danmakuFontSizeInput.value) }));
+  elements.resetDanmakuSettingsBtn?.addEventListener('click', () => saveAccountViewPreferences({ danmakuColor: DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuColor, danmakuFontSize: DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuFontSize }));
   document.querySelectorAll('[data-reaction]').forEach((button) => button.addEventListener('click', () => state.socket.emit('reaction', { emoji: button.dataset.reaction })));
   elements.loadHistoryBtn.addEventListener('click', () => loadChatHistory(true));
   elements.voiceBtn.addEventListener('click', toggleVoiceRecording);
@@ -1908,16 +2041,24 @@ function bindUiEvents() {
   elements.deletePermissionGroupsBtn?.addEventListener('click', deleteSelectedPermissionGroups);
   elements.refreshRegistrationBtn?.addEventListener('click', loadAdminSettings);
   elements.refreshRoomQuotaBtn?.addEventListener('click', loadAdminSettings);
+  elements.requestRoomCopyBtn?.addEventListener('click', requestRoomCopy);
+  elements.roomCopyRequestList?.addEventListener('click', handleRoomCopyRequestAction);
+  elements.migrateRoomBtn?.addEventListener('click', migrateRoomData);
   elements.addRegistrationWhitelistBtn?.addEventListener('click', addRegistrationWhitelist);
   elements.registrationWhitelistList?.addEventListener('click', handleRegistrationWhitelistAction);
   elements.registrationRequestList?.addEventListener('click', handleRegistrationRequestAction);
+  elements.registrationRequestList?.addEventListener('change', handleRegistrationRequestSelection);
+  elements.registrationRequestSelectAll?.addEventListener('change', toggleRegistrationRequestSelectAll);
+  elements.deleteSelectedRegistrationRequestsBtn?.addEventListener('click', deleteSelectedRegistrationRequests);
   elements.roomQuotaRequestList?.addEventListener('click', handleRoomQuotaRequestAction);
+  elements.loginLimitRequestList?.addEventListener('click', handleLoginLimitRequestAction);
   elements.dissolveRoomBtn?.addEventListener('click', dissolveCurrentRoom);
   elements.quickDissolveRoomBtn?.addEventListener('click', dissolveCurrentRoom);
   elements.videoPlayer.addEventListener('loadedmetadata', onMediaMetadata);
   elements.videoPlayer.addEventListener('durationchange', updatePlayerProgressBar);
   elements.videoPlayer.addEventListener('timeupdate', updatePlayerProgressBar);
   elements.videoPlayer.addEventListener('timeupdate', handleMediaRecoveryProgress);
+  elements.videoPlayer.addEventListener('timeupdate', handleSkipOutroProgress);
   elements.videoPlayer.addEventListener('canplay', onMediaCanPlay);
   elements.videoPlayer.addEventListener('play', () => handleLocalPlaybackEvent(true));
   elements.videoPlayer.addEventListener('pause', () => handleLocalPlaybackEvent(false));
@@ -2151,6 +2292,11 @@ function bindUiEvents() {
   elements.desktopCloseModal?.addEventListener('click', handleDesktopCloseChoice);
   document.addEventListener('fullscreenchange', handleFullscreenChange);
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'F12' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      void togglePlayerFullscreen();
+      return;
+    }
     if (event.key !== 'Escape') return;
     if (!elements.permissionGroupEditor?.classList.contains('is-hidden')) closePermissionGroupEditor();
     else if (!elements.accountTierEditor?.classList.contains('is-hidden')) closeAccountTierEditor();
@@ -2349,6 +2495,7 @@ function bringModalToFront(modal, minimumLayer = 500) {
 
 function openAppDialog(options = {}) {
   const mode = options.mode === 'confirm' ? 'confirm' : options.mode === 'select' ? 'select' : 'input';
+  if (fullscreenInterruptionsSuppressed()) return Promise.resolve(mode === 'confirm' ? false : null);
   if (!elements.appDialog) return Promise.resolve(mode === 'confirm' ? false : null);
   if (activeAppDialog) settleAppDialog(null);
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -2651,6 +2798,22 @@ function connectSocket() {
   state.socket.on('account-presence-changed', handleAccountPresenceChanged);
   state.socket.on('friend-online', handleFriendOnline);
   state.socket.on('queue-state', (queue) => { state.queue = queue; renderQueue(); });
+  state.socket.on('room-skip-settings-updated', (update = {}) => {
+    if (update.roomId && state.room?.id && update.roomId !== state.room.id) return;
+    state.room = { ...state.room, skipSettings: normalizedSkipSettings(update.skipSettings) };
+    state.skipOutroHandledGeneration = -1;
+    syncSkipSettingsUi();
+  });
+  state.socket.on('quality-change-requested', handleQualityChangeRequest);
+  state.socket.on('quality-change-applied', handleQualityChangeApplied);
+  state.socket.on('quality-change-resolved', (result = {}) => toast(result.message || '清晰度调整申请已处理', result.accepted ? 'success' : '', 6000));
+  state.socket.on('room-copy-requested', handleRoomCopyRequested);
+  state.socket.on('room-copy-request-resolved', (result = {}) => toast(result.message || '房间复制申请已处理', result.approved ? 'success' : '', 9000));
+  state.socket.on('login-limit-clear-resolved', handleLoginLimitClearResolved);
+  state.socket.on('login-limit-clear-requested', (request = {}) => {
+    if (state.user?.username !== 'admin') return;
+    toastWithAction(`${request.username || '未知账号'} 申请解除登录限制`, '打开申请中心', () => openManagementHub('applications'), 0);
+  });
   state.socket.on('file-uploaded', upsertFile);
   state.socket.on('file-updated', upsertFile);
   state.socket.on('file-deleted', handleFileDeleted);
@@ -3715,7 +3878,11 @@ async function submitAccountLogin() {
       username: elements.username.value.trim(), password: elements.password.value, roomId,
       roomPassword: elements.loginRoomPassword?.value || elements.loginAccessPassword?.value || '', ...deviceInfo()
     });
-    if (!result.success) return setLoginStatus(result.error);
+    if (!result.success) {
+      const canRequestClear = result.code === 'LOGIN_RATE_LIMITED' && result.canRequestClear !== false;
+      elements.requestLoginLimitClearBtn?.classList.toggle('is-hidden', !canRequestClear);
+      return setLoginStatus(loginErrorMessage(result));
+    }
     state.token = result.token; state.rememberSession = elements.autoLogin.checked;
     await finishAuthentication(result, state.rememberSession);
   } catch (error) {
@@ -4976,8 +5143,8 @@ function applyPublicConfig() {
 
 function renderServerEndpointStatus() {
   if (!elements.serverEndpointBadge) return;
-  const serverContext = Boolean(state.publicConfig.serverHostLoginAvailable || state.hostToken
-    || (state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin)));
+  const serverContext = Boolean(window.SyncWatchPlatform?.serverApp === true
+    && state.hostToken && state.authenticated && state.capabilities.serverHost);
   elements.serverEndpointBadge.classList.toggle('is-hidden', !serverContext);
   if (!serverContext) return;
   const address = (state.publicConfig.addresses || []).find((candidate) => {
@@ -5034,11 +5201,11 @@ async function checkForUpdates() {
   if (elements.checkDownloadUpdateBtn) elements.checkDownloadUpdateBtn.disabled = true;
   if (elements.downloadUpdateStatus) elements.downloadUpdateStatus.textContent = '正在读取 GitHub Latest…';
   try {
-    const response = await fetchWithTimeout('/api/releases/latest', {}, 12000);
+    const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.3';
-    const latest = String(release.tag_name || '').trim();
+    const current = state.publicConfig.version || 'v2.2.4';
+    const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
       ? `发现新版本 ${latest}（当前 ${current}），请打开 Latest 下载页更新。`
@@ -5466,7 +5633,13 @@ async function shareWebUrl() {
 }
 
 function applyWebShareState(webShare = {}) {
-  state.webShare = { active: Boolean(webShare.active), url: webShare.url || '', title: webShare.title || '', updatedAt: Number(webShare.updatedAt) || 0 };
+  const roomId = String(webShare.roomId || state.room?.id || '').trim().toUpperCase();
+  const currentRoomId = String(state.room?.id || '').trim().toUpperCase();
+  if (roomId && currentRoomId && roomId !== currentRoomId) return;
+  const revision = Math.max(0, Number(webShare.revision) || 0);
+  const currentRevision = Math.max(0, Number(state.webShare?.revision) || 0);
+  if (revision && currentRevision && revision < currentRevision) return;
+  state.webShare = { active: Boolean(webShare.active), url: webShare.url || '', title: webShare.title || '', updatedAt: Number(webShare.updatedAt) || 0, revision, roomId };
   if (state.room) state.room.webShare = { ...webShare };
   if (!state.webShare.active) {
     clearLocalWebViews();
@@ -5477,13 +5650,13 @@ function applyWebShareState(webShare = {}) {
   hidePlaybackViews();
   elements.emptyStage.classList.add('is-hidden');
   elements.sharedWebEmpty?.classList.remove('is-hidden');
-  const incomingRevision = String(state.webShare.updatedAt || state.webShare.url);
+  const incomingRevision = String(state.webShare.revision || state.webShare.updatedAt || state.webShare.url);
   const currentSharedUrl = elements.sharedWebViewer.getAttribute('src') || '';
   if (elements.sharedWebViewer.dataset.shareUpdatedAt !== incomingRevision || currentSharedUrl !== state.webShare.url) {
     elements.sharedWebViewer.dataset.shareUpdatedAt = incomingRevision;
     elements.sharedWebViewer.setAttribute('src', 'about:blank');
     setTimeout(() => {
-      if (state.webShare.active && String(state.webShare.updatedAt || state.webShare.url) === incomingRevision) {
+      if (state.webShare.active && String(state.webShare.revision || state.webShare.updatedAt || state.webShare.url) === incomingRevision) {
         elements.sharedWebViewer.setAttribute('src', state.webShare.url);
       }
     }, 0);
@@ -5499,7 +5672,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.3.apk';
+    link.download = 'SyncWatch同步观影-v2.2.4.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -5577,8 +5750,30 @@ function setLoginStatus(message, success = false) {
   elements.loginStatus.classList.toggle('success', success);
   elements.loginStatusWrap?.classList.toggle('is-hidden', !text);
   elements.loginStatusWrap?.classList.toggle('success', success);
+  if (!text || success) elements.requestLoginLimitClearBtn?.classList.add('is-hidden');
   clearTimeout(setLoginStatus.timer);
   if (text && success) setLoginStatus.timer = setTimeout(() => setLoginStatus(''), 3600);
+}
+
+async function requestLoginLimitClear() {
+  const username = String(elements.username?.value || '').trim();
+  if (!username) return setLoginStatus('请先填写被限制的登录账号');
+  const reason = await showAppInput({
+    title: '申请清除登录限制', description: '申请会发送给内置 admin，并保留在用户申请中心。管理员同意后即可重新登录。',
+    label: '申请说明（可选）', maxLength: 240, placeholder: '例如：本人连续输错密码，现已确认正确密码', confirmText: '提交申请'
+  });
+  if (reason === null) return;
+  elements.requestLoginLimitClearBtn.disabled = true;
+  const result = await emitAck('login-limit-clear-request', { username, reason, ...deviceInfo() });
+  elements.requestLoginLimitClearBtn.disabled = false;
+  setLoginStatus(result.message || result.error, Boolean(result.success));
+  if (result.success) elements.requestLoginLimitClearBtn.classList.add('is-hidden');
+}
+
+function handleLoginLimitClearResolved(result = {}) {
+  const message = result.message || (result.approved ? '管理员已解除登录限制，请重新登录' : '管理员未同意解除登录限制');
+  setLoginStatus(message, Boolean(result.approved));
+  if (result.approved) elements.requestLoginLimitClearBtn?.classList.add('is-hidden');
 }
 
 function loginErrorMessage(result, fallback = '登录失败，请稍后重试') {
@@ -5711,7 +5906,7 @@ function renderFiles() {
     elements.mediaCategoryFilter.value = categories.includes(selected) ? selected : '';
   }
   elements.fileCount.textContent = files.length;
-  if (!files.length) { elements.fileList.innerHTML = '<div class="empty-stage"><span>🎞️</span><small>上传第一部影片开始观影</small></div>'; return; }
+  if (!files.length) { elements.fileList.innerHTML = '<div class="empty-stage"><span>🎞️</span><small>上传第一部影片开始观影</small></div>'; updateLibraryQueueSelection(); return; }
   const groups = new Map();
   for (const file of files) {
     const collection = fileCollectionName(file);
@@ -5719,6 +5914,7 @@ function renderFiles() {
     groups.get(collection).push(file);
   }
   elements.fileList.innerHTML = [...groups.entries()].map(([collection, entries]) => `<section class="folder-group"><header><span>📁</span><strong>${escapeHtml(collection)}</strong><small>${entries.length} 个文件</small></header>${entries.map(renderFileCard).join('')}</section>`).join('');
+  updateLibraryQueueSelection();
 }
 
 function updateUploadEntryAttention() {
@@ -5761,11 +5957,46 @@ function renderFileCard(file) {
                 : '<span title="服务器已排队生成 H.264/AAC 公网兼容版">兼容版排队中</span>'
       : '';
     const processingProgress = processing ? `<div class="file-processing" role="status"><div><span style="width:${Math.max(0, Math.min(100, Number(compatibility.progress) || 0))}%"></span></div><small>${compatibility.status === 'converting' ? `正在转换 ${Math.max(0, Number(compatibility.progress) || 0)}%` : '等待转换'} · 完成前暂不可操作</small></div>` : '';
+    const selectable = timed && approved && !processing;
+    const queueSelector = selectable ? `<label class="library-queue-select" title="选择加入播放队列"><input data-library-queue-select type="checkbox" value="${escapeHtml(file.id)}" ${state.selectedLibraryQueueFiles.has(file.id) ? 'checked' : ''} aria-label="选择 ${escapeHtml(file.originalName)}"></label>` : '';
     return `<article class="file-card ${file.status === 'pending' ? 'pending' : ''} ${processing ? 'processing' : ''} ${state.currentFile?.id === file.id ? 'active' : ''}" data-file-id="${file.id}">
-      ${thumbnail}<div class="file-body"><strong title="${escapeHtml(file.originalName)}">${escapeHtml(file.originalName)}</strong>
+      ${queueSelector}${thumbnail}<div class="file-body"><strong title="${escapeHtml(file.originalName)}">${escapeHtml(file.originalName)}</strong>
       <div class="file-meta"><span>${formatSize(file.size)}</span><span>${duration}</span><span>分类 ${escapeHtml(file.collection || '未分类')}</span><span>上传者 ${escapeHtml(file.uploadedByName || file.uploadedBy)}</span></div>
       <div class="file-tags"><span>${quality}</span>${codec ? `<span>${escapeHtml(codec)}</span>` : ''}${compatibilityTag}${metadata.language ? `<span>${escapeHtml(localizedMediaLanguage(metadata.language))}</span>` : ''}${file.status === 'pending' ? '<span>待审核</span>' : ''}</div>${processingProgress}</div>
       <div class="file-actions">${primaryActions}<button data-file-action="favorite" ${processing ? 'disabled' : ''}>收藏</button>${manageable ? `<button data-file-action="rename" ${processing ? 'disabled' : ''}>重命名</button><button data-file-action="category" ${processing ? 'disabled' : ''}>分类</button><button data-file-action="delete" ${processing ? 'disabled' : ''}>删除</button>` : ''}</div></article>`;
+}
+
+function updateLibraryQueueSelection(event) {
+  const input = event?.target?.matches?.('[data-library-queue-select]') ? event.target : null;
+  if (input) input.checked ? state.selectedLibraryQueueFiles.add(input.value) : state.selectedLibraryQueueFiles.delete(input.value);
+  const boxes = [...(elements.fileList?.querySelectorAll('[data-library-queue-select]') || [])];
+  const validIds = new Set(boxes.map((box) => box.value));
+  state.selectedLibraryQueueFiles = new Set([...state.selectedLibraryQueueFiles].filter((id) => validIds.has(id)));
+  boxes.forEach((box) => { box.checked = state.selectedLibraryQueueFiles.has(box.value); });
+  const count = state.selectedLibraryQueueFiles.size;
+  if (elements.libraryQueueSelectionCount) elements.libraryQueueSelectionCount.textContent = `已选 ${count} 项`;
+  if (elements.addSelectedToQueueBtn) elements.addSelectedToQueueBtn.disabled = !count || !canControlPlayback();
+  if (elements.libraryQueueSelectAll) {
+    elements.libraryQueueSelectAll.checked = Boolean(boxes.length && count === boxes.length);
+    elements.libraryQueueSelectAll.indeterminate = Boolean(count && count < boxes.length);
+    elements.libraryQueueSelectAll.disabled = !boxes.length || !canControlPlayback();
+  }
+}
+
+function handleLibraryQueueSelection(event) { updateLibraryQueueSelection(event); }
+function toggleLibraryQueueSelectAll() {
+  const boxes = [...(elements.fileList?.querySelectorAll('[data-library-queue-select]') || [])];
+  state.selectedLibraryQueueFiles = elements.libraryQueueSelectAll?.checked ? new Set(boxes.map((box) => box.value)) : new Set();
+  updateLibraryQueueSelection();
+}
+async function addSelectedFilesToQueue() {
+  const fileIds = [...state.selectedLibraryQueueFiles];
+  if (!fileIds.length) return;
+  if (!canControlPlayback()) return permissionDeniedToast('控制播放队列');
+  const result = await emitAck('queue-action', { action: 'batch-add', fileIds });
+  if (!result.success) return toast(result.error || '批量加入队列失败', 'error');
+  state.selectedLibraryQueueFiles.clear(); updateLibraryQueueSelection();
+  toast(result.message || `已将 ${fileIds.length} 项加入播放队列`, 'success');
 }
 
 function handleFileThumbnailError(event) {
@@ -6582,11 +6813,45 @@ async function updateQueueMode() {
 }
 function renderQueue() {
   const modeLabels = { autoplay: '顺序到结尾', single: '单片循环', list: '列表循环', category: '分类循环', reverse: '倒序播放', off: '播完停止' };
-  elements.queueList.innerHTML = state.queue.map((id) => state.files.get(id)).filter((file) => isTimedFile(file) && file.status === 'approved').map((file) => {
+  const playable = state.queue.map((id) => state.files.get(id)).filter((file) => isTimedFile(file) && file.status === 'approved');
+  const validIds = new Set(playable.map((file) => file.id));
+  state.selectedQueueFiles = new Set([...state.selectedQueueFiles].filter((id) => validIds.has(id)));
+  elements.queueList.innerHTML = playable.map((file) => {
     const ownMode = state.room?.queueFileModes?.[file.id]?.mode || 'inherit';
-    return `<li data-file-id="${file.id}"><span>${escapeHtml(file.originalName)}<small>${ownMode === 'inherit' ? '跟随列表模式' : modeLabels[ownMode] || ownMode}</small></span><button data-queue-action="mode" title="设置此影片播放模式">模式</button><button data-queue-action="play" title="立即播放">▶</button><button data-queue-action="remove" title="移出队列">×</button></li>`;
+    return `<li data-file-id="${file.id}"><label class="queue-select" title="选择批量移除"><input data-queue-select type="checkbox" value="${escapeHtml(file.id)}" ${state.selectedQueueFiles.has(file.id) ? 'checked' : ''} aria-label="选择 ${escapeHtml(file.originalName)}"></label><span>${escapeHtml(file.originalName)}<small>${ownMode === 'inherit' ? '跟随列表模式' : modeLabels[ownMode] || ownMode}</small></span><button data-queue-action="mode" title="设置此影片播放模式">模式</button><button data-queue-action="play" title="立即播放">▶</button><button data-queue-action="remove" title="移出队列">×</button></li>`;
   }).join('') || '<li><span>队列为空</span></li>';
   renderQueueModeControls();
+  updateQueueSelection();
+}
+
+function updateQueueSelection(event) {
+  const input = event?.target?.matches?.('[data-queue-select]') ? event.target : null;
+  if (input) input.checked ? state.selectedQueueFiles.add(input.value) : state.selectedQueueFiles.delete(input.value);
+  const boxes = [...(elements.queueList?.querySelectorAll('[data-queue-select]') || [])];
+  boxes.forEach((box) => { box.checked = state.selectedQueueFiles.has(box.value); });
+  const count = state.selectedQueueFiles.size;
+  if (elements.queueSelectionCount) elements.queueSelectionCount.textContent = `已选 ${count} 项`;
+  if (elements.removeSelectedQueueBtn) elements.removeSelectedQueueBtn.disabled = !count || !canControlPlayback();
+  if (elements.queueSelectAll) {
+    elements.queueSelectAll.checked = Boolean(boxes.length && count === boxes.length);
+    elements.queueSelectAll.indeterminate = Boolean(count && count < boxes.length);
+    elements.queueSelectAll.disabled = !boxes.length || !canControlPlayback();
+  }
+}
+function handleQueueSelection(event) { updateQueueSelection(event); }
+function toggleQueueSelectAll() {
+  const boxes = [...(elements.queueList?.querySelectorAll('[data-queue-select]') || [])];
+  state.selectedQueueFiles = elements.queueSelectAll?.checked ? new Set(boxes.map((box) => box.value)) : new Set();
+  updateQueueSelection();
+}
+async function removeSelectedQueueFiles() {
+  const fileIds = [...state.selectedQueueFiles];
+  if (!fileIds.length) return;
+  if (!canControlPlayback()) return permissionDeniedToast('控制播放队列');
+  const result = await emitAck('queue-action', { action: 'batch-remove', fileIds });
+  if (!result.success) return toast(result.error || '批量移除队列失败', 'error');
+  state.selectedQueueFiles.clear(); updateQueueSelection();
+  toast(result.message || `已从队列移除 ${fileIds.length} 项`, 'success');
 }
 async function handleQueueAction(event) {
   const button = event.target.closest('[data-queue-action]'); if (!button) return;
@@ -6611,6 +6876,59 @@ async function handleQueueAction(event) {
 }
 function switchMediaTab(tab) { document.querySelectorAll('[data-media-tab]').forEach((button) => button.classList.toggle('active', button.dataset.mediaTab === tab)); elements.libraryTab.classList.toggle('is-hidden', tab !== 'library'); elements.queueTab.classList.toggle('is-hidden', tab !== 'queue'); }
 
+function normalizedSkipSettings(value = state.room?.skipSettings) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    enabled: source.enabled === true,
+    introSeconds: Math.max(0, Math.min(3600, Math.round(Number(source.introSeconds) || 0))),
+    outroSeconds: Math.max(0, Math.min(3600, Math.round(Number(source.outroSeconds) || 0)))
+  };
+}
+
+function syncSkipSettingsUi(settings = state.room?.skipSettings) {
+  const normalized = normalizedSkipSettings(settings);
+  if (elements.skipSettingsEnabled) elements.skipSettingsEnabled.checked = normalized.enabled;
+  if (elements.skipIntroSeconds) elements.skipIntroSeconds.value = String(normalized.introSeconds);
+  if (elements.skipOutroSeconds) elements.skipOutroSeconds.value = String(normalized.outroSeconds);
+  if (elements.skipSettingsStatus) elements.skipSettingsStatus.textContent = normalized.enabled
+    ? `已启用：片头 ${normalized.introSeconds} 秒，片尾提前 ${normalized.outroSeconds} 秒`
+    : '未启用自动跳过';
+  const editable = Boolean(state.capabilities.owner || state.capabilities.superAdmin || state.permissions.manageRoom);
+  for (const control of [elements.skipSettingsEnabled, elements.skipIntroSeconds, elements.skipOutroSeconds, elements.saveSkipSettingsBtn]) if (control) control.disabled = !editable;
+}
+
+function openSkipSettings() {
+  syncSkipSettingsUi();
+  elements.skipSettingsModal?.classList.remove('is-hidden');
+  bringModalToFront(elements.skipSettingsModal);
+}
+
+async function saveSkipSettings(event) {
+  event?.preventDefault?.();
+  const skipSettings = normalizedSkipSettings({
+    enabled: elements.skipSettingsEnabled?.checked === true,
+    introSeconds: elements.skipIntroSeconds?.value,
+    outroSeconds: elements.skipOutroSeconds?.value
+  });
+  const result = await emitAck('room-playback-skip-settings', { skipSettings, introSeconds: skipSettings.introSeconds, outroSeconds: skipSettings.outroSeconds });
+  if (!result.success) return toast(result.error || '跳过片头片尾设置保存失败', 'error');
+  state.room = { ...state.room, skipSettings: result.skipSettings || skipSettings };
+  syncSkipSettingsUi();
+  elements.skipSettingsModal?.classList.add('is-hidden');
+  toast(result.message || '跳过片头片尾设置已同步', 'success');
+}
+
+function handleSkipOutroProgress() {
+  const settings = normalizedSkipSettings();
+  const video = elements.videoPlayer;
+  if (!settings.enabled || !settings.outroSeconds || !canControlPlayback() || !isActiveTimedMedia()
+    || !Number.isFinite(video.duration) || video.duration <= settings.outroSeconds || video.paused || video.ended) return;
+  if (video.currentTime < video.duration - settings.outroSeconds) return;
+  if (state.skipOutroHandledGeneration === state.mediaGeneration) return;
+  state.skipOutroHandledGeneration = state.mediaGeneration;
+  void handlePlaybackEnded();
+}
+
 function applyRoom(room) {
   if (!room) return;
   const expectedRoomId = activeClientRoomId();
@@ -6621,7 +6939,7 @@ function applyRoom(room) {
   state.room = { ...room, playback: state.room?.playback || playback, textReading: textReading || state.room?.textReading };
   state.queue = room.queue || state.queue;
   applyRoomMarquee(room.marqueeNotice);
-  updateRoomHeader(); renderRoomStorage(room.storage); updateLights(room.lightsOn); renderQueue(); updateControlAccess(); renderTemporaryRoomNotice();
+  updateRoomHeader(); renderRoomStorage(room.storage); updateLights(room.lightsOn); renderQueue(); updateControlAccess(); renderTemporaryRoomNotice(); syncSkipSettingsUi(room.skipSettings);
   if (playback) adaptiveSynchronize(playback, true);
   if (textReading) applyTextReadingState(textReading);
   if (room.screenShare?.active) showScreenShare(room.screenShare);
@@ -6698,7 +7016,7 @@ function syncPlayPauseButton(playing) {
 }
 
 function updateControlAccess() {
-  const canControl = canControlPlayback(); const timedMedia = isActiveTimedMedia(); const localSharing = hasLocalScreenCapture(); const sharingAllowed = canShareScreen();
+  const canControl = canControlPlayback(); const canSeek = canSeekPlayback(); const timedMedia = isActiveTimedMedia(); const localSharing = hasLocalScreenCapture(); const sharingAllowed = canShareScreen();
   syncPlayPauseButton(Boolean(state.room?.playback?.isPlaying));
   document.querySelectorAll('.control-button').forEach((button) => {
     button.disabled = !timedMedia || state.screenShareActive;
@@ -6737,12 +7055,19 @@ function updateControlAccess() {
     elements.playbackRateSelect.title = canControl ? '将播放倍速同步给房间所有成员' : '需要播放控制权才能调整倍速';
   }
   applyPlaybackRateUi(state.room?.playback?.playbackRate || 1);
-  if (elements.playerSeekSlider) elements.playerSeekSlider.disabled = !timedMedia || state.screenShareActive;
+  for (const button of [elements.backBtn, elements.forwardBtn, elements.customJumpBtn]) {
+    if (!button) continue;
+    button.disabled = !timedMedia || state.screenShareActive || !canSeek;
+    button.classList.toggle('is-hidden', !canSeek);
+    button.setAttribute('aria-disabled', String(button.disabled));
+  }
+  if (elements.playerSeekSlider) elements.playerSeekSlider.disabled = !timedMedia || state.screenShareActive || !canSeek;
   elements.addCurrentQueueBtn.disabled = !canControl || !isTimedFile(state.currentFile) || state.currentFile.status !== 'approved';
   if (state.currentFile?.category === 'text') updateTextReaderControls();
 }
 
 function canControlPlayback() { return Boolean(state.capabilities.owner || state.permissions.control); }
+function canSeekPlayback() { return Boolean(state.capabilities.owner || state.permissions.seek); }
 function togglePlayPause() {
   const action = state.room?.playback?.isPlaying ? 'pause' : 'play';
   return requestPlaybackCommand(action, elements.videoPlayer.currentTime);
@@ -6754,7 +7079,8 @@ function permissionDeniedToast(action = '执行此操作') {
   toastWithAction(`您没有权限${action}，请向房主申请播放控制权。`, '申请播放控制权', requestControl, 10000);
 }
 function requestPlaybackCommand(action, currentTime) {
-  if (!canControlPlayback()) return permissionDeniedToast(action === 'seek' ? '拖动播放进度' : action === 'pause' ? '暂停播放' : '开始播放');
+  const allowed = action === 'seek' ? canSeekPlayback() : canControlPlayback();
+  if (!allowed) return permissionDeniedToast(action === 'seek' ? '拖动播放进度' : action === 'pause' ? '暂停播放' : '开始播放');
   return sendPlayback(action, currentTime);
 }
 
@@ -7473,7 +7799,43 @@ function consumeExpectedPlaybackEvent(playing) {
   state.expectedPlaybackEvent = null; return true;
 }
 
+function cancelPendingFullscreenPlaybackGesture() {
+  const pending = Boolean(state.fullscreenPlaybackGestureTimer);
+  clearTimeout(state.fullscreenPlaybackGestureTimer);
+  state.fullscreenPlaybackGestureTimer = null;
+  state.fullscreenGestureBlockUntil = performance.now() + 420;
+  if (pending && state.room?.playback) adaptiveSynchronize(state.room.playback, true);
+}
+
 function handleLocalPlaybackEvent(playing) {
+  if (!playing) {
+    clearMediaBufferingState();
+    clearMediaNetworkRecovery();
+  }
+  const expected = state.expectedPlaybackEvent;
+  const roomDriven = Boolean(expected && expected.playing === playing
+    && expected.generation === state.mediaGeneration && expected.expires >= performance.now());
+  if (!roomDriven && isActiveTimedMedia() && !state.screenShareActive && !canControlPlayback()) {
+    permissionDeniedToast(playing ? '开始播放' : '暂停播放');
+    adaptiveSynchronize(state.room?.playback, true);
+    return;
+  }
+  if (isPlayerFullscreen()) {
+    if (performance.now() < state.fullscreenGestureBlockUntil) {
+      adaptiveSynchronize(state.room?.playback, true);
+      return;
+    }
+    clearTimeout(state.fullscreenPlaybackGestureTimer);
+    state.fullscreenPlaybackGestureTimer = setTimeout(() => {
+      state.fullscreenPlaybackGestureTimer = null;
+      commitLocalPlaybackEvent(playing);
+    }, 340);
+    return;
+  }
+  commitLocalPlaybackEvent(playing);
+}
+
+function commitLocalPlaybackEvent(playing) {
   if (!playing) {
     clearMediaBufferingState();
     clearMediaNetworkRecovery();
@@ -7501,7 +7863,7 @@ function handleLocalSeeked() {
   state.seekInteractionUntil = performance.now() + 2200;
   state.suppressPlaybackNoticeUntil = Date.now() + 3200;
   if (!isActiveTimedMedia() || state.screenShareActive) return;
-  if (!canControlPlayback()) { permissionDeniedToast('拖动播放进度'); adaptiveSynchronize(state.room?.playback, true); return; }
+  if (!canSeekPlayback()) { permissionDeniedToast('拖动播放进度'); adaptiveSynchronize(state.room?.playback, true); return; }
   if (performance.now() < state.mediaEventBlockUntil) return;
   sendPlayback('seek', elements.videoPlayer.currentTime);
 }
@@ -7622,7 +7984,8 @@ async function changePlaybackRate() {
 }
 
 async function sendPlayback(action, currentTime, volume = elements.videoPlayer.volume, muted = elements.videoPlayer.muted, playbackRate = state.room?.playback?.playbackRate || 1) {
-  if (!state.socketAuthenticated || !isActiveTimedMedia() || state.screenShareActive || !canControlPlayback()) return { success: false, skipped: true };
+  const allowed = action === 'seek' ? canSeekPlayback() : canControlPlayback();
+  if (!state.socketAuthenticated || !isActiveTimedMedia() || state.screenShareActive || !allowed) return { success: false, skipped: true };
   const previousPlaying = state.room?.playback?.isPlaying;
   if (state.room?.playback && ['play', 'pause'].includes(action)) {
     state.room.playback.isPlaying = action === 'play';
@@ -7702,9 +8065,9 @@ async function jumpToCustomTime() {
     seconds = parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : parts.length === 2 ? parts[0] * 60 + parts[1] : parts[0];
   }
   if (!Number.isFinite(seconds) || seconds < 0 || seconds > duration) return toast(`请输入 0 到 ${formatTime(duration)} 之间的时间`, 'error');
-  if (!canControlPlayback()) return permissionDeniedToast('跳转播放进度');
+  if (!canSeekPlayback()) return permissionDeniedToast('跳转播放进度');
   await sendPlayback('seek', seconds);
-  await sendPlayback('play', seconds);
+  if (canControlPlayback()) await sendPlayback('play', seconds);
 }
 async function ownerAction(action, extra = {}) { const result = await emitAck('owner-action', { action, ...extra }); if (!result.success) toast(result.error, 'error'); else if (result.room) applyRoom(result.room); return result; }
 
@@ -7771,7 +8134,7 @@ function handleControlRequestResolved(result = {}) {
 }
 
 const permissionLabels = {
-  administrator: '房间管理员', control: '控制播放', upload: '上传影片', delete: '删除影片', manageMedia: '管理视频库',
+  administrator: '房间管理员', control: '控制播放与倍速', seek: '快进与拖动进度', upload: '上传影片', delete: '删除影片', manageMedia: '管理视频库',
   shareScreen: '共享屏幕', shareAudio: '共享电脑音源', shareWeb: '共享网页', voiceChat: '实时语音',
   manageChat: '管理聊天', manageRoom: '管理房间', sendNotice: '发送屏幕公告'
 };
@@ -7861,6 +8224,40 @@ function playbackQualityLabel(value) {
   return value === 'smooth' ? '流畅版' : value === 'auto' ? '自动' : '原画';
 }
 
+async function requestMemberQualityChange(username) {
+  const quality = await showAppSelect({
+    title: '申请成员切换清晰度', description: `选择希望 ${username} 使用的清晰度。对方确认后才会在其设备生效。`,
+    label: '目标清晰度', initialValue: 'original',
+    options: [{ value: 'original', label: '原画' }, { value: 'auto', label: '自动' }, { value: 'smooth', label: '流畅版' }],
+    confirmText: '发送申请'
+  });
+  if (quality === null) return;
+  const result = await emitAck('quality-change-request', { username, quality });
+  toast(result.message || result.error || '清晰度调整申请发送失败', result.success ? 'success' : 'error', 7000);
+}
+
+async function handleQualityChangeRequest(request = {}) {
+  if (!request.id) return;
+  if (fullscreenInterruptionsSuppressed()) {
+    state.pendingQualityRequest = request;
+    return;
+  }
+  const accepted = await showAppConfirm(request.message || `${request.requestedByName || request.requestedBy || '管理员'} 申请切换您的播放清晰度`, {
+    title: '清晰度切换申请', confirmText: `同意切换为${playbackQualityLabel(request.quality)}`, cancelText: '拒绝'
+  });
+  const result = await emitAck('quality-change-response', { requestId: request.id, accepted: Boolean(accepted) });
+  if (!result.success) toast(result.error || '清晰度申请处理失败', 'error');
+}
+
+function handleQualityChangeApplied(update = {}) {
+  if (!['auto', 'smooth', 'original'].includes(update.quality)) return;
+  state.playbackQuality = update.quality;
+  if (elements.playbackQualitySelect) elements.playbackQualitySelect.value = update.quality;
+  try { localStorage.setItem('syncwatchPlaybackQuality', update.quality); } catch (_) {}
+  if (isTimedFile(state.currentFile)) { state.activeTimedSource = ''; loadFile(state.currentFile); }
+  toast(`已按确认切换为${playbackQualityLabel(update.quality)}`, 'success');
+}
+
 function renderUsers() {
   const selectedPrivate = elements.privateRecipient.value; const selectedFullscreenPrivate = elements.fullscreenPrivateRecipient?.value || ''; const selectedPermission = elements.permissionUser.value;
   const onlineCount = countOnlineUsers(); elements.userCount.textContent = onlineCount; elements.userCountCard.textContent = onlineCount;
@@ -7878,14 +8275,14 @@ function renderUsers() {
     const role = user.isOwner ? '房主' : user.isSuperAdmin ? '超级管理员' : user.isAdmin ? '管理员' : user.permissions.groupId === 'controller' ? '协管员' : '成员';
     const groupName = user.permissionGroup?.name || role;
     const permissionNames = [
-      user.permissions.control && '播放控制', user.permissions.upload && '上传', user.permissions.delete && '删除',
+      user.permissions.control && '播放与倍速', user.permissions.seek && '快进与拖动', user.permissions.upload && '上传', user.permissions.delete && '删除',
       user.permissions.manageMedia && '视频库管理', user.permissions.shareScreen && '屏幕共享', user.permissions.shareAudio && '电脑音源', user.permissions.voiceChat && '实时语音', user.permissions.manageChat && '聊天管理', user.permissions.manageRoom && '房间管理'
     ].filter(Boolean);
     const canManage = Boolean(state.capabilities.owner || state.capabilities.superAdmin || state.permissions.manageRoom);
     const targetProtected = Boolean(user.isSuperAdmin);
     const detailsExpanded = memberDetailsExpanded(user.username);
     const actions = user.username !== state.user?.username
-      ? `<div class="user-actions${detailsExpanded ? '' : ' is-hidden'}">${canManage ? `<button data-user-action="${user.permissions.control ? 'revoke' : 'grant'}">${user.permissions.control ? '收回控制' : '授权控制'}</button>` : ''}<button data-user-action="private">私聊</button><button data-user-action="voice">语音呼叫</button>${canManage && !targetProtected ? '<button data-user-action="kick">移出</button><button data-user-action="ban">封禁</button>' : ''}</div>`
+      ? `<div class="user-actions${detailsExpanded ? '' : ' is-hidden'}">${canManage ? `<button data-user-action="${user.permissions.control ? 'revoke' : 'grant'}">${user.permissions.control ? '收回控制' : '授权控制'}</button><button data-user-action="quality">申请切换清晰度</button>` : ''}<button data-user-action="private">私聊</button><button data-user-action="voice">语音呼叫</button>${canManage && !targetProtected ? '<button data-user-action="kick">移出</button><button data-user-action="ban">封禁</button>' : ''}</div>`
       : `<div class="user-actions${detailsExpanded ? '' : ' is-hidden'}"></div>`;
     const locationText = formatMemberAddress(user.location);
     const avatar = user.avatar ? `<img src="${escapeHtml(user.avatar)}" alt="">` : escapeHtml(String(user.displayName || user.username || '?').slice(0, 1).toUpperCase());
@@ -8247,6 +8644,7 @@ async function handleUserAction(event) {
     elements.chatPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); elements.chatInput.focus(); return;
   }
   if (button.dataset.userAction === 'voice') { setChatMode('private'); elements.privateRecipient.value = username; return callPrivateVoice(); }
+  if (button.dataset.userAction === 'quality') return requestMemberQualityChange(username);
   if (button.dataset.userAction === 'grant' || button.dataset.userAction === 'revoke') return ownerAction(button.dataset.userAction === 'grant' ? 'grant-control' : 'revoke-control', { username });
   if (button.dataset.userAction === 'kick') { const result = await emitAck('admin-action', { action: 'kick-user', adminPassword: elements.adminPassword.value, targetSocketId: socketId }); toast(result.message || result.error, result.success ? 'success' : 'error'); }
   if (button.dataset.userAction === 'ban') { if (!await showAppConfirm(`确定封禁 ${username} 的当前 IP 地址吗？`, { title: '封禁成员', confirmText: '确认封禁', danger: true })) return; const result = await emitAck('admin-action', { action: 'ban-user', adminPassword: elements.adminPassword.value, targetSocketId: socketId }); toast(result.message || result.error, result.success ? 'success' : 'error'); }
@@ -8472,7 +8870,12 @@ function chatViewMessageMatches(message = {}) {
 }
 
 function filteredChatMessages(messages = state.messages) {
-  return chatViewFilterActive() ? messages.filter(chatViewMessageMatches) : messages;
+  const viewMessages = messages.filter(chatViewMessageMatches);
+  return viewMessages.filter((message) => {
+    const kind = message?.type === 'announcement' ? 'announcement' : message?.type === 'system' ? 'system' : chatMessageType(message);
+    if (state.accountViewPreferences.chatOnly && (kind === 'announcement' || kind === 'system')) return false;
+    return true;
+  });
 }
 
 function renderChatViewUsers() {
@@ -8859,12 +9262,16 @@ function handleFullscreenChange() {
   relocateChatContextMenu(active);
   relocateToastRegion(active);
   elements.playerContainer.classList.toggle('fullscreen-active', active); document.body.classList.toggle('fullscreen-open', active);
-  if (active) { renderFullscreenChat(); setChatMode(state.chatMode); showFullscreenControls(); }
+  if (active) { suppressFullscreenInterruptions(); renderFullscreenChat(); setChatMode(state.chatMode); showFullscreenControls(); }
   else {
     hideChatContextMenu();
     clearTimeout(state.fullscreenHideTimer); elements.playerContainer.classList.remove('controls-visible');
     if (elements.fullscreenOverlay?.contains(document.activeElement)) document.activeElement.blur?.();
     syncFullscreenAccessibility();
+    if (state.pendingQualityRequest) {
+      const request = state.pendingQualityRequest; state.pendingQualityRequest = null;
+      queueMicrotask(() => handleQualityChangeRequest(request));
+    }
   }
 }
 
@@ -8915,6 +9322,7 @@ function playerTapIsInteractive(target) {
 }
 function handlePlayerDoubleClick(event) {
   if (playerTapIsInteractive(event.target)) return;
+  cancelPendingFullscreenPlaybackGesture();
   event.preventDefault();
   if (isPlayerFullscreen()) showFullscreenControls();
   else void togglePlayerFullscreen();
@@ -8929,6 +9337,7 @@ function handlePlayerDoubleTap(event) {
   lastPlayerTap = current;
   if (!previous || current.at - previous.at > 320 || Math.hypot(current.x - previous.x, current.y - previous.y) > 48) return;
   lastPlayerTap = null;
+  cancelPendingFullscreenPlaybackGesture();
   event.preventDefault();
   if (isPlayerFullscreen()) showFullscreenControls();
   else void togglePlayerFullscreen();
@@ -10859,7 +11268,7 @@ function commitPlayerSeek() {
   state.lastCommittedSeek = { target, at: performance.now() };
   state.seekInteractionUntil = performance.now() + 3200;
   state.suppressPlaybackNoticeUntil = Date.now() + 3800;
-  if (!canControlPlayback()) {
+  if (!canSeekPlayback()) {
     permissionDeniedToast('拖动播放进度');
     adaptiveSynchronize(state.room?.playback, true);
     return;
@@ -11119,7 +11528,8 @@ async function showQr() {
   let address = preferredShareAddress();
   const publicAddress = publicShareAddress();
   const localAddress = lanShareAddress();
-  if (publicAddress && localAddress && publicAddress !== localAddress) {
+  const serverApp = window.SyncWatchPlatform?.serverApp === true;
+  if (serverApp && publicAddress && localAddress && publicAddress !== localAddress) {
     const selected = await showAppSelect({
       title: '生成房间二维码', description: '请选择二维码中包含的访问地址。两种地址都会自动带上当前房间号。', label: '地址类型',
       options: [
@@ -11134,7 +11544,7 @@ async function showQr() {
   try {
     const response = await fetchWithTimeout(`/api/room/qr?url=${encodeURIComponent(address)}`, { headers: authHeaders() }, 10000);
     if (!response.ok) return toast(`二维码生成失败（${response.status}）`, 'error');
-    const svg = await response.text(); const type = publicAddress && address === publicAddress ? '公网地址' : '内网地址';
+  const svg = await response.text(); const type = publicAddress && address === publicAddress ? '公网地址' : '内网地址';
     elements.qrBox.innerHTML = `<strong class="qr-address-type">${type}</strong>${svg}<code class="qr-address-value">${escapeHtml(address)}</code>`; elements.qrBox.classList.toggle('is-hidden');
   } catch (error) { toast(`二维码生成失败：${localizedError(error, '请稍后重试')}`, 'error'); }
 }
@@ -11143,7 +11553,7 @@ function preferredShareAddress() {
   if (customBase) return shareAddressForBase(customBase);
   const current = shareAddressForBase(location.origin);
   const localHost = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(location.hostname);
-  return localHost ? (publicShareAddress() || lanShareAddress()) : current;
+  return localHost ? (publicShareAddress() || (window.SyncWatchPlatform?.serverApp === true ? lanShareAddress() : '')) : current;
 }
 function shareAddressForBase(baseValue) {
   const base = normalizeShareBase(baseValue);
@@ -11168,6 +11578,7 @@ function publicShareAddress() {
   return tunnelAddress ? shareAddressForBase(tunnelAddress) : configured ? shareAddressForBase(configured) : currentLooksPublic ? shareAddressForBase(location.origin) : '';
 }
 function lanShareAddress() {
+  if (window.SyncWatchPlatform?.serverApp !== true) return '';
   const localHost = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(location.hostname);
   const ipv4Base = (state.publicConfig?.addresses || []).find((address) => {
     try { return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(new URL(address).hostname); }
@@ -11239,7 +11650,7 @@ async function copyAddress() {
   let address = preferredShareAddress();
   const hasCustomBase = Boolean(String(elements.roomShareUrl?.dataset.customBase || '').trim());
   const publicAddress = publicShareAddress(); const localAddress = lanShareAddress();
-  if (!hasCustomBase && publicAddress && localAddress && publicAddress !== localAddress) {
+  if (window.SyncWatchPlatform?.serverApp === true && !hasCustomBase && publicAddress && localAddress && publicAddress !== localAddress) {
     const selected = await showAppSelect({
       title: '分享房间', description: '请选择要复制的地址类型。关闭窗口不会执行复制。', label: '分享地址',
       options: [
@@ -11637,7 +12048,8 @@ async function loadAdminSettings({ silent = false } = {}) {
   renderWatchLevelSettings(result.admin.watchLevels || []);
   renderAccountTiers(result.admin.accountTiers || {});
   renderRegistrationRequests(result.admin.registrationRequests || []); renderRegistrationWhitelist(result.admin.registrationIpWhitelist || []);
-  renderRoomQuotaRequests(result.admin.roomQuotaRequests || []);
+  renderRoomQuotaRequests(result.admin.roomQuotaRequests || []); renderLoginLimitRequests(result.admin.loginLimitRequests || []);
+  renderRoomCopyRequests(result.admin.roomCopyRequests || []); renderRoomMigrationControls(result.admin);
   renderPending(result.admin.pendingFiles); renderBlacklist(result.admin.blacklist); renderAdminAccounts(result.admin.accounts); renderGlobalRooms(result.admin.rooms || []); applySelectedPermissions(); if (result.admin.serverAdmin) void loadServerLogs(); if (!silent) toast('管理设置已加载', 'success');
 }
 
@@ -12479,7 +12891,7 @@ async function savePermissions() {
   const username = elements.permissionUser.value; if (!username) return toast('请选择成员', 'error');
   const result = await adminAction('set-permissions', {
     username, groupId: elements.permissionGroup.value, administrator: elements.permAdministrator.checked,
-    control: elements.permControl.checked, upload: elements.permUpload.checked, delete: elements.permDelete.checked,
+    control: elements.permControl.checked, seek: elements.permSeek.checked, upload: elements.permUpload.checked, delete: elements.permDelete.checked,
     shareScreen: elements.permShareScreen.checked, shareAudio: elements.permShareAudio.checked, shareWeb: elements.permShareWeb.checked, voiceChat: elements.permVoiceChat.checked,
     manageChat: elements.permManageChat.checked, manageRoom: elements.permManageRoom.checked, sendNotice: elements.permSendNotice.checked
   });
@@ -12487,11 +12899,11 @@ async function savePermissions() {
 }
 function applySelectedPermissions() {
   const username = elements.permissionUser.value;
-  const current = state.adminSettings?.permissions?.[username] || state.users.find((user) => user.username === username)?.permissions || { control: false, upload: true, delete: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false, administrator: false, groupId: 'member' };
+  const current = state.adminSettings?.permissions?.[username] || state.users.find((user) => user.username === username)?.permissions || { control: false, seek: false, upload: true, delete: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false, administrator: false, groupId: 'member' };
   const assignedGroup = state.adminSettings?.memberGroups?.[username] || current.groupId || 'member';
   elements.permissionGroup.value = [...elements.permissionGroup.options].some((option) => option.value === assignedGroup) ? assignedGroup : 'member';
   elements.permAdministrator.checked = Boolean(current.administrator || assignedGroup === 'administrator');
-  elements.permControl.checked = Boolean(current.control); elements.permUpload.checked = Boolean(current.upload); elements.permDelete.checked = Boolean(current.delete);
+  elements.permControl.checked = Boolean(current.control); elements.permSeek.checked = Boolean(current.seek); elements.permUpload.checked = Boolean(current.upload); elements.permDelete.checked = Boolean(current.delete);
   elements.permShareScreen.checked = Boolean(current.shareScreen); elements.permShareAudio.checked = Boolean(current.shareAudio); elements.permShareWeb.checked = Boolean(current.shareWeb); elements.permVoiceChat.checked = current.voiceChat !== false;
   elements.permManageChat.checked = Boolean(current.manageChat); elements.permManageRoom.checked = Boolean(current.manageRoom); elements.permSendNotice.checked = Boolean(current.sendNotice);
   applyAdministratorToggle(false);
@@ -12548,6 +12960,79 @@ async function deletePermissionGroups(groupIds) {
 
 function deleteSelectedPermissionGroups() { return deletePermissionGroups([...state.selectedPermissionGroups]); }
 
+async function requestRoomCopy() {
+  const sourceRoomId = String(elements.roomCopySourceId?.value || '').trim().toUpperCase();
+  if (!sourceRoomId) return toast('请输入要复制的来源房间号', 'error');
+  elements.requestRoomCopyBtn.disabled = true;
+  const result = await emitAck('room-copy-request', {
+    sourceRoomId,
+    requestedRoomName: elements.roomCopyTargetName?.value || '',
+    reason: elements.roomCopyReason?.value || ''
+  }, 30000);
+  elements.requestRoomCopyBtn.disabled = false;
+  if (elements.roomCopyStatus) elements.roomCopyStatus.textContent = result.message || result.error || '';
+  toast(result.message || result.error || '房间复制申请发送失败', result.success ? 'success' : 'error', 8000);
+  if (result.success) { elements.roomCopySourceId.value = ''; elements.roomCopyTargetName.value = ''; elements.roomCopyReason.value = ''; await loadAdminSettings({ silent: true }); }
+}
+
+function renderRoomCopyRequests(requests = []) {
+  if (!elements.roomCopyRequestList) return;
+  const visible = Array.isArray(requests) ? requests : [];
+  elements.roomCopyRequestList.innerHTML = visible.length ? visible.map((request) => {
+    const status = request.status === 'pending' ? '待处理' : request.status === 'approved' ? '已同意' : request.status === 'denied' ? '已拒绝' : request.status || '未知';
+    const canResolve = request.status === 'pending' && request.sourceOwner === state.user?.username;
+    const action = canResolve ? '<div class="actions"><button data-room-copy-action="approve" type="button">同意并复制</button><button data-room-copy-action="deny" type="button">拒绝</button></div>' : '';
+    return `<article class="admin-row" data-room-copy-request="${escapeHtml(request.id)}"><header><strong>${escapeHtml(request.sourceRoomName || request.sourceRoomId)} → ${escapeHtml(request.requestedByName || request.requestedBy)}</strong><small>${escapeHtml(status)}</small></header><small>来源 ${escapeHtml(request.sourceRoomId)} · 申请人 ${escapeHtml(request.requestedBy || '')}${request.targetRoomId ? ` · 新房间 ${escapeHtml(request.targetRoomId)}` : ''}</small><p>${escapeHtml(request.reason || '未填写申请说明')}</p>${action}</article>`;
+  }).join('') : '<p class="muted">暂无房间复制申请</p>';
+}
+
+async function handleRoomCopyRequestAction(event) {
+  const button = event.target.closest('[data-room-copy-action]');
+  const requestId = button?.closest('[data-room-copy-request]')?.dataset.roomCopyRequest;
+  if (!button || !requestId) return;
+  const approved = button.dataset.roomCopyAction === 'approve';
+  if (approved && !await showAppConfirm('同意后会复制房间配置、队列、聊天和视频文件，为申请人创建独立房间。源房间不会改变。', { title: '同意房间复制', confirmText: '同意并开始复制' })) return;
+  button.disabled = true;
+  const result = await emitAck('room-copy-request-action', { requestId, approved }, 10 * 60 * 1000);
+  toast(result.message || result.error || '房间复制申请处理失败', result.success && approved ? 'success' : result.success ? '' : 'error', 9000);
+  await loadAdminSettings({ silent: true });
+}
+
+function handleRoomCopyRequested(request = {}) {
+  if (!request.id || request.sourceOwner !== state.user?.username) return;
+  toastWithAction(`${request.requestedByName || request.requestedBy || '成员'} 申请复制房间 ${request.sourceRoomName || request.sourceRoomId}`, '打开房间设置', () => openManagementHub('room'), 0);
+}
+
+function renderRoomMigrationControls(admin = state.adminSettings || {}) {
+  const allowed = Boolean(admin.serverAdmin);
+  elements.roomMigrationCard?.classList.toggle('is-hidden', !allowed);
+  if (!allowed) return;
+  const rooms = (admin.rooms || []).filter((room) => !room.temporary && !room.systemRoom);
+  const options = '<option value="">选择房间</option>' + rooms.map((room) => `<option value="${escapeHtml(room.id)}">${escapeHtml(room.name || '未命名房间')}（${escapeHtml(room.id)}）</option>`).join('');
+  if (elements.roomMigrationSource) elements.roomMigrationSource.innerHTML = options;
+  if (elements.roomMigrationTarget) elements.roomMigrationTarget.innerHTML = options;
+}
+
+async function migrateRoomData() {
+  const sourceRoomId = elements.roomMigrationSource?.value || '';
+  const targetRoomId = elements.roomMigrationTarget?.value || '';
+  if (!sourceRoomId || !targetRoomId) return toast('请选择来源房间和目标房间', 'error');
+  if (sourceRoomId === targetRoomId) return toast('来源房间和目标房间不能相同', 'error');
+  const confirmation = `迁移覆盖 ${targetRoomId}`;
+  const typed = await showAppInput({
+    title: '迁移覆盖目标房间', description: `目标房间 ${targetRoomId} 的配置、聊天和媒体将被来源房间 ${sourceRoomId} 覆盖；失败时服务器会回滚。`,
+    label: `请输入“${confirmation}”`, fillValue: confirmation, required: true, maxLength: 80,
+    validate: (value) => value === confirmation ? '' : `请输入完整确认文字：${confirmation}`, confirmText: '开始迁移覆盖', danger: true
+  });
+  if (typed === null) return;
+  elements.migrateRoomBtn.disabled = true;
+  const result = await adminAction('migrate-room', { sourceRoomId, targetRoomId, confirmation: typed });
+  elements.migrateRoomBtn.disabled = false;
+  if (elements.roomMigrationStatus) elements.roomMigrationStatus.textContent = result.message || result.error || '';
+  toast(result.message || result.error || '房间迁移失败', result.success ? 'success' : 'error', 10000);
+  if (result.success) await loadAdminSettings({ silent: true });
+}
+
 function renderWatchLevelSettings(levels) {
   if (!elements.watchLevelSettingsList) return;
   const entries = Array.isArray(levels) ? levels : [];
@@ -12560,13 +13045,13 @@ function applySelectedPermissionGroup() {
   const group = state.adminSettings?.permissionGroups?.[elements.permissionGroup.value];
   if (!group) return;
   const permissions = group.permissions || {};
-  elements.permControl.checked = Boolean(permissions.control); elements.permUpload.checked = Boolean(permissions.upload); elements.permDelete.checked = Boolean(permissions.delete);
+  elements.permControl.checked = Boolean(permissions.control); elements.permSeek.checked = Boolean(permissions.seek); elements.permUpload.checked = Boolean(permissions.upload); elements.permDelete.checked = Boolean(permissions.delete);
   elements.permShareScreen.checked = Boolean(permissions.shareScreen); elements.permShareAudio.checked = Boolean(permissions.shareAudio); elements.permShareWeb.checked = Boolean(permissions.shareWeb); elements.permVoiceChat.checked = permissions.voiceChat !== false;
   elements.permManageChat.checked = Boolean(permissions.manageChat); elements.permManageRoom.checked = Boolean(permissions.manageRoom); elements.permSendNotice.checked = Boolean(permissions.sendNotice);
 }
 function applyAdministratorToggle(applyDefaults = true) {
   const administrator = Boolean(elements.permAdministrator.checked);
-  const controls = [elements.permControl, elements.permUpload, elements.permDelete, elements.permShareScreen, elements.permShareAudio, elements.permShareWeb, elements.permVoiceChat, elements.permManageChat, elements.permManageRoom, elements.permSendNotice];
+  const controls = [elements.permControl, elements.permSeek, elements.permUpload, elements.permDelete, elements.permShareScreen, elements.permShareAudio, elements.permShareWeb, elements.permVoiceChat, elements.permManageChat, elements.permManageRoom, elements.permSendNotice];
   elements.permissionGroup.disabled = administrator;
   for (const control of controls) { if (administrator && applyDefaults !== false) control.checked = true; control.disabled = administrator; }
 }
@@ -12575,7 +13060,7 @@ function openPermissionGroupEditor(groupId = '') {
   const permissions = group?.permissions || {};
   elements.permissionGroupId.value = group?.id || ''; elements.permissionGroupId.readOnly = Boolean(group);
   elements.permissionGroupName.value = group?.name || '';
-  elements.groupPermControl.checked = Boolean(permissions.control); elements.groupPermUpload.checked = Boolean(permissions.upload); elements.groupPermDelete.checked = Boolean(permissions.delete);
+  elements.groupPermControl.checked = Boolean(permissions.control); elements.groupPermSeek.checked = Boolean(permissions.seek); elements.groupPermUpload.checked = Boolean(permissions.upload); elements.groupPermDelete.checked = Boolean(permissions.delete);
   elements.groupPermShareScreen.checked = Boolean(permissions.shareScreen); elements.groupPermShareAudio.checked = Boolean(permissions.shareAudio); elements.groupPermShareWeb.checked = Boolean(permissions.shareWeb); elements.groupPermVoiceChat.checked = permissions.voiceChat !== false;
   elements.groupPermManageChat.checked = Boolean(permissions.manageChat); elements.groupPermManageRoom.checked = Boolean(permissions.manageRoom); elements.groupPermSendNotice.checked = Boolean(permissions.sendNotice);
   elements.savePermissionGroupBtn.disabled = Boolean(group?.system);
@@ -12587,7 +13072,7 @@ function closePermissionGroupEditor() { elements.permissionGroupEditor.classList
 async function savePermissionGroup() {
   const result = await adminAction('save-permission-group', {
     groupId: elements.permissionGroupId.value, name: elements.permissionGroupName.value,
-    control: elements.groupPermControl.checked, upload: elements.groupPermUpload.checked, delete: elements.groupPermDelete.checked,
+    control: elements.groupPermControl.checked, seek: elements.groupPermSeek.checked, upload: elements.groupPermUpload.checked, delete: elements.groupPermDelete.checked,
     shareScreen: elements.groupPermShareScreen.checked, shareAudio: elements.groupPermShareAudio.checked, shareWeb: elements.groupPermShareWeb.checked, voiceChat: elements.groupPermVoiceChat.checked,
     manageChat: elements.groupPermManageChat.checked, manageRoom: elements.groupPermManageRoom.checked, sendNotice: elements.groupPermSendNotice.checked
   });
@@ -12606,22 +13091,78 @@ function renderRegistrationRequests(requests) {
   const mode = ['cards', 'compact', 'table'].includes(state.registrationViewMode) ? state.registrationViewMode : 'cards';
   if (elements.registrationViewMode) elements.registrationViewMode.value = mode;
   elements.registrationRequestList.className = `registration-request-list view-${mode}`;
+  const validIds = new Set(state.registrationRequests.map((request) => request.id).filter(Boolean));
+  state.selectedRegistrationRequests = new Set([...state.selectedRegistrationRequests].filter((id) => validIds.has(id)));
   const rows = state.registrationRequests.map((request) => {
-    const requestedCount = Math.max(1, Math.min(50, Math.floor(Number(request.requestedCount) || 1)));
+    const totalCount = Math.max(1, Math.floor(Number(request.totalRequestedCount) || Number(request.requestedCount) || 1));
+    const remainingCount = Math.max(0, Math.floor(Number(request.remainingCount ?? request.requestedCount) || 0));
+    const withdrawnCount = Math.max(0, Math.floor(Number(request.withdrawnCount) || Math.max(0, totalCount - remainingCount)));
     const statusText = request.status === 'pending' ? '待处理' : request.status === 'approved' ? '已批准' : request.status === 'denied' ? '已拒绝' : escapeHtml(request.status || 'pending');
-    const actions = request.status === 'pending' ? `<div class="actions"><button data-registration-action="approve" type="button">批准 ${requestedCount} 个</button><button data-registration-action="deny" type="button">拒绝</button></div>` : '';
+    const selector = `<label class="admin-account-select"><input data-registration-request-select type="checkbox" value="${escapeHtml(request.id)}" ${state.selectedRegistrationRequests.has(request.id) ? 'checked' : ''}><span>选择</span></label>`;
+    const actions = `<div class="actions">${request.status === 'pending' ? `<button data-registration-action="approve" type="button">批准 ${remainingCount} 个</button><button data-registration-action="deny" type="button">拒绝</button>` : ''}<button data-registration-action="delete" type="button">删除记录</button></div>`;
+    const countText = `总申请 ${totalCount} 个 · 剩余 ${remainingCount} 个${withdrawnCount ? ` · 已撤回 ${withdrawnCount} 个` : ''}`;
     if (mode === 'table') {
-      return `<tr data-request-id="${escapeHtml(request.id)}"><td>${escapeHtml(request.ip || '未知 IP')}</td><td>${escapeHtml(request.username || '未填写账号')}</td><td>${requestedCount}</td><td>${escapeHtml(request.deviceName || request.platform || '未知设备')}</td><td>${statusText}</td><td class="actions">${actions}</td></tr>`;
+      return `<tr data-request-id="${escapeHtml(request.id)}"><td>${selector}</td><td>${escapeHtml(request.ip || '未知 IP')}</td><td>${escapeHtml(request.username || '未填写账号')}</td><td>${escapeHtml(countText)}</td><td>${escapeHtml(request.deviceName || request.platform || '未知设备')}</td><td>${statusText}</td><td class="actions">${actions}</td></tr>`;
     }
-    return `<div class="admin-row" data-request-id="${escapeHtml(request.id)}"><header><strong>${escapeHtml(request.ip || '未知 IP')}</strong><small>${statusText}</small></header><small>${escapeHtml(request.username || '未填写账号')} · 申请 ${requestedCount} 个账号 · ${escapeHtml(request.deviceName || request.platform || '未知设备')}</small>${actions}</div>`;
+    return `<div class="admin-row" data-request-id="${escapeHtml(request.id)}"><header>${selector}<strong>${escapeHtml(request.ip || '未知 IP')}</strong><small>${statusText}</small></header><small>${escapeHtml(request.username || '未填写账号')} · ${escapeHtml(countText)} · ${escapeHtml(request.deviceName || request.platform || '未知设备')}</small>${actions}</div>`;
   }).join('');
   elements.registrationRequestList.innerHTML = rows
-    ? (mode === 'table' ? `<table class="admin-request-table"><thead><tr><th>IP</th><th>账号</th><th>申请数量</th><th>设备</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>` : rows)
+    ? (mode === 'table' ? `<table class="admin-request-table"><thead><tr><th>选择</th><th>IP</th><th>账号</th><th>申请数量</th><th>设备</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>` : rows)
     : '<p class="muted">暂无待处理申请</p>';
+  updateRegistrationRequestSelection();
+}
+
+function updateRegistrationRequestSelection(event) {
+  const input = event?.target?.matches?.('[data-registration-request-select]') ? event.target : null;
+  if (input) input.checked ? state.selectedRegistrationRequests.add(input.value) : state.selectedRegistrationRequests.delete(input.value);
+  const boxes = [...(elements.registrationRequestList?.querySelectorAll('[data-registration-request-select]') || [])];
+  boxes.forEach((box) => { box.checked = state.selectedRegistrationRequests.has(box.value); });
+  const count = state.selectedRegistrationRequests.size;
+  if (elements.registrationRequestSelectionCount) elements.registrationRequestSelectionCount.textContent = `已选 ${count} 条`;
+  if (elements.deleteSelectedRegistrationRequestsBtn) elements.deleteSelectedRegistrationRequestsBtn.disabled = !count || state.user?.username !== 'admin';
+  if (elements.registrationRequestSelectAll) {
+    elements.registrationRequestSelectAll.checked = Boolean(boxes.length && count === boxes.length);
+    elements.registrationRequestSelectAll.indeterminate = Boolean(count && count < boxes.length);
+    elements.registrationRequestSelectAll.disabled = !boxes.length || state.user?.username !== 'admin';
+  }
+}
+function handleRegistrationRequestSelection(event) { updateRegistrationRequestSelection(event); }
+function toggleRegistrationRequestSelectAll() {
+  const boxes = [...(elements.registrationRequestList?.querySelectorAll('[data-registration-request-select]') || [])];
+  state.selectedRegistrationRequests = elements.registrationRequestSelectAll?.checked ? new Set(boxes.map((box) => box.value)) : new Set();
+  updateRegistrationRequestSelection();
+}
+async function deleteSelectedRegistrationRequests() {
+  const requestIds = [...state.selectedRegistrationRequests];
+  if (!requestIds.length) return;
+  if (!await showAppConfirm(`确定删除所选 ${requestIds.length} 条注册申请记录吗？`, { title: '批量删除注册申请', confirmText: '永久删除', danger: true })) return;
+  const result = await adminAction('delete-registration-requests', { requestIds });
+  toast(result.message || result.error, result.success ? 'success' : 'error');
+  if (result.success) { state.selectedRegistrationRequests.clear(); await loadAdminSettings({ silent: true }); }
 }
 function renderRoomQuotaRequests(requests) {
   if (!elements.roomQuotaRequestList) return;
   elements.roomQuotaRequestList.innerHTML = requests.length ? requests.map((request) => `<div class="admin-row" data-room-quota-request="${escapeHtml(request.id)}"><header><strong>${escapeHtml(request.username || '未知账号')}</strong><small>${escapeHtml(request.status || 'pending')}</small></header><small>当前额度 ${Number(request.currentQuota) || 1} · 申请额度 ${Number(request.requestedQuota) || 1} · ${escapeHtml(request.reason || '未填写原因')}</small>${request.status === 'pending' ? '<div class="actions"><button data-room-quota-action="approve" type="button">批准</button><button data-room-quota-action="deny" type="button">拒绝</button></div>' : ''}</div>`).join('') : '<p class="muted">暂无待处理的建房额度申请</p>';
+}
+
+function renderLoginLimitRequests(requests = []) {
+  if (!elements.loginLimitRequestList) return;
+  const entries = Array.isArray(requests) ? requests : [];
+  elements.loginLimitRequestList.innerHTML = entries.length ? entries.map((request) => {
+    const status = request.status === 'pending' ? '待处理' : request.status === 'approved' ? '已同意' : request.status === 'denied' ? '已拒绝' : request.status || '未知';
+    const actions = request.status === 'pending' ? '<div class="actions"><button data-login-limit-action="approve" type="button">同意并解除</button><button data-login-limit-action="deny" type="button">拒绝</button></div>' : '';
+    return `<article class="admin-row" data-login-limit-request="${escapeHtml(request.id)}"><header><strong>${escapeHtml(request.username || '未知账号')}</strong><small>${escapeHtml(status)}</small></header><small>来源 ${escapeHtml(request.ipAddress || '未知地址')} · ${escapeHtml(request.deviceName || '浏览器设备')}</small><p>${escapeHtml(request.reason || '未填写申请说明')}</p>${actions}</article>`;
+  }).join('') : '<p class="muted">暂无登录限制解除申请</p>';
+}
+
+async function handleLoginLimitRequestAction(event) {
+  const button = event.target.closest('[data-login-limit-action]');
+  const requestId = button?.closest('[data-login-limit-request]')?.dataset.loginLimitRequest;
+  if (!button || !requestId) return;
+  button.disabled = true;
+  const result = await adminAction('resolve-login-limit-request', { requestId, approved: button.dataset.loginLimitAction === 'approve' });
+  toast(result.message || result.error || '登录限制申请处理失败', result.success ? 'success' : 'error', 8000);
+  if (result.success) await loadAdminSettings({ silent: true });
 }
 function renderRegistrationWhitelist(addresses) {
   elements.registrationWhitelistList.innerHTML = addresses.length ? addresses.map((ipAddress) => `<div class="admin-row" data-ip-address="${escapeHtml(ipAddress)}"><header><strong>${escapeHtml(ipAddress)}</strong><button data-whitelist-action="remove" type="button">移除</button></header></div>`).join('') : '<p class="muted">白名单为空</p>';
@@ -12641,6 +13182,11 @@ async function handleRegistrationWhitelistAction(event) {
 async function handleRegistrationRequestAction(event) {
   const button = event.target.closest('[data-registration-action]'); if (!button) return;
   const requestId = button.closest('[data-request-id]')?.dataset.requestId; if (!requestId) return;
+  if (button.dataset.registrationAction === 'delete') {
+    if (!await showAppConfirm('确定删除这条注册申请记录吗？', { title: '删除注册申请', confirmText: '永久删除', danger: true })) return;
+    const result = await adminAction('delete-registration-request', { requestId });
+    toast(result.message || result.error, result.success ? 'success' : 'error'); if (result.success) loadAdminSettings(); return;
+  }
   const action = button.dataset.registrationAction === 'approve' ? 'approve-registration-request' : 'deny-registration-request';
   const result = await adminAction(action, { requestId });
   toast(result.message || result.error, result.success ? 'success' : 'error'); if (result.success) loadAdminSettings();
@@ -14787,17 +15333,22 @@ function scheduleToastDismiss(item, duration) {
 }
 
 function toast(message, type = '', duration = 4200) {
+  const closeClass = 'toast-close';
+  if (fullscreenInterruptionsSuppressed()) return null;
+  if (state.accountViewPreferences.conciseMode && !conciseNoticeAllowed(message)) return null;
   const textValue = String(message || '操作完成');
   const existing = findMatchingToast(textValue, type);
   if (existing) { scheduleToastDismiss(existing, duration); return existing; }
   const item = document.createElement('div'); item.className = `toast with-close ${type}`; item.dataset.message = textValue; item.dataset.variant = type;
   item.setAttribute('role', type === 'error' ? 'alert' : 'status');
   const text = document.createElement('span'); text.textContent = textValue;
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'toast-close'; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示'); close.dataset.copyKey = 'common.closeNotice'; close.dataset.copyAttr = 'title';
+  const close = document.createElement('button'); close.type = 'button'; close.className = closeClass; close.textContent = '×'; close.title = '关闭提示'; close.setAttribute('aria-label', '关闭提示'); close.dataset.copyKey = 'common.closeNotice'; close.dataset.copyAttr = 'title';
   close.addEventListener('click', () => dismissToast(item));
   item.append(text, close); elements.toastRegion.appendChild(item); updateClearAllToastsVisibility(); scheduleToastDismiss(item, duration); return item;
 }
 function toastWithAction(message, label, callback, duration = 8000) {
+  if (fullscreenInterruptionsSuppressed()) return null;
+  if (state.accountViewPreferences.conciseMode && !conciseNoticeAllowed(message)) return null;
   const textValue = String(message || '操作完成');
   const variant = `action:${String(label || '')}`;
   const existing = findMatchingToast(textValue, variant);
@@ -14814,6 +15365,8 @@ function toastWithAction(message, label, callback, duration = 8000) {
 }
 
 function toastWithActions(message, actions = [], duration = 8000, type = '') {
+  if (fullscreenInterruptionsSuppressed()) return null;
+  if (state.accountViewPreferences.conciseMode && !conciseNoticeAllowed(message)) return null;
   const textValue = String(message || '操作完成');
   const item = document.createElement('div'); item.className = `toast with-action ${type}`.trim();
   item.dataset.message = textValue; item.dataset.variant = `actions:${Date.now()}`; item.setAttribute('role', type === 'error' ? 'alert' : 'status');

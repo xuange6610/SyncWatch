@@ -247,7 +247,7 @@ async function settleWithin(promise, timeoutMs = 1000) {
       for (let index = 0; index < 32; index += 1) response.write(Buffer.alloc(1024, 0x61));
       return;
     }
-    response.end(JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.3' }));
+    response.end(JSON.stringify({ name: 'SyncWatch同步观影', version: 'v2.2.4' }));
   });
   try {
     await new Promise((resolve, reject) => {

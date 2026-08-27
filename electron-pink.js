@@ -154,7 +154,7 @@ function resolveMacDownloadPaths(kind, {
 
 function resolveClientDownloadPath({ isPackaged = false, resourcesPath = '', portableExecutableDir = '', portableExecutableFile = '', developmentClientPath = '' } = {}) {
   const candidates = isPackaged
-    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe') : '', resourcesPath ? path.join(resourcesPath, 'client', 'SyncWatch同步观影-Client-v2.2.3.exe') : '']
+    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.4-x64.exe') : '', resourcesPath ? path.join(resourcesPath, 'client', 'SyncWatch同步观影-Client-v2.2.4.exe') : '']
     : [developmentClientPath];
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
@@ -2272,7 +2272,7 @@ function createTray() {
     { label: '显示主窗口', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
     { label: '复制局域网地址', click: copyLanAddress },
     { label: '在浏览器中打开', click: () => shell.openExternal(primaryLanUrl()) },
-    { label: `修改服务器端口（当前 ${serverController.port}）`, click: openServerSettings },
+    { label: `服务器启动设置（当前端口 ${serverController.port}）`, click: openServerSettings },
     { type: 'separator' }, { label: '退出', click: requestApplicationQuit }
   ]));
   tray.on('double-click', () => { mainWindow?.show(); mainWindow?.focus(); });
@@ -2400,9 +2400,9 @@ async function startApplication() {
   const lanAddress = resolveLanAddress(activeServerSettings);
   const dataDir = process.env.SYNCWATCH_DATA_DIR || DEFAULT_DATA_DIR;
   const androidApkPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'offline-downloads', 'android', 'SyncWatch-Android-v2.2.3-universal.apk')
-    : path.join(__dirname, 'dist', 'SyncWatch-Android-v2.2.3-universal.apk');
-  const developmentClientPath = path.join(__dirname, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe');
+    ? path.join(process.resourcesPath, 'offline-downloads', 'android', 'SyncWatch-Android-v2.2.4-universal.apk')
+    : path.join(__dirname, 'dist', 'SyncWatch-Android-v2.2.4-universal.apk');
+  const developmentClientPath = path.join(__dirname, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.4-x64.exe');
   const clientDownloadPath = resolveClientDownloadPath({
     isPackaged: app.isPackaged,
     resourcesPath: process.resourcesPath,

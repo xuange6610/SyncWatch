@@ -14,6 +14,8 @@
     "server/index.js",
     "server/ai-relay.js",
     "server/macos-distribution.js",
+    "server/latest-release.js",
+    "server/client-address-privacy.js",
     "public/**/*",
     "package.json",
     "assets/app-icon.ico"
@@ -36,6 +38,6 @@
     "signExecutable": false
   },
   "portable": {
-    "artifactName": "SyncWatch-v2.2.3-Full-Offline-Portable-${arch}.exe"
+    "artifactName": "SyncWatch-v2.2.4-Full-Offline-Portable-${arch}.exe"
   }
 }
