@@ -1,10 +1,10 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.2.4 源码候选；当前正式下载、哈希与 Release 以 v2.2.3 为准。v2.2.4 的候选文件名只有在 26+2 发布门禁通过后才成为可下载成品。
+适用范围：v2.2.4 正式版；当前下载、哈希与资产列表以 [GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 为准。该版本已通过 26 个维护者资产加 2 个 GitHub 源码归档的发布门禁。
 
 ## 直接使用
 
-双击 Release 中的 `SyncWatch-Standard-Server-Portable-v2.2.3-x64.exe`，或选择完整安装版/完整便携版。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
+双击 Release 中的 `SyncWatch-Standard-Server-Portable-v2.2.4-x64.exe`，或选择完整安装版/完整便携版。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
 
 程序窗口打开后，从“系统 → 复制局域网地址”复制链接。同一 Wi-Fi 或有线网络内的手机、平板、电脑、笔记本和电视浏览器均可访问。
 
@@ -125,7 +125,7 @@ Windows Server、Linux、Docker Compose、自定义端口、安全组、域名 H
 
 不要删除 `.secrets/`、`config.json` 或 `chat-history.jsonl`；这些文件分别保存邮件加密密钥与主机令牌、账户/房间状态和聊天记录。只有在明确需要恢复 `admin/admin888` 时才删除非隐藏的 `secrets/` 目录。`cache/`、`logs/`、`crash-dumps/` 是桌面端可再生缓存，服务器迁移时可一并复制，也可以在服务停止后清理。
 
-EXE 未使用商业代码签名证书，首次运行可能出现 SmartScreen；正式公开分发建议配置代码签名证书。v2.2.3 有四个用途不同的 Windows EXE，不存在一个能代表全部成品的“最终 EXE”哈希；请在 [GitHub Release v2.2.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.3) 中按文件名核对各自的字节数和 SHA-256。
+EXE 未使用商业代码签名证书，首次运行可能出现 SmartScreen；正式公开分发建议配置代码签名证书。v2.2.4 有四个用途不同的 Windows EXE，不存在一个能代表全部成品的“最终 EXE”哈希；请在 [GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 中按文件名核对各自的字节数和 SHA-256。
 
 ## 从源代码重新生成 EXE
 
@@ -135,7 +135,7 @@ EXE 未使用商业代码签名证书，首次运行可能出现 SmartScreen；�
 powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
 ```
 
-脚本先执行接口、硬化、媒体、Electron、多窗口同步、公网隧道和成品契约，再使用现有发布密钥构建并验证 Android v2.2.4 候选 APK。Windows 与 Android 正式构建产物必须由最终 Tag 源码直接生成到根目录 `dist/`；缺少真实 macOS ZIP 时完整离线 EXE 必须停止构建，不会用空文件、v2.2.3 旧包或改名文件补齐。
+脚本先执行接口、硬化、媒体、Electron、多窗口同步、公网隧道和成品契约，再使用现有发布密钥构建并验证 Android v2.2.4 APK。Windows 与 Android 正式构建产物必须由最终 Tag 源码直接生成到根目录 `dist/`；缺少真实 macOS ZIP 时完整离线 EXE 必须停止构建，不会用空文件、旧包或改名文件补齐。
 
 - `electron-pink.js`：桌面入口、屏幕捕获、托盘和公网隧道生命周期。
 - `server/index.js`：HTTP、Socket.IO、账号、聊天、权限、文件与同步状态。

@@ -2,7 +2,7 @@
 
 SyncWatch同步观影 的 macOS 服务器和客户端使用 Electron，支持 Intel x64 与 Apple Silicon arm64。macOS 产物必须在 macOS 主机或 macOS CI 上构建，Windows 不能生成可运行、可签名和可 notarize 的 macOS DMG。
 
-当前源码候选为 v2.2.4，下面文件名是最终 Tag 构建时的预期输出，不表示已经生成或上传。最新正式下载仍为 v2.2.3；v2.2.4 的 12 个 macOS 应用资产必须在真实 macOS runner 上从最终 Tag 重新构建并逐项验证。
+当前正式版本为 v2.2.4。下面 12 个 macOS 应用资产已由真实 macOS x64/arm64 runner 从最终 Tag 构建，并在发布工作流中完成平台/架构、包闭包、实际启动、大小和 SHA-256 验证；下载仍以 [GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 的实时资产列表为准。
 
 ## 构建前
 
@@ -55,7 +55,7 @@ GitHub Release 使用仅含 ASCII 的公共下载名，避免平台上传接口�
 - 部署包中的 `mac/` 目录。
 
 文件名必须与以下格式一致：
-v2.2.4 候选资产预期使用 `SyncWatch-Server-macOS-v2.2.4-x64.dmg`、`SyncWatch-Server-macOS-v2.2.4-arm64.zip`（客户端同理）。旧的中文本地文件名仍可被服务器兼容读取；只有来自最终 Tag、真实存在、非空且通过平台/架构/闭包/启动/SHA-256 验证的文件才允许出现在下载按钮和 `/api/public-config` 中。
+v2.2.4 正式资产使用 `SyncWatch-Server-macOS-v2.2.4-x64.dmg`、`SyncWatch-Server-macOS-v2.2.4-arm64.zip`（客户端同理）。旧的中文本地文件名仍可被服务器兼容读取；只有来自最终 Tag、真实存在、非空且通过平台/架构/闭包/启动/SHA-256 验证的文件才允许出现在下载按钮和 `/api/public-config` 中。
 
 ### 从 HTTPS 发布站点提供产物
 
