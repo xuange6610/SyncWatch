@@ -1,6 +1,6 @@
 # SyncWatch同步观影 Android
 
-This is the Android client and phone-hosted server for SyncWatch同步观影 v2.2.5. The APK
+This is the Android client and phone-hosted server for SyncWatch同步观影 v2.2.6. The APK
 embeds the same production `server/index.js`, web UI, Express/Socket.IO stack, and
 an official Node.js Mobile 18.20.4 runtime for arm64-v8a, armeabi-v7a, and x86_64.
 The phone server runs in a dedicated `specialUse` foreground-service process so
@@ -65,7 +65,7 @@ replacement key or silently signs a release with Android's debug certificate. Ke
 After Gradle finishes, the script verifies package/version metadata, cryptographic
 signature and signing-certificate identity, all three native ABIs, the embedded Node
 dependency closure, and byte-for-byte freshness of `server/index.js` and `public/**`.
-The verified artifact is written to `SyncWatch同步观影-v2.2.5.apk`.
+The verified artifact is written to `SyncWatch同步观影-v2.2.6.apk`.
 
 ## Android 15 / 16 KB pages
 
@@ -85,5 +85,5 @@ runtime):
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\android-package.ps1 -SourceOnly
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\android-package.ps1 -ApkPath .\dist\SyncWatch-Android-v2.2.5-universal.apk
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\android-package.ps1 -ApkPath .\dist\SyncWatch-Android-v2.2.6-universal.apk
 ```

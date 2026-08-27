@@ -53,7 +53,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.2.5';
+const APP_VERSION = 'v2.2.6';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -2183,10 +2183,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.5.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.6.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.5-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.5-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.6-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.6-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const macServerDownloadPaths = normalizeMacDownloadPaths(options.macServerDownloadPaths);
@@ -6376,7 +6376,7 @@ async function startSyncWatchServer(options = {}) {
       const label = kind === 'macos-server' ? '服务器' : '客户端';
       return {
         kind, extension, architecture, label: `macOS ${label}`,
-        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.5-${architecture}${extension}`)
+        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.6-${architecture}${extension}`)
       };
     }
     return null;
@@ -6554,7 +6554,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.5-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.6-x64.exe');
   });
 
   app.get('/api/macos-server-download', httpRateLimit('macos-server-download', 12, 60 * 60 * 1000), (req, res) => {
@@ -6564,7 +6564,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macServerDistribution),
       error: '苹果服务器安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-服务器-v2.2.5-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-服务器-v2.2.6-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6579,7 +6579,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macClientDistribution),
       error: '苹果客户端安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-客户端-v2.2.5-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-客户端-v2.2.6-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6669,7 +6669,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.5-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.6-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -8194,7 +8194,7 @@ async function startSyncWatchServer(options = {}) {
 
   async function streamBackupArchive(res, metadata, entries) {
     res.type('application/vnd.syncwatch.backup');
-    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.5-${metadata.scope}.swbackup`));
+    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.6-${metadata.scope}.swbackup`));
     const metadataBuffer = Buffer.from(JSON.stringify(metadata), 'utf8');
     const entryBuffers = entries.map((entry) => ({
       entry,
@@ -8449,7 +8449,7 @@ async function startSyncWatchServer(options = {}) {
         const entries = fullSnapshot ? backupDataEntries(scopes) : (scopes.includes('media-index') ? backupArtifactEntries(state.files) : []);
         return await streamBackupArchive(res, output, entries);
       }
-      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.5-${output.scope}.json`));
+      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.6-${output.scope}.json`));
       return res.json(output);
     } catch (error) { return next(error); }
   });
@@ -14682,7 +14682,7 @@ async function startSyncWatchServer(options = {}) {
       discoverySocket.on('message', (message, remote) => {
         if (!privateOrLoopbackAddress(remote.address) || String(message).trim() !== 'SYNCWATCH_DISCOVER_V1') return;
         const payload = Buffer.from(JSON.stringify({
-          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.5', server: os.hostname(), version: APP_VERSION,
+          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.6', server: os.hostname(), version: APP_VERSION,
           port: actualPort, addresses: advertisedNetworkAddresses(),
           rooms: Object.values(state.rooms).filter((room) => visibleRoom(room) && !room.archived).map((room) => ({
             id: room.id, name: room.name, maxUsers: room.maxUsers, online: roomUsers(room.id).length, passwordRequired: Boolean(room.passwordHash)

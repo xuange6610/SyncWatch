@@ -281,6 +281,13 @@
               <button id="controlRequestAllowBtn" class="primary-button" type="button">允许控制</button>
             </section>
             <button id="fullscreenShowBtn" class="fullscreen-show-button is-hidden" type="button">显示界面与聊天</button>
+            <button id="fullscreenLockBtn" class="fullscreen-lock-button" type="button" aria-pressed="false" aria-label="锁定全屏画面操作" title="锁定后防止误触暂停和拖动进度"><span aria-hidden="true">🔓</span><span>锁定</span></button>
+            <output id="fullscreenGestureIndicator" class="fullscreen-gesture-indicator" aria-hidden="true"></output>
+            <aside id="fullscreenShortcutHint" class="fullscreen-shortcut-hint is-hidden" role="status" aria-live="polite">
+              <div><strong>按 F2 呼出边看边聊</strong><small>全屏中随时可以打开聊天；左侧上下滑动调亮度，右侧上下滑动调音量。</small></div>
+              <button id="dismissFullscreenShortcutHintBtn" type="button">知道了</button>
+              <button id="neverFullscreenShortcutHintBtn" type="button">永远不提示</button>
+            </aside>
             <div id="fullscreenOverlay" class="fullscreen-overlay" aria-hidden="true">
               <div class="fullscreen-actions">
                 <div class="fullscreen-transform-controls" aria-label="画面方向与缩放"><button id="portraitViewBtn" type="button">竖屏</button><button id="landscapeViewBtn" type="button">横屏</button><button id="zoomOutBtn" type="button" aria-label="缩小画面">−</button><output id="zoomLevel">100%</output><button id="zoomInBtn" type="button" aria-label="放大画面">＋</button><button id="zoomResetBtn" type="button">复位</button></div>
