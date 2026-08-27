@@ -16,7 +16,9 @@ function hasId(id) {
 for (const id of [
   'conciseModeBtn', 'danmakuSettingsBtn', 'danmakuSettingsPanel', 'danmakuColorInput', 'danmakuFontSizeInput',
   'chatOnlyToggle', 'skipSettingsBtn', 'skipSettingsModal', 'skipIntroSeconds', 'skipOutroSeconds',
-  'libraryQueueSelectAll', 'addSelectedToQueueBtn', 'queueSelectAll', 'removeSelectedQueueBtn'
+  'libraryQueueSelectAll', 'addSelectedToQueueBtn', 'queueSelectAll', 'removeSelectedQueueBtn',
+  'videoManagementBatchRenameBtn', 'videoManagementRenameTemplate', 'videoManagementRenamePreview',
+  'applyVideoManagementRenameBtn', 'videoManagementPreviewPlayer'
 ]) hasId(id);
 
 assert.match(app, /function handlePlayerDoubleClick\([\s\S]{0,650}cancelPendingFullscreenPlaybackGesture\(\)[\s\S]{0,300}showFullscreenControls\(\)/,
@@ -97,5 +99,19 @@ assert.match(app, /function handleRoomCopyRequestAction\([\s\S]{0,900}room-copy-
   '源房主必须可以同意或拒绝房间复制申请');
 assert.match(app, /function migrateRoomData\([\s\S]{0,1400}adminAction\(['"]migrate-room['"]/,
   '超级管理员必须可以迁移覆盖房间');
+
+assert.match(app, /elements\.mailTemplatePreset\?\.addEventListener\(['"]change['"], applyMailTemplatePreset\)/,
+  '选择内置邮件模板后必须立即应用并刷新预览');
+assert.match(app, /function updateMailTemplateDraft\(\)[\s\S]{0,260}if \(state\.mailTemplateKey\) \{/,
+  '邮件模板预览更新不能依赖草稿键已提前初始化');
+
+assert.match(app, /function managedVideoRenamePlan\([\s\S]{0,1100}replaceAll\('\{name\}'[\s\S]{0,240}replaceAll\('\{index\}'[\s\S]{0,240}replaceAll\('\{ext\}'/,
+  '批量重命名必须支持名称、序号和扩展名占位符');
+assert.match(app, /function applyVideoManagementRename\([\s\S]{0,1200}\/api\/files\/rename\/batch[\s\S]{0,300}renames:/,
+  '批量重命名必须通过服务端批量接口保存');
+assert.match(app, /function openVideoManagementPreview\([\s\S]{0,700}videoManagementPreviewPlayer[\s\S]{0,220}mediaUrlWithSessionToken/,
+  '视频管理窗口必须提供带会话鉴权的独立预览播放器');
+assert.match(css, /video-management-rename-grid[\s\S]{0,500}video-management-rename-preview-row/,
+  '批量重命名规则预览必须有稳定的响应式布局');
 
 console.log('v2.2.4 全屏、简洁模式、聊天、弹幕、队列与更新检查前端契约通过。');

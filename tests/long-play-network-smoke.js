@@ -134,6 +134,32 @@ function summarizePlaybackContinuity(rawSamples, tailWindowMs = LONG_PLAY_TAIL_W
   };
 }
 
+function summarizeRecoveryProgress(rawSamples, recoveryRelativeMs) {
+  const samples = (Array.isArray(rawSamples) ? rawSamples : [])
+    .map((sample) => ({
+      atMs: Number(sample?.atMs),
+      currentTime: Number(sample?.currentTime),
+      paused: Boolean(sample?.paused),
+      socketAuthenticated: Boolean(sample?.socketAuthenticated),
+      mediaFailed: Boolean(sample?.mediaFailed),
+      waitingForNetwork: Boolean(sample?.waitingForNetwork),
+      recoveryKey: String(sample?.recoveryKey || '')
+    }))
+    .filter((sample) => Number.isFinite(sample.atMs)
+      && Number.isFinite(sample.currentTime)
+      && sample.atMs >= Number(recoveryRelativeMs))
+    .sort((left, right) => left.atMs - right.atMs);
+  const healthy = samples.filter((sample) => sample.socketAuthenticated
+    && !sample.mediaFailed
+    && !sample.paused
+    && !sample.waitingForNetwork
+    && !sample.recoveryKey);
+  if (healthy.length < 2) return 0;
+  const initialTime = healthy[0].currentTime;
+  const furthestTime = Math.max(...healthy.map((sample) => sample.currentTime));
+  return Number(Math.max(0, furthestTime - initialTime).toFixed(3));
+}
+
 function assertLongPlaybackAcceptance({ playbackSeconds, boundedOutageMs, playbackSummary }) {
   if (playbackSeconds < LONG_PLAY_MINIMUM_SECONDS) return false;
   const continuity = playbackSummary?.continuity || {};
@@ -163,7 +189,8 @@ if (!app) {
     loadInitialBrowserUrl,
     sanitizeReportSnapshot,
     sanitizeSensitiveText,
-    summarizePlaybackContinuity
+    summarizePlaybackContinuity,
+    summarizeRecoveryProgress
   };
 } else {
 const fs = require('node:fs');
@@ -1092,8 +1119,7 @@ function summarizeReport(outageAtMs, recoveryAtMs) {
   const outageRelativeMs = outageAtMs - report.playback.startedAtMs;
   const recoveryRelativeMs = recoveryAtMs - report.playback.startedAtMs;
   const afterRecovery = report.playback.samples.filter((sample) => sample.atMs >= recoveryRelativeMs);
-  const recoveryProgress = afterRecovery.length
-    ? Math.max(...afterRecovery.map((sample) => sample.currentTime)) - afterRecovery[0].currentTime : 0;
+  const recoveryProgress = summarizeRecoveryProgress(report.playback.samples, recoveryRelativeMs);
   const outageEvents = report.playback.events.filter((event) => interesting.has(event.type)
     && event.atMs >= Math.max(0, outageRelativeMs - 1000)
     && event.atMs <= recoveryRelativeMs + 5000);

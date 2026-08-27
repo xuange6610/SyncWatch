@@ -6,7 +6,7 @@
   "compression": "maximum",
   "electronLanguages": ["zh-CN"],
   "removePackageScripts": true,
-  "artifactName": "SyncWatch-Server-macOS-v2.2.4-${arch}.${ext}",
+  "artifactName": "SyncWatch-Server-macOS-v2.2.5-${arch}.${ext}",
   "directories": { "output": "dist" },
   "files": [
     "electron-pink.js",
