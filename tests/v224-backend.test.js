@@ -151,6 +151,31 @@ async function uploadVideo(baseUrl, token, filename, content) {
     const remoteB = await ack(source, 'add-remote-video', { url: 'https://media.example.test/b.mp4', name: 'b.mp4' });
     assert.equal(remoteA.success, true, remoteA.error);
     assert.equal(remoteB.success, true, remoteB.error);
+    const duplicateRenameResponse = await fetch(`${baseUrl}/api/files/rename/batch`, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${sourceAuth.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ renames: [
+        { fileId: remoteA.file.id, originalName: '重复名称.mp4' },
+        { fileId: remoteB.file.id, originalName: '重复名称.mp4' }
+      ] })
+    });
+    assert.equal(duplicateRenameResponse.status, 409, 'batch rename must reject duplicate output atomically');
+    const unchangedAfterConflict = await (await fetch(`${baseUrl}/api/files`, {
+      headers: { Authorization: `Bearer ${sourceAuth.token}` }
+    })).json();
+    assert.equal(unchangedAfterConflict.find((file) => file.id === remoteA.file.id)?.originalName, 'a.mp4');
+    assert.equal(unchangedAfterConflict.find((file) => file.id === remoteB.file.id)?.originalName, 'b.mp4');
+    const batchRenameResponse = await fetch(`${baseUrl}/api/files/rename/batch`, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${sourceAuth.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ renames: [
+        { fileId: remoteA.file.id, originalName: '银幕典藏-01.mp4' },
+        { fileId: remoteB.file.id, originalName: '银幕典藏-02' }
+      ] })
+    });
+    const batchRename = await batchRenameResponse.json();
+    assert.equal(batchRenameResponse.status, 200, batchRename.error);
+    assert.equal(batchRename.renamed, 2);
+    assert.deepEqual(batchRename.files.map((file) => file.originalName), ['银幕典藏-01.mp4', '银幕典藏-02.mp4'],
+      'batch rename must preserve a missing source extension');
     const clearedInitialQueue = await ack(source, 'queue-action', { action: 'batch-remove', fileIds: [remoteA.file.id, remoteB.file.id] });
     assert.equal(clearedInitialQueue.success, true, clearedInitialQueue.error);
     const batched = await ack(source, 'queue-action', { action: 'batch-add', fileIds: [remoteA.file.id, remoteB.file.id, remoteA.file.id] });

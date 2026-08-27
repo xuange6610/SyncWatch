@@ -53,7 +53,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.2.4';
+const APP_VERSION = 'v2.2.5';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -2183,10 +2183,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.4.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.5.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.4-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.4-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.5-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.5-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const macServerDownloadPaths = normalizeMacDownloadPaths(options.macServerDownloadPaths);
@@ -6376,7 +6376,7 @@ async function startSyncWatchServer(options = {}) {
       const label = kind === 'macos-server' ? '服务器' : '客户端';
       return {
         kind, extension, architecture, label: `macOS ${label}`,
-        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.4-${architecture}${extension}`)
+        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.5-${architecture}${extension}`)
       };
     }
     return null;
@@ -6554,7 +6554,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.4-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.5-x64.exe');
   });
 
   app.get('/api/macos-server-download', httpRateLimit('macos-server-download', 12, 60 * 60 * 1000), (req, res) => {
@@ -6564,7 +6564,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macServerDistribution),
       error: '苹果服务器安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-服务器-v2.2.4-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-服务器-v2.2.5-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6579,7 +6579,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macClientDistribution),
       error: '苹果客户端安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-客户端-v2.2.4-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-客户端-v2.2.5-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6630,11 +6630,15 @@ async function startSyncWatchServer(options = {}) {
     }
     sessions.delete(req.syncWatchToken);
     res.setHeader('Set-Cookie', 'syncwatch_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+    // Remove the member before acknowledging logout so every remaining
+    // client receives the presence update in the same turn. Deferring this
+    // to setImmediate left a short window where a logged-out account still
+    // appeared online and could block a replacement login.
+    const targetSocket = io.sockets.sockets.get(session.socketId);
+    stopScreenShare(session.socketId);
+    removeOnlineUser(session.socketId, { scheduleClose: false, reason: 'logout' });
     res.json({ success: true });
     setImmediate(() => {
-      const targetSocket = io.sockets.sockets.get(session.socketId);
-      stopScreenShare(session.socketId);
-      removeOnlineUser(session.socketId, { scheduleClose: false });
       targetSocket?.disconnect(true);
       if (isGuest) void purgeGuestAccount(session.username, clientIp).catch((error) => console.error('清除游客数据失败:', error.message));
     });
@@ -6665,7 +6669,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.4-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.5-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -7846,6 +7850,51 @@ async function startSyncWatchServer(options = {}) {
   app.get('/host-media/:roomId/:fileId', requireSession, requireHost, hostMediaPreviewRoute);
   app.head('/host-media/:roomId/:fileId', requireSession, requireHost, hostMediaPreviewRoute);
 
+  app.patch('/api/files/rename/batch', requireSession, (req, res) => {
+    const entries = Array.isArray(req.body?.renames) ? req.body.renames.slice(0, 500) : [];
+    if (!entries.length) return res.status(400).json({ success: false, error: '请选择需要重命名的影片' });
+    const roomId = req.syncWatchSessionRoomId;
+    const username = req.syncWatchSession.username;
+    const ids = entries.map((entry) => cleanText(entry?.fileId || entry?.id, 80)).filter(Boolean);
+    if (new Set(ids).size !== ids.length) return res.status(400).json({ success: false, error: '批量重命名列表包含重复影片' });
+    const files = ids.map(findFile);
+    if (files.some((file) => !file || file.roomId !== roomId)) return res.status(404).json({ success: false, error: '部分影片不存在或不属于当前房间' });
+    const denied = files.find((file) => username !== file.uploadedBy && !canManageMediaLibrary(username, roomId));
+    if (denied) return res.status(403).json({ success: false, error: `没有管理影片“${denied.originalName}”的权限` });
+    const planned = [];
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      const rawName = String(entries[index]?.originalName ?? entries[index]?.name ?? '').trim();
+      if (!rawName) return res.status(400).json({ success: false, error: `影片“${file.originalName}”的新文件名不能为空` });
+      let nextName = normalizeOriginalName(rawName);
+      const extension = path.extname(file.originalName || '');
+      if (!path.extname(nextName) && extension) nextName += extension;
+      if (!nextName || nextName.length > 180) return res.status(400).json({ success: false, error: `影片“${file.originalName}”的新文件名无效` });
+      planned.push({ file, before: file.originalName, nextName });
+    }
+    const selectedIds = new Set(files.map((file) => file.id));
+    const reserved = new Set(state.files.filter((file) => file.roomId === roomId && !selectedIds.has(file.id)).map((file) => String(file.originalName || '').toLocaleLowerCase()));
+    const plannedNames = new Set();
+    for (const { nextName, file } of planned) {
+      const key = nextName.toLocaleLowerCase();
+      if (reserved.has(key) || plannedNames.has(key)) return res.status(409).json({ success: false, error: `影片“${nextName}”已存在，请调整重命名规则后重试` });
+      plannedNames.add(key);
+    }
+    const changed = planned.filter(({ file, nextName }) => file.originalName !== nextName);
+    if (!changed.length) return res.json({ success: true, files: files.map(publicFile), renamed: 0, message: '所选影片名称没有变化' });
+    for (const { file, nextName } of changed) file.originalName = nextName;
+    const reassociated = reassociateSubtitles(roomId);
+    persist();
+    for (const { file, before, nextName } of changed) {
+      emitFileToVisible('file-updated', file);
+      recordOperation({ roomId, actor: username, action: 'file-rename', summary: `重命名文件：${before} → ${nextName}`, undo: { kind: 'file-rename', fileId: file.id, before, after: nextName } });
+    }
+    for (const changedSubtitle of reassociated) emitFileToVisible('file-updated', changedSubtitle);
+    const actorName = state.accounts[username]?.displayName || username;
+    broadcastRoomNotice(roomId, `${actorName} 批量重命名了 ${changed.length} 个影片`, { kind: 'file-rename-batch', actor: username, actorName, fileIds: changed.map(({ file }) => file.id), important: true });
+    return res.json({ success: true, files: files.map(publicFile), renamed: changed.length, message: `已批量重命名 ${changed.length} 个影片` });
+  });
+
   app.patch('/api/files/:id', requireSession, (req, res) => {
     const file = findFile(cleanText(req.params.id, 80));
     if (!file || file.roomId !== currentRoomId()) return res.status(404).json({ success: false, error: '文件不存在' });
@@ -8145,7 +8194,7 @@ async function startSyncWatchServer(options = {}) {
 
   async function streamBackupArchive(res, metadata, entries) {
     res.type('application/vnd.syncwatch.backup');
-    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.4-${metadata.scope}.swbackup`));
+    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.5-${metadata.scope}.swbackup`));
     const metadataBuffer = Buffer.from(JSON.stringify(metadata), 'utf8');
     const entryBuffers = entries.map((entry) => ({
       entry,
@@ -8400,7 +8449,7 @@ async function startSyncWatchServer(options = {}) {
         const entries = fullSnapshot ? backupDataEntries(scopes) : (scopes.includes('media-index') ? backupArtifactEntries(state.files) : []);
         return await streamBackupArchive(res, output, entries);
       }
-      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.4-${output.scope}.json`));
+      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.5-${output.scope}.json`));
       return res.json(output);
     } catch (error) { return next(error); }
   });
@@ -9043,6 +9092,28 @@ async function startSyncWatchServer(options = {}) {
     for (const runtime of roomRuntimes.values()) {
       replaceIdentityFields(runtime.roomState, previousUsername, nextUsername);
       replaceIdentityFields(runtime.playbackChanges, previousUsername, nextUsername);
+    }
+  }
+
+  // Login names are the primary key for account data. Keep the same
+  // migration guarantees as guest conversion when a signed-in account
+  // changes that key, including pending requests and in-memory presence.
+  function migrateAccountIdentity(previousUsername, nextUsername, account) {
+    migrateGuestIdentity(previousUsername, nextUsername, account);
+    for (const key of ['loginLimitRequests', 'roomCopyRequests']) {
+      replaceIdentityFields(state.admin[key], previousUsername, nextUsername);
+    }
+    for (const key of ['accountAuditLogs', 'serverLogs', 'verificationCodeRecords']) {
+      replaceIdentityFields(state[key], previousUsername, nextUsername);
+    }
+    for (const session of sessions.values()) {
+      if (session.username === previousUsername) session.username = nextUsername;
+    }
+    for (const member of users.values()) {
+      if (member.username === previousUsername) member.username = nextUsername;
+    }
+    for (const entry of guestSessionsByIp.values()) {
+      if (entry?.username === previousUsername) entry.username = nextUsername;
     }
   }
 
@@ -11121,6 +11192,59 @@ async function startSyncWatchServer(options = {}) {
         recordOperation({ actor: user.username, action: 'display-name', summary: `修改名字：${before} → ${displayName}`, scope: 'account', undo: { kind: 'display-name', username: user.username, before, after: displayName } });
         for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('users-list', usersList(id));
         return acknowledgement?.({ success: true, profile: accountProfile(user.username), message: '账户名字已更新' });
+      }
+      if (action === 'change-login-username') {
+        const currentSession = validSession(user.sessionToken, false);
+        const previousUsername = user.username;
+        const nextUsername = cleanUsername(payload.username);
+        if (!currentSession || !account || state.accounts[previousUsername] !== account) {
+          return acknowledgement?.({ success: false, error: '登录已失效，请重新登录' });
+        }
+        if (previousUsername === 'admin' || account.guest) {
+          return acknowledgement?.({ success: false, error: previousUsername === 'admin' ? '内置 admin 登录账号不能修改' : '游客账号请先转换为正式账号后再修改登录账号' });
+        }
+        const usernameError = usernamePolicyError(payload.username, state.admin.usernamePolicy);
+        if (usernameError) return acknowledgement?.({ success: false, error: usernameError });
+        if (nextUsername === previousUsername) return acknowledgement?.({ success: true, profile: accountProfile(previousUsername), message: '登录账号没有变化' });
+        if (state.accounts[nextUsername] || identityReserved(nextUsername)) {
+          return acknowledgement?.({ success: false, code: 'USERNAME_TAKEN', error: state.accounts[nextUsername] ? '该登录账号已存在' : '该登录账号属于已删除的历史账号，不能再次使用' });
+        }
+        if (!await verifyPasswordAsync(payload.currentPassword || '', account.passwordHash)) {
+          return acknowledgement?.({ success: false, code: 'CURRENT_PASSWORD_INVALID', error: '当前密码错误' });
+        }
+        const previousDisplayName = account.displayName;
+        let chatMigrated = false;
+        let identityMigrated = false;
+        try {
+          await renameStoredChatIdentity(previousUsername, nextUsername, account.displayName || nextUsername);
+          chatMigrated = true;
+          migrateAccountIdentity(previousUsername, nextUsername, account);
+          identityMigrated = true;
+          delete state.accounts[previousUsername];
+          state.accounts[nextUsername] = account;
+          if (account.displayName === previousUsername) account.displayName = nextUsername;
+          persist();
+        } catch (error) {
+          if (identityMigrated) {
+            migrateAccountIdentity(nextUsername, previousUsername, account);
+            delete state.accounts[nextUsername];
+            state.accounts[previousUsername] = account;
+            account.displayName = previousDisplayName;
+          }
+          if (chatMigrated) {
+            try { await renameStoredChatIdentity(nextUsername, previousUsername, previousDisplayName || previousUsername); } catch (_) {}
+          }
+          try { persist(); } catch (_) {}
+          return acknowledgement?.({ success: false, error: `登录账号修改失败：${cleanText(error.message, 180)}` });
+        }
+        for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('users-list', usersList(id));
+        recordOperation({ actor: nextUsername, action: 'account-username-change', summary: `修改登录账号：${previousUsername} → ${nextUsername}`, scope: 'account' });
+        accountChangeNotice(nextUsername, {
+          kind: 'account-profile', actor: nextUsername, actorName: account.displayName || nextUsername,
+          changed: ['username'], previousUsername, username: nextUsername,
+          message: `登录账号已从 ${previousUsername} 修改为 ${nextUsername}`
+        }, 'account-profile-updated', { kind: 'account-profile', profile: accountProfile(nextUsername), changed: ['username'], message: '登录账号已更新' });
+        return acknowledgement?.({ success: true, username: nextUsername, previousUsername, profile: accountProfile(nextUsername), message: '登录账号已更新，相关房间、好友、聊天和媒体记录已同步迁移' });
       }
       if (action === 'change-password') {
         const currentSession = validSession(user.sessionToken, false);
@@ -14558,7 +14682,7 @@ async function startSyncWatchServer(options = {}) {
       discoverySocket.on('message', (message, remote) => {
         if (!privateOrLoopbackAddress(remote.address) || String(message).trim() !== 'SYNCWATCH_DISCOVER_V1') return;
         const payload = Buffer.from(JSON.stringify({
-          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.4', server: os.hostname(), version: APP_VERSION,
+          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.5', server: os.hostname(), version: APP_VERSION,
           port: actualPort, addresses: advertisedNetworkAddresses(),
           rooms: Object.values(state.rooms).filter((room) => visibleRoom(room) && !room.archived).map((room) => ({
             id: room.id, name: room.name, maxUsers: room.maxUsers, online: roomUsers(room.id).length, passwordRequired: Boolean(room.passwordHash)

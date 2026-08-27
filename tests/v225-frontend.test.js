@@ -1,0 +1,11 @@
+'use strict';
+const assert = require('assert/strict');
+const fs = require('fs');
+const path = require('path');
+const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+assert.match(app, /action:\s*'change-login-username'/);
+assert.match(app, /profileLoginUsernamePassword/);
+assert.match(app, /ensureSocketConnectedForLogin/);
+assert.match(app, /reconnectSocket\s*=\s*true/);
+assert.match(app, /syncwatchGuestLogoutNotice/);
+console.log('v2.2.5 frontend session/account contracts passed');

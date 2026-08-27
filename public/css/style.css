@@ -1078,6 +1078,19 @@ input[type="checkbox"]:focus-visible { outline: 2px solid var(--theme-accent, va
 .video-management-row.processing { opacity: .58; filter: grayscale(.7); }
 .video-management-row .actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
 .video-management-row .actions button { padding:6px 9px; font-size:.84rem; }
+.video-management-rename-panel, .video-management-preview { display:grid; gap:10px; margin:10px 0; padding:12px; border:1px solid var(--line); border-radius:7px; background:color-mix(in srgb, var(--theme-panel-2) 88%, #000 12%); }
+.video-management-rename-panel .settings-title, .video-management-preview .settings-title { align-items:start; margin:0; }
+.video-management-rename-panel .settings-title > div, .video-management-preview .settings-title > div { display:grid; gap:3px; }
+.video-management-rename-panel small, .video-management-preview small { color:var(--muted); line-height:1.45; }
+.video-management-rename-grid { display:grid; grid-template-columns:minmax(220px,2fr) minmax(150px,1fr) minmax(150px,1fr) 110px 110px; gap:8px; align-items:end; }
+.video-management-rename-grid label { display:grid; gap:5px; min-width:0; color:var(--muted); font-size:.84rem; }
+.video-management-rename-grid input { width:100%; }
+.video-management-rename-preview { max-height:150px; overflow:auto; border:1px solid var(--line); border-radius:6px; }
+.video-management-rename-preview-row { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:8px; align-items:center; padding:7px 9px; border-bottom:1px solid var(--line); font-size:.84rem; }
+.video-management-rename-preview-row:last-child { border-bottom:0; }
+.video-management-rename-preview-row span, .video-management-rename-preview-row strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.video-management-rename-preview-row.invalid strong { color:var(--red); }
+.video-management-preview video { width:100%; max-height:42vh; min-height:220px; object-fit:contain; background:#000; border:1px solid var(--line); border-radius:6px; }
 .friend-chat-modal-card { width:min(820px, calc(100vw - 28px)); max-height:min(92vh, 920px); overflow:visible; }
 .friend-chat-history { min-height: 320px; max-height: 58vh; overflow:auto; display:grid; gap:8px; padding:10px; background: color-mix(in srgb, var(--theme-panel-2) 88%, transparent); border-radius:8px; }
 .friend-chat-message { position:relative; max-width: 82%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--theme-panel); }
@@ -1117,6 +1130,9 @@ input[type="checkbox"]:focus-visible { outline: 2px solid var(--theme-accent, va
 @media (max-width: 700px) {
   .manage-select-row, .video-management-row { grid-template-columns:auto auto minmax(0,1fr); }
   .video-management-row .actions { grid-column:1 / -1; justify-content:flex-start; }
+  .video-management-rename-grid { grid-template-columns:1fr 1fr; }
+  .video-management-rename-grid label:first-child { grid-column:1 / -1; }
+  .video-management-preview video { min-height:180px; }
   .media-batch-footer { flex-direction:column; align-items:stretch; }
   .media-batch-footer label { min-width:0; }
   .friend-chat-modal-card { width:calc(100vw - 12px); max-height:calc(100dvh - 12px); padding:14px 10px; }
@@ -2783,7 +2799,7 @@ body.ui-copy-editable [data-ui-copy-attribute-keys]:hover { --copy-edit-outline:
 @media (max-width: 560px) {
   .ui-copy-editor-row { grid-template-columns: 1fr; gap: 5px; }
 }
-/* v2.2.4 account-scoped distraction controls and fullscreen safety. */
+/* Account-scoped distraction controls and fullscreen safety. */
 .danmaku-item {
   color: var(--account-danmaku-color, #fff);
   font-size: var(--account-danmaku-size, 20px);
