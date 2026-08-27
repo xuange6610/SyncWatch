@@ -4,7 +4,7 @@
 
 你的服务器、你的影片、你的数据。GitHub Pages 只能展示界面和教程，不能替代真实服务器；要创建房间、上传媒体、聊天和开启公网访问，请下载 [最新 Release](https://github.com/xuange6610/SyncWatch/releases/latest) 或按部署教程运行自己的实例。
 
-> 当前正式版本是 [v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4)，已设为 Latest；Release API 有 26 个维护者资产，连同两个 GitHub 源码归档共 28 个可见文件。
+> 当前正式版本是 [v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4)，已设为 Latest；`v2.2.5` 位于候选分支，尚未创建正式 Release。下载请以当前 Release API 实际资产为准。
 
 ## Wiki 导航
 
@@ -42,7 +42,7 @@
 
 ## 版本公告
 
-- [v2.2.4 更新公告](35-v2.2.4更新公告) - 当前 Latest；全屏、简洁模式、地址隐私、房间迁移、登录解限、权限、片头片尾和批量队列，已通过 26+2 文件门禁。
+- [v2.2.5 更新公告](36-v2.2.5更新公告) - 候选版本；影片批量重命名、账号身份迁移、即时退出、协议拒绝恢复和邮件模板即时预览。
 - [v2.2.3 更新公告](34-v2.2.3更新公告) - 下载与线上状态以 v2.2.3 Release 的 26+2 文件门禁为准。
 - [v2.2.2 候选更新公告](33-v2.2.2更新公告) - 已合并并创建 Tag，但未创建 Release 或上传资产的历史候选。
 - [v2.2.0 更新公告](30-v2.2.0更新公告)
@@ -57,7 +57,7 @@
 - 常见错误：[仓库文档](https://github.com/xuange6610/SyncWatch/blob/main/docs/troubleshooting.md)
 - 使用技巧：[仓库文档](https://github.com/xuange6610/SyncWatch/blob/main/docs/tips-and-advantages.md)
 
-应用页面顶栏“关于”和桌面服务器“帮助”菜单使用上面的同一项目主页与 Wiki 地址。v2.2.4 同时补齐注册名额申请的数量撤回/删除、账户密码状态与安全重置、服务器权威网页 URL 恢复及跨域边界；纯 Node.js 控制台用 `--help`、`--open-browser` 和 `服务器运行信息.txt` 提供等价管理入口，不会伪装成带 Electron 菜单的桌面程序。
+应用页面顶栏“关于”和桌面服务器“帮助”菜单使用上面的同一项目主页与 Wiki 地址。v2.2.5 同时补齐注册名额申请的数量撤回/删除、账户密码状态与安全重置、服务器权威网页 URL 恢复及跨域边界；纯 Node.js 控制台用 `--help`、`--open-browser` 和 `服务器运行信息.txt` 提供等价管理入口，不会伪装成带 Electron 菜单的桌面程序。
 
 ## 安全边界
 

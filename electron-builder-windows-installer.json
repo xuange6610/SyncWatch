@@ -45,6 +45,6 @@
     "shortcutName": "SyncWatch同步观影",
     "runAfterFinish": true,
     "deleteAppDataOnUninstall": false,
-    "artifactName": "SyncWatch-v2.2.4-Full-Offline-Installer-${arch}.exe"
+    "artifactName": "SyncWatch-v2.2.5-Full-Offline-Installer-${arch}.exe"
   }
 }

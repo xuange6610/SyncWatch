@@ -5,8 +5,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY server ./server
 COPY public ./public
-COPY dist/SyncWatch-Android-v2.2.4-universal.apk ./mobile/SyncWatch同步观影-v2.2.4.apk
-COPY dist/SyncWatch-Experience-Client-Portable-v2.2.4-x64.exe ./client/SyncWatch同步观影-Client-v2.2.4.exe
+COPY dist/SyncWatch-Android-v2.2.5-universal.apk ./mobile/SyncWatch同步观影-v2.2.5.apk
+COPY dist/SyncWatch-Experience-Client-Portable-v2.2.5-x64.exe ./client/SyncWatch同步观影-Client-v2.2.5.exe
 COPY server-standalone.js ./server-standalone.js
 
 ENV NODE_ENV=production PORT=5000 SYNCWATCH_DATA_DIR=/app/SyncWatch同步观影-Data

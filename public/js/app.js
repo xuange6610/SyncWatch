@@ -60,7 +60,7 @@ try {
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.4', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.5', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -322,6 +322,9 @@ webShareModal closeWebShareBtn webUrlInput pasteWebUrlBtn openWebUrlBtn shareWeb
   myRoomsModal closeMyRoomsBtn myRoomsTitle myRoomsHint myRoomsList loginRoomReminderControls loginRoomReminderPreference loginTemporaryRoomBtn accountOverviewModal closeAccountOverviewBtn accountOverviewSearch accountOverviewPresence accountOverviewSort accountOverviewCount accountOverviewList openAccountOverviewBtn accountAuditLogModal closeAccountAuditLogBtn refreshAccountAuditLogsBtn accountAuditLogSearch accountAuditLogType accountAuditLogSelectAll deleteSelectedAccountAuditLogsBtn accountAuditLogList memberProfileModal closeMemberProfileBtn memberProfileContent locationAuthorizationsModal closeLocationAuthorizationsBtn refreshLocationAuthorizationsBtn locationAuthorizationsList viewLocationAuthorizationsBtn adminContactModal closeAdminContactBtn adminContactTitle adminContactNoteDisplay adminContactList tunnelTutorialModal closeTunnelTutorialBtn uploadLimitTutorialModal closeUploadLimitTutorialBtn uploadLimitTutorialActionBtn noticeModal closeNoticeBtn noticeForm noticeText noticeFont noticeDuration noticeFontSize noticeColor noticeScopeGroup noticeScope openPermissionsFromNoticeBtn conversionProgressModal closeConversionProgressBtn refreshConversionProgressBtn conversionProgressSummary mediaProcessingAdminControls mediaCompatibilityAutoConvert mediaProcessingConcurrency saveMediaProcessingBtn openConvertedMediaFolderBtn mediaProcessingControlStatus mediaProcessingSearch mediaProcessingSelectAll mediaProcessingDeleteSource deleteSelectedMediaProcessingBtn conversionProgressList downloadCenterModal closeDownloadCenterBtn checkDownloadUpdateBtn openGithubProjectBtn openGithubLatestBtn downloadUpdateStatus agreementModal agreementTitle agreementVersion agreementText agreementCheck acceptAgreementBtn declineAgreementBtn ownerExitModal ownerExitTitle desktopCloseModal desktopCloseStatus screenNoticeOverlay screenNoticeSender screenNoticeText closeScreenNoticeBtn roomSwitchSuccessOverlay roomSwitchSuccessText
 appDialog appDialogCloseBtn appDialogForm appDialogTitle appDialogDescription appDialogInputGroup appDialogInputLabel appDialogInput appDialogPasswordToggle appDialogSelectGroup appDialogSelectLabel appDialogSelect appDialogConfirmGroup appDialogConfirmLabel appDialogConfirmInput appDialogConfirmPasswordToggle appDialogError appDialogFillRiskBtn appDialogBackBtn appDialogCancelBtn appDialogConfirmBtn`.split(/\s+/);
 for (const id of ids) elements[id] = document.getElementById(id);
+for (const id of ['videoManagementBatchRenameBtn', 'videoManagementRenamePanel', 'closeVideoManagementRenameBtn', 'videoManagementRenameTemplate', 'videoManagementRenameFind', 'videoManagementRenameReplacement', 'videoManagementRenameStart', 'videoManagementRenamePadding', 'videoManagementRenamePreview', 'applyVideoManagementRenameBtn', 'videoManagementPreview', 'videoManagementPreviewTitle', 'videoManagementPreviewMeta', 'closeVideoManagementPreviewBtn', 'videoManagementPreviewPlayer']) {
+  elements[id] = document.getElementById(id);
+}
 // This setting was added after the main element registry; keep the optional
 // lookup explicit so older cached markup still initializes safely.
 elements.registrationAccountNoticeToggle = document.getElementById('registrationAccountNoticeToggle');
@@ -1706,6 +1709,14 @@ function bindUiEvents() {
   elements.videoManagementSelectAll?.addEventListener('change', toggleVideoManagementSelectAll);
   elements.videoManagementList?.addEventListener('click', handleVideoManagementAction);
   elements.videoManagementList?.addEventListener('change', handleVideoManagementSelection);
+  elements.videoManagementBatchRenameBtn?.addEventListener('click', openVideoManagementRenamePanel);
+  elements.closeVideoManagementRenameBtn?.addEventListener('click', closeVideoManagementRenamePanel);
+  elements.applyVideoManagementRenameBtn?.addEventListener('click', applyVideoManagementRename);
+  for (const input of [elements.videoManagementRenameTemplate, elements.videoManagementRenameFind, elements.videoManagementRenameReplacement, elements.videoManagementRenameStart, elements.videoManagementRenamePadding]) {
+    input?.addEventListener('input', renderVideoManagementRenamePreview);
+  }
+  elements.closeVideoManagementPreviewBtn?.addEventListener('click', closeVideoManagementPreview);
+  elements.videoManagementPreview?.addEventListener('click', (event) => { if (event.target === elements.videoManagementPreview) closeVideoManagementPreview(); });
   elements.videoManagementBatchCategoryBtn?.addEventListener('click', batchCategorizeManagedVideos);
   elements.videoManagementBatchNoteBtn?.addEventListener('click', batchNoteManagedVideos);
   elements.videoManagementBatchDeleteBtn?.addEventListener('click', batchDeleteManagedVideos);
@@ -1945,6 +1956,7 @@ function bindUiEvents() {
   elements.mailTutorialBtn?.addEventListener('click', toggleMailTutorial);
   elements.mailTemplateEvent?.addEventListener('change', switchMailTemplateEditor);
   elements.mailTemplateLanguage?.addEventListener('change', switchMailTemplateEditor);
+  elements.mailTemplatePreset?.addEventListener('change', applyMailTemplatePreset);
   elements.applyMailTemplatePresetBtn?.addEventListener('click', applyMailTemplatePreset);
   elements.previewMailTemplateBtn?.addEventListener('click', previewMailTemplate);
   elements.restoreMailTemplateBtn?.addEventListener('click', restoreMailTemplate);
@@ -2988,6 +3000,20 @@ function connectSocket() {
   setInterval(reportWatchProgress, 15000);
 }
 
+async function ensureSocketConnectedForLogin(timeout = 10000) {
+  if (state.socket?.connected) return true;
+  const socket = state.socket;
+  if (!socket) return false;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => { if (settled) return; settled = true; clearTimeout(timer); socket.off('connect', onConnect); socket.off('connect_error', onError); resolve(value); };
+    const onConnect = () => finish(true);
+    const onError = () => finish(false);
+    const timer = setTimeout(() => finish(false), timeout);
+    socket.once('connect', onConnect); socket.once('connect_error', onError); socket.connect();
+  });
+}
+
 async function emitAck(event, payload = {}, timeout = 15000) {
   const socket = state.socket;
   if (!socket?.connected) return { success: false, error: '当前未连接服务器', transient: true };
@@ -3873,6 +3899,7 @@ async function login(event) {
 async function submitAccountLogin() {
   setLoginStatus('正在登录…', true);
   try {
+    if (!await ensureSocketConnectedForLogin()) return setLoginStatus('连接服务器失败，请检查服务器地址后重试');
     const roomId = String(elements.roomIdInput?.value || '').trim().toUpperCase();
     const result = await emitAck('user-login', {
       username: elements.username.value.trim(), password: elements.password.value, roomId,
@@ -3899,6 +3926,7 @@ async function guestLogin() {
   const originalText = elements.guestLoginBtn.textContent;
   elements.guestLoginBtn.textContent = '正在进入游客模式…';
   try {
+    if (!await ensureSocketConnectedForLogin()) return setLoginStatus('连接服务器失败，请检查服务器地址后重试');
     const roomId = String(elements.roomIdInput?.value || '').trim().toUpperCase();
     let result = await emitAck('guest-login', {
       roomId,
@@ -4602,11 +4630,14 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   const sessionResponse = await fetchWithTimeout('/api/session', { method: 'POST', headers: authHeaders({}, token) }, 12000);
   if (!sessionResponse.ok) throw new Error('无法建立媒体访问会话，请重新登录');
   if (!await ensureAgreementAccepted(result)) {
+    state.intentionalLogout = true;
+    try { sessionStorage.removeItem('syncwatchGuestLogoutNotice'); } catch (_) {}
     try { await fetchWithTimeout('/api/logout', { method: 'POST', headers: authHeaders({}, token) }, 5000); } catch (_) {}
     clearSession();
-    updateConnection(Boolean(state.socket?.connected), state.socket?.connected ? '已连接' : '连接中断');
+    state.socket?.disconnect();
+    updateConnection(false, '未登录');
     setLoginStatus('未同意服务协议，已取消本次登录');
-    void refreshLoginSurfaceAfterCancelledAuthentication();
+    void refreshLoginSurfaceAfterCancelledAuthentication({ reconnectSocket: false });
     return;
   }
   const files = await fetchFiles(token);
@@ -4699,12 +4730,12 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   if (reconnecting) toast('连接已恢复，播放状态已重新同步', 'success', 2400);
 }
 
-async function refreshLoginSurfaceAfterCancelledAuthentication() {
+async function refreshLoginSurfaceAfterCancelledAuthentication({ reconnectSocket = true } = {}) {
   state.intentionalLogout = false;
-  if (!state.socket?.connected) state.socket?.connect();
+  if (reconnectSocket && !state.socket?.connected) state.socket?.connect();
   await loadPublicConfig(true);
   await Promise.allSettled([loadOnlineRooms(), loadRoomInfo()]);
-  updateConnection(Boolean(state.socket?.connected), state.socket?.connected ? '已连接' : '正在自动重连');
+  updateConnection(Boolean(state.socket?.connected), state.socket?.connected ? '已连接' : '未登录');
 }
 
 async function reportMemberLocation({ interactive = false } = {}) {
@@ -5204,7 +5235,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.4';
+    const current = state.publicConfig.version || 'v2.2.5';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -5672,7 +5703,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.4.apk';
+    link.download = 'SyncWatch同步观影-v2.2.5.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -6187,6 +6218,8 @@ function openVideoManagement() {
   if (!state.authenticated) return toast('请先登录后管理影片', 'error');
   state.videoManagementVisible = true;
   state.selectedManagementFiles.clear();
+  closeVideoManagementPreview();
+  closeVideoManagementRenamePanel();
   elements.videoManagementModal?.classList.remove('is-hidden');
   populateMediaBatchCategories();
   renderVideoManagementList();
@@ -6195,7 +6228,7 @@ function openVideoManagement() {
 function renderVideoManagementList() {
   if (!elements.videoManagementList) return;
   const allowed = canManageVideoSystem();
-  for (const control of [elements.videoManagementSearch, elements.videoManagementCategory, elements.videoManagementSelectAll, elements.videoManagementBatchCategoryBtn, elements.videoManagementBatchNoteBtn, elements.videoManagementBatchDeleteBtn, elements.exportVideoManagementBtn, elements.importVideoManagementBtn]) {
+  for (const control of [elements.videoManagementSearch, elements.videoManagementCategory, elements.videoManagementSelectAll, elements.videoManagementBatchRenameBtn, elements.videoManagementBatchCategoryBtn, elements.videoManagementBatchNoteBtn, elements.videoManagementBatchDeleteBtn, elements.exportVideoManagementBtn, elements.importVideoManagementBtn]) {
     if (control) control.disabled = !allowed;
   }
   elements.videoManagementModal?.classList.toggle('permission-denied-view', !allowed);
@@ -6207,7 +6240,7 @@ function renderVideoManagementList() {
   state.selectedManagementFiles = new Set([...state.selectedManagementFiles].filter((id) => manageableMediaFiles().some((file) => file.id === id)));
   elements.videoManagementList.innerHTML = files.length ? files.map((file) => {
     const processing = file.compatibility?.required && !file.compatibility?.ready && ['queued', 'converting'].includes(file.compatibility?.status);
-    return `<article class="video-management-row ${processing ? 'processing' : ''}" data-managed-file="${escapeHtml(file.id)}"><label class="manage-row-check"><input type="checkbox" data-managed-file-select="${escapeHtml(file.id)}" ${state.selectedManagementFiles.has(file.id) ? 'checked' : ''} ${processing ? 'disabled' : ''}><span>选择</span></label><span class="video-management-icon">${fileIcon(file.category)}</span><div><strong>${escapeHtml(file.originalName)}</strong><p>${escapeHtml(fileCollectionName(file))} · ${formatSize(file.size)} · ${escapeHtml(file.uploadedBy || '')}</p><small>${escapeHtml(file.note || '暂无备注')}${processing ? ` · 正在转换 ${Math.round(Number(file.compatibility.progress) || 0)}%` : ''}</small></div><div class="actions"><button data-video-manage="${processing ? 'processing-progress' : 'play'}" type="button">${processing ? '查看处理进度' : isTimedFile(file) ? '播放' : '查看'}</button><button data-video-manage="rename" type="button" ${processing ? 'disabled' : ''}>重命名</button><button data-video-manage="category" type="button" ${processing ? 'disabled' : ''}>分类</button><button data-video-manage="note" type="button" ${processing ? 'disabled' : ''}>备注</button><button data-video-manage="favorite" type="button" ${processing ? 'disabled' : ''}>收藏</button><button data-video-manage="delete" class="danger-text-button" type="button" ${processing ? 'disabled' : ''}>删除</button></div></article>`;
+    return `<article class="video-management-row ${processing ? 'processing' : ''}" data-managed-file="${escapeHtml(file.id)}"><label class="manage-row-check"><input type="checkbox" data-managed-file-select="${escapeHtml(file.id)}" ${state.selectedManagementFiles.has(file.id) ? 'checked' : ''} ${processing ? 'disabled' : ''}><span>选择</span></label><span class="video-management-icon">${fileIcon(file.category)}</span><div><strong>${escapeHtml(file.originalName)}</strong><p>${escapeHtml(fileCollectionName(file))} · ${formatSize(file.size)} · ${escapeHtml(file.uploadedBy || '')}</p><small>${escapeHtml(file.note || '暂无备注')}${processing ? ` · 正在转换 ${Math.round(Number(file.compatibility.progress) || 0)}%` : ''}</small></div><div class="actions"><button data-video-manage="${processing ? 'processing-progress' : 'play'}" type="button">${processing ? '查看处理进度' : isTimedFile(file) ? '播放' : '查看'}</button><button data-video-manage="preview" type="button" ${processing || !isTimedFile(file) ? 'disabled' : ''}>预览</button><button data-video-manage="rename" type="button" ${processing ? 'disabled' : ''}>重命名</button><button data-video-manage="category" type="button" ${processing ? 'disabled' : ''}>分类</button><button data-video-manage="note" type="button" ${processing ? 'disabled' : ''}>备注</button><button data-video-manage="favorite" type="button" ${processing ? 'disabled' : ''}>收藏</button><button data-video-manage="delete" class="danger-text-button" type="button" ${processing ? 'disabled' : ''}>删除</button></div></article>`;
   }).join('') : '<p class="muted">没有符合条件的上传影片</p>';
   if (elements.videoManagementSelectAll) elements.videoManagementSelectAll.checked = Boolean(files.length) && files.every((file) => state.selectedManagementFiles.has(file.id));
 }
@@ -6224,12 +6257,113 @@ function toggleVideoManagementSelectAll() {
   renderVideoManagementList();
 }
 
+function selectedManagedVideos() {
+  return managedVideoFiles().filter((file) => state.selectedManagementFiles.has(file.id));
+}
+
+function splitManagedVideoName(originalName) {
+  const value = String(originalName || '').trim();
+  const dot = value.lastIndexOf('.');
+  return dot > 0 ? { name: value.slice(0, dot), ext: value.slice(dot) } : { name: value, ext: '' };
+}
+
+function managedVideoRenamePlan() {
+  const template = String(elements.videoManagementRenameTemplate?.value || '').trim();
+  const find = String(elements.videoManagementRenameFind?.value || '');
+  const replacement = String(elements.videoManagementRenameReplacement?.value || '');
+  const start = Math.max(0, Math.min(999999, Math.floor(Number(elements.videoManagementRenameStart?.value) || 0)));
+  const padding = Math.max(1, Math.min(8, Math.floor(Number(elements.videoManagementRenamePadding?.value) || 1)));
+  const files = selectedManagedVideos();
+  return files.map((file, offset) => {
+    const parts = splitManagedVideoName(file.originalName);
+    const base = find ? parts.name.split(find).join(replacement) : parts.name;
+    const index = String(start + offset).padStart(padding, '0');
+    let originalName = template.replaceAll('{name}', base).replaceAll('{index}', index).replaceAll('{ext}', parts.ext).trim();
+    if (originalName && !splitManagedVideoName(originalName).ext && parts.ext) originalName += parts.ext;
+    return { fileId: file.id, before: file.originalName, originalName };
+  });
+}
+
+function renderVideoManagementRenamePreview() {
+  if (!elements.videoManagementRenamePreview) return;
+  const plan = managedVideoRenamePlan();
+  if (!plan.length) {
+    elements.videoManagementRenamePreview.innerHTML = '<p class="muted">选择影片后显示重命名预览</p>';
+    if (elements.applyVideoManagementRenameBtn) elements.applyVideoManagementRenameBtn.disabled = true;
+    return;
+  }
+  const duplicateNames = new Set(); const seen = new Set();
+  for (const item of plan) {
+    const key = item.originalName.toLocaleLowerCase();
+    if (!item.originalName || item.originalName.length > 180 || seen.has(key)) duplicateNames.add(key);
+    seen.add(key);
+  }
+  elements.videoManagementRenamePreview.innerHTML = plan.map((item) => {
+    const invalid = !item.originalName || item.originalName.length > 180 || duplicateNames.has(item.originalName.toLocaleLowerCase());
+    return `<div class="video-management-rename-preview-row ${invalid ? 'invalid' : ''}"><span title="${escapeHtml(item.before)}">${escapeHtml(item.before)}</span><span aria-hidden="true">→</span><strong title="${escapeHtml(item.originalName)}">${escapeHtml(item.originalName || '文件名不能为空')}</strong></div>`;
+  }).join('');
+  if (elements.applyVideoManagementRenameBtn) elements.applyVideoManagementRenameBtn.disabled = duplicateNames.size > 0;
+}
+
+function openVideoManagementRenamePanel() {
+  if (!state.selectedManagementFiles.size) return toast('请先选择需要重命名的影片', 'error');
+  elements.videoManagementRenamePanel?.classList.remove('is-hidden');
+  renderVideoManagementRenamePreview();
+  elements.videoManagementRenameTemplate?.focus();
+}
+
+function closeVideoManagementRenamePanel() {
+  elements.videoManagementRenamePanel?.classList.add('is-hidden');
+}
+
+async function applyVideoManagementRename() {
+  const renames = managedVideoRenamePlan();
+  if (!renames.length) return toast('请先选择需要重命名的影片', 'error');
+  if (elements.applyVideoManagementRenameBtn?.disabled) return toast('重命名结果包含空名称、重复名称或超过 180 个字符', 'error');
+  if (!await showAppConfirm(`确认按当前预览批量重命名 ${renames.length} 个影片吗？`, { title: '批量重命名影片', confirmText: '应用重命名' })) return;
+  try {
+    const response = await fetchWithTimeout('/api/files/rename/batch', {
+      method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ renames: renames.map(({ fileId, originalName }) => ({ fileId, originalName })) })
+    }, 30000);
+    const result = await response.json();
+    if (!response.ok || !result.success) return toast(result.error || '批量重命名失败', 'error');
+    for (const file of result.files || []) upsertFile(file);
+    closeVideoManagementRenamePanel();
+    renderFiles(); renderVideoManagementList();
+    toast(result.message || `已重命名 ${renames.length} 个影片`, 'success');
+  } catch (error) { toast(`批量重命名失败：${localizedError(error, '请稍后重试')}`, 'error'); }
+}
+
+function closeVideoManagementPreview() {
+  if (elements.videoManagementPreviewPlayer) {
+    elements.videoManagementPreviewPlayer.pause();
+    elements.videoManagementPreviewPlayer.removeAttribute('src');
+    elements.videoManagementPreviewPlayer.load();
+  }
+  elements.videoManagementPreview?.classList.add('is-hidden');
+}
+
+function openVideoManagementPreview(file) {
+  if (!file || !isTimedFile(file) || !elements.videoManagementPreviewPlayer) return toast('该文件不支持视频预览', 'error');
+  const selectedSource = mediaSourceFor(file);
+  const source = mediaUrlWithSessionToken(selectedSource.url);
+  if (!source) return toast('该影片暂无可用的预览地址', 'error');
+  elements.videoManagementPreviewTitle.textContent = `预览：${file.originalName}`;
+  elements.videoManagementPreviewMeta.textContent = `${fileCollectionName(file)} · ${formatSize(file.size)} · 不影响房间当前播放`;
+  elements.videoManagementPreviewPlayer.src = new URL(source, location.href).href;
+  elements.videoManagementPreview.classList.remove('is-hidden');
+  elements.videoManagementPreviewPlayer.load();
+  elements.videoManagementPreviewPlayer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 async function handleVideoManagementAction(event) {
   const button = event.target.closest('[data-video-manage]'); if (!button) return;
   if (button.dataset.videoManage === 'request-access') return requestMediaManagementAccess();
   const file = state.files.get(button.closest('[data-managed-file]')?.dataset.managedFile); if (!file) return;
   const action = button.dataset.videoManage;
   if (action === 'processing-progress') { state.mediaProcessingSearch = file.originalName || ''; if (elements.mediaProcessingSearch) elements.mediaProcessingSearch.value = state.mediaProcessingSearch; elements.videoManagementModal.classList.add('is-hidden'); state.videoManagementVisible = false; return openConversionProgress(); }
+  if (action === 'preview') return openVideoManagementPreview(file);
   if (action === 'play') { elements.videoManagementModal.classList.add('is-hidden'); state.videoManagementVisible = false; return selectFile(file.id); }
   if (action === 'rename') await renameFile(file);
   else if (action === 'category') await setFileCategory(file);
@@ -12175,11 +12309,13 @@ function selectedMailTemplateKey() {
 }
 
 function updateMailTemplateDraft() {
-  if (!state.mailTemplateKey || !elements.mailTemplateSubject || !elements.mailTemplateHtml) return;
-  state.mailTemplateDrafts[state.mailTemplateKey] = {
-    subject: elements.mailTemplateSubject.value,
-    html: elements.mailTemplateHtml.value
-  };
+  if (!elements.mailTemplateSubject || !elements.mailTemplateHtml) return;
+  if (state.mailTemplateKey) {
+    state.mailTemplateDrafts[state.mailTemplateKey] = {
+      subject: elements.mailTemplateSubject.value,
+      html: elements.mailTemplateHtml.value
+    };
+  }
   previewMailTemplate();
 }
 
@@ -14409,11 +14545,21 @@ function renderDevicesPage() {
   elements.accountContent.innerHTML = `<div class="settings-title"><div><h2>设备与自动登录</h2><p>取消授权后，该设备下次登录必须重新输入账号密码。</p></div></div>${devices.length ? `<div class="device-management-toolbar"><label class="check-line"><input data-device-select-all type="checkbox" ${allSelected ? 'checked' : ''}> 全选 ${devices.length} 台设备</label><button data-profile-action="revoke-selected-devices" class="danger-button" type="button" ${state.selectedDevices.size ? '' : 'disabled'}>取消所选自动登录${state.selectedDevices.size ? `（${state.selectedDevices.size}）` : ''}</button></div>` : ''}<div class="profile-list">${devices.length ? devices.map((device) => `<div class="profile-item" data-device-id="${escapeHtml(device.id)}"><label class="device-select" title="选择设备"><input data-device-select type="checkbox" value="${escapeHtml(device.id)}" ${state.selectedDevices.has(device.id) ? 'checked' : ''}></label><span>${/Android|安卓|iOS|苹果手机/.test(device.platform) ? '📱' : '🖥️'}</span><div><strong>${escapeHtml(device.name)}</strong><p>${escapeHtml(localizedDeviceLabel(device.browser, 'browser'))} · ${escapeHtml(localizedDeviceLabel(device.platform, 'platform'))}</p><small>${device.current ? '当前设备 · 已记住登录' : `${formatDate(device.lastSeen)} · 历史授权`}</small></div><button data-profile-action="revoke-device">取消自动登录</button></div>`).join('') : '<p class="muted">没有已授权设备</p>'}</div>`;
 }
 
+function appendLoginUsernameEditor(profile) {
+  if (!elements.accountContent || !profile || profile.username === 'admin' || profile.guest) return;
+  const card = document.createElement('div');
+  card.className = 'settings-card';
+  card.innerHTML = `<h3>登录账号</h3><p>修改后使用新账号登录；房间、好友、聊天、影片和设备授权会一并迁移。</p><label>新的登录账号<input id="profileLoginUsername" autocomplete="username" value="${escapeHtml(profile.username)}"></label><label>当前密码<input id="profileLoginUsernamePassword" type="password" autocomplete="current-password" placeholder="用于确认本次修改"></label><button data-profile-action="change-login-username" class="secondary-button" type="button">修改登录账号</button>`;
+  const profileCard = [...elements.accountContent.querySelectorAll('.settings-card')].find((entry) => entry.querySelector('#profileDisplayName'));
+  (profileCard || elements.accountContent.firstElementChild)?.after(card);
+}
+
 function renderAccountPage(page) {
   if (!state.profile) return;
   document.querySelectorAll('#accountNav [data-account-page]').forEach((button) => button.classList.toggle('active', button.dataset.accountPage === page));
   const p = state.profile;
   if (page === 'home') elements.accountContent.innerHTML = `<div class="profile-hero"><span class="profile-avatar">${p.avatar ? `<img src="${escapeHtml(p.avatar)}" alt="">` : '👤'}</span><div><h2>${escapeHtml(p.displayName || p.username)}</h2><p>Lv.${p.level} ${escapeHtml(p.levelName || '初映小星')}${p.superAdmin ? ' · 超级管理员' : ''} · ${escapeHtml(p.id)}</p><small>登录账号：${escapeHtml(p.username)} · ${escapeHtml(p.email || '未绑定邮箱')}</small></div></div><div class="level-progress-card${Date.now() < Number(state.accountLevelHighlightUntil || 0) ? ' level-up-highlight' : ''}"><div><strong>${Math.max(0, Number(p.experience) || 0)} 经验</strong><small>${p.nextLevelExperience === null ? '已经到达最高观看等级' : `距离下一等级还差 ${Math.max(0, Number(p.experienceToNext) || 0)} 经验`}</small></div><progress max="100" value="${Math.max(0, Math.min(100, Number(p.progressPercent) || 0))}"></progress></div><div class="stats-grid"><div class="stat"><strong>${p.stats.joinedRooms || 0}</strong><small>加入房间</small></div><div class="stat"><strong>${p.stats.createdRooms || (state.capabilities.owner ? 1 : 0)}</strong><small>创建房间</small></div><div class="stat"><strong>${Math.round((p.stats.watchSeconds || 0) / 3600)}</strong><small>观看小时</small></div></div><div class="settings-card"><h3>账户名字</h3><p>可修改对其他成员显示的名字，登录账号保持不变。</p><label>显示名称<input id="profileDisplayName" maxlength="24" autocomplete="nickname" value="${escapeHtml(p.displayName || p.username)}"></label><button data-profile-action="change-display-name" class="secondary-button">修改账户名字</button></div><div class="settings-card"><h3>资料设置</h3><label>绑定邮箱<input id="profileEmail" type="email" value="${escapeHtml(p.email || '')}"></label><small class="form-hint">更换绑定邮箱时，系统会向新邮箱发送 6 位验证码；已绑定邮箱也可验证码确认后安全清除。</small><label>头像图片地址（选填）<input id="profileAvatarInput" value="${escapeHtml(p.avatar || '')}"></label><label>或上传头像文件<input id="profileAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label><label>个性签名<input id="profileSignature" maxlength="160" value="${escapeHtml(p.signature || '')}"></label><div class="manage-actions"><button data-profile-action="upload-avatar" class="secondary-button">上传头像</button>${p.email ? '<button data-profile-action="unbind-email" class="secondary-button" type="button">验证码清除邮箱</button>' : ''}<button data-profile-action="save-profile" class="primary-button">保存资料</button></div></div><div class="settings-card danger-zone profile-danger-zone"><h3>注销账号</h3><p>注销会删除账户资料、历史记录和好友关系。此操作不可撤销，服务器会按策略处理您拥有的房间和上传文件。</p><button data-profile-action="delete-own-account" class="danger-button" type="button">永久注销我的账号</button></div>`;
+  if (page === 'home') appendLoginUsernameEditor(p);
   else if (page === 'room') renderProfileRooms();
   else if (page === 'media') renderProfileMedia('media');
   else if (page === 'favorites') renderProfileMedia('favorites');
@@ -14460,7 +14606,7 @@ function renderProfileRooms() {
     const passwordText = room.passwordRequired ? room.accessRemembered ? '密码已记住' : '首次进入需密码' : '无需密码';
     return `<article class="profile-item profile-room-item room-directory-card ${room.pinned ? 'pinned' : ''}" data-profile-room-id="${escapeHtml(room.id)}"><header><label class="profile-room-select"><input data-profile-item-select="room" type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedProfileRooms.has(room.id) ? 'checked' : ''}><span>选择</span></label><div><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><small>${escapeHtml(roomDirectoryStateText(room, state.room?.id))} · ${room.online}/${room.maxUsers} 人 · ${room.owned ? '我拥有' : `房主 ${escapeHtml(room.ownerName || room.ownerUsername || '未知')}`} · ${passwordText} · ${escapeHtml(room.category || '未分类')}</small></div><span>${escapeHtml(room.note || '暂无备注')}</span></header>${renderRoomDirectoryDetails(room)}<div class="profile-room-actions actions"><button data-profile-action="pin-room" data-room-id="${escapeHtml(room.id)}" data-pinned="${room.pinned ? '1' : '0'}" type="button">${room.pinned ? '取消置顶' : '置顶'}</button>${room.owned ? `<button data-profile-action="rename-room" data-room-id="${escapeHtml(room.id)}" type="button">重命名</button>` : ''}<button data-profile-action="enter-room" data-room-id="${escapeHtml(room.id)}" type="button" ${room.banned ? 'disabled' : ''}>进入</button></div></article>`;
   }).join('');
-  elements.accountContent.innerHTML = `<div class="settings-title"><div><h2>我的房间</h2><p>已拥有 ${Number(p.ownedRoomCount) || 0}/${Number(p.roomQuota) >= 9999 ? '不限' : Number(p.roomQuota) || 1} 个房间</p></div><button data-profile-action="request-room-quota" class="secondary-button" type="button">申请更多房间</button></div>${profileToolbar('room', rooms.length, state.selectedProfileRooms)}<div class="profile-list">${roomCards || '<div class="room-directory-empty"><p class="muted">暂无符合条件的房间</p><button data-profile-action="create-room" class="primary-button" type="button">创建正式房间</button></div>'}</div>`;
+  elements.accountContent.innerHTML = `<div class="settings-title"><div><h2>我的房间</h2><p>已拥有 ${Number(p.ownedRoomCount) || 0}/${p.superAdmin ? '99999' : Number(p.roomQuota) >= 9999 ? '不限' : Number(p.roomQuota) || 1} 个房间</p></div><button data-profile-action="request-room-quota" class="secondary-button" type="button">申请更多房间</button></div>${profileToolbar('room', rooms.length, state.selectedProfileRooms)}<div class="profile-list">${roomCards || '<div class="room-directory-empty"><p class="muted">暂无符合条件的房间</p><button data-profile-action="create-room" class="primary-button" type="button">创建正式房间</button></div>'}</div>`;
 }
 
 function renderProfileMedia(kind) {
@@ -15088,6 +15234,11 @@ async function handleAccountAction(event) {
     result = await saveProfileWithEmailVerification(profileFields);
   }
   else if (action === 'change-display-name') result = await emitAck('account-action', { action: 'change-display-name', displayName: document.getElementById('profileDisplayName').value.trim() });
+  else if (action === 'change-login-username') result = await emitAck('account-action', {
+    action: 'change-login-username',
+    username: document.getElementById('profileLoginUsername')?.value || '',
+    currentPassword: document.getElementById('profileLoginUsernamePassword')?.value || ''
+  });
   else if (action === 'change-password') result = await emitAck('account-action', { action: 'change-password', currentPassword: document.getElementById('currentAccountPassword').value, newPassword: document.getElementById('newAccountPassword').value });
   else if (action === 'remove-device') result = await emitAck('account-action', { action: 'remove-device', deviceId: button.closest('[data-device-id]').dataset.deviceId });
   else return;
@@ -15095,6 +15246,11 @@ async function handleAccountAction(event) {
   if (result?.success && result.profile) {
     state.profile = result.profile; updateAccountAvatar(result.profile.avatar);
     if (action === 'change-display-name') updateDisplayNameLocally(result.profile.username, result.profile.displayName);
+    if (action === 'change-login-username') {
+      state.user = { ...state.user, username: result.profile.username };
+      if (elements.username) elements.username.value = result.profile.username;
+      try { sessionStorage.setItem('syncwatchRetainedLogin', JSON.stringify({ username: result.profile.username, password: state.lastLoginPassword || '' })); } catch (_) {}
+    }
     renderAccountPage(action === 'remove-device' ? 'devices' : 'home');
   }
   toast(result?.message || result?.error, result?.success ? 'success' : 'error');

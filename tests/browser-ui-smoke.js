@@ -735,6 +735,21 @@ async function main() {
     assert.ok(mailLayout.cardWidth > 500 && mailLayout.editorWidth > 200 && mailLayout.previewWidth > 200, JSON.stringify(mailLayout));
     assert.ok(mailLayout.overflow <= 2, JSON.stringify(mailLayout));
     assert.equal(mailLayout.previewSandbox, '', JSON.stringify(mailLayout));
+    const mailPresetInteraction = await evaluate(cdp, `(() => {
+      const select = elements.mailTemplatePreset;
+      const target = [...select.options].find((option) => option.value === 'preset-02') || select.options[1];
+      if (!target) return { selected: '', subject: '', preview: '' };
+      select.value = target.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      return {
+        selected: select.value,
+        subject: elements.mailTemplatePreviewSubject.textContent,
+        preview: elements.mailTemplatePreview.srcdoc
+      };
+    })()`);
+    assert.equal(mailPresetInteraction.selected, 'preset-02', JSON.stringify(mailPresetInteraction));
+    assert.match(mailPresetInteraction.subject, /验证|Verify/, JSON.stringify(mailPresetInteraction));
+    assert.match(mailPresetInteraction.preview, /银幕黑金|SyncWatch同步观影/, JSON.stringify(mailPresetInteraction));
     const mailSettingsPath = path.join(outputDir, 'mail-settings-desktop.png'); await capture(cdp, mailSettingsPath); images.push(mailSettingsPath);
     await evaluate(cdp, `closeManagementHub(); true`);
     await evaluate(cdp, `elements.toastRegion.innerHTML = ''; elements.themeModal.classList.remove('is-hidden'); true`); await delay(120);
