@@ -4,6 +4,8 @@
 
 你的服务器、你的影片、你的数据。GitHub Pages 只能展示界面和教程，不能替代真实服务器；要创建房间、上传媒体、聊天和开启公网访问，请下载 [最新 Release](https://github.com/xuange6610/SyncWatch/releases/latest) 或按部署教程运行自己的实例。
 
+> 当前源码候选为 v2.2.4；上一正式版本是 [v2.2.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.3)。v2.2.4 只有在 Release 公开、API 恰有 26 个维护者资产且页面共 28 个文件后才算正式发布。
+
 ## Wiki 导航
 
 1. [新手快速开始](01-新手快速开始) - 下载、双击启动、首次登录、修改密码、建房和邀请成员。
@@ -40,6 +42,7 @@
 
 ## 版本公告
 
+- [v2.2.4 更新公告](35-v2.2.4更新公告) - 全屏、简洁模式、地址隐私、房间迁移、登录解限、权限、片头片尾和批量队列；线上状态以 26+2 文件门禁为准。
 - [v2.2.3 更新公告](34-v2.2.3更新公告) - 下载与线上状态以 v2.2.3 Release 的 26+2 文件门禁为准。
 - [v2.2.2 候选更新公告](33-v2.2.2更新公告) - 已合并并创建 Tag，但未创建 Release 或上传资产的历史候选。
 - [v2.2.0 更新公告](30-v2.2.0更新公告)
@@ -53,6 +56,8 @@
 - 源码仓库：[github.com/xuange6610/SyncWatch](https://github.com/xuange6610/SyncWatch)
 - 常见错误：[仓库文档](https://github.com/xuange6610/SyncWatch/blob/main/docs/troubleshooting.md)
 - 使用技巧：[仓库文档](https://github.com/xuange6610/SyncWatch/blob/main/docs/tips-and-advantages.md)
+
+应用页面顶栏“关于”和桌面服务器“帮助”菜单使用上面的同一项目主页与 Wiki 地址。v2.2.4 同时补齐注册名额申请的数量撤回/删除、账户密码状态与安全重置、服务器权威网页 URL 恢复及跨域边界；纯 Node.js 控制台用 `--help`、`--open-browser` 和 `服务器运行信息.txt` 提供等价管理入口，不会伪装成带 Electron 菜单的桌面程序。
 
 ## 安全边界
 

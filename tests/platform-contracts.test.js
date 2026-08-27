@@ -61,6 +61,12 @@ assert.match(server, /macServerDownloads/);
 assert.ok(fs.existsSync(path.join(root, 'server', 'macos-distribution.js')));
 assert.ok(packageManifest.build.files.includes('server/macos-distribution.js'));
 assert.ok(macServerConfig.files.includes('server/macos-distribution.js'));
+for (const serverModule of ['server/latest-release.js', 'server/client-address-privacy.js']) {
+  assert.ok(fs.existsSync(path.join(root, serverModule)));
+  assert.ok(packageManifest.build.files.includes(serverModule));
+  assert.ok(macServerConfig.files.includes(serverModule));
+  assert.equal(macClientConfig.files.includes(serverModule), false);
+}
 assert.equal(macDistributionExample.manifestVersion, 1);
 assert.ok(macDistributionExample.server.arm64.dmg.startsWith('https://'));
 assert.match(read('docs/macos-build.md'), /mac-distribution\.json/);

@@ -12,6 +12,7 @@ for (const stream of [process.stdout, process.stderr]) {
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { execFile } = require('child_process');
 const { APP_VERSION, startSyncWatchServer, resolveDefaultDataDir } = require('./server');
 const { createStandaloneTunnelManager } = require('./server/standalone-tunnel');
 
@@ -29,16 +30,78 @@ function validPort(value) {
   return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : null;
 }
 
-function commandLineValue(name) {
-  for (let index = 0; index < process.argv.length; index += 1) {
-    const value = String(process.argv[index] || '');
+function commandLineValue(name, argv = process.argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = String(argv[index] || '');
     if (value.startsWith(`--${name}=`)) return value.slice(name.length + 3);
     if (value === `--${name}`) {
-      const next = index + 1 < process.argv.length ? String(process.argv[index + 1] || '') : '';
+      const next = index + 1 < argv.length ? String(argv[index + 1] || '') : '';
       return next.startsWith('--') ? '' : next;
     }
   }
   return undefined;
+}
+
+function commandLineFlag(name, argv = process.argv) {
+  const exact = `--${name}`;
+  for (const entry of argv) {
+    const value = String(entry || '').trim().toLowerCase();
+    if (value === exact) return true;
+    if (value.startsWith(`${exact}=`)) return ['1', 'true', 'yes', 'on'].includes(value.slice(exact.length + 1));
+  }
+  return false;
+}
+
+function standaloneHelp() {
+  return [
+    `SyncWatch同步观影 ${APP_VERSION} 纯控制台服务端`,
+    '',
+    '此入口没有桌面窗口，不会显示 Electron 原生菜单。需要“系统 / 视图 / 帮助”顶部菜单时，请运行 Windows/macOS 桌面服务器程序。',
+    '',
+    '控制台等价入口：',
+    '  node server-standalone.js [选项]',
+    '  --open-browser              服务就绪后在默认浏览器打开私密管理入口',
+    '  --port <1-65535>            指定监听端口',
+    '  --trusted-proxies <列表>    指定可信反向代理 IP/CIDR（逗号分隔）',
+    '  --help, -h                  显示本帮助并退出',
+    '',
+    '启动设置保存在数据目录的 server-config.json；停止服务后再编辑。',
+    '运行地址、数据目录和私密管理入口保存在数据目录的 服务器运行信息.txt。',
+    '浏览器中的刷新、全屏和缩放分别使用 F5、F11、Ctrl+0。'
+  ].join('\n');
+}
+
+function standaloneManagementSummary({ ownerUrl, dataDir, settingsFile, runtimeInfoFile } = {}) {
+  return [
+    '纯控制台模式：此窗口只显示服务日志，不提供 Electron 原生顶部菜单。',
+    `管理页面：${ownerUrl}`,
+    `启动设置：${settingsFile}（停止服务后编辑）`,
+    `数据目录：${dataDir}`,
+    `完整运行信息：${runtimeInfoFile}`,
+    '视图操作请在浏览器使用 F5 刷新、F11 全屏、Ctrl+0 重置缩放。',
+    '命令帮助：node server-standalone.js --help'
+  ].join('\n');
+}
+
+function systemBrowserCommand(value, platform = process.platform) {
+  let url;
+  try { url = new URL(String(value || '')); }
+  catch (_) { return null; }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+  const target = url.toString();
+  if (platform === 'win32') return { command: 'rundll32.exe', args: ['url.dll,FileProtocolHandler', target] };
+  if (platform === 'darwin') return { command: 'open', args: [target] };
+  return { command: 'xdg-open', args: [target] };
+}
+
+function openSystemBrowser(value, { platform = process.platform, execFileImpl = execFile } = {}) {
+  const launch = systemBrowserCommand(value, platform);
+  if (!launch) return Promise.reject(new Error('管理页面地址无效'));
+  return new Promise((resolve, reject) => {
+    execFileImpl(launch.command, launch.args, { windowsHide: true, timeout: 10_000 }, (error) => {
+      if (error) reject(error); else resolve();
+    });
+  });
 }
 
 function atomicWrite(filename, contents, mode) {
@@ -132,6 +195,10 @@ function publicBaseUrl(settings) {
 }
 
 async function main() {
+  if (commandLineFlag('help') || process.argv.includes('-h')) {
+    console.log(standaloneHelp());
+    return { help: true };
+  }
   process.title = `SyncWatch同步观影 Server ${APP_VERSION}`;
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(path.join(DATA_DIR, 'config.json'))) console.log('首次加载需要生成数据库，请耐心等待哦~');
@@ -152,12 +219,17 @@ async function main() {
   if (publicUrl) allowedHosts.push(new URL(publicUrl).host.toLowerCase());
   const token = hostToken();
   const tunnelManager = createStandaloneTunnelManager({ rootDir: ROOT_DIR, dataDir: DATA_DIR, getPort: () => controller?.port || port });
-  // Keep the standalone server aligned with the packaged Android artifact.
-  const androidApkPath = path.join(ROOT_DIR, 'dist', 'SyncWatch-Android-v2.2.3-universal.apk');
+  // Keep source checkouts and the packaged standalone archive aligned with the
+  // same release while preserving the archive's user-facing download name.
+  const releaseVersion = String(APP_VERSION).replace(/^v/i, '');
+  const androidApkPath = [
+    path.join(ROOT_DIR, 'dist', `SyncWatch-Android-v${releaseVersion}-universal.apk`),
+    path.join(ROOT_DIR, 'mobile', `SyncWatch同步观影-v${releaseVersion}.apk`)
+  ].find((candidate) => fs.existsSync(candidate)) || '';
   const clientDownloadCandidates = [
-    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe'),
-    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.3.exe'),
-    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.3.exe')
+    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.4-x64.exe'),
+    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.4.exe'),
+    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.4.exe')
   ];
   const clientDownloadPath = clientDownloadCandidates.find((candidate) => fs.existsSync(candidate)) || '';
   const macArtifactCandidates = (prefix) => ({
@@ -172,8 +244,8 @@ async function main() {
       path.join(ROOT_DIR, 'mac', `${prefix}-arm64.dmg`)
     ].find((candidate) => fs.existsSync(candidate)) || ''
   });
-  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.3');
-  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.3');
+  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.4');
+  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.4');
   const controller = await startSyncWatchServer({
     host: '0.0.0.0', port, strictPort: false, portFallbackCount: 20, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
     hostControlToken: token, allowedHosts, publicUrl, androidApkPath, clientDownloadPath, tunnelManager,
@@ -201,6 +273,17 @@ async function main() {
   ].join('\n');
   atomicWrite(RUNTIME_INFO_FILE, `${runtimeInfo}\n`, 0o600);
   console.log(runtimeInfo);
+  console.log(`\n${standaloneManagementSummary({
+    ownerUrl, dataDir: DATA_DIR, settingsFile: SETTINGS_FILE, runtimeInfoFile: RUNTIME_INFO_FILE
+  })}\n`);
+  if (commandLineFlag('open-browser')) {
+    try {
+      await openSystemBrowser(ownerUrl);
+      console.log('已在默认浏览器打开私密管理入口。');
+    } catch (error) {
+      console.warn(`无法自动打开浏览器：${error.message}。请复制“管理页面”地址手动打开。`);
+    }
+  }
   // Honour the persisted public-tunnel startup preference in the standalone
   // package as well as the desktop app. A failed auto-start must not take the
   // local server down; the owner can retry from the management UI.
@@ -232,4 +315,10 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main, _test: { validPort, commandLineValue, normalizePublicUrl, normalizeSettings, publicBaseUrl } };
+module.exports = {
+  main,
+  _test: {
+    validPort, commandLineValue, commandLineFlag, normalizePublicUrl, normalizeSettings, publicBaseUrl,
+    standaloneHelp, standaloneManagementSummary, systemBrowserCommand, openSystemBrowser
+  }
+};

@@ -1138,7 +1138,7 @@ function summarizeReport(outageAtMs, recoveryAtMs) {
 
 async function run() {
   assert.equal(_test.MAX_OPEN_ENDED_MEDIA_RANGE_BYTES, 8 * MIB,
-    'the long-play smoke expects the v2.2.3 8 MiB open-ended Range policy');
+    'the long-play smoke expects the v2.2.4 8 MiB open-ended Range policy');
   const mediaPath = prepareMedia();
   recordPhase('server-start');
   server = await startSyncWatchServer({

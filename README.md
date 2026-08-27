@@ -22,7 +22,7 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前源码候选：v2.2.3（尚未发布） · 最新正式发布：[v2.2.0](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.0) · 许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前源码候选：v2.2.4（尚未发布） · 最新正式发布：[v2.2.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.3) · 许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
 ## 在线参观
 
@@ -43,22 +43,22 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 
 | 类型 | 适合谁 | 作用 |
 | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-Experience-Client-Portable-v2.2.0-x64.exe) | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
-| [`SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-Standard-Server-Portable-v2.2.0-x64.exe) | 标准版；房主 | 绿色便携服务器，内置运行环境和 cloudflared，双击即用 |
-| [`SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-v2.2.0-Full-Offline-Installer-x64.exe) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端、Android APK、macOS x64/arm64 客户端与服务器 ZIP |
-| [`SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-v2.2.0-Full-Offline-Portable-x64.exe) | 完整版；Windows 房主 | 无需安装的独立 EXE；功能和内嵌文件与安装完整版一致 |
-| [`SyncWatch-Full-Offline-macOS-v2.2.0-x64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-Full-Offline-macOS-v2.2.0-x64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.0-x64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-Full-Offline-macOS-v2.2.0-x64.zip) | 完整版；Intel Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 Intel cloudflared |
-| [`SyncWatch-Full-Offline-macOS-v2.2.0-arm64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-Full-Offline-macOS-v2.2.0-arm64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.0-arm64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/SyncWatch-Full-Offline-macOS-v2.2.0-arm64.zip) | 完整版；Apple Silicon 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 arm64 cloudflared |
-| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/cloudflared-windows-x86-installer.msi) | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
-| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/node-v24.19.0-arm64.msi) / [`node-v24.19.0-macos-x64.pkg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/node-v24.19.0-macos-x64.pkg) / [`node-v24.19.0-darwin-arm64.tar.gz`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.0/node-v24.19.0-darwin-arm64.tar.gz) | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
+| [`SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-Experience-Client-Portable-v2.2.3-x64.exe) | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
+| [`SyncWatch-Standard-Server-Portable-v2.2.3-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-Standard-Server-Portable-v2.2.3-x64.exe) | 标准版；房主 | 绿色便携服务器，内置运行环境和 cloudflared，双击即用 |
+| [`SyncWatch-v2.2.3-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-v2.2.3-Full-Offline-Installer-x64.exe) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端、Android APK、macOS x64/arm64 客户端与服务器 ZIP |
+| [`SyncWatch-v2.2.3-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-v2.2.3-Full-Offline-Portable-x64.exe) | 完整版；Windows 房主 | 无需安装的独立 EXE；功能和内嵌文件与安装完整版一致 |
+| [`SyncWatch-Full-Offline-macOS-v2.2.3-x64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-Full-Offline-macOS-v2.2.3-x64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.3-x64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-Full-Offline-macOS-v2.2.3-x64.zip) | 完整版；Intel Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 Intel cloudflared |
+| [`SyncWatch-Full-Offline-macOS-v2.2.3-arm64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-Full-Offline-macOS-v2.2.3-arm64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.3-arm64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/SyncWatch-Full-Offline-macOS-v2.2.3-arm64.zip) | 完整版；Apple Silicon 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 arm64 cloudflared |
+| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/cloudflared-windows-x86-installer.msi) | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/node-v24.19.0-arm64.msi) / [`node-v24.19.0-macos-x64.pkg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/node-v24.19.0-macos-x64.pkg) / [`node-v24.19.0-darwin-arm64.tar.gz`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.3/node-v24.19.0-darwin-arm64.tar.gz) | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
 | Android APK | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
 | macOS 服务器/客户端 | Mac 用户 | Intel Mac 使用 x64，Apple Silicon 使用 arm64 |
 | 独立服务器 ZIP | Windows/Linux 服务器管理员 | 使用 Node.js 启动服务，适合长期部署和 Docker |
 | Source code | 开发者 | 阅读、修改和自行构建，需要安装 Node.js 和依赖 |
 
-`v2.2.0` 已于 2026-08-25 正式发布并设为 Latest。Release API 中有 26 个维护者资产，加上 GitHub 自动生成的两个源码归档，页面共显示 28 个文件；本地成品与线上资产的名称、字节数和 SHA-256 已逐项核对。完整哈希、验证证据与已知限制见 [v2.2.0 发布说明](docs/release-notes-v2.2.0.md)。
+v2.2.4 的公开状态以 [Release 页面](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 为准。只有 Release API 恰有 26 个维护者资产、页面连同两个源码归档共 28 个文件，且原子构建工作流成功时才算正式完成；资产不足时继续使用 [v2.2.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.3)。完整改动、验证门禁与已知限制见 [v2.2.4 发布说明](docs/release-notes-v2.2.4.md)。
 
-当前分支正在准备 v2.2.3，源码已包含小说精确字符锚点、网络状态误报抑制、可信代理链真实 IP、首次管理员改密、手机账号退出入口、默认原画、账号密码策略、头像单击/双击分流、关闭弹窗高亮和统一界面文案隐私保护等修复；[v2.2.3 候选发布说明](docs/release-notes-v2.2.3.md)中的文件名只是待构建清单。Tag、Release 和 26 个维护者资产完成真实构建、启动、闭包、哈希与 26+2 数量验证前，不提供 v2.2.3 下载链接。
+v2.2.3 已正式发布并设为 Latest；上表在 v2.2.4 完成原子发布前继续指向这一组已验证资产。
 
 ## 第一次启动服务器
 
@@ -68,7 +68,7 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 2. 安装版按向导选择目录并启动；独立完整版和标准版放进普通文件夹后双击。Windows 防火墙询问时，只按你的实际网络环境允许访问。
 3. 浏览器会打开 `http://127.0.0.1:5000`；如果端口被占用，以软件显示的地址为准。
 4. 使用默认管理员账号 `admin`、密码 `admin888` 登录。
-5. 立即进入安全设置修改管理员密码。v2.2.3 源码候选中，只有本次会话刚用账号密码认证且账号仍处于首次初始化时，服务端才允许直接填写新密码和确认密码；成功后该能力立即失效。本机免密管理会话、普通周期改密、重复提交旧密码或过短新密码都不能借此绕过校验。
+5. 立即进入安全设置修改管理员密码。只有内置 `admin` 本次会话刚用账号密码认证且仍处于首次初始化时，服务端才允许直接填写新密码和确认密码；成功后该能力立即失效。被授予超级管理员的普通账号不再强制改密，本机免密管理会话和普通周期改密也不会绕过校验。
 6. 创建房间，可以设置房间密码、人数限制和成员权限。
 7. 先让同一 Wi-Fi 下的成员使用局域网地址连接，确认成功后再配置公网访问。
 
@@ -127,32 +127,35 @@ pnpm start
 
 Cloudflare Tunnel 从本机回源时，服务器会信任回环地址和服务器自身网卡地址，并从 `X-Forwarded-For` 右侧开始剥离可信代理节点，因此不同公网客户端会保留各自的真实来源 IP，游客限额不会再全部落到同一个穿透 IP。Docker、Nginx 或 frp 运行在其他主机/容器网段时，须显式设置 `SYNCWATCH_TRUSTED_PROXIES`，或在 Node/Electron/独立包启动时传入 `--trusted-proxies=172.18.0.0/16,10.0.0.5`；命令行值优先于环境变量。只填实际受控的代理地址；`0.0.0.0/0` 和 `::/0` 会被当作无效配置 fail-closed 忽略。
 
-v2.2.3 源码候选中的新客户端默认使用“原画”；公网页面能打开但手机画面卡住时，可在播放器手动选择“流畅版”，并在“处理进度”确认它已真正生成。流畅版目标为 854×480、视频约 900 kbps、音频 96 kbps；本地缓冲不足时同步器会暂停反复定位，避免不断丢弃已下载片段。若仍卡顿，按[常见错误](docs/troubleshooting.md)检查服务器上行、手机实测下载、WebSocket/Polling 和媒体 Range。
+新客户端默认使用“原画”；公网页面能打开但手机画面卡住时，可在播放器手动选择“流畅版”，并在“处理进度”确认它已真正生成。流畅版目标为 854×480、视频约 900 kbps、音频 96 kbps；本地缓冲不足时同步器会暂停反复定位，避免不断丢弃已下载片段。若仍卡顿，按[常见错误](docs/troubleshooting.md)检查服务器上行、手机实测下载、WebSocket/Polling 和媒体 Range。
 
 若媒体请求进入 `waiting/stalled` 且 12 秒没有播放时间或缓冲增长，客户端会执行最多 5 次渐进退避恢复；设备或 Socket 离线时暂停消耗重试次数，连接恢复后继续当前影片，原画恢复仍失败且已有流畅版时再自动降级。超过 32 MiB 的媒体使用 8 MiB 有界开放 Range，减少高延迟公网链路频繁续段，同时避免拖动后遗留无限大响应阻塞控制通道。这能处理 Tunnel/TUN 半开和短时断网，但不能消除 Cloudflare 临时隧道、家庭上行或 VPN/TUN 本身的真实抖动。
 
-v2.2.3 源码候选把顶栏网络状态与视频缓冲分开判断：前台每 4 秒最多进行一次 Socket.IO 控制通道探测，单次高延迟、视频 `waiting/stalled` 或成员短暂重连不会单独触发“网络波动”或直接改变当前状态；连续 3 次延迟超过 500 毫秒或超时才显示“网络波动”，连续 2 次健康样本后恢复。页面或 Android WebView 进入后台后不启动新探测，后台返回的旧 ACK 直接丢弃，回到前台后重置迟滞状态并立即重新测量。真正的本机连接断开仍显示“连接中断”。这能减少播放一段时间后由浏览器后台节流或偶发尖峰产生的误报，但不会掩盖真实弱网或消除公网链路波动。
+顶栏网络状态与视频缓冲分开判断：前台每 4 秒最多进行一次 Socket.IO 控制通道探测，单次高延迟、视频 `waiting/stalled` 或成员短暂重连不会单独触发“网络波动”或直接改变当前状态；连续 3 次延迟超过 500 毫秒或超时才显示“网络波动”，连续 2 次健康样本后恢复。页面或 Android WebView 进入后台后不启动新探测，后台返回的旧 ACK 直接丢弃，回到前台后重置迟滞状态并立即重新测量。真正的本机连接断开仍显示“连接中断”。
 
 ## 主要功能
 
-- **同步播放**：房主控制播放、暂停、进度、倍速和可选音量同步，客户端自动校正明显偏差。
+- **同步播放**：房主或有权限成员控制播放、暂停、进度和共享倍速；快进/拖动可由权限组独立授权。支持跳过片头片尾、指定成员清晰度确认和队列批量添加/删除。
 - **媒体与字幕**：上传影片、音频、字幕、图片和文档，也可添加合法的 HTTPS 媒体直链。
-- **多房间**：支持正式房间、临时房间、房间密码、人数限制和房主/管理员权限。
+- **多房间**：支持正式房间、临时房间、房间密码、人数限制和房主/管理员权限；房主确认后可复制房间配置与媒体，内置 `admin` 可二次确认后覆盖迁移目标房间。
 - **同步阅读**：TXT、Markdown、日志、CSV/TSV、JSON/XML/YAML 和常见配置文本可连续滚动或按页阅读；有控制权限的成员同步 `fileId`、精确 UTF-16 `characterOffset`、归一化位置、页码和 revision。桌面与手机可以因宽度不同显示不同视觉行首，但不会再把本地换行回写成房间锚点；晚加入或重连成员恢复同一逻辑字符和段落。管理员可在“房间与上传 → 上传限制”关闭文本上传。
 - **登录与游客**：账号密码正确但房间号留空时，先列出该账号可用房间，也可选择临时房间；提醒可暂停或在安全设置中关闭。游客只获得普通成员权限，需注册后才能建立正式房间。手机顶栏账号入口会在覆盖式功能菜单内展开“退出登录，保留账号密码”和普通“退出登录”；前者退出后只把本次账号密码恢复到登录表单，二者都会清除登录会话。
-- **实时交流**：公聊、私聊、弹幕、表情、图片、语音消息、全麦语音和全屏公告。
+- **注册申请与密码安全**：注册受限时可按所需账号数量提交申请，并按数量部分撤回或全部撤回；内置 `admin` 可在用户申请中心批量删除记录。管理端只显示密码是否已设置、待修改/过期状态和最近更新时间，不返回密码或哈希；“重置为默认密码”会撤销现有会话并要求用户按安全流程更换。
+- **实时交流**：公聊、私聊、弹幕、表情、图片、语音消息和全麦语音；可按账号启用仅聊天、设置弹幕颜色/字号或切换简洁模式。全屏只保留弹幕和用户主动打开的边看边聊，不弹普通通知。
 - **共享能力**：浏览器、Electron 和 Android 屏幕共享；受支持的桌面端可共享电脑音源。
-- **账号与管理**：好友、通知、在线状态、设备信息、权限组、封禁、注册审批和操作记录；成员头像单击打开资料，桌面双击或触摸端快速双击查看大图，成员列表刷新时单击目标仍按账号继续定位。
+- **网页协作**：房主同步一个经过服务端校验的 HTTPS/HTTP URL，服务器保存 revision 并作为恢复依据；各客户端在沙箱 iframe 中独立加载，因此登录态、广告、地域、跨域策略或页面禁止嵌入可能造成显示差异。需要所有人看到完全相同且可互动的画面时，应使用“实时共享网页画面”，不要把“同步网址”描述成远程控制。
+- **账号与管理**：好友、通知、在线状态、设备信息、权限组、封禁、注册审批和操作记录；登录限流可申请管理员清除，敏感设备定位状态只给内置 `admin`。成员头像单击打开资料，桌面双击或触摸端快速双击查看大图。
 - **媒体处理**：FFprobe 分析媒体，FFmpeg 在上传完成后默认生成缩略图和约 480P、1 Mbps 的 H.264/AAC 低带宽流畅版；丢失的缩略图会自动补建。
 - **AI 工作台**：可配置兼容 Responses API 或 Chat Completions 的对话、生图和视频接口。
 - **运维能力**：数据导入导出、备份恢复、回收站、邮件验证、密码找回、日志和网络诊断。
+- **帮助与管理入口**：页面顶栏“关于”集中显示产品、作者、许可证、项目主页和 Wiki；桌面服务器“帮助”菜单提供同一组官方入口。纯 Node.js 控制台没有 Electron 原生菜单，但会输出私密管理 URL、配置/数据路径和浏览器快捷键，`--help` 查看参数，`--open-browser` 可在就绪后打开等价管理页面。
 
 ### 常用开关在哪里
 
 - 关闭登录选房提醒：进入房间后打开右上角账号菜单 → “安全设置” → 关闭“登录房间提醒”。登录弹窗也可选择 1 小时、1 天、1 周、30 天或永不再提醒。
 - 关闭自动兼容转换：服务器管理员打开顶栏“处理进度” → 取消“上传完成后自动生成浏览器兼容版” → “立即应用”。关闭后新上传影片保留原文件，需要时仍可手动处理。
 - 选择局域网网卡和公网根地址：Windows 服务器左上角“系统 → 服务器启动设置”。“公网根地址”填写已经配置好 DNS、HTTPS 证书和反向代理的完整根地址，例如 `https://watch.example.com`；不要填子路径、查询参数或单独主机名。该字段用于分享地址和代理信任校验，不会代替 DNS、证书或路由器配置。
-- 顶栏会显示当前开放的局域网 `IP:端口` 和状态，并提供“检查更新”“GitHub”“Latest 下载”“下载中心”。缺少 Windows 服务器、Android、macOS 服务器或客户端文件时，服务器管理员可在下载中心上传对应固定类型；服务端不会接受任意目标路径或不匹配的文件签名。
+- 只有真实服务器应用窗口显示当前开放的局域网 `IP:端口`。普通 Electron/Android/浏览器客户端不显示内网地址；公网分享只使用当前 HTTPS/Tunnel Origin 或服务器配置的公网根地址，没有可信公网地址时不会回退 LAN IP。
 - 位置提醒开关位于“管理中心 → 通知/通告设置”。关闭“位置状态通知”后不再广播已授权位置状态；关闭“位置授权请求”后不再自动提示，也不允许管理员向成员发起授权请求。
 
 ## 原理与技术架构
@@ -274,7 +277,7 @@ Git 没有要求所有文件都必须使用英文名称。仓库采用的规则�
 - [常见错误与报错处理](docs/troubleshooting.md)
 - [使用技巧与优势](docs/tips-and-advantages.md)
 - [发布文件与下载说明](docs/release-artifacts.html)
-- [v2.2.3 候选发布说明](docs/release-notes-v2.2.3.md) · [v2.2.0 正式发布说明](docs/release-notes-v2.2.0.md)
+- [v2.2.4 发布说明](docs/release-notes-v2.2.4.md) · [v2.2.3 发布说明](docs/release-notes-v2.2.3.md)
 - [仓库文件地图](docs/repository-map.html)
 - [新手快速开始 HTML](docs/quick-start.html)
 - [Wiki 完整教程目录](docs/wiki-guide.md) · [仓库内 Wiki 镜像](docs/wiki/)

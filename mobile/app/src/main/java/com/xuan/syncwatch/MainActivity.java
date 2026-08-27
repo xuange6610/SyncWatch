@@ -285,7 +285,7 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.2.3");
+        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.2.4");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
 
         CookieManager cookieManager = CookieManager.getInstance();
@@ -944,7 +944,7 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         if (projectionPermissionPending) cancelPendingProjection = true;
         if (webView != null) {
             try {
-                webView.evaluateJavascript("try{delete window.SyncWatchAndroid;}catch(_){void 0;}", null);
+                webView.evaluateJavascript("try{delete window.SyncWatchAndroid;delete window.SyncWatchPlatform;}catch(_){void 0;}", null);
             } catch (RuntimeException ignored) {
             }
         }
@@ -986,6 +986,11 @@ public final class MainActivity extends Activity implements ScreenCaptureService
                 + "try{Object.defineProperty(window," + JSONObject.quote(PUBLIC_BRIDGE_NAME)
                 + ",{value:api,writable:false,enumerable:false,configurable:true});}"
                 + "catch(_){window[" + JSONObject.quote(PUBLIC_BRIDGE_NAME) + "]=api;}"
+                + "const platform=Object.freeze({version:1,runtime:\"android\",role:\"client\",serverApp:false,clientApp:true,"
+                + "localServerMode:" + (localServerMode ? "true" : "false") + "});"
+                + "try{Object.defineProperty(window,\"SyncWatchPlatform\","
+                + "{value:platform,writable:false,enumerable:false,configurable:true});}"
+                + "catch(_){window.SyncWatchPlatform=platform;}"
                 + "const syncKeepAwake=function(){try{const active=Array.prototype.some.call("
                 + "document.querySelectorAll('video,audio'),function(media){return !media.paused&&!media.ended;});"
                 + "raw.setMediaPlaybackActive(token,active);}catch(_){void 0;}};"
@@ -2338,4 +2343,3 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         super.onDestroy();
     }
 }
-

@@ -35,6 +35,8 @@ const QRCode = require('qrcode');
 const { Server: SocketIOServer } = require('socket.io');
 const networkQualityPolicy = require('../public/js/network-quality-policy');
 const { extractAiModelIds, extractAiText, modelEndpointCandidates, normalizeEndpointPath, proxyAiJson } = require('./ai-relay');
+const { createLatestReleaseChecker } = require('./latest-release');
+const { clientFacingAddressState } = require('./client-address-privacy');
 const {
   createMacDistribution,
   macDownloadSummary,
@@ -51,7 +53,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.2.3';
+const APP_VERSION = 'v2.2.4';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -584,7 +586,30 @@ function normalizeNotificationSettings(value = {}) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return {
     registrationNotices: source.registrationNotices !== false,
-    allNotifications: source.allNotifications !== false
+    allNotifications: source.allNotifications !== false,
+    conciseMode: source.conciseMode === true
+  };
+}
+
+function normalizeViewPreferences(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const color = /^#[0-9a-f]{6}$/i.test(String(source.danmakuColor || ''))
+    ? String(source.danmakuColor).toLowerCase() : '#ffffff';
+  const requestedFontSize = Number(source.danmakuFontSize);
+  return {
+    conciseMode: source.conciseMode === true,
+    chatOnly: source.chatOnly === true,
+    danmakuColor: color,
+    danmakuFontSize: Math.max(12, Math.min(72, Number.isFinite(requestedFontSize) ? Math.round(requestedFontSize) : 24))
+  };
+}
+
+function normalizePlaybackSkipSettings(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    enabled: source.enabled === true,
+    introSeconds: Math.max(0, Math.min(3600, Math.floor(Number(source.introSeconds) || 0))),
+    outroSeconds: Math.max(0, Math.min(3600, Math.floor(Number(source.outroSeconds) || 0)))
   };
 }
 
@@ -604,6 +629,24 @@ function friendRequestMessage(value) {
 
 function registrationRequestCount(value) {
   return Math.max(1, Math.min(50, Math.floor(Number(value) || 1)));
+}
+
+function normalizeRegistrationRequestCounts(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const status = cleanText(source.status || 'pending', 24) || 'pending';
+  const requested = Math.max(0, Math.min(50, Math.floor(Number(source.remainingCount ?? source.requestedCount) || 0)));
+  const remainingCount = status === 'withdrawn' ? 0 : (status === 'pending' ? Math.max(1, requested) : requested);
+  const withdrawnCount = Math.max(0, Math.min(50 - remainingCount, Math.floor(Number(source.withdrawnCount) || 0)));
+  const inferredTotal = remainingCount + withdrawnCount;
+  const totalRequestedCount = Math.max(inferredTotal, Math.min(50, Math.floor(Number(source.totalRequestedCount) || 0)));
+  return {
+    ...source,
+    status,
+    requestedCount: remainingCount,
+    remainingCount,
+    totalRequestedCount,
+    withdrawnCount
+  };
 }
 
 function retainPersistentRequests(value) {
@@ -1143,10 +1186,10 @@ function normalizeSharedWebUrl(value) {
 
 function defaultPermissionGroups() {
   return {
-    viewer: { id: 'viewer', name: '观众', system: true, permissions: { control: false, upload: false, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false } },
-    member: { id: 'member', name: '成员', system: true, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false } },
-    controller: { id: 'controller', name: '协管员', system: true, permissions: { control: true, upload: true, delete: false, manageMedia: false, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: false, sendNotice: true } },
-    administrator: { id: 'administrator', name: '管理员', system: true, permissions: { control: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true } }
+    viewer: { id: 'viewer', name: '观众', system: true, permissions: { control: false, seek: false, upload: false, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false } },
+    member: { id: 'member', name: '成员', system: true, permissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false } },
+    controller: { id: 'controller', name: '协管员', system: true, permissions: { control: true, seek: true, upload: true, delete: false, manageMedia: false, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: false, sendNotice: true } },
+    administrator: { id: 'administrator', name: '管理员', system: true, permissions: { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true } }
   };
 }
 
@@ -1174,7 +1217,7 @@ function normalizePermissionGroup(group, fallbackId = '') {
   return {
     id, name: cleanText(group?.name || id, 24) || id, system: Boolean(group?.system),
     permissions: {
-      control: Boolean(input.control), upload: Boolean(input.upload), delete: Boolean(input.delete), manageMedia: Boolean(input.manageMedia),
+      control: Boolean(input.control), seek: input.seek === undefined ? Boolean(input.control) : Boolean(input.seek), upload: Boolean(input.upload), delete: Boolean(input.delete), manageMedia: Boolean(input.manageMedia),
       shareScreen: Boolean(input.shareScreen), shareAudio: input.shareAudio === undefined ? Boolean(input.shareScreen) : Boolean(input.shareAudio), shareWeb: Boolean(input.shareWeb), voiceChat: input.voiceChat !== false,
       manageChat: Boolean(input.manageChat), manageRoom: Boolean(input.manageRoom), sendNotice: Boolean(input.sendNotice)
     }
@@ -1317,6 +1360,7 @@ function freshRoom(id = roomId(), ownerUsername = '', options = {}) {
       ? Object.fromEntries(Object.entries(options.mediaManagementGrants).map(([username, granted]) => [cleanUsername(username), Boolean(granted)]).filter(([username]) => username)) : {},
     permissionGroups, memberGroups: options.memberGroups && typeof options.memberGroups === 'object' && !Array.isArray(options.memberGroups) ? options.memberGroups : {},
     queue: Array.isArray(options.queue) ? options.queue : [], playbackMode: normalizePlaybackMode(options.playbackMode),
+    skipSettings: normalizePlaybackSkipSettings(options.skipSettings),
     queueFileModes: options.queueFileModes && typeof options.queueFileModes === 'object' && !Array.isArray(options.queueFileModes)
       ? Object.fromEntries(Object.entries(options.queueFileModes).map(([id, mode]) => [cleanText(id, 80), normalizePlaybackMode(mode)]).filter(([id]) => id)) : {},
     createdAt: options.createdAt || new Date().toISOString(),
@@ -1336,11 +1380,11 @@ function freshRoom(id = roomId(), ownerUsername = '', options = {}) {
 function freshState() {
   const initialRoom = freshRoom(undefined, '', { name: '系统候场室', systemRoom: true });
   return {
-    version: 12,
+    version: 13,
     admin: {
       passwordHash: makePasswordHash('admin888'), accessPasswordHash: '', mustChangePassword: true, passwordChangedAt: new Date().toISOString(),
       uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, accountTiers: defaultAccountTiers(),
-      defaultPermissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
+      defaultPermissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
       mail: normalizeMailSettings(),
       branding: normalizeBranding(), loginCube: normalizeLoginCubeSettings(), loginMusic: normalizeLoginMusic(), loginVideo: normalizeLoginVideo(), marqueeNotice: normalizeMarqueeNotice(), roomEntryNotice: normalizeRoomEntryNotice(),
       contact: normalizeAdminContact(), legalAgreement: normalizeLegalAgreement(), passwordPolicy: normalizePasswordPolicy(), usernamePolicy: normalizeUsernamePolicy(), roomIdPolicy: normalizeRoomIdPolicy(),
@@ -1364,7 +1408,8 @@ function freshState() {
       allowedUploadCategories: ['video'],
       blockedWords: [],
       registrationIpWhitelist: [], registrationAllowances: {}, registrationRequests: [], roomQuotaRequests: [], registrationAccountNoticeEnabled: true,
-      uploadPolicyRequests: [], storageQuotaRequests: [], mediaManagementRequests: [], mediaUploadBans: []
+      uploadPolicyRequests: [], storageQuotaRequests: [], mediaManagementRequests: [], mediaUploadBans: [],
+      roomCopyRequests: [], loginLimitRequests: []
     },
     defaultRoomId: initialRoom.id, rooms: { [initialRoom.id]: initialRoom },
     accounts: Object.assign(Object.create(null), {
@@ -1372,7 +1417,7 @@ function freshState() {
         id: 'SW-000001', displayName: 'admin', email: '', emailVerified: false, passwordHash: makePasswordHash('admin888'), avatar: '',
         signature: '守护每一场放映', gender: 'private', age: null, registrationIp: '', createdAt: new Date().toISOString(), lastLogin: '',
         devices: [], watchHistory: [], favorites: [], favoriteMeta: {}, mediaNotes: {}, mediaCategories: [], loginHistory: [],
-        roomMeta: {}, friends: [], friendMeta: {}, friendSettings: normalizeFriendSettings(), notificationSettings: normalizeNotificationSettings(), friendRequests: [], friendBlocks: [], friendMessages: [], friendRoomRequests: [], stats: { joinedRooms: 0, createdRooms: 0, watchSeconds: 0, onlineSeconds: 0 },
+        roomMeta: {}, friends: [], friendMeta: {}, friendSettings: normalizeFriendSettings(), notificationSettings: normalizeNotificationSettings(), viewPreferences: normalizeViewPreferences(), friendRequests: [], friendBlocks: [], friendMessages: [], friendRoomRequests: [], stats: { joinedRooms: 0, createdRooms: 0, watchSeconds: 0, onlineSeconds: 0 },
         experience: 0, experienceRemainderSeconds: 0, levelOverride: null, superAdmin: true, mustChangePassword: true, passwordChangedAt: new Date().toISOString(), roomCreationBlocked: false,
         roomQuota: 0, recentRooms: [], pinnedRooms: [], roomAccessGrants: {}, pendingNotifications: [], acceptedAgreementVersion: '', multiDeviceLogin: true, tierId: 's_node'
       }
@@ -1397,7 +1442,7 @@ function migrateState(input) {
       registrationAllowances: input.admin.registrationAllowances && typeof input.admin.registrationAllowances === 'object'
         ? Object.fromEntries(Object.entries(input.admin.registrationAllowances).map(([ip, count]) => [normalizeIp(ip), Math.max(0, Math.floor(Number(count) || 0))]).filter(([ip, count]) => ip && count)) : {},
       registrationRequests: retainPersistentRequests(input.admin.registrationRequests)
-        .map((entry) => ({ ...entry, requestedCount: registrationRequestCount(entry.requestedCount) })),
+        .map(normalizeRegistrationRequestCounts),
       registrationAccountNoticeEnabled: input.admin.registrationAccountNoticeEnabled !== false,
       allowTextUploads: input.admin.allowTextUploads !== false,
       allowedUploadCategories: normalizeAllowedUploadCategories(input.admin.allowedUploadCategories),
@@ -1442,6 +1487,8 @@ function migrateState(input) {
     next.admin.uploadPolicyRequests = retainPersistentRequests(input.admin.uploadPolicyRequests);
     next.admin.storageQuotaRequests = retainPersistentRequests(input.admin.storageQuotaRequests);
     next.admin.mediaManagementRequests = retainPersistentRequests(input.admin.mediaManagementRequests);
+    next.admin.roomCopyRequests = retainPersistentRequests(input.admin.roomCopyRequests).slice(-1000);
+    next.admin.loginLimitRequests = retainPersistentRequests(input.admin.loginLimitRequests).slice(-1000);
     next.admin.mediaUploadBans = (Array.isArray(input.admin.mediaUploadBans) ? input.admin.mediaUploadBans : [])
       .filter((entry) => entry && typeof entry === 'object' && normalizeRoomId(entry.roomId) && cleanText(entry.originalName, 180))
       .slice(-1000)
@@ -1530,6 +1577,12 @@ function migrateState(input) {
     account.friends = Array.isArray(account.friends) ? [...new Set(account.friends.map(cleanUsername).filter(Boolean))] : [];
     account.friendMeta = account.friendMeta && typeof account.friendMeta === 'object' ? account.friendMeta : {};
     account.friendSettings = normalizeFriendSettings(account.friendSettings);
+    account.notificationSettings = normalizeNotificationSettings(account.notificationSettings);
+    account.viewPreferences = normalizeViewPreferences({
+      ...(account.viewPreferences || {}),
+      conciseMode: account.viewPreferences?.conciseMode ?? account.notificationSettings.conciseMode
+    });
+    account.notificationSettings.conciseMode = account.viewPreferences.conciseMode;
     account.friendRequests = Array.isArray(account.friendRequests) ? account.friendRequests.filter((item) => item && typeof item === 'object').slice(-200) : [];
     account.friendBlocks = Array.isArray(account.friendBlocks) ? [...new Set(account.friendBlocks.map(cleanUsername).filter(Boolean))] : [];
     account.friendMessages = Array.isArray(account.friendMessages) ? account.friendMessages.filter((item) => item && typeof item === 'object').slice(-1000) : [];
@@ -1545,7 +1598,9 @@ function migrateState(input) {
     account.experienceRemainderSeconds = Math.max(0, Math.min(59.999, Number(account.experienceRemainderSeconds) || 0));
     account.levelOverride = Number.isInteger(Number(account.levelOverride)) ? Math.max(1, Math.min(WATCH_LEVELS.length, Number(account.levelOverride))) : null;
     account.superAdmin = username === 'admin' || Boolean(account.superAdmin);
-    account.mustChangePassword = username === 'admin' && account.mustChangePassword !== false ? true : Boolean(account.mustChangePassword);
+    account.mustChangePassword = username === 'admin'
+      ? account.mustChangePassword !== false
+      : (account.superAdmin ? false : Boolean(account.mustChangePassword));
     const accountChangedAt = Date.parse(String(account.passwordChangedAt || account.createdAt || ''));
     account.passwordChangedAt = Number.isFinite(accountChangedAt) ? new Date(accountChangedAt).toISOString() : new Date().toISOString();
     account.roomCreationBlocked = Boolean(account.roomCreationBlocked);
@@ -1603,7 +1658,7 @@ function migrateState(input) {
     room.allowGuests = room.allowGuests !== false;
     room.queue = room.queue.filter((id) => next.files.some((file) => file.id === id && file.roomId === room.id));
   }
-  next.version = 12;
+  next.version = 13;
   return next;
 }
 
@@ -2118,7 +2173,7 @@ async function startSyncWatchServer(options = {}) {
   const compatibleMediaDir = path.join(dataDir, 'compatible-media');
   const downloadAssetsDir = path.join(dataDir, 'download-assets');
   const downloadAssetTemporaryDir = path.join(downloadAssetsDir, '.temporary');
-  let latestReleaseCache = null;
+  const latestReleaseChecker = createLatestReleaseChecker({ userAgent: `SyncWatch/${APP_VERSION} update-check` });
   const stateFile = path.join(dataDir, 'config.json');
   const chatFile = path.join(dataDir, 'chat-history.jsonl');
   const trashDir = path.join(dataDir, 'trash');
@@ -2128,10 +2183,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.3.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.4.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.3-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.3-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.4-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.4-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const macServerDownloadPaths = normalizeMacDownloadPaths(options.macServerDownloadPaths);
@@ -2674,7 +2729,14 @@ async function startSyncWatchServer(options = {}) {
       friends: Array.isArray(account.friends) ? account.friends : [],
       friendMeta: account.friendMeta && typeof account.friendMeta === 'object' ? account.friendMeta : {},
       friendSettings: normalizeFriendSettings(account.friendSettings),
-      notificationSettings: normalizeNotificationSettings(account.notificationSettings),
+      notificationSettings: normalizeNotificationSettings({
+        ...account.notificationSettings,
+        conciseMode: account.viewPreferences?.conciseMode ?? account.notificationSettings?.conciseMode
+      }),
+      viewPreferences: normalizeViewPreferences({
+        ...account.viewPreferences,
+        conciseMode: account.viewPreferences?.conciseMode ?? account.notificationSettings?.conciseMode
+      }),
       friendRequests: Array.isArray(account.friendRequests) ? account.friendRequests : [],
       friendBlocks: Array.isArray(account.friendBlocks) ? account.friendBlocks : [],
       friendMessages: Array.isArray(account.friendMessages) ? account.friendMessages : [],
@@ -2686,7 +2748,9 @@ async function startSyncWatchServer(options = {}) {
       experienceRemainderSeconds: Math.max(0, Math.min(59.999, Number(account.experienceRemainderSeconds) || 0)),
       levelOverride: Number.isInteger(Number(account.levelOverride)) ? Math.max(1, Math.min(WATCH_LEVELS.length, Number(account.levelOverride))) : null,
       superAdmin: username === 'admin' || Boolean(account.superAdmin),
-      mustChangePassword: username === 'admin' && account.mustChangePassword !== false ? true : Boolean(account.mustChangePassword),
+      mustChangePassword: username === 'admin'
+        ? account.mustChangePassword !== false
+        : (Boolean(account.superAdmin) ? false : Boolean(account.mustChangePassword)),
       roomCreationBlocked: Boolean(account.roomCreationBlocked),
       roomQuota: username === 'admin' || account.superAdmin ? 0 : Math.max(1, Math.min(9999, Math.floor(Number(account.roomQuota) || 1))),
       recentRooms: Array.isArray(account.recentRooms) ? account.recentRooms.map(normalizeRoomId).filter(Boolean).slice(0, 20) : [],
@@ -2762,12 +2826,14 @@ async function startSyncWatchServer(options = {}) {
   const guestSessionsByIp = new Map();
   const rateBuckets = new Map();
   const aiConfigSyncRequests = new Map();
+  const qualityChangeRequests = new Map();
   const registrationClaims = new Set();
   // A successfully verified registration grants one short-lived follow-up
   // registration on the same socket, so email verification is useful even
   // when the legacy per-IP quota would otherwise block the next account.
   const verifiedRegistrationAllowances = new Map();
   const roomCreateClaims = new Set();
+  const roomTransferClaims = new Set();
   let qualityBroadcastTimer = null;
   const qualityBroadcastRooms = new Set();
   let closing = false;
@@ -2797,6 +2863,8 @@ async function startSyncWatchServer(options = {}) {
   function createRoomRuntime(roomIdValue = '') {
     const saved = roomConfig(roomIdValue)?.savedState || {};
     const savedPlayback = saved.playback && typeof saved.playback === 'object' ? saved.playback : {};
+    const savedWebShare = saved.webShare && typeof saved.webShare === 'object' ? saved.webShare : {};
+    const savedWebUrl = normalizeSharedWebUrl(savedWebShare.url);
     return {
       roomState: {
         lightsOn: Boolean(saved.lightsOn),
@@ -2809,7 +2877,11 @@ async function startSyncWatchServer(options = {}) {
         textReading: normalizeTextReadingState(saved.textReading),
         screenShare: { active: false, socketId: null, username: null },
         audioShare: { active: false, socketId: null, username: null, displayName: '', platform: 'system', sourceName: '', volume: 0.8 },
-        webShare: { active: false, url: '', title: '', changedBy: '', updatedAt: 0 }
+        webShare: {
+          active: savedWebShare.active === true && Boolean(savedWebUrl), url: savedWebUrl,
+          title: cleanText(savedWebShare.title || '共享网页', 120), changedBy: cleanUsername(savedWebShare.changedBy),
+          updatedAt: Math.max(0, Number(savedWebShare.updatedAt) || 0), revision: Math.max(0, Math.floor(Number(savedWebShare.revision) || 0))
+        }
       },
       playbackChanges: [], playbackGeneration: 0, latestScreenFrame: null, screenFrameSequence: 0,
       screenFrameGeneration: 0, screenFrameDeliveries: new Map(), playbackRequests: [], playbackRequestSuppressions: new Map(), controlRequests: [], themeSyncRequests: []
@@ -2868,6 +2940,11 @@ async function startSyncWatchServer(options = {}) {
         changedBy: cleanUsername(playback.changedBy) || null, revision: Math.max(0, Number(playback.revision) || 0)
       },
       textReading: normalizeTextReadingState(runtime.roomState.textReading),
+      webShare: {
+        active: runtime.roomState.webShare.active === true, url: normalizeSharedWebUrl(runtime.roomState.webShare.url),
+        title: cleanText(runtime.roomState.webShare.title, 120), changedBy: cleanUsername(runtime.roomState.webShare.changedBy),
+        updatedAt: Math.max(0, Number(runtime.roomState.webShare.updatedAt) || 0), revision: Math.max(0, Math.floor(Number(runtime.roomState.webShare.revision) || 0))
+      },
       savedAt: new Date().toISOString()
     };
   }
@@ -2972,7 +3049,11 @@ async function startSyncWatchServer(options = {}) {
       kind: cleanText(details.kind || 'room', 40), actor: cleanUsername(details.actor),
       important: Boolean(details.important), timestamp: Date.now(), ...details
     };
-    io.to(roomChannel(id)).emit('system-notification', notice);
+    for (const member of roomUsers(id)) {
+      const concise = normalizeViewPreferences(state.accounts[member.username]?.viewPreferences).conciseMode;
+      if (concise && !['member-join', 'member-leave', 'playback-seek'].includes(notice.kind)) continue;
+      io.to(member.socketId).emit('system-notification', notice);
+    }
     return notice;
   }
 
@@ -2987,6 +3068,7 @@ async function startSyncWatchServer(options = {}) {
       operatedAt, message: `${actorName} 于 ${formatLocalDateTime(operatedAt)} ${verb}《${file?.originalName || '未命名文件'}》`
     };
     for (const member of roomUsers(id)) {
+      if (normalizeViewPreferences(state.accounts[member.username]?.viewPreferences).conciseMode) continue;
       io.to(member.socketId).emit('media-mutation-notice', { ...notice, canUndo: canUndoRoomOperation(member, operation) });
     }
     return notice;
@@ -3062,7 +3144,8 @@ async function startSyncWatchServer(options = {}) {
       const isFriend = Array.isArray(viewerAccount?.friends) && viewerAccount.friends.includes(normalized);
       const canManageAccounts = Boolean(viewerAccount?.superAdmin || viewerSession?.isServerHost);
       if (isFriend || canManageAccounts) io.to(member.socketId).emit('account-presence-changed', payload);
-      if (announceOnline && online && isFriend) io.to(member.socketId).emit('friend-online', {
+      if (announceOnline && online && isFriend
+        && !normalizeViewPreferences(viewerAccount?.viewPreferences).conciseMode) io.to(member.socketId).emit('friend-online', {
         ...payload,
         message: `${account.displayName || normalized} 已上线`
       });
@@ -3074,6 +3157,8 @@ async function startSyncWatchServer(options = {}) {
     if (!account) return false;
     const notificationSettings = normalizeNotificationSettings(account.notificationSettings);
     const noticeKind = cleanText(notice?.kind || 'account', 40);
+    if (normalizeViewPreferences(account.viewPreferences).conciseMode
+      && !['member-join', 'member-leave', 'playback-seek'].includes(noticeKind)) return false;
     const importantNotice = notice?.important === true
       || notice?.requiresAction === true
       || ['friend-message', 'friend-request', 'friend-room-request', 'location-authorization-request', 'playback-request', 'room-password-required', 'upload-review', 'room-quota-request'].includes(noticeKind);
@@ -3454,10 +3539,14 @@ async function startSyncWatchServer(options = {}) {
     return bucket;
   }
 
-  function loginFailureKeys(socket, username) {
-    const ip = getSocketIp(socket);
+  function loginFailureKeysForIp(ipAddress, username) {
+    const ip = normalizeIp(ipAddress);
     const normalizedUsername = cleanUsername(username).toLocaleLowerCase();
     return [`${ip}:login-failure`, normalizedUsername ? `${ip}:login-failure-user:${normalizedUsername}` : ''].filter(Boolean);
+  }
+
+  function loginFailureKeys(socket, username) {
+    return loginFailureKeysForIp(getSocketIp(socket), username);
   }
 
   function loginFailureLimited(socket, username, acknowledgement) {
@@ -3466,7 +3555,12 @@ async function startSyncWatchServer(options = {}) {
     const ipBlocked = rateLimitBucket(ipKey, windowMs).count >= 60;
     const userBlocked = userKey ? rateLimitBucket(userKey, windowMs).count >= 15 : false;
     if (!ipBlocked && !userBlocked) return false;
-    acknowledgement?.({ success: false, error: '登录失败次数过多，请稍后再试' });
+    const expiresAt = Math.max(rateLimitBucket(ipKey, windowMs).expiresAt, userKey ? rateLimitBucket(userKey, windowMs).expiresAt : 0);
+    acknowledgement?.({
+      success: false, code: 'LOGIN_RATE_LIMITED', canRequestClear: true,
+      retryAfterSeconds: Math.max(1, Math.ceil((expiresAt - Date.now()) / 1000)),
+      error: '登录失败次数过多，请稍后再试，或申请管理员解除限制'
+    });
     return true;
   }
 
@@ -4129,17 +4223,18 @@ async function startSyncWatchServer(options = {}) {
 
   function permissionFor(username, roomIdValue = currentRoomId()) {
     const room = roomConfig(roomIdValue);
-    if (state.accounts[username]?.superAdmin) return { control: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: true, groupId: 'super-admin' };
+    if (state.accounts[username]?.superAdmin) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: true, groupId: 'super-admin' };
     const serverHost = [...users.values()].some((member) => member.username === username && member.roomId === room.id && sessions.get(member.sessionToken)?.isServerHost);
-    if (serverHost) return { control: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'server-host' };
-    if (username && username === room.ownerUsername) return { control: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'owner' };
+    if (serverHost) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'server-host' };
+    if (username && username === room.ownerUsername) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'owner' };
     const groupId = cleanText(room.memberGroups?.[username] || 'member', 32).toLowerCase();
     const group = room.permissionGroups?.[groupId] || room.permissionGroups?.member || defaultPermissionGroups().member;
     const direct = room.permissions[username] || {};
     const permissions = { ...state.admin.defaultPermissions, ...(group.permissions || {}), ...direct };
+    if (direct.seek === undefined && direct.control === true) permissions.seek = true;
     if (room.mediaManagementGrants?.[username] === true) permissions.manageMedia = true;
     permissions.administrator = Boolean(direct.administrator || groupId === 'administrator');
-    if (permissions.administrator) Object.assign(permissions, { control: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true });
+    if (permissions.administrator) Object.assign(permissions, { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true });
     permissions.superAdmin = false;
     permissions.groupId = permissions.administrator ? 'administrator' : groupId;
     return permissions;
@@ -4531,7 +4626,7 @@ async function startSyncWatchServer(options = {}) {
     persistTimer = null; chatFlushTimer = null; pendingChatLines = [];
     await chatWriteChain.catch(() => {});
     sessions.clear(); users.clear(); guestSessionsByIp.clear(); rateBuckets.clear(); registrationClaims.clear(); roomCreateClaims.clear(); verifiedRegistrationAllowances.clear();
-    passwordResetCodes.clear(); passwordResetTokens.clear(); emailBindingCodes.clear(); emailUnbindingCodes.clear(); registrationEmailCodes.clear(); roomRuntimes.clear(); qualityBroadcastRooms.clear();
+    passwordResetCodes.clear(); passwordResetTokens.clear(); emailBindingCodes.clear(); emailUnbindingCodes.clear(); registrationEmailCodes.clear(); roomRuntimes.clear(); qualityBroadcastRooms.clear(); qualityChangeRequests.clear();
     chatMessages.length = 0; chatRoomWindowCounts.clear(); chatParticipants.clear();
 
     const lockName = path.basename(dataDirectoryLock.path);
@@ -5115,6 +5210,7 @@ async function startSyncWatchServer(options = {}) {
       favoriteMeta: account.favoriteMeta, mediaNotes: account.mediaNotes, mediaCategories: account.mediaCategories, roomMeta: account.roomMeta,
       friendSettings: normalizeFriendSettings(account.friendSettings),
       notificationPreferences: normalizeNotificationSettings(account.notificationSettings),
+      viewPreferences: normalizeViewPreferences(account.viewPreferences),
       friends: (Array.isArray(account.friends) ? account.friends : []).map((friend) => ({
         username: friend, displayName: state.accounts[friend]?.displayName || friend, avatar: state.accounts[friend]?.avatar || '',
         online: accountIsOnline(friend), remark: cleanText(account.friendMeta?.[friend]?.remark, 40),
@@ -5191,7 +5287,7 @@ async function startSyncWatchServer(options = {}) {
       ...room, passwordHash: undefined, permissions: undefined, permissionGroups: undefined, memberGroups: undefined, savedState: undefined,
       passwordRequired: Boolean(room.passwordHash), lightsOn: runtime.roomState.lightsOn, playback: playbackSnapshot(room.id),
       textReading: normalizeTextReadingState(runtime.roomState.textReading),
-      screenShare: { ...runtime.roomState.screenShare }, audioShare: { ...runtime.roomState.audioShare }, webShare: { ...runtime.roomState.webShare }, queue: [...room.queue], playbackMode: normalizePlaybackMode(room.playbackMode),
+      screenShare: { ...runtime.roomState.screenShare }, audioShare: { ...runtime.roomState.audioShare }, webShare: { ...runtime.roomState.webShare }, queue: [...room.queue], playbackMode: normalizePlaybackMode(room.playbackMode), skipSettings: normalizePlaybackSkipSettings(room.skipSettings),
       online, storage, marqueeNotice: normalizeMarqueeNotice(state.admin.marqueeNotice), entryNotice: effectiveRoomEntryNotice(room.id),
       status: room.banned ? '已被服务器封禁' : room.closed ? '已关闭，等待重新进入' : online ? '同步正常' : '90 秒后自动关闭'
     };
@@ -5332,6 +5428,13 @@ async function startSyncWatchServer(options = {}) {
     if (effective.administrator) return true;
     if (room.permissions[user.username]?.control === true) return true;
     return !room.controlLocked && effective.control;
+  }
+
+  function canSeek(user) {
+    if (!user) return false;
+    if (canControl(user)) return true;
+    const room = roomConfig(user.roomId);
+    return permissionFor(user.username, room.id).seek === true;
   }
 
   function canUndoRoomOperation(user, operation) {
@@ -5659,6 +5762,245 @@ async function startSyncWatchServer(options = {}) {
     for (const message of restored) {
       if (message.from) chatParticipants.add(message.from);
       if (message.to) chatParticipants.add(message.to);
+    }
+  }
+
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function clonedArtifactName(sourceName, fallbackExtension = '') {
+    const extension = path.extname(String(sourceName || '')).toLowerCase();
+    const safeExtension = /^\.[a-z0-9]{1,10}$/.test(extension) ? extension : fallbackExtension;
+    return `${crypto.randomUUID()}${safeExtension}`;
+  }
+
+  function copyNamedArtifact(kind, sourceName, targetName, createdArtifacts) {
+    const directory = artifactDirectory(kind);
+    if (!directory || !safeStoredName(sourceName) || !safeStoredName(targetName)) throw new Error('房间数据包含不安全的文件路径');
+    const source = path.resolve(directory, sourceName);
+    const target = path.resolve(directory, targetName);
+    const directoryPrefix = `${path.resolve(directory)}${path.sep}`;
+    if (!source.startsWith(directoryPrefix) || !target.startsWith(directoryPrefix)) throw new Error('房间文件路径越界');
+    if (!fs.existsSync(source) || !fs.statSync(source).isFile()) throw new Error(`源房间文件缺失：${sourceName}`);
+    const temporary = `${target}.room-copy-${process.pid}-${crypto.randomBytes(5).toString('hex')}.tmp`;
+    fs.copyFileSync(source, temporary, fs.constants.COPYFILE_EXCL);
+    try {
+      fs.renameSync(temporary, target);
+    } catch (error) {
+      try { fs.rmSync(temporary, { force: true }); } catch (_) {}
+      throw error;
+    }
+    createdArtifacts.push(target);
+  }
+
+  function cloneRoomFileRecord(sourceFile, targetRoomId, idMap, createdArtifacts) {
+    const cloned = cloneJson(sourceFile);
+    const newId = crypto.randomUUID();
+    idMap.set(sourceFile.id, newId);
+    cloned.id = newId;
+    cloned.roomId = targetRoomId;
+    cloned.uploadedAt = new Date().toISOString();
+    cloned.compatibility = cloned.compatibility && typeof cloned.compatibility === 'object' ? cloned.compatibility : {};
+    const remote = sourceFile.sourceType === 'remote' && /^https:\/\/[^\s]+$/i.test(String(sourceFile.sourceUrl || ''));
+    if (remote) {
+      cloned.storedName = '';
+    } else {
+      const storedName = clonedArtifactName(sourceFile.storedName, path.extname(sourceFile.originalName || '').toLowerCase());
+      copyNamedArtifact('upload', sourceFile.storedName, storedName, createdArtifacts);
+      cloned.storedName = storedName;
+    }
+    if (sourceFile.thumbnailName && safeStoredName(sourceFile.thumbnailName)
+      && fs.existsSync(path.join(thumbnailsDir, sourceFile.thumbnailName))) {
+      cloned.thumbnailName = clonedArtifactName(sourceFile.thumbnailName, '.jpg');
+      copyNamedArtifact('thumbnail', sourceFile.thumbnailName, cloned.thumbnailName, createdArtifacts);
+    } else cloned.thumbnailName = '';
+    if (sourceFile.vttName && safeStoredName(sourceFile.vttName)
+      && fs.existsSync(path.join(subtitlesDir, sourceFile.vttName))) {
+      cloned.vttName = clonedArtifactName(sourceFile.vttName, '.vtt');
+      copyNamedArtifact('subtitle', sourceFile.vttName, cloned.vttName, createdArtifacts);
+    } else cloned.vttName = '';
+    const compatibleSourceName = sourceFile.compatibility?.fileName || (mediaNeedsCompatibility(sourceFile) ? compatibilityFileName(sourceFile) : '');
+    if (compatibleSourceName && safeStoredName(compatibleSourceName)
+      && fs.existsSync(path.join(compatibleMediaDir, compatibleSourceName))) {
+      const compatibleName = clonedArtifactName(compatibleSourceName, '.mp4');
+      copyNamedArtifact('compatible', compatibleSourceName, compatibleName, createdArtifacts);
+      cloned.compatibility = { ...cloned.compatibility, fileName: compatibleName };
+    } else if (cloned.compatibility) {
+      cloned.compatibility = { ...cloned.compatibility, fileName: '', status: cloned.compatibility.status === 'ready' ? 'pending' : cloned.compatibility.status };
+    }
+    return cloned;
+  }
+
+  function cloneRoomChatMessage(sourceMessage, targetRoomId, createdArtifacts) {
+    const cloned = { ...cloneJson(sourceMessage), id: crypto.randomUUID(), roomId: targetRoomId };
+    const voiceMatch = /^\/voice\/([^/?#]+)$/i.exec(String(sourceMessage.voiceUrl || ''));
+    if (voiceMatch) {
+      const sourceName = decodeURIComponent(voiceMatch[1]);
+      const targetName = clonedArtifactName(sourceName, '.webm');
+      copyNamedArtifact('voice', sourceName, targetName, createdArtifacts);
+      cloned.voiceUrl = `/voice/${encodeURIComponent(targetName)}`;
+    }
+    const imageMatch = /^\/chat-image\/([^/?#]+)$/i.exec(String(sourceMessage.imageUrl || ''));
+    if (imageMatch) {
+      const sourceName = decodeURIComponent(imageMatch[1]);
+      const targetName = clonedArtifactName(sourceName, '.jpg');
+      copyNamedArtifact('chat-image', sourceName, targetName, createdArtifacts);
+      cloned.imageUrl = `/chat-image/${encodeURIComponent(targetName)}`;
+      cloned.imageName = targetName;
+    }
+    return cloned;
+  }
+
+  function roomTransferDiskRequirement(sourceFiles) {
+    let bytes = 0;
+    for (const file of sourceFiles) {
+      for (const artifact of fileArtifactPaths(file)) {
+        try { if (fs.existsSync(artifact.path)) bytes += fs.statSync(artifact.path).size; } catch (_) {}
+      }
+    }
+    return bytes;
+  }
+
+  async function copyRoomDataTransactional({ sourceRoomId, targetRoomId = '', targetOwner, requestedRoomName = '', overwrite = false, actor }) {
+    const sourceId = normalizeRoomId(sourceRoomId);
+    const sourceRoom = sourceId && state.rooms[sourceId];
+    if (!visibleRoom(sourceRoom) || sourceRoom.temporary) throw new Error('源房间不存在、已存档或属于临时房间');
+    let destinationId = normalizeRoomId(targetRoomId);
+    const existingTarget = destinationId ? state.rooms[destinationId] : null;
+    if (overwrite) {
+      if (!visibleRoom(existingTarget) || existingTarget.temporary) throw new Error('目标房间不存在、已存档或属于临时房间');
+      if (destinationId === sourceId) throw new Error('源房间和目标房间不能相同');
+    } else {
+      do { destinationId = roomId(); } while (state.rooms[destinationId]);
+    }
+    const ownerUsername = cleanUsername(targetOwner || existingTarget?.ownerUsername);
+    if (!state.accounts[ownerUsername]) throw new Error('目标房主账号不存在');
+    const claimKeys = [sourceId, destinationId].sort();
+    if (claimKeys.some((key) => roomTransferClaims.has(key))) throw new Error('相关房间正在执行其他复制或迁移操作');
+    for (const key of claimKeys) roomTransferClaims.add(key);
+
+    const transactionId = `room-transfer-${crypto.randomUUID()}`;
+    const createdArtifacts = [];
+    const sourceFiles = state.files.filter((file) => file.roomId === sourceId);
+    const requiredBytes = roomTransferDiskRequirement(sourceFiles);
+    try {
+      if (typeof fs.statfsSync === 'function') {
+        const disk = fs.statfsSync(dataDir);
+        const available = Number(disk.bavail) * Number(disk.bsize);
+        if (Number.isFinite(available) && requiredBytes + 64 * 1024 * 1024 > available) throw new Error('磁盘剩余空间不足，无法安全复制房间媒体');
+      }
+      const idMap = new Map();
+      const clonedFiles = sourceFiles.map((file) => cloneRoomFileRecord(file, destinationId, idMap, createdArtifacts));
+      for (let index = 0; index < sourceFiles.length; index += 1) {
+        clonedFiles[index].subtitleVideoId = idMap.get(sourceFiles[index].subtitleVideoId) || '';
+      }
+      const sourceData = cloneJson(sourceRoom);
+      const roomOptions = {
+        ...sourceData,
+        id: destinationId,
+        name: cleanText(requestedRoomName || (overwrite ? sourceRoom.name : `${sourceRoom.name} · 副本`), 40) || sourceRoom.name,
+        ownerUsername,
+        createdBy: overwrite ? (existingTarget.createdBy || ownerUsername) : ownerUsername,
+        createdAt: overwrite ? existingTarget.createdAt : new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        archived: false, archivedAt: '', banned: false, banReason: '', closed: false, closedAt: '', temporary: false, systemRoom: false,
+        permissions: cloneJson(sourceRoom.permissions || {}),
+        memberGroups: cloneJson(sourceRoom.memberGroups || {}),
+        mediaManagementGrants: cloneJson(sourceRoom.mediaManagementGrants || {}),
+        queue: sourceRoom.queue.map((fileId) => idMap.get(fileId)).filter(Boolean),
+        queueFileModes: Object.fromEntries(Object.entries(sourceRoom.queueFileModes || {})
+          .map(([fileId, mode]) => [idMap.get(fileId), normalizePlaybackMode(mode)]).filter(([fileId]) => fileId)),
+        savedState: sourceRoom.savedState ? cloneJson(sourceRoom.savedState) : null
+      };
+      if (roomOptions.savedState?.playback?.fileId) roomOptions.savedState.playback.fileId = idMap.get(roomOptions.savedState.playback.fileId) || null;
+      if (roomOptions.savedState?.textReading?.fileId) roomOptions.savedState.textReading.fileId = idMap.get(roomOptions.savedState.textReading.fileId) || '';
+      const replacementRoom = freshRoom(destinationId, ownerUsername, roomOptions);
+      const previousRoom = existingTarget ? cloneJson(existingTarget) : null;
+      const previousFiles = state.files.filter((file) => file.roomId === destinationId).map(cloneJson);
+      const previousRuntime = roomRuntimes.get(destinationId) || null;
+      const ownerAccount = state.accounts[ownerUsername];
+      const previousCreatedRoomCount = Math.max(0, Number(ownerAccount.stats?.createdRooms) || 0);
+      const previousRecentRooms = Array.isArray(ownerAccount.recentRooms) ? [...ownerAccount.recentRooms] : [];
+      const previousOperationCount = state.operations.length;
+      const previousServerLogCount = Array.isArray(state.serverLogs) ? state.serverLogs.length : 0;
+      let previousStoredMessages = [];
+      let clonedMessages = [];
+      try {
+        await mutateStoredChatMessages((messages) => {
+          const sourceMessages = messages.filter((message) => message.roomId === sourceId);
+          previousStoredMessages = messages.filter((message) => message.roomId === destinationId).map(cloneJson);
+          clonedMessages = sourceMessages.map((message) => cloneRoomChatMessage(message, destinationId, createdArtifacts));
+          if (overwrite) {
+            for (let index = messages.length - 1; index >= 0; index -= 1) if (messages[index].roomId === destinationId) messages.splice(index, 1);
+          }
+          messages.push(...clonedMessages);
+          messages.sort((left, right) => Date.parse(left.timestamp || 0) - Date.parse(right.timestamp || 0));
+        });
+        state.rooms[destinationId] = replacementRoom;
+        state.files = state.files.filter((file) => file.roomId !== destinationId).concat(clonedFiles);
+        roomRuntimes.delete(destinationId);
+        roomRuntime(destinationId);
+        if (!overwrite) ownerAccount.stats.createdRooms = Math.max(0, Number(ownerAccount.stats.createdRooms) || 0) + 1;
+        rememberRecentRoom(ownerUsername, destinationId);
+        persist();
+
+        for (let index = chatMessages.length - 1; index >= 0; index -= 1) {
+          if (overwrite && chatMessages[index].roomId === destinationId) chatMessages.splice(index, 1);
+        }
+        for (const message of clonedMessages) rememberChatMessage(message);
+        recalculateChatWindowCounts();
+        recordOperation({
+          roomId: destinationId, actor, action: overwrite ? 'room-migrate' : 'room-copy', scope: 'server',
+          summary: `${overwrite ? '迁移覆盖' : '复制'}房间 ${sourceId} → ${destinationId}`
+        });
+        io.to(roomChannel(destinationId)).emit('room-data-migrated', {
+          sourceRoomId: sourceId, targetRoomId: destinationId, overwrite, room: roomSnapshot(destinationId), copiedFiles: clonedFiles.length, copiedMessages: clonedMessages.length
+        });
+        io.to(roomChannel(destinationId)).emit('room-state', roomSnapshot(destinationId));
+        io.to(roomChannel(destinationId)).emit('queue-state', replacementRoom.queue);
+        emitRoomDirectoryChanged(destinationId, overwrite ? 'room-migrated' : 'room-copied');
+        for (const oldFile of previousFiles) {
+          try { moveFileArtifactsToTrash(oldFile, `${transactionId}-${oldFile.id}`); } catch (_) {}
+        }
+        return { room: roomSnapshot(destinationId), copiedFiles: clonedFiles.length, copiedMessages: clonedMessages.length };
+      } catch (error) {
+        if (previousRoom) state.rooms[destinationId] = previousRoom;
+        else delete state.rooms[destinationId];
+        state.files = state.files.filter((file) => file.roomId !== destinationId).concat(previousFiles);
+        ownerAccount.stats = ownerAccount.stats && typeof ownerAccount.stats === 'object' ? ownerAccount.stats : {};
+        ownerAccount.stats.createdRooms = previousCreatedRoomCount;
+        ownerAccount.recentRooms = previousRecentRooms;
+        state.operations.splice(previousOperationCount);
+        if (Array.isArray(state.serverLogs)) state.serverLogs.splice(previousServerLogCount);
+        roomRuntimes.delete(destinationId);
+        if (previousRuntime && previousRoom) roomRuntimes.set(destinationId, previousRuntime);
+        try {
+          const clonedIds = new Set(clonedMessages.map((message) => message.id));
+          await mutateStoredChatMessages((messages) => {
+            for (let index = messages.length - 1; index >= 0; index -= 1) {
+              if (clonedIds.has(messages[index].id) || (overwrite && messages[index].roomId === destinationId)) messages.splice(index, 1);
+            }
+            messages.push(...previousStoredMessages);
+            messages.sort((left, right) => Date.parse(left.timestamp || 0) - Date.parse(right.timestamp || 0));
+          });
+        } catch (_) {}
+        const clonedIds = new Set(clonedMessages.map((message) => message.id));
+        for (let index = chatMessages.length - 1; index >= 0; index -= 1) {
+          if (clonedIds.has(chatMessages[index].id) || (overwrite && chatMessages[index].roomId === destinationId)) chatMessages.splice(index, 1);
+        }
+        if (overwrite) for (const message of previousStoredMessages) rememberChatMessage(message);
+        recalculateChatWindowCounts();
+        try { persist(); } catch (_) {}
+        throw error;
+      }
+    } finally {
+      for (const filename of createdArtifacts) {
+        const stillReferenced = state.files.some((file) => fileArtifactPaths(file).some((artifact) => artifact.path === filename))
+          || chatMessages.some((message) => [message.voiceUrl, message.imageUrl].some((url) => String(url || '').includes(encodeURIComponent(path.basename(filename)))));
+        if (!stillReferenced) try { fs.rmSync(filename, { force: true }); } catch (_) {}
+      }
+      for (const key of claimKeys) roomTransferClaims.delete(key);
     }
   }
 
@@ -6034,7 +6376,7 @@ async function startSyncWatchServer(options = {}) {
       const label = kind === 'macos-server' ? '服务器' : '客户端';
       return {
         kind, extension, architecture, label: `macOS ${label}`,
-        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.3-${architecture}${extension}`)
+        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.4-${architecture}${extension}`)
       };
     }
     return null;
@@ -6108,24 +6450,10 @@ async function startSyncWatchServer(options = {}) {
   });
 
   app.get('/api/releases/latest', httpRateLimit('latest-release', 20, 5 * 60 * 1000), async (req, res) => {
-    if (latestReleaseCache?.expiresAt > Date.now()) return res.json(latestReleaseCache.value);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    try {
-      const response = await fetch('https://api.github.com/repos/xuange6610/SyncWatch/releases/latest', {
-        signal: controller.signal,
-        headers: { Accept: 'application/vnd.github+json', 'User-Agent': `SyncWatch/${APP_VERSION} update-check` }
-      });
-      if (!response.ok) return res.status(502).json({ success: false, error: `GitHub 返回 ${response.status}` });
-      const release = await response.json();
-      const tagName = cleanText(release?.tag_name, 40);
-      if (!/^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(tagName)) return res.status(502).json({ success: false, error: 'GitHub Latest 版本号无效' });
-      const value = { success: true, tag_name: tagName, name: cleanText(release?.name, 120) };
-      latestReleaseCache = { value, expiresAt: Date.now() + 5 * 60 * 1000 };
-      return res.json(value);
-    } catch (error) {
-      return res.status(502).json({ success: false, error: error?.name === 'AbortError' ? '连接 GitHub 超时' : '无法连接 GitHub' });
-    } finally { clearTimeout(timeout); }
+    res.set('Cache-Control', 'no-store, max-age=0');
+    const result = await latestReleaseChecker.check({ forceRefresh: String(req.query.refresh || '') === '1' });
+    if (result.success) return res.json(result);
+    return res.status(result.code === 'GITHUB_TIMEOUT' ? 504 : 502).json(result);
   });
 
   app.get('/api/tunnel-health', (_req, res) => {
@@ -6140,17 +6468,26 @@ async function startSyncWatchServer(options = {}) {
       try { synchronizeTunnelUrl(await tunnelManager.status()); }
       catch (_) { forgetTunnelUrl(); }
     }
+    const directServerHost = Boolean(directLoopbackHostRequest(requestPeerAddress(req), req.headers)
+      && (!hostControlToken || isHostToken(req.headers['x-syncwatch-host-token'])));
+    const requestHost = cleanText(req.get('host'), 255);
+    const addressState = clientFacingAddressState({
+      runtimeRole: directServerHost ? 'server' : 'client',
+      currentOrigin: requestHost ? `${req.protocol === 'https' ? 'https' : 'http'}://${requestHost}` : '',
+      configuredPublicAddress: activeTunnelPublicUrl || configuredPublicUrl,
+      lanAddresses: advertisedNetworkAddresses()
+    });
     return res.json({
     name: 'SyncWatch同步观影', version: APP_VERSION, roomName: roomConfig(state.defaultRoomId).name, roomId: state.defaultRoomId,
     defaultRoomId: state.defaultRoomId, roomsEnabled: true,
     accessPasswordRequired: Boolean(roomConfig(state.defaultRoomId).passwordHash), defaultAdminPassword: Boolean(state.admin.mustChangePassword),
     maxUploadBytes: state.admin.uploadLimitBytes || DEFAULT_USER_UPLOAD_LIMIT_BYTES, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
     allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false,
-    supportedExtensions: [...FILE_TYPES.keys()].map((extension) => extension.slice(1)), port: actualPort, addresses: advertisedNetworkAddresses(), publicAddress: activeTunnelPublicUrl || configuredPublicUrl,
+    supportedExtensions: [...FILE_TYPES.keys()].map((extension) => extension.slice(1)), port: actualPort,
+    addresses: addressState.addresses, publicAddress: addressState.shareAddress,
     lanAccessEnabled: state.admin.lanAccessEnabled !== false,
     ...downloadAssetPublicState(),
-    serverHostLoginAvailable: Boolean(directLoopbackHostRequest(requestPeerAddress(req), req.headers)
-      && (!hostControlToken || isHostToken(req.headers['x-syncwatch-host-token']))),
+    serverHostLoginAvailable: directServerHost,
     serverHostPasswordlessManagementAvailable: Boolean(state.admin.localPasswordlessManagementEnabled !== false
       && directLoopbackHostRequest(requestPeerAddress(req), req.headers)
       && hostControlToken && isHostToken(req.headers['x-syncwatch-host-token'])),
@@ -6217,7 +6554,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.3-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.4-x64.exe');
   });
 
   app.get('/api/macos-server-download', httpRateLimit('macos-server-download', 12, 60 * 60 * 1000), (req, res) => {
@@ -6227,7 +6564,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macServerDistribution),
       error: '苹果服务器安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-服务器-v2.2.3-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-服务器-v2.2.4-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6242,7 +6579,7 @@ async function startSyncWatchServer(options = {}) {
       availableArchitectures: availableMacArchitectures(macClientDistribution),
       error: '苹果客户端安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
     });
-    const filename = `SyncWatch同步观影-客户端-v2.2.3-${selected.architecture}.${selected.artifact.format}`;
+    const filename = `SyncWatch同步观影-客户端-v2.2.4-${selected.architecture}.${selected.artifact.format}`;
     if (selected.artifact.source === 'remote') {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(302, selected.artifact.url);
@@ -6328,7 +6665,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.3-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.4-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -7808,7 +8145,7 @@ async function startSyncWatchServer(options = {}) {
 
   async function streamBackupArchive(res, metadata, entries) {
     res.type('application/vnd.syncwatch.backup');
-    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.3-${metadata.scope}.swbackup`));
+    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.4-${metadata.scope}.swbackup`));
     const metadataBuffer = Buffer.from(JSON.stringify(metadata), 'utf8');
     const entryBuffers = entries.map((entry) => ({
       entry,
@@ -8063,7 +8400,7 @@ async function startSyncWatchServer(options = {}) {
         const entries = fullSnapshot ? backupDataEntries(scopes) : (scopes.includes('media-index') ? backupArtifactEntries(state.files) : []);
         return await streamBackupArchive(res, output, entries);
       }
-      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.3-${output.scope}.json`));
+      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.4-${output.scope}.json`));
       return res.json(output);
     } catch (error) { return next(error); }
   });
@@ -8369,6 +8706,7 @@ async function startSyncWatchServer(options = {}) {
       }
     }
     socket.emit('room-state', roomSnapshot(session.roomId));
+    socket.emit('web-share-state', { roomId: session.roomId, ...roomRuntime(session.roomId).roomState.webShare, serverTime: Date.now() });
     if (!alreadyPresent) emitRoomEntryNotice(socket, session.roomId);
     const runtime = roomRuntime(session.roomId);
     if (runtime.roomState.screenShare.active && runtime.latestScreenFrame) queueScreenFrameForSocket(session.roomId, socket, runtime.latestScreenFrame);
@@ -8384,7 +8722,7 @@ async function startSyncWatchServer(options = {}) {
       schedulePersist(0);
     }
     const claimedRegistrationRequests = [];
-    if (isSuperAdmin(user.username) && agreementAccepted(user.username)) {
+    if (user.username === 'admin' && agreementAccepted(user.username)) {
       const claimedAt = new Date().toISOString();
       for (const request of state.admin.registrationRequests) {
         if (request?.status !== 'pending' || cleanUsername(request.popupClaimedBy)) continue;
@@ -8393,6 +8731,9 @@ async function startSyncWatchServer(options = {}) {
         claimedRegistrationRequests.push({
           id: request.id, username: request.username,
           requestedCount: registrationRequestCount(request.requestedCount),
+          remainingCount: Math.max(0, Number(request.remainingCount ?? request.requestedCount) || 0),
+          totalRequestedCount: Math.max(0, Number(request.totalRequestedCount) || registrationRequestCount(request.requestedCount)),
+          withdrawnCount: Math.max(0, Number(request.withdrawnCount) || 0),
           reason: cleanText(request.reason, 200), createdAt: request.createdAt
         });
       }
@@ -8406,7 +8747,8 @@ async function startSyncWatchServer(options = {}) {
         serverHost: Boolean(session.isServerHost), owner: Boolean(session.isServerHost || user.username === roomConfig(user.roomId).ownerUsername),
         admin: isRoomAdmin(user), superAdmin: isSuperAdmin(user.username),
         mustChangeAdminPassword: Boolean(session.isServerHost && (state.admin.mustChangePassword || passwordExpired('admin', { adminSecret: true }))),
-        mustChangeAccountPassword: Boolean(state.accounts[user.username]?.mustChangePassword || passwordExpired(user.username)),
+        mustChangeAccountPassword: Boolean(user.username === 'admin'
+          && (state.accounts[user.username]?.mustChangePassword || passwordExpired(user.username))),
         canSetInitialAccountPassword: Boolean(session.isServerHost && user.username === 'admin'
           && state.admin.mustChangePassword === true && state.accounts[user.username]?.mustChangePassword),
         // A password-authenticated admin session already verified the
@@ -8463,6 +8805,7 @@ async function startSyncWatchServer(options = {}) {
       });
       socket.emit('room-state', roomSnapshot(targetRoom.id));
       socket.emit('queue-state', [...targetRoom.queue]);
+      socket.emit('web-share-state', { roomId: targetRoom.id, ...roomRuntime(targetRoom.id).roomState.webShare, serverTime: Date.now() });
       emitRoomEntryNotice(socket, targetRoom.id);
     });
     emitRoomDirectoryChanged(previousRoomId, 'member-left');
@@ -8873,23 +9216,32 @@ async function startSyncWatchServer(options = {}) {
       if (!registrationsForIp(clientIp).length || registrationIpWhitelisted(clientIp)) return acknowledgement?.({ success: true, approved: true, message: '当前 IP 无需额外批准，请直接注册' });
       const pending = state.admin.registrationRequests.find((entry) => entry.ip === clientIp && entry.username === username && entry.status === 'pending');
       if (pending) {
+        Object.assign(pending, normalizeRegistrationRequestCounts(pending));
+        const totalRequestedCount = registrationRequestCount(payload.requestedCount ?? pending.totalRequestedCount);
+        if (totalRequestedCount <= pending.withdrawnCount) {
+          return acknowledgement?.({ success: false, error: `申请总数量必须大于已撤回数量 ${pending.withdrawnCount}` });
+        }
         pending.requesterSocketId = socket.id;
         pending.deviceName = cleanText(payload.deviceName || pending.deviceName || '浏览器设备', 50);
         pending.reason = cleanText(payload.reason || pending.reason, 200);
-        pending.requestedCount = registrationRequestCount(payload.requestedCount ?? pending.requestedCount);
+        pending.totalRequestedCount = totalRequestedCount;
+        pending.requestedCount = totalRequestedCount - pending.withdrawnCount;
+        pending.remainingCount = pending.requestedCount;
+        pending.updatedAt = new Date().toISOString();
         persist();
         return acknowledgement?.({ success: true, request: pending, message: '申请已提交，请等待服务器管理员处理' });
       }
+      const requestedCount = registrationRequestCount(payload.requestedCount);
       const request = {
         id: crypto.randomUUID(), ip: clientIp, username,
         deviceName: cleanText(payload.deviceName || '浏览器设备', 50), reason: cleanText(payload.reason, 200),
-        requestedCount: registrationRequestCount(payload.requestedCount),
+        requestedCount, remainingCount: requestedCount, totalRequestedCount: requestedCount, withdrawnCount: 0,
         requesterSocketId: socket.id,
         status: 'pending', createdAt: new Date().toISOString(), resolvedAt: '', resolvedBy: '',
         popupClaimedBy: '', popupClaimedAt: ''
       };
       const firstOnlineSuperAdmin = [...users.values()]
-        .filter((member) => isSuperAdmin(member.username) && member.connectionState !== 'reconnecting')
+        .filter((member) => member.username === 'admin' && member.connectionState !== 'reconnecting')
         .sort((left, right) => Date.parse(left.joinedAt || 0) - Date.parse(right.joinedAt || 0))[0];
       if (firstOnlineSuperAdmin) {
         request.popupClaimedBy = firstOnlineSuperAdmin.username;
@@ -8900,6 +9252,80 @@ async function startSyncWatchServer(options = {}) {
       persist();
       if (firstOnlineSuperAdmin) io.to(firstOnlineSuperAdmin.socketId).emit('registration-requested', request);
       return acknowledgement?.({ success: true, request, message: `申请已发送，管理员同意后可注册 ${request.requestedCount} 个账号` });
+    });
+
+    onSafe('registration-request-withdraw', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, 'registration-request-withdraw', 20, 10 * 60 * 1000, acknowledgement)) return;
+      const request = state.admin.registrationRequests.find((entry) => entry.id === cleanText(payload.requestId, 80));
+      const username = cleanUsername(payload.username || request?.username);
+      if (!request || request.status !== 'pending' || request.ip !== clientIp || request.username !== username) {
+        return acknowledgement?.({ success: false, error: '注册申请不存在、已处理或不属于当前设备' });
+      }
+      Object.assign(request, normalizeRegistrationRequestCounts(request));
+      const available = request.remainingCount;
+      const withdrawCount = Number(payload.withdrawCount);
+      if (!Number.isInteger(withdrawCount) || withdrawCount < 1 || withdrawCount > available) {
+        return acknowledgement?.({ success: false, error: `撤回数量必须是 1 到 ${available} 之间的整数` });
+      }
+      request.withdrawnCount = Math.max(0, Math.floor(Number(request.withdrawnCount) || 0)) + withdrawCount;
+      request.requestedCount = available - withdrawCount;
+      request.remainingCount = request.requestedCount;
+      request.updatedAt = new Date().toISOString();
+      if (request.requestedCount <= 0) {
+        request.requestedCount = 0;
+        request.status = 'withdrawn';
+        request.resolvedAt = request.updatedAt;
+        request.resolvedBy = username || 'requester';
+      }
+      persist();
+      recordAccountAudit({
+        category: 'register', action: 'registration-request-withdraw', result: 'success', username,
+        ipAddress: clientIp, deviceName: payload.deviceName, platform: payload.platform, browser: payload.browser,
+        actor: username, message: `撤回 ${withdrawCount} 个注册名额申请，剩余 ${request.requestedCount} 个`
+      });
+      const event = {
+        requestId: request.id, username, withdrawCount, remainingCount: request.remainingCount,
+        totalRequestedCount: request.totalRequestedCount, withdrawnCount: request.withdrawnCount,
+        status: request.status, updatedAt: request.updatedAt
+      };
+      for (const member of accountOnlineMembers('admin')) io.to(member.socketId).emit('registration-request-withdrawn', event);
+      return acknowledgement?.({ success: true, request, ...event, message: request.status === 'withdrawn' ? '注册申请已全部撤回' : `已撤回 ${withdrawCount} 个名额，仍申请 ${request.requestedCount} 个` });
+    });
+
+    onSafe('login-limit-clear-request', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, 'login-limit-clear-request', 6, 10 * 60 * 1000, acknowledgement)) return;
+      const username = cleanUsername(payload.username);
+      const ipAddress = getSocketIp(socket);
+      const keys = loginFailureKeysForIp(ipAddress, username);
+      const activelyLimited = keys.some((key) => {
+        const bucket = rateBuckets.get(key);
+        return bucket && bucket.expiresAt > Date.now() && bucket.count >= (key.includes('login-failure-user:') ? 15 : 60);
+      });
+      if (!activelyLimited) return acknowledgement?.({ success: false, code: 'LOGIN_LIMIT_NOT_ACTIVE', error: '当前登录限制已解除，请直接重新登录' });
+      let request = state.admin.loginLimitRequests.find((entry) => entry.status === 'pending'
+        && entry.ipAddress === ipAddress && entry.username === username);
+      if (!request) {
+        request = {
+          id: crypto.randomUUID(), username, ipAddress,
+          deviceName: cleanText(payload.deviceName || '浏览器设备', 80), reason: cleanText(payload.reason, 240),
+          requesterSocketId: socket.id, status: 'pending', createdAt: new Date().toISOString(),
+          resolvedAt: '', resolvedBy: ''
+        };
+        state.admin.loginLimitRequests.push(request);
+        state.admin.loginLimitRequests = retainPersistentRequests(state.admin.loginLimitRequests).slice(-1000);
+      } else {
+        request.requesterSocketId = socket.id;
+        request.deviceName = cleanText(payload.deviceName || request.deviceName || '浏览器设备', 80);
+        request.reason = cleanText(payload.reason || request.reason, 240);
+      }
+      persist();
+      const adminPayload = { ...request };
+      for (const member of accountOnlineMembers('admin')) io.to(member.socketId).emit('login-limit-clear-requested', adminPayload);
+      return acknowledgement?.({
+        success: true,
+        request: { id: request.id, username: request.username, status: request.status, createdAt: request.createdAt },
+        message: '解除登录限制申请已提交，等待内置 admin 处理'
+      });
     });
 
     onSafe('user-register', async (payload = {}, acknowledgement) => {
@@ -8978,7 +9404,7 @@ async function startSyncWatchServer(options = {}) {
           id, displayName: username, email, emailVerified: Boolean(email && requiresEmailVerification), passwordHash, avatar: '', createdAt: new Date().toISOString(), lastLogin: '',
           signature: '', gender: 'private', age: null, registrationIp: clientIp, passwordChangedAt: new Date().toISOString(),
           devices: [], watchHistory: [], favorites: [], favoriteMeta: {}, mediaNotes: {}, mediaCategories: [], loginHistory: [],
-          roomMeta: {}, friends: [], friendMeta: {}, friendSettings: normalizeFriendSettings(), notificationSettings: normalizeNotificationSettings(), friendRequests: [], friendBlocks: [], friendMessages: [], friendRoomRequests: [], stats: { joinedRooms: 0, createdRooms: 0, watchSeconds: 0, onlineSeconds: 0 },
+          roomMeta: {}, friends: [], friendMeta: {}, friendSettings: normalizeFriendSettings(), notificationSettings: normalizeNotificationSettings(), viewPreferences: normalizeViewPreferences(), friendRequests: [], friendBlocks: [], friendMessages: [], friendRoomRequests: [], stats: { joinedRooms: 0, createdRooms: 0, watchSeconds: 0, onlineSeconds: 0 },
           experience: 0, experienceRemainderSeconds: 0, levelOverride: null, superAdmin: false, mustChangePassword: false, roomCreationBlocked: false,
         roomQuota: 1, recentRooms: [], pinnedRooms: [], roomAccessGrants: {}, pendingNotifications: [], acceptedAgreementVersion: '', multiDeviceLogin: false, tierId: 'basic'
         };
@@ -8994,10 +9420,7 @@ async function startSyncWatchServer(options = {}) {
             username, displayName: state.accounts[username].displayName || username,
             registeredAt: state.accounts[username].createdAt
           };
-          for (const [adminUsername, adminAccount] of Object.entries(state.accounts)) {
-            if (adminUsername !== 'admin' && !adminAccount.superAdmin) continue;
-            accountChangeNotice(adminUsername, registrationNotice);
-          }
+          accountChangeNotice('admin', registrationNotice);
         }
         return finishRegistration({ success: true, accountId: id, emailVerified: requiresEmailVerification, message: requiresEmailVerification ? '注册成功，邮箱已验证，请登录' : '注册成功，请登录' });
       } finally {
@@ -9162,7 +9585,7 @@ async function startSyncWatchServer(options = {}) {
         passwordHash: makePasswordHash(`${crypto.randomUUID()}${Date.now()}${username}`), avatar: '', signature: '',
         gender: 'private', age: null, registrationIp: clientIp, createdAt, lastLogin: '', passwordChangedAt: createdAt,
         devices: [], watchHistory: [], favorites: [], favoriteMeta: {}, mediaNotes: {}, mediaCategories: [], loginHistory: [],
-        roomMeta: {}, friends: [], friendMeta: {}, friendSettings: normalizeFriendSettings(), notificationSettings: normalizeNotificationSettings(),
+        roomMeta: {}, friends: [], friendMeta: {}, friendSettings: normalizeFriendSettings(), notificationSettings: normalizeNotificationSettings(), viewPreferences: normalizeViewPreferences(),
         friendRequests: [], friendBlocks: [], friendMessages: [], friendRoomRequests: [], stats: { joinedRooms: 0, createdRooms: 0, watchSeconds: 0, onlineSeconds: 0 },
         experience: 0, experienceRemainderSeconds: 0, levelOverride: null, superAdmin: false, mustChangePassword: false,
         roomCreationBlocked: false, roomQuota: 1, recentRooms: [], pinnedRooms: [], roomAccessGrants: {}, pendingNotifications: [],
@@ -9715,6 +10138,9 @@ async function startSyncWatchServer(options = {}) {
           claimedRegistrationRequests.push({
             id: request.id, username: request.username,
             requestedCount: registrationRequestCount(request.requestedCount),
+            remainingCount: Math.max(0, Number(request.remainingCount ?? request.requestedCount) || 0),
+            totalRequestedCount: Math.max(0, Number(request.totalRequestedCount) || registrationRequestCount(request.requestedCount)),
+            withdrawnCount: Math.max(0, Number(request.withdrawnCount) || 0),
             reason: cleanText(request.reason, 200), createdAt: request.createdAt
           });
         }
@@ -9847,6 +10273,65 @@ async function startSyncWatchServer(options = {}) {
       return acknowledgement?.({ success: true, ignored: quality.ignored, connectionState: user.connectionState });
     });
 
+    onSafe('quality-change-request', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `quality-change-request:${socket.id}`, 20, 60 * 1000, acknowledgement)) return;
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      const requesterSession = validSession(user.sessionToken, false);
+      const room = roomConfig(user.roomId);
+      const serverAdministrator = Boolean(user.username === 'admin' || requesterSession?.isServerHost || requesterSession?.adminVerifiedAt);
+      if (!serverAdministrator && user.username !== room.ownerUsername) {
+        return acknowledgement?.({ success: false, error: '只有房主或服务器管理员可以申请调整成员清晰度' });
+      }
+      const username = cleanUsername(payload.username);
+      const target = [...users.values()].find((member) => member.username === username
+        && (serverAdministrator || member.roomId === user.roomId));
+      if (!target) return acknowledgement?.({ success: false, error: '目标用户当前不在线或不在可管理房间中' });
+      if (target.username === user.username) return acknowledgement?.({ success: false, error: '请直接在本机切换清晰度' });
+      const quality = ['auto', 'smooth', 'original'].includes(payload.quality) ? payload.quality : '';
+      if (!quality) return acknowledgement?.({ success: false, error: '清晰度只支持自动、流畅版或原画' });
+      const request = {
+        id: crypto.randomUUID(), roomId: target.roomId, username: target.username,
+        requestedBy: user.username, requestedByName: state.accounts[user.username]?.displayName || user.username,
+        requesterSocketId: socket.id, targetSocketId: target.socketId, quality,
+        createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), status: 'pending',
+        message: `${state.accounts[user.username]?.displayName || user.username} 申请将您的播放清晰度切换为${quality === 'smooth' ? '流畅版' : quality === 'auto' ? '自动' : '原画'}`
+      };
+      qualityChangeRequests.set(request.id, request);
+      io.to(target.socketId).emit('quality-change-requested', request);
+      return acknowledgement?.({ success: true, request, message: '清晰度调整申请已发送，等待用户确认' });
+    });
+
+    onSafe('quality-change-response', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `quality-change-response:${socket.id}`, 30, 60 * 1000, acknowledgement)) return;
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      const request = qualityChangeRequests.get(cleanText(payload.requestId, 80));
+      if (!request || request.status !== 'pending' || request.username !== user.username || request.targetSocketId !== socket.id) {
+        return acknowledgement?.({ success: false, error: '清晰度调整申请不存在、已过期或不属于当前设备' });
+      }
+      if (Date.parse(request.expiresAt) <= Date.now()) {
+        request.status = 'expired'; qualityChangeRequests.delete(request.id);
+        return acknowledgement?.({ success: false, code: 'QUALITY_REQUEST_EXPIRED', error: '清晰度调整申请已过期' });
+      }
+      const accepted = payload.accepted === true;
+      request.status = accepted ? 'approved' : 'denied';
+      request.resolvedAt = new Date().toISOString();
+      if (accepted) {
+        user.playbackQuality = request.quality;
+        io.to(socket.id).emit('quality-change-applied', { requestId: request.id, quality: request.quality, roomId: user.roomId });
+        broadcastUsersSoon(user.roomId);
+      }
+      const result = {
+        requestId: request.id, username: user.username, quality: request.quality, accepted,
+        resolvedAt: request.resolvedAt,
+        message: accepted ? `${state.accounts[user.username]?.displayName || user.username} 已同意切换清晰度` : `${state.accounts[user.username]?.displayName || user.username} 已拒绝切换清晰度`
+      };
+      io.to(request.requesterSocketId).emit('quality-change-resolved', result);
+      qualityChangeRequests.delete(request.id);
+      return acknowledgement?.({ success: true, ...result });
+    });
+
     onSafe('ai-config-sync-request', (payload = {}, acknowledgement) => {
       const user = socketUser(socket, acknowledgement);
       if (!user) return;
@@ -9918,10 +10403,7 @@ async function startSyncWatchServer(options = {}) {
           status, statusText: user.location.status, location: publicMemberLocation(user.location, true), updatedAt: user.location.updatedAt
         };
         for (const member of users.values()) {
-          const memberSession = sessions.get(member.sessionToken);
-          if (memberSession?.isServerHost || isSuperAdmin(member.username) || (member.roomId === user.roomId && isRoomAdmin(member))) {
-            io.to(member.socketId).emit('member-location-status', event);
-          }
+          if (member.username === 'admin') io.to(member.socketId).emit('member-location-status', event);
         }
         recordOperation({ roomId: user.roomId, actor: user.username, action: `location-${status}`, summary: `${account?.displayName || user.username}${user.location.status}`, scope: 'server' });
       }
@@ -9942,10 +10424,7 @@ async function startSyncWatchServer(options = {}) {
       };
       if (state.admin.locationStatusNoticesEnabled !== false) {
         for (const member of users.values()) {
-          const memberSession = sessions.get(member.sessionToken);
-          if (memberSession?.isServerHost || isSuperAdmin(member.username) || (member.roomId === user.roomId && isRoomAdmin(member))) {
-            io.to(member.socketId).emit('member-location-status', event);
-          }
+          if (member.username === 'admin') io.to(member.socketId).emit('member-location-status', event);
         }
       }
       recordOperation({ roomId: user.roomId, actor: user.username, action: 'location-revoked', summary: `${account?.displayName || user.username} 已撤销位置授权`, scope: 'server' });
@@ -10020,7 +10499,7 @@ async function startSyncWatchServer(options = {}) {
       if (socketRateLimited(socket, `member-location-list:${socket.id}`, 30, 60 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement);
       if (!user) return;
-      if (!isRoomAdmin(user)) return acknowledgement?.({ success: false, error: '只有房主、超级管理员或具有房间管理权限的成员可以查看位置授权详情' });
+      if (user.username !== 'admin') return acknowledgement?.({ success: false, error: '位置授权详情仅内置 admin 可以查看' });
       const members = roomUsers(user.roomId).map((member) => ({
           socketId: member.socketId, username: member.username,
           displayName: state.accounts[member.username]?.displayName || member.username,
@@ -10091,9 +10570,11 @@ async function startSyncWatchServer(options = {}) {
         compatibility = mediaCompatibilitySummary(file);
       }
       const previousFileId = roomState.playback.fileId;
+      const skipSettings = normalizePlaybackSkipSettings(state.room.skipSettings);
+      const initialTime = isPlayableFile(file) && skipSettings.enabled ? skipSettings.introSeconds : 0;
       roomRuntime().playbackGeneration += 1;
       roomState.playback = {
-        fileId: file.id, isPlaying: isPlayableFile(file), stalled: false, currentTime: 0, volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: roomState.playback.playbackRate || 1,
+        fileId: file.id, isPlaying: isPlayableFile(file), stalled: false, currentTime: initialTime, volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: roomState.playback.playbackRate || 1,
         updatedAt: Date.now(), changedBy: user.username, revision: roomState.playback.revision + 1
       };
       const textReading = resetTextReadingState(file, user.username);
@@ -10108,6 +10589,7 @@ async function startSyncWatchServer(options = {}) {
         nextFileId: file.id, nextFileName: file.originalName
       };
       for (const member of roomUsers(user.roomId)) {
+        if (normalizeViewPreferences(state.accounts[member.username]?.viewPreferences).conciseMode) continue;
         io.to(member.socketId).emit('video-switch-notice', { ...switchNotice, canUndo: Boolean(operation.undo && canControl(member)) });
       }
       return acknowledgement?.({
@@ -10281,7 +10763,14 @@ async function startSyncWatchServer(options = {}) {
       if (socketRateLimited(socket, `playback:${socket.id}`, 60, 10 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement);
       if (!user) return;
-      if (!canControl(user)) return acknowledgement?.({ success: false, error: state.room.controlLocked ? '房主已锁定播放控制' : '请先申请控制权' });
+      const action = String(payload.action || '').toLowerCase();
+      if (!['play', 'pause', 'seek', 'volume', 'rate', 'speed', 'playback-rate'].includes(action)) return acknowledgement?.({ success: false, error: '无效播放操作' });
+      if (action === 'seek' ? !canSeek(user) : !canControl(user)) {
+        return acknowledgement?.({
+          success: false,
+          error: state.room.controlLocked ? '房主已锁定播放控制' : (action === 'seek' ? '没有快进或拖动进度的权限' : '请先申请控制权')
+        });
+      }
       const selectedFile = findFile(roomState.playback.fileId);
       if (!isPlayableFile(selectedFile) || selectedFile.roomId !== user.roomId) return acknowledgement?.({
         success: false, code: 'MEDIA_NOT_AVAILABLE_IN_ROOM', refreshFiles: true,
@@ -10297,8 +10786,6 @@ async function startSyncWatchServer(options = {}) {
       if (compatibility.required && !compatibility.ready && ffmpegPath && fs.existsSync(ffmpegPath)) {
         enqueueMediaCompatibility(selectedFile, { priority: true, retry: true });
       }
-      const action = String(payload.action || '').toLowerCase();
-      if (!['play', 'pause', 'seek', 'volume', 'rate', 'speed', 'playback-rate'].includes(action)) return acknowledgement?.({ success: false, error: '无效播放操作' });
       const currentTime = Number(payload.currentTime);
       const volume = Number(payload.volume);
       const muted = payload.muted === true;
@@ -10330,6 +10817,12 @@ async function startSyncWatchServer(options = {}) {
       const snapshot = playbackSnapshot();
       io.to(roomChannel()).emit('playback-command', { ...snapshot, action, sourceSocketId: socket.id, serverTime: snapshot.updatedAt });
       io.to(roomChannel()).emit('playback-change', change);
+      if (action === 'seek') {
+        const actorName = state.accounts[user.username]?.displayName || user.username;
+        broadcastRoomNotice(user.roomId, `${actorName} 将进度拖动到 ${Math.floor(roomState.playback.currentTime)} 秒`, {
+          kind: 'playback-seek', actor: user.username, actorName, currentTime: roomState.playback.currentTime
+        });
+      }
       return acknowledgement?.({ success: true, change });
     });
 
@@ -10346,7 +10839,7 @@ async function startSyncWatchServer(options = {}) {
         revision: roomState.playback.revision + 1
       };
       const textReading = resetTextReadingState(null, user.username);
-      roomState.webShare = { active: false, url: '', title: '', sharedBy: '', updatedAt: Date.now() };
+      roomState.webShare = { active: false, url: '', title: '', changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1 };
       const screenShareStopped = stopScreenShare('', user.roomId);
       persist();
       recordOperation({ actor: user.username, action: 'clear-playback', summary: '清空当前播放画面', undo: { kind: 'clear-playback', before: previous } });
@@ -10438,9 +10931,10 @@ async function startSyncWatchServer(options = {}) {
         if (categoryFiles.length) nextFile = categoryFiles[(Math.max(0, categoryIndex) + 1) % categoryFiles.length];
       }
       if (isPlayableFile(nextFile) && nextFile.roomId === user.roomId) {
+        const skipSettings = normalizePlaybackSkipSettings(state.room.skipSettings);
         roomRuntime().playbackGeneration += 1;
         roomState.playback = {
-          fileId: nextFile.id, isPlaying: true, stalled: false, currentTime: 0, volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: roomState.playback.playbackRate || 1,
+          fileId: nextFile.id, isPlaying: true, stalled: false, currentTime: skipSettings.enabled ? skipSettings.introSeconds : 0, volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: roomState.playback.playbackRate || 1,
           updatedAt: Date.now(), changedBy: user.username, revision: roomState.playback.revision + 1
         };
       } else {
@@ -10499,6 +10993,21 @@ async function startSyncWatchServer(options = {}) {
       const account = state.accounts[user.username];
       const action = String(payload.action || 'get-profile');
       if (action === 'get-profile') return acknowledgement?.({ success: true, profile: accountProfile(user.username) });
+      if (action === 'set-view-preferences') {
+        const current = normalizeViewPreferences(account.viewPreferences);
+        const next = normalizeViewPreferences({ ...current, ...payload });
+        account.viewPreferences = next;
+        account.notificationSettings = normalizeNotificationSettings({
+          ...account.notificationSettings,
+          conciseMode: next.conciseMode
+        });
+        if (next.conciseMode) account.pendingNotifications = [];
+        persist();
+        return acknowledgement?.({
+          success: true, viewPreferences: next, profile: accountProfile(user.username),
+          message: next.conciseMode ? '简洁模式已开启，仅保留进出房和进度拖动通知' : '界面偏好已保存'
+        });
+      }
       if (action === 'set-notification-preferences' || action === 'set-notice-preferences') {
         const current = normalizeNotificationSettings(account.notificationSettings);
         const next = normalizeNotificationSettings({ ...current, ...payload });
@@ -10507,6 +11016,7 @@ async function startSyncWatchServer(options = {}) {
           return acknowledgement?.({ success: false, code: 'NOTIFICATION_CONFIRMATION_REQUIRED', confirmationText, fillValue: confirmationText, error: `关闭全部通知会隐藏普通提醒，仅保留需要确认的申请、好友消息和安全通知。请输入“${confirmationText}”确认。` });
         }
         account.notificationSettings = next;
+        account.viewPreferences = normalizeViewPreferences({ ...account.viewPreferences, conciseMode: next.conciseMode });
         persist();
         return acknowledgement?.({ success: true, notificationPreferences: next, noticePreferences: next, allNotificationsEnabled: next.allNotifications, profile: accountProfile(user.username), message: next.allNotifications ? '普通通知已恢复' : '普通通知已关闭，仅保留重要通知' });
       }
@@ -11098,6 +11608,85 @@ async function startSyncWatchServer(options = {}) {
       return acknowledgement?.({ success: true, request, message: managers.length ? '已向房主或管理员发送控制申请' : '申请已记录，房主或管理员上线后可以处理' });
     });
 
+    onSafe('room-copy-request', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `room-copy-request:${socket.id}`, 5, 10 * 60 * 1000, acknowledgement)) return;
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      const sourceRoomId = normalizeRoomId(payload.sourceRoomId);
+      const sourceRoom = sourceRoomId && state.rooms[sourceRoomId];
+      if (!visibleRoom(sourceRoom) || sourceRoom.temporary) return acknowledgement?.({ success: false, error: '源房间不存在、已存档或属于临时房间' });
+      if (!sourceRoom.ownerUsername) return acknowledgement?.({ success: false, error: '系统房间不能作为复制来源' });
+      if (sourceRoom.ownerUsername === user.username) return acknowledgement?.({ success: false, error: '自己的房间无需申请复制，可由管理员执行迁移' });
+      const account = state.accounts[user.username];
+      const quota = Math.max(1, Number(account.roomQuota) || 1);
+      if (!account.superAdmin && ownedRooms(user.username).length >= quota) return acknowledgement?.({ success: false, code: 'ROOM_QUOTA_REACHED', error: `当前账号最多可创建 ${quota} 个房间，请先申请提高建房额度` });
+      let request = state.admin.roomCopyRequests.find((entry) => entry.status === 'pending'
+        && entry.sourceRoomId === sourceRoomId && entry.requestedBy === user.username);
+      if (!request) {
+        request = {
+          id: crypto.randomUUID(), sourceRoomId, sourceRoomName: sourceRoom.name,
+          sourceOwner: sourceRoom.ownerUsername, requestedBy: user.username,
+          requestedByName: account.displayName || user.username,
+          requestedRoomName: cleanText(payload.requestedRoomName, 40), reason: cleanText(payload.reason, 240),
+          status: 'pending', createdAt: new Date().toISOString(), resolvedAt: '', resolvedBy: '', targetRoomId: ''
+        };
+        state.admin.roomCopyRequests.push(request);
+        state.admin.roomCopyRequests = retainPersistentRequests(state.admin.roomCopyRequests).slice(-1000);
+      } else {
+        request.requestedRoomName = cleanText(payload.requestedRoomName || request.requestedRoomName, 40);
+        request.reason = cleanText(payload.reason || request.reason, 240);
+      }
+      persist();
+      const ownerMembers = accountOnlineMembers(sourceRoom.ownerUsername);
+      if (!normalizeViewPreferences(state.accounts[sourceRoom.ownerUsername]?.viewPreferences).conciseMode) {
+        for (const ownerMember of ownerMembers) io.to(ownerMember.socketId).emit('room-copy-requested', request);
+      }
+      return acknowledgement?.({ success: true, request, message: ownerMembers.length ? '复制申请已发送给源房主' : '复制申请已记录，源房主上线后可以处理' });
+    });
+
+    onSafe('room-copy-request-action', async (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `room-copy-request-action:${socket.id}`, 10, 10 * 60 * 1000, acknowledgement)) return;
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      const request = state.admin.roomCopyRequests.find((entry) => entry.id === cleanText(payload.requestId, 80));
+      if (!request || request.status !== 'pending') return acknowledgement?.({ success: false, error: '房间复制申请不存在或已处理' });
+      const sourceRoom = state.rooms[request.sourceRoomId];
+      if (!visibleRoom(sourceRoom) || sourceRoom.ownerUsername !== user.username || request.sourceOwner !== user.username) {
+        return acknowledgement?.({ success: false, error: '只有当前源房主可以处理这项复制申请' });
+      }
+      const approved = payload.approved === true;
+      if (!approved) {
+        request.status = 'denied'; request.resolvedAt = new Date().toISOString(); request.resolvedBy = user.username;
+        persist();
+        const result = { requestId: request.id, approved: false, status: request.status, message: '源房主已拒绝房间复制申请' };
+        accountChangeNotice(request.requestedBy, { kind: 'room-copy-request', roomId: request.sourceRoomId, ...result }, 'room-copy-request-resolved', result);
+        return acknowledgement?.({ success: true, request, ...result });
+      }
+      const requester = state.accounts[request.requestedBy];
+      if (!requester) return acknowledgement?.({ success: false, error: '申请账号已不存在' });
+      const quota = Math.max(1, Number(requester.roomQuota) || 1);
+      if (!requester.superAdmin && ownedRooms(request.requestedBy).length >= quota) {
+        return acknowledgement?.({ success: false, code: 'ROOM_QUOTA_REACHED', error: `申请账号最多可创建 ${quota} 个房间，暂时无法复制` });
+      }
+      try {
+        const copied = await copyRoomDataTransactional({
+          sourceRoomId: request.sourceRoomId, targetOwner: request.requestedBy,
+          requestedRoomName: request.requestedRoomName, overwrite: false, actor: user.username
+        });
+        request.status = 'approved'; request.resolvedAt = new Date().toISOString(); request.resolvedBy = user.username; request.targetRoomId = copied.room.id;
+        persist();
+        const result = {
+          requestId: request.id, approved: true, status: request.status, room: copied.room,
+          copiedFiles: copied.copiedFiles, copiedMessages: copied.copiedMessages,
+          message: `源房主已同意，房间数据已复制到 ${copied.room.id}`
+        };
+        accountChangeNotice(request.requestedBy, { kind: 'room-copy-request', roomId: copied.room.id, ...result }, 'room-copy-request-resolved', result);
+        return acknowledgement?.({ success: true, request, ...result });
+      } catch (error) {
+        return acknowledgement?.({ success: false, code: 'ROOM_COPY_FAILED', error: `房间复制失败，未修改源房间：${cleanText(error.message, 180)}` });
+      }
+    });
+
     onSafe('control-request-action', (payload = {}, acknowledgement) => {
       if (socketRateLimited(socket, `control-request-action:${socket.id}`, 30, 60 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement);
@@ -11112,7 +11701,7 @@ async function startSyncWatchServer(options = {}) {
       request.resolvedBy = user.username;
       request.resolvedByName = state.accounts[user.username]?.displayName || user.username;
       if (approved) {
-        state.permissions[request.username] = { ...(state.permissions[request.username] || {}), control: true };
+        state.permissions[request.username] = { ...(state.permissions[request.username] || {}), control: true, seek: true };
         persist();
         io.to(roomChannel(user.roomId)).emit('users-list', usersList(user.roomId));
       }
@@ -11122,7 +11711,7 @@ async function startSyncWatchServer(options = {}) {
       const resolved = { ...request, approved, message, permissions: permissionFor(request.username, user.roomId) };
       accountChangeNotice(request.username, {
         kind: 'control-request', roomId: user.roomId, actor: user.username, actorName: request.resolvedByName,
-        approved, requestId: request.id, permissions: resolved.permissions, changed: approved ? ['control'] : [], message
+        approved, requestId: request.id, permissions: resolved.permissions, changed: approved ? ['control', 'seek'] : [], message
       }, 'control-request-resolved', resolved);
       for (const manager of roomUsers(user.roomId).filter((member) => isRoomAdmin(member) && member.username !== request.username && member.socketId !== socket.id)) {
         io.to(manager.socketId).emit('control-request-resolved', {
@@ -11130,6 +11719,24 @@ async function startSyncWatchServer(options = {}) {
         });
       }
       return acknowledgement?.({ success: true, request: resolved, message: approved ? '已开放播放控制权限' : '已拒绝控制申请' });
+    });
+
+    onSafe('room-playback-skip-settings', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `room-skip-settings:${socket.id}`, 20, 60 * 1000, acknowledgement)) return;
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      if (!isRoomAdmin(user, 'manageRoom')) return acknowledgement?.({ success: false, error: '只有房主或房间管理员可以设置跳过片头片尾' });
+      const skipSettings = normalizePlaybackSkipSettings(payload.skipSettings || payload);
+      state.room.skipSettings = skipSettings;
+      state.room.lastActivityAt = new Date().toISOString();
+      persist();
+      recordOperation({ actor: user.username, action: 'room-skip-settings', summary: skipSettings.enabled
+        ? `设置跳过片头 ${skipSettings.introSeconds} 秒、片尾 ${skipSettings.outroSeconds} 秒`
+        : '关闭自动跳过片头片尾' });
+      const update = { roomId: user.roomId, skipSettings, changedBy: user.username, updatedAt: new Date().toISOString() };
+      io.to(roomChannel(user.roomId)).emit('room-skip-settings-updated', update);
+      io.to(roomChannel(user.roomId)).emit('room-state', roomSnapshot(user.roomId));
+      return acknowledgement?.({ success: true, ...update, message: skipSettings.enabled ? '跳过片头片尾设置已同步' : '已关闭自动跳过片头片尾' });
     });
 
     onSafe('owner-action', async (payload = {}, acknowledgement) => {
@@ -11150,10 +11757,10 @@ async function startSyncWatchServer(options = {}) {
       else if (action === 'grant-control' || action === 'revoke-control') {
         const username = cleanUsername(payload.username);
         if (!state.accounts[username]) return acknowledgement?.({ success: false, error: '成员不存在' });
-        state.permissions[username] = { ...(state.permissions[username] || {}), control: action === 'grant-control' };
+        state.permissions[username] = { ...(state.permissions[username] || {}), control: action === 'grant-control', seek: action === 'grant-control' };
         const updatedPermissions = permissionFor(username);
         for (const member of roomUsers().filter((entry) => entry.username === username)) io.to(member.socketId).emit('permissions-changed', {
-          permissions: updatedPermissions, changed: ['control'], grantedBy: state.accounts[user.username]?.displayName || user.username,
+          permissions: updatedPermissions, changed: ['control', 'seek'], grantedBy: state.accounts[user.username]?.displayName || user.username,
           message: action === 'grant-control' ? '房主已向您开放播放控制权限' : '房主已收回您的播放控制权限'
         });
       } else return acknowledgement?.({ success: false, error: '未知房主操作' });
@@ -11204,6 +11811,37 @@ async function startSyncWatchServer(options = {}) {
         recordOperation({ actor: user.username, action: 'queue-file-mode', summary: `设置影片播放模式：${file.originalName}` });
         io.to(roomChannel()).emit('room-state', roomSnapshot());
         return acknowledgement?.({ success: true, fileMode: state.room.queueFileModes[id] || null, message: '影片独立播放模式已更新' });
+      }
+      if (action === 'batch-add' || action === 'batch-remove') {
+        const fileIds = [...new Set((Array.isArray(payload.fileIds) ? payload.fileIds : [])
+          .map((value) => cleanText(value, 80)).filter(Boolean))].slice(0, 500);
+        if (!fileIds.length) return acknowledgement?.({ success: false, error: '请至少选择一个队列项目' });
+        if (action === 'batch-add') {
+          const invalid = fileIds.filter((fileId) => {
+            const file = findFile(fileId);
+            return !isPlayableFile(file) || file.roomId !== currentRoomId();
+          });
+          if (invalid.length) return acknowledgement?.({ success: false, code: 'QUEUE_BATCH_INVALID_FILES', invalid, error: '批量加入失败：所选项目包含未审核或不属于当前房间的媒体' });
+        }
+        const before = [...state.queue];
+        let changed;
+        if (action === 'batch-add') {
+          changed = fileIds.filter((fileId) => !state.queue.includes(fileId));
+          state.queue.push(...changed);
+        } else {
+          changed = fileIds.filter((fileId) => state.queue.includes(fileId));
+          const removed = new Set(changed);
+          state.queue = state.queue.filter((fileId) => !removed.has(fileId));
+          if (state.room.queueFileModes) for (const fileId of removed) delete state.room.queueFileModes[fileId];
+        }
+        persist();
+        recordOperation({ actor: user.username, action: `queue-${action}`, summary: `${action === 'batch-add' ? '批量加入' : '批量移除'}播放队列：${changed.length} 项`, undo: { kind: 'queue', before, after: [...state.queue] } });
+        io.to(roomChannel()).emit('queue-state', state.queue);
+        return acknowledgement?.({
+          success: true, queue: state.queue, playbackMode: normalizePlaybackMode(state.room.playbackMode),
+          added: action === 'batch-add' ? changed : [], removed: action === 'batch-remove' ? changed : [],
+          message: `${action === 'batch-add' ? '已加入' : '已移除'} ${changed.length} 个队列项目`
+        });
       }
       const file = findFile(id);
       if (action === 'add' && (!isPlayableFile(file) || file.roomId !== currentRoomId())) return acknowledgement?.({ success: false, error: '播放队列只能加入当前房间已审核的视频或音频' });
@@ -11288,9 +11926,27 @@ async function startSyncWatchServer(options = {}) {
         from: user.username, fromName: state.accounts[user.username]?.displayName || user.username,
         roomId: user.roomId, timestamp: new Date().toISOString()
       };
-      if (scope === 'server') io.emit('screen-notice', notice); else io.to(roomChannel(user.roomId)).emit('screen-notice', notice);
+      const recipients = scope === 'server' ? [...users.values()] : roomUsers(user.roomId);
+      const deliveredSocketIds = new Set();
+      for (const member of recipients) {
+        if (!member?.socketId || deliveredSocketIds.has(member.socketId)) continue;
+        if (normalizeViewPreferences(state.accounts[member.username]?.viewPreferences).conciseMode) continue;
+        deliveredSocketIds.add(member.socketId);
+        io.to(member.socketId).emit('screen-notice', notice);
+      }
       recordOperation({ roomId: user.roomId, actor: user.username, action: 'screen-notice', summary: `${scope === 'server' ? '全服务器' : '房间'}公告：${text.slice(0, 60)}`, scope: scope === 'server' ? 'server' : 'room' });
-      return acknowledgement?.({ success: true, notice, message: scope === 'server' ? '公告已发送到所有在线设备' : '公告已发送到当前房间' });
+      return acknowledgement?.({
+        success: true, notice, deliveredCount: deliveredSocketIds.size,
+        message: scope === 'server' ? '公告已发送到未开启简洁模式的在线设备' : '公告已发送到当前房间中未开启简洁模式的设备'
+      });
+    });
+
+    onSafe('web-share-state-request', (payload = {}, acknowledgement) => {
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      const webShare = { roomId: user.roomId, ...roomRuntime(user.roomId).roomState.webShare, serverTime: Date.now() };
+      socket.emit('web-share-state', webShare);
+      return acknowledgement?.({ success: true, webShare });
     });
 
     onSafe('web-share-start', (payload = {}, acknowledgement) => {
@@ -11306,9 +11962,10 @@ async function startSyncWatchServer(options = {}) {
       stopScreenShare(roomState.screenShare.socketId, user.roomId);
       roomState.webShare = {
         active: true, url, title: cleanText(payload.title || '共享网页', 120),
-        changedBy: user.username, updatedAt: Date.now()
+        changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1
       };
-      io.to(roomChannel()).emit('web-share-state', { ...roomState.webShare });
+      persist();
+      io.to(roomChannel()).emit('web-share-state', { roomId: user.roomId, ...roomState.webShare, serverTime: Date.now() });
       recordOperation({ actor: user.username, action: 'web-share-start', summary: `共享网址：${url}` });
       return acknowledgement?.({ success: true, webShare: { ...roomState.webShare }, message: '网址已同步到当前房间的播放窗口' });
     });
@@ -11320,8 +11977,9 @@ async function startSyncWatchServer(options = {}) {
       if (!(user.username === state.room.ownerUsername || isSuperAdmin(user.username) || permissions.shareWeb || permissions.manageRoom)) {
         return acknowledgement?.({ success: false, error: '没有停止网址共享的权限' });
       }
-      roomState.webShare = { active: false, url: '', title: '', changedBy: user.username, updatedAt: Date.now() };
-      io.to(roomChannel()).emit('web-share-state', { ...roomState.webShare });
+      roomState.webShare = { active: false, url: '', title: '', changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1 };
+      persist();
+      io.to(roomChannel()).emit('web-share-state', { roomId: user.roomId, ...roomState.webShare, serverTime: Date.now() });
       const actorName = state.accounts[user.username]?.displayName || user.username;
       const notice = broadcastRoomNotice(user.roomId, `${actorName} 清空了画面`, {
         kind: 'playback-cleared', actor: user.username, actorName, important: true
@@ -11565,8 +12223,9 @@ async function startSyncWatchServer(options = {}) {
       stopAudioShare('', user.roomId);
       roomState.screenShare = { active: true, socketId: socket.id, username: user.username, settings: screenSettings };
       if (roomState.webShare?.active) {
-        roomState.webShare = { active: false, url: '', title: '', changedBy: user.username, updatedAt: Date.now() };
-        io.to(roomChannel()).emit('web-share-state', { ...roomState.webShare });
+        roomState.webShare = { active: false, url: '', title: '', changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1 };
+        persist();
+        io.to(roomChannel()).emit('web-share-state', { roomId: user.roomId, ...roomState.webShare, serverTime: Date.now() });
       }
       runtime.latestScreenFrame = null;
       runtime.screenFrameSequence = 0;
@@ -11958,7 +12617,8 @@ async function startSyncWatchServer(options = {}) {
         'set-upload-policy', 'set-text-upload-policy', 'resolve-upload-policy-request', 'set-experience-policy', 'set-default-account-password', 'batch-account-action', 'set-account-email', 'set-registration-account-notice',
         'set-blocked-words', 'set-lan-access', 'set-media-processing', 'set-login-cube-settings', 'set-login-cube-image', 'restart-server', 'get-account-audit-logs', 'delete-account-audit-logs',
         'set-account-number-policy', 'set-account-number', 'get-verification-codes', 'delete-verification-codes', 'set-verification-code-policy', 'unblock-verification-device', 'set-login-music', 'delete-login-music', 'set-login-video', 'delete-login-video', 'set-notice-preferences',
-        'delete-room-files', 'set-media-upload-ban', 'get-ui-copy', 'set-ui-copy', 'import-ui-copy', 'export-ui-copy', 'reset-ui-copy'
+        'delete-room-files', 'set-media-upload-ban', 'get-ui-copy', 'set-ui-copy', 'import-ui-copy', 'export-ui-copy', 'reset-ui-copy',
+        'resolve-login-limit-request', 'migrate-room', 'delete-registration-request', 'delete-registration-requests'
       ]);
       // Audit records and super-admin grants are account-wide operations and
       // require an actual logged-in super-admin. Email overrides retain the
@@ -12042,7 +12702,11 @@ async function startSyncWatchServer(options = {}) {
          registrationIpWhitelist: serverAdmin ? state.admin.registrationIpWhitelist : [],
          registrationAccountNoticeEnabled: serverAdmin && state.admin.registrationAccountNoticeEnabled !== false,
          verificationCodes: serverAdmin ? state.verificationCodeRecords.slice(-5000).reverse() : [],
-        registrationRequests: serverAdmin ? state.admin.registrationRequests.slice().reverse() : [],
+        registrationRequests: serverAdmin ? state.admin.registrationRequests.map(normalizeRegistrationRequestCounts).reverse() : [],
+        loginLimitRequests: user.username === 'admin' ? state.admin.loginLimitRequests.slice().reverse() : [],
+        roomCopyRequests: state.admin.roomCopyRequests
+          .filter((entry) => serverAdmin || entry.sourceOwner === user.username || entry.requestedBy === user.username)
+          .slice().reverse(),
         roomQuotaRequests: serverAdmin ? state.admin.roomQuotaRequests.slice().reverse() : [],
         uploadPolicyRequests: serverAdmin ? state.admin.uploadPolicyRequests.slice().reverse() : [],
         mediaManagementRequests: state.admin.mediaManagementRequests
@@ -12081,6 +12745,32 @@ async function startSyncWatchServer(options = {}) {
             };
           })
       } });
+      if (action === 'migrate-room') {
+        if (!serverAdmin) return acknowledgement?.({ success: false, error: '只有服务器主机或超级管理员可以迁移覆盖房间' });
+        const sourceRoomId = normalizeRoomId(payload.sourceRoomId);
+        const targetRoomId = normalizeRoomId(payload.targetRoomId);
+        const sourceRoom = sourceRoomId && state.rooms[sourceRoomId];
+        const targetRoom = targetRoomId && state.rooms[targetRoomId];
+        if (!visibleRoom(sourceRoom) || sourceRoom.temporary || sourceRoom.systemRoom) return acknowledgement?.({ success: false, error: '源房间不存在或不能迁移' });
+        if (!visibleRoom(targetRoom) || targetRoom.temporary || targetRoom.systemRoom) return acknowledgement?.({ success: false, error: '目标房间不存在或不能被覆盖' });
+        if (sourceRoomId === targetRoomId) return acknowledgement?.({ success: false, error: '源房间和目标房间不能相同' });
+        const requiredConfirmation = `迁移覆盖 ${targetRoomId}`;
+        if (cleanText(payload.confirmation, 80) !== requiredConfirmation) {
+          return acknowledgement?.({ success: false, code: 'ROOM_MIGRATION_CONFIRMATION_REQUIRED', requiredConfirmation, error: `请完整输入“${requiredConfirmation}”确认覆盖目标房间` });
+        }
+        try {
+          const copied = await copyRoomDataTransactional({
+            sourceRoomId, targetRoomId, targetOwner: targetRoom.ownerUsername,
+            requestedRoomName: payload.targetRoomName || sourceRoom.name, overwrite: true, actor: user.username
+          });
+          return acknowledgement?.({
+            success: true, sourceRoomId, targetRoomId, ...copied,
+            message: `已将 ${sourceRoomId} 的配置、数据和媒体复制覆盖到 ${targetRoomId}；源房间未被修改`
+          });
+        } catch (error) {
+          return acknowledgement?.({ success: false, code: 'ROOM_MIGRATION_FAILED', error: `房间迁移失败，目标已回滚：${cleanText(error.message, 180)}` });
+        }
+      }
       if (action === 'convert-temporary-room') {
         const roomIdValue = normalizeRoomId(payload.roomId) || currentRoomId();
         const targetRoom = state.rooms[roomIdValue];
@@ -12808,7 +13498,7 @@ async function startSyncWatchServer(options = {}) {
         if (existing?.system) return acknowledgement?.({ success: false, error: '系统权限组不能覆盖，可新建自定义权限组' });
         const group = normalizePermissionGroup({
           id: requestedId, name: payload.name, permissions: {
-            control: payload.control, upload: payload.upload, delete: payload.delete, manageMedia: payload.manageMedia,
+            control: payload.control, seek: payload.seek === undefined ? payload.control : payload.seek, upload: payload.upload, delete: payload.delete, manageMedia: payload.manageMedia,
             shareScreen: payload.shareScreen, shareAudio: payload.shareAudio, shareWeb: payload.shareWeb, voiceChat: payload.voiceChat,
             manageChat: payload.manageChat, manageRoom: payload.manageRoom, sendNotice: payload.sendNotice
           }
@@ -12861,7 +13551,7 @@ async function startSyncWatchServer(options = {}) {
         if (!state.room.permissionGroups[requestedGroupId]) return acknowledgement?.({ success: false, error: '所选权限组不存在' });
         state.room.memberGroups[username] = Boolean(payload.administrator) ? 'administrator' : requestedGroupId;
         state.permissions[username] = {
-          control: Boolean(payload.control), upload: Boolean(payload.upload), delete: Boolean(payload.delete), manageMedia: Boolean(payload.manageMedia),
+          control: Boolean(payload.control), seek: payload.seek === undefined ? Boolean(payload.control) : Boolean(payload.seek), upload: Boolean(payload.upload), delete: Boolean(payload.delete), manageMedia: Boolean(payload.manageMedia),
           shareScreen: Boolean(payload.shareScreen), shareAudio: Boolean(payload.shareAudio), shareWeb: Boolean(payload.shareWeb), voiceChat: payload.voiceChat !== false,
           manageChat: Boolean(payload.manageChat), manageRoom: Boolean(payload.manageRoom), sendNotice: Boolean(payload.sendNotice),
           administrator: Boolean(payload.administrator)
@@ -13015,7 +13705,7 @@ async function startSyncWatchServer(options = {}) {
         if (!account) return acknowledgement?.({ success: false, error: '账号不存在' });
         if (username === 'admin' && payload.enabled === false) return acknowledgement?.({ success: false, error: '内置 admin 超级管理员不能被撤销' });
         account.superAdmin = payload.enabled !== false;
-        if (account.superAdmin && Boolean(payload.forcePasswordChange)) account.mustChangePassword = true;
+        if (username !== 'admin' && account.superAdmin) account.mustChangePassword = false;
         persist();
         recordOperation({ actor: user.username, action: 'super-admin', summary: `${account.superAdmin ? '授予' : '撤销'}超级管理员：${username}`, scope: 'server' });
         for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('users-list', usersList(id));
@@ -13494,17 +14184,55 @@ async function startSyncWatchServer(options = {}) {
         await resetServerDataInPlace();
         return acknowledgement?.({ success: true, message: '服务器已恢复出厂设置，全部账户、房间、媒体、聊天、配置和缓存均已清空' });
       }
+      if (action === 'resolve-login-limit-request') {
+        if (user.username !== 'admin') return acknowledgement?.({ success: false, error: '登录安全限制只能由内置 admin 处理' });
+        const request = state.admin.loginLimitRequests.find((entry) => entry.id === cleanText(payload.requestId, 80));
+        if (!request || request.status !== 'pending') return acknowledgement?.({ success: false, error: '解除登录限制申请不存在或已处理' });
+        const approved = payload.approved === true;
+        request.status = approved ? 'approved' : 'denied';
+        request.resolvedAt = new Date().toISOString();
+        request.resolvedBy = user.username;
+        if (approved) for (const key of loginFailureKeysForIp(request.ipAddress, request.username)) rateBuckets.delete(key);
+        persist();
+        recordOperation({ actor: user.username, action: 'login-limit-resolve', summary: `${approved ? '同意' : '拒绝'}解除登录限制：${request.username || '未知账号'}`, scope: 'server' });
+        const result = {
+          requestId: request.id, username: request.username, approved, status: request.status, resolvedAt: request.resolvedAt,
+          message: approved ? '管理员已解除登录限制，请重新登录' : '管理员未同意解除登录限制'
+        };
+        const recipients = new Set();
+        if (request.requesterSocketId) recipients.add(request.requesterSocketId);
+        for (const [socketId, connectedSocket] of io.sockets.sockets) if (getSocketIp(connectedSocket) === request.ipAddress) recipients.add(socketId);
+        for (const socketId of recipients) io.to(socketId).emit('login-limit-clear-resolved', result);
+        return acknowledgement?.({ success: true, request, ...result });
+      }
+      if (action === 'delete-registration-request' || action === 'delete-registration-requests') {
+        if (user.username !== 'admin') return acknowledgement?.({ success: false, error: '注册申请记录只能由内置 admin 删除' });
+        const ids = new Set((action === 'delete-registration-request'
+          ? [payload.requestId] : (Array.isArray(payload.requestIds) ? payload.requestIds : []))
+          .map((id) => cleanText(id, 80)).filter(Boolean).slice(0, 500));
+        if (!ids.size) return acknowledgement?.({ success: false, error: '请选择要删除的注册申请' });
+        const deleted = state.admin.registrationRequests.filter((entry) => ids.has(entry.id));
+        if (!deleted.length) return acknowledgement?.({ success: false, error: '未找到可删除的注册申请' });
+        state.admin.registrationRequests = state.admin.registrationRequests.filter((entry) => !ids.has(entry.id));
+        persist();
+        for (const request of deleted) {
+          const counts = normalizeRegistrationRequestCounts(request);
+          recordOperation({ actor: user.username, action: 'registration-request-delete', summary: `删除注册申请：${request.username}（剩余 ${counts.remainingCount} / 总计 ${counts.totalRequestedCount} 个名额）`, scope: 'server' });
+        }
+        return acknowledgement?.({ success: true, deleted: deleted.map((entry) => entry.id), count: deleted.length, message: `已删除 ${deleted.length} 条注册申请记录` });
+      }
       if (action === 'approve-registration-request' || action === 'deny-registration-request') {
         const request = state.admin.registrationRequests.find((entry) => entry.id === cleanText(payload.requestId, 80));
         if (!request || request.status !== 'pending') return acknowledgement?.({ success: false, error: '注册申请不存在或已处理' });
+        Object.assign(request, normalizeRegistrationRequestCounts(request));
+        const approvedCount = request.remainingCount;
         request.status = action === 'approve-registration-request' ? 'approved' : 'denied';
         request.resolvedAt = new Date().toISOString();
         request.resolvedBy = user.username;
         const registrationResult = request.status === 'approved'
-          ? { approved: true, username: request.username, requestId: request.id, requestedCount: registrationRequestCount(request.requestedCount), message: `管理员已同意 ${registrationRequestCount(request.requestedCount)} 个注册名额，请继续完成注册` }
+          ? { approved: true, username: request.username, requestId: request.id, requestedCount: approvedCount, remainingCount: approvedCount, totalRequestedCount: request.totalRequestedCount, message: `管理员已同意 ${approvedCount} 个注册名额，请继续完成注册` }
           : { approved: false, username: request.username, requestId: request.id, message: '管理员已拒绝本次注册申请' };
         if (request.status === 'approved') {
-          const approvedCount = registrationRequestCount(request.requestedCount);
           state.admin.registrationAllowances[request.ip] = Math.max(0, Number(state.admin.registrationAllowances[request.ip]) || 0) + approvedCount;
         }
         const notifiedSockets = new Set();
@@ -13514,7 +14242,7 @@ async function startSyncWatchServer(options = {}) {
         }
         for (const socketId of notifiedSockets) io.to(socketId).emit('registration-request-resolved', registrationResult);
         persist();
-        return acknowledgement?.({ success: true, message: request.status === 'approved' ? `已允许该 IP 再注册 ${registrationRequestCount(request.requestedCount)} 个账号` : '已拒绝注册申请' });
+        return acknowledgement?.({ success: true, message: request.status === 'approved' ? `已允许该 IP 再注册 ${approvedCount} 个账号` : '已拒绝注册申请' });
       }
       if (action === 'add-registration-whitelist' || action === 'remove-registration-whitelist') {
         const ipAddress = normalizeIp(payload.ipAddress);
@@ -13546,6 +14274,7 @@ async function startSyncWatchServer(options = {}) {
           if (batchAction === 'reset-password') {
             account.passwordHash = state.admin.defaultAccountPasswordHash || makePasswordHash('123456');
             account.mustChangePassword = true;
+            account.passwordChangedAt = new Date().toISOString();
             clearPasswordResetState(`account:${username}`);
             revokeUserSessions(username, 'auth-error', '密码已被管理员重置为服务器默认密码，请重新登录并修改密码');
             completed.push(username);
@@ -13583,6 +14312,7 @@ async function startSyncWatchServer(options = {}) {
           account.passwordHash = await makePasswordHashAsync(newPassword);
         }
         account.mustChangePassword = true;
+        account.passwordChangedAt = new Date().toISOString();
         clearPasswordResetState(`account:${username}`);
         revokeUserSessions(username, 'auth-error', '密码已被管理员重置，请使用新密码登录');
         persist(); recordOperation({ actor: user.username, action: 'account-password-reset', summary: `重置账号密码：${username}`, scope: 'server' });
@@ -13828,7 +14558,7 @@ async function startSyncWatchServer(options = {}) {
       discoverySocket.on('message', (message, remote) => {
         if (!privateOrLoopbackAddress(remote.address) || String(message).trim() !== 'SYNCWATCH_DISCOVER_V1') return;
         const payload = Buffer.from(JSON.stringify({
-          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.3', server: os.hostname(), version: APP_VERSION,
+          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.4', server: os.hostname(), version: APP_VERSION,
           port: actualPort, addresses: advertisedNetworkAddresses(),
           rooms: Object.values(state.rooms).filter((room) => visibleRoom(room) && !room.archived).map((room) => ({
             id: room.id, name: room.name, maxUsers: room.maxUsers, online: roomUsers(room.id).length, passwordRequired: Boolean(room.passwordHash)

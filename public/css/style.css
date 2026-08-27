@@ -2783,3 +2783,75 @@ body.ui-copy-editable [data-ui-copy-attribute-keys]:hover { --copy-edit-outline:
 @media (max-width: 560px) {
   .ui-copy-editor-row { grid-template-columns: 1fr; gap: 5px; }
 }
+/* v2.2.4 account-scoped distraction controls and fullscreen safety. */
+.danmaku-item {
+  color: var(--account-danmaku-color, #fff);
+  font-size: var(--account-danmaku-size, 20px);
+}
+.danmaku-settings-panel,
+.queue-bulk-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+.danmaku-settings-panel label { display: flex; align-items: center; gap: 8px; margin: 0; }
+.danmaku-settings-panel input[type="range"] { min-width: 140px; }
+.queue-bulk-toolbar { justify-content: space-between; margin: 10px 0; }
+.queue-select,
+.library-queue-select { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; }
+.queue-select input,
+.library-queue-select input { width: 18px; height: 18px; }
+
+body.concise-mode .file-panel,
+body.concise-mode .user-panel,
+body.concise-mode .chat-panel,
+body.concise-mode .mobile-module-switcher,
+body.concise-mode .room-marquee,
+body.concise-mode .owner-controls,
+body.concise-mode #noticeCenterBtn,
+body.concise-mode #conversionProgressBtn,
+body.concise-mode #webShareBtn,
+body.concise-mode #themeBtn,
+body.concise-mode #downloadCenterBtn,
+body.concise-mode #adminContactBtn,
+body.concise-mode #copyrightBtn { display: none !important; }
+body.concise-mode .main-layout { grid-template-columns: minmax(0, 1fr); }
+body.concise-mode .theater { max-width: 1280px; margin-inline: auto; }
+body.concise-mode #conciseModeBtn { color: var(--pink-2); border-color: color-mix(in srgb, var(--pink) 48%, transparent); background: color-mix(in srgb, var(--pink) 14%, transparent); }
+
+body.fullscreen-open .modal,
+body.fullscreen-open #screenNoticeOverlay,
+body.fullscreen-open #controlRequestOverlay,
+body.fullscreen-open #permissionNotice,
+body.fullscreen-open #reconnectOverlay,
+body.fullscreen-open #roomSwitchSuccessOverlay,
+body.fullscreen-open .toast-region,
+body.fullscreen-open #clearAllToastsBtn { display: none !important; }
+.player-container:fullscreen .danmaku-container,
+.player-container.fullscreen-active .danmaku-container { display: block !important; visibility: visible !important; opacity: 1 !important; }
+.fullscreen-chat-card {
+  width: min(390px, 38vw);
+  min-width: min(300px, calc(100vw - 28px));
+  max-width: calc(100vw - 28px);
+  max-height: calc(100dvh - 86px);
+}
+.player-container:fullscreen .fullscreen-actions,
+.player-container.fullscreen-active .fullscreen-actions {
+  max-width: calc(100vw - 28px);
+  max-height: min(42dvh, 240px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+@media (max-width: 700px), (max-height: 560px) {
+  .fullscreen-chat-card { min-width: 0; max-width: calc(100vw - 16px); max-height: min(54dvh, calc(100dvh - 76px)); }
+  .player-container:fullscreen .fullscreen-actions,
+  .player-container.fullscreen-active .fullscreen-actions { left: 8px; right: 8px; max-width: none; max-height: 38dvh; }
+  .queue-bulk-toolbar { align-items: stretch; }
+  .queue-bulk-toolbar > * { flex: 1 1 130px; }
+}

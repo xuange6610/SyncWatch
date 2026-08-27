@@ -396,7 +396,7 @@ async function main() {
     expiring = await connect(resetBaseUrl);
     const expiredLogin = await ack(expiring, 'user-login', { username: 'ExpiringUser', password: '123456', roomId: 'OWNERROOM', roomPassword: 'changed-room-pass' });
     assert.equal(expiredLogin.success, true, expiredLogin.error);
-    assert.equal(expiredLogin.capabilities.mustChangeAccountPassword, true);
+    assert.equal(expiredLogin.capabilities.mustChangeAccountPassword, false, '非内置 admin 账号不得因密码期限被强制重置');
     expiring.close(); expiring = null;
     owner = await connect(resetBaseUrl);
     const resetDefaultPassword = await ack(owner, 'host-admin-login', { adminPassword: 'admin888', hostToken: 'new-feature-host' });

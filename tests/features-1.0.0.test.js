@@ -251,7 +251,8 @@ async function main() {
     });
     assert.equal(promotedLogin.success, true, promotedLogin.error);
     assert.equal(promotedLogin.capabilities.superAdmin, true);
-    assert.equal(promotedLogin.capabilities.mustChangeAccountPassword, true);
+    assert.equal(promotedLogin.capabilities.mustChangeAccountPassword, false,
+      '被授予的超级管理员不能因为角色提升而被强制改密，首次强制改密只适用于内置 admin');
 
     adminLogin = await admin.ack('room-switch', { roomId: 'STAR88' });
     assert.equal(adminLogin.success, true, adminLogin.error);
