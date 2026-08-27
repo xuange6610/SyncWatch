@@ -51,6 +51,4 @@
 - 密码说明只写状态与安全重置，不得声称管理员能查看明文或哈希；重置必须说明会撤销会话。
 - 网页协作区分服务器权威 URL/revision 与各端 sandbox 独立加载；跨域、Cookie、地区、CSP/X-Frame-Options 不能被写成已同步交互，完全同画面使用实时共享。
 - Node 独立控制台说明没有 Electron 原生菜单，等价入口是 `--help`、`--open-browser`、控制台摘要和 `服务器运行信息.txt`。
-- v2.2.5 当前仍是候选，远端 26+2、Latest 和哈希回读待本轮 Actions 完成；README、Pages、Wiki 和公告在此之前必须明确显示候选状态。
 
-相关入口：[Wiki 首页](Home)、[v2.2.5 候选公告](36-v2.2.5更新公告)、[v2.2.3 历史正式版公告](34-v2.2.3更新公告)、[v2.2.2 历史候选公告](33-v2.2.2更新公告)、[成员连接与同步播放](03-成员连接与同步播放)、[Wiki 使用与维护 HTML 指南](https://xuange6610.github.io/SyncWatch/wiki-guide.html)。
