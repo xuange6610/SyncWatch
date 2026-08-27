@@ -47,6 +47,7 @@ const SYNCWATCH_SUPPORT_EMAIL = '2590813506@qq.com';
 const PLAYBACK_RATE_PROMPT_KEY = 'syncwatchPlaybackRatePrompt';
 const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
 const ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX = 'syncwatchAccountViewPreferences:';
+const FULLSCREEN_CHAT_HINT_KEY_PREFIX = 'syncwatchFullscreenChatHint:';
 const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20 });
 const USERNAME_MAX_UTF8_BYTES = 1024;
 const PASSWORD_MAX_UTF8_BYTES = 4096;
@@ -60,7 +61,7 @@ try {
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.5', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.6', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -101,7 +102,7 @@ const state = {
   uiFont: localStorage.getItem('syncwatchUiFont') || '',
   topbarDisplayMode: localStorage.getItem('syncwatchTopbarDisplayModeV2') === 'compact' ? 'compact' : 'text',
   mobileChatCollapsed: localStorage.getItem('syncwatchMobileChatCollapsed') !== '0',
-  fullscreenHideTimer: null, fullscreenRevealTimer: null, fullscreenPlaybackGestureTimer: null, fullscreenGestureBlockUntil: 0, f11PromptTimer: null, f11PromptEndsAt: 0, playbackRatePromptTimer: null, lastShownPlaybackRate: 0, appliedPlaybackRate: null, pseudoFullscreen: false, fullscreenMessageId: '', chatContextMessageId: '',
+  fullscreenHideTimer: null, fullscreenRevealTimer: null, fullscreenPlaybackGestureTimer: null, fullscreenGestureBlockUntil: 0, fullscreenHintTimer: null, fullscreenGestureIndicatorTimer: null, fullscreenActive: false, fullscreenInteractionLocked: false, fullscreenBrightness: 1, fullscreenGesture: null, f11PromptTimer: null, f11PromptEndsAt: 0, playbackRatePromptTimer: null, lastShownPlaybackRate: 0, appliedPlaybackRate: null, pseudoFullscreen: false, fullscreenMessageId: '', chatContextMessageId: '',
   chatContextMenuHomeParent: null, chatContextMenuHomeNextSibling: null, lightsInFlight: false, roomSwitchSuccessTimer: null,
   tunnelPollTimer: null, tunnelPollInFlight: false, tunnelPollGeneration: 0, tunnelLastStatus: null, tunnelStopRequested: false,
   tunnelOperationStartedAt: 0, tunnelProgressDismissed: false, tunnelProgressHideTimer: null,
@@ -313,7 +314,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  managementChatManageBtn managementOperationHistoryBtn
    managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
-  fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn macDownloadModal closeMacDownloadBtn macDownloadTitle macDownloadHint macDownloadArch macDownloadFormat macDownloadAvailability macDownloadStatus confirmMacDownloadBtn
+  fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn macDownloadModal closeMacDownloadBtn macDownloadTitle macDownloadHint macDownloadArch macDownloadFormat macDownloadAvailability macDownloadStatus confirmMacDownloadBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
   operationHistoryModal closeOperationHistoryBtn operationHistoryList refreshOperationHistoryBtn operationHistoryQuery operationHistoryScope operationHistorySelectAll deleteSelectedOperationsBtn chatContextMenu chatContextDeleteBtn roomMediaPreviewModal closeRoomMediaPreviewBtn roomMediaPreviewTitle roomMediaPreviewSelectAll roomMediaPreviewBatchDeleteBtn roomMediaPreviewBanUploadBtn roomMediaPreviewActionStatus roomMediaPreviewList roomMediaPreviewPlayer globalRoomStorageLimitMb applyGlobalRoomStorageLimitBtn audioSourceModal closeAudioSourceBtn audioSourcePlatform audioSourceVolume audioSourceVolumeText audioSourceStatus refreshAudioSourcesBtn startAudioSourceBtn stopAudioSourceBtn
 dataBackupCard dataBackupScope exportDataBtn importDataBtn importDataInput dataBackupStatus dataBackupProgress dataBackupProgressLabel dataBackupProgressPercent dataBackupProgressBar dataBackupProgressDetail
@@ -2100,7 +2101,11 @@ function bindUiEvents() {
   elements.videoPlayer.addEventListener('enterpictureinpicture', () => { state.floatingPlayerActive = true; });
   elements.videoPlayer.addEventListener('leavepictureinpicture', () => { state.floatingPlayerActive = false; });
   elements.playerContainer.addEventListener('dblclick', handlePlayerDoubleClick);
+  elements.playerContainer.addEventListener('pointerdown', beginFullscreenAdjustmentGesture);
+  elements.playerContainer.addEventListener('pointermove', updateFullscreenAdjustmentGesture);
   elements.playerContainer.addEventListener('pointerup', handlePlayerDoubleTap);
+  elements.playerContainer.addEventListener('pointerup', endFullscreenAdjustmentGesture);
+  elements.playerContainer.addEventListener('pointercancel', endFullscreenAdjustmentGesture);
   elements.roomIdInput?.addEventListener('input', () => { state.roomIdTouched = true; scheduleRoomInfoLookup(); });
   elements.username?.addEventListener('input', handleLoginUsernameInput);
   elements.createRoomBtn?.addEventListener('click', openCreateRoom);
@@ -2201,6 +2206,9 @@ function bindUiEvents() {
   elements.chatContextDeleteBtn?.addEventListener('click', deleteContextChatMessage);
   elements.fullscreenHideBtn?.addEventListener('click', () => hideFullscreenControls(true));
   elements.fullscreenShowBtn?.addEventListener('click', showFullscreenControls);
+  elements.fullscreenLockBtn?.addEventListener('click', toggleFullscreenInteractionLock);
+  elements.dismissFullscreenShortcutHintBtn?.addEventListener('click', hideFullscreenShortcutHint);
+  elements.neverFullscreenShortcutHintBtn?.addEventListener('click', disableFullscreenShortcutHint);
   elements.serverSettingsLoginBtn?.addEventListener('click', openServerSettingsFromLogin);
   elements.refreshServerLogsBtn?.addEventListener('click', loadServerLogs);
   elements.serverLogCategory?.addEventListener('change', loadServerLogs);
@@ -2303,7 +2311,14 @@ function bindUiEvents() {
   });
   elements.desktopCloseModal?.addEventListener('click', handleDesktopCloseChoice);
   document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
   document.addEventListener('keydown', (event) => {
+    const editableTarget = event.target?.matches?.('input, textarea, select, [contenteditable="true"]');
+    if (event.key === 'F2' && !event.ctrlKey && !event.altKey && !event.metaKey && isPlayerFullscreen() && !editableTarget) {
+      event.preventDefault();
+      openFullscreenChat();
+      return;
+    }
     if (event.key === 'F12' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
       void togglePlayerFullscreen();
@@ -5235,7 +5250,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.5';
+    const current = state.publicConfig.version || 'v2.2.6';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -5703,7 +5718,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.5.apk';
+    link.download = 'SyncWatch同步观影-v2.2.6.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -7942,6 +7957,7 @@ function cancelPendingFullscreenPlaybackGesture() {
 }
 
 function handleLocalPlaybackEvent(playing) {
+  // fullscreenPlaybackGestureTimer is intentionally delayed below so double taps never pause.
   if (!playing) {
     clearMediaBufferingState();
     clearMediaNetworkRecovery();
@@ -7949,6 +7965,11 @@ function handleLocalPlaybackEvent(playing) {
   const expected = state.expectedPlaybackEvent;
   const roomDriven = Boolean(expected && expected.playing === playing
     && expected.generation === state.mediaGeneration && expected.expires >= performance.now());
+  if (!roomDriven && isPlayerFullscreen() && state.fullscreenInteractionLocked) {
+    cancelPendingFullscreenPlaybackGesture();
+    adaptiveSynchronize(state.room?.playback, true);
+    return;
+  }
   if (!roomDriven && isActiveTimedMedia() && !state.screenShareActive && !canControlPlayback()) {
     permissionDeniedToast(playing ? '开始播放' : '暂停播放');
     adaptiveSynchronize(state.room?.playback, true);
@@ -7997,6 +8018,7 @@ function handleLocalSeeked() {
   state.seekInteractionUntil = performance.now() + 2200;
   state.suppressPlaybackNoticeUntil = Date.now() + 3200;
   if (!isActiveTimedMedia() || state.screenShareActive) return;
+  if (isPlayerFullscreen() && state.fullscreenInteractionLocked) { adaptiveSynchronize(state.room?.playback, true); return; }
   if (!canSeekPlayback()) { permissionDeniedToast('拖动播放进度'); adaptiveSynchronize(state.room?.playback, true); return; }
   if (performance.now() < state.mediaEventBlockUntil) return;
   sendPlayback('seek', elements.videoPlayer.currentTime);
@@ -9375,7 +9397,163 @@ async function handleOperationHistoryAction(event) {
   await loadOperationHistory(false);
 }
 
-function isPlayerFullscreen() { return document.fullscreenElement === elements.playerContainer || state.pseudoFullscreen; }
+function nativeFullscreenElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function isPlayerFullscreen() { return nativeFullscreenElement() === elements.playerContainer || state.pseudoFullscreen; }
+
+function localCalendarDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function fullscreenChatHintStorageKey(username = state.user?.username) {
+  return `${FULLSCREEN_CHAT_HINT_KEY_PREFIX}${String(username || 'anonymous').trim().toLocaleLowerCase()}`;
+}
+
+function readFullscreenChatHintPreference() {
+  try { return JSON.parse(localStorage.getItem(fullscreenChatHintStorageKey()) || '{}'); }
+  catch (_) { return {}; }
+}
+
+function showFullscreenShortcutHintIfNeeded() {
+  if (state.publicConfig.f11PromptEnabled === false || !elements.fullscreenShortcutHint) return;
+  const preference = readFullscreenChatHintPreference();
+  const today = localCalendarDate();
+  if (preference.never === true || preference.lastShownDate === today) return;
+  try { localStorage.setItem(fullscreenChatHintStorageKey(), JSON.stringify({ ...preference, lastShownDate: today })); } catch (_) {}
+  elements.fullscreenShortcutHint.classList.remove('is-hidden');
+  clearTimeout(state.fullscreenHintTimer);
+  state.fullscreenHintTimer = setTimeout(hideFullscreenShortcutHint, 9000);
+}
+
+function hideFullscreenShortcutHint() {
+  clearTimeout(state.fullscreenHintTimer);
+  state.fullscreenHintTimer = null;
+  elements.fullscreenShortcutHint?.classList.add('is-hidden');
+}
+
+function disableFullscreenShortcutHint() {
+  const preference = readFullscreenChatHintPreference();
+  try { localStorage.setItem(fullscreenChatHintStorageKey(), JSON.stringify({ ...preference, never: true, lastShownDate: localCalendarDate() })); } catch (_) {}
+  hideFullscreenShortcutHint();
+}
+
+function openFullscreenChat() {
+  if (!isPlayerFullscreen()) return;
+  hideFullscreenShortcutHint();
+  showFullscreenControls();
+  elements.fullscreenChatInput?.focus({ preventScroll: true });
+}
+
+function setFullscreenInteractionLocked(locked) {
+  state.fullscreenInteractionLocked = Boolean(locked && isPlayerFullscreen());
+  elements.playerContainer?.classList.toggle('fullscreen-interaction-locked', state.fullscreenInteractionLocked);
+  elements.fullscreenLockBtn?.setAttribute('aria-pressed', String(state.fullscreenInteractionLocked));
+  elements.fullscreenLockBtn?.setAttribute('aria-label', state.fullscreenInteractionLocked ? '解除全屏画面锁定' : '锁定全屏画面操作');
+  const icon = elements.fullscreenLockBtn?.querySelector('[aria-hidden="true"]');
+  const label = elements.fullscreenLockBtn?.querySelector('span:last-child');
+  if (icon) icon.textContent = state.fullscreenInteractionLocked ? '🔒' : '🔓';
+  if (label) label.textContent = state.fullscreenInteractionLocked ? '解锁' : '锁定';
+  if (elements.videoPlayer) elements.videoPlayer.controls = !state.fullscreenInteractionLocked;
+  updateControlAccess();
+  if (elements.playerSeekSlider && state.fullscreenInteractionLocked) {
+    elements.playerSeekSlider.disabled = true;
+    elements.playerSeekSlider.setAttribute('aria-disabled', 'true');
+  }
+}
+
+function toggleFullscreenInteractionLock() {
+  setFullscreenInteractionLocked(!state.fullscreenInteractionLocked);
+  showFullscreenControls();
+}
+
+function updateFullscreenBrightness(value) {
+  state.fullscreenBrightness = Math.max(.4, Math.min(1.5, Number(value) || 1));
+  transformedPlayerViews().forEach((view) => { view.style.filter = state.fullscreenBrightness === 1 ? '' : `brightness(${state.fullscreenBrightness})`; });
+}
+
+function showFullscreenGestureIndicator(label) {
+  if (!elements.fullscreenGestureIndicator) return;
+  elements.fullscreenGestureIndicator.textContent = label;
+  elements.fullscreenGestureIndicator.classList.add('is-visible');
+  elements.fullscreenGestureIndicator.setAttribute('aria-hidden', 'false');
+  clearTimeout(state.fullscreenGestureIndicatorTimer);
+  state.fullscreenGestureIndicatorTimer = setTimeout(() => {
+    elements.fullscreenGestureIndicator?.classList.remove('is-visible');
+    elements.fullscreenGestureIndicator?.setAttribute('aria-hidden', 'true');
+  }, 720);
+}
+
+function beginFullscreenAdjustmentGesture(event) {
+  if (!isPlayerFullscreen() || !event.isPrimary || event.button > 0 || playerTapIsInteractive(event.target)) return;
+  const rect = elements.playerContainer.getBoundingClientRect();
+  const video = activeFloatingVideo();
+  state.fullscreenGesture = {
+    pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, height: Math.max(1, rect.height),
+    side: event.clientX < rect.left + rect.width / 2 ? 'brightness' : 'volume', moved: false,
+    startBrightness: state.fullscreenBrightness, startVolume: Math.max(0, Math.min(1, Number(video?.volume) || 0))
+  };
+}
+
+function updateFullscreenAdjustmentGesture(event) {
+  const gesture = state.fullscreenGesture;
+  if (!gesture || gesture.pointerId !== event.pointerId) return;
+  const deltaX = event.clientX - gesture.startX;
+  const deltaY = event.clientY - gesture.startY;
+  if (!gesture.moved) {
+    if (Math.abs(deltaY) < 14 || Math.abs(deltaY) <= Math.abs(deltaX) * 1.15) return;
+    gesture.moved = true;
+    cancelPendingFullscreenPlaybackGesture();
+    try { elements.playerContainer.setPointerCapture(event.pointerId); } catch (_) {}
+  }
+  event.preventDefault();
+  const change = (-deltaY / gesture.height) * 1.35;
+  if (gesture.side === 'brightness') {
+    updateFullscreenBrightness(gesture.startBrightness + change);
+    showFullscreenGestureIndicator(`亮度 ${Math.round(state.fullscreenBrightness * 100)}%`);
+    return;
+  }
+  const video = activeFloatingVideo();
+  if (!video) return;
+  const volume = Math.max(0, Math.min(1, gesture.startVolume + change));
+  if (video === elements.videoPlayer) state.expectedVolume = { value: volume, muted: video.muted, expires: performance.now() + 1000 };
+  video.volume = volume;
+  if (video === elements.videoPlayer && elements.volumeSlider) elements.volumeSlider.value = String(volume);
+  showFullscreenGestureIndicator(`音量 ${Math.round(volume * 100)}%`);
+}
+
+function endFullscreenAdjustmentGesture(event) {
+  const gesture = state.fullscreenGesture;
+  if (!gesture || gesture.pointerId !== event.pointerId) return;
+  if (gesture.moved) state.fullscreenGestureBlockUntil = performance.now() + 480;
+  try { if (elements.playerContainer.hasPointerCapture?.(event.pointerId)) elements.playerContainer.releasePointerCapture(event.pointerId); } catch (_) {}
+  state.fullscreenGesture = null;
+}
+
+function cleanupFullscreenState() {
+  clearTimeout(state.fullscreenHideTimer);
+  clearTimeout(state.fullscreenRevealTimer);
+  clearTimeout(state.fullscreenPlaybackGestureTimer);
+  clearTimeout(state.fullscreenGestureIndicatorTimer);
+  state.fullscreenHideTimer = null;
+  state.fullscreenRevealTimer = null;
+  state.fullscreenPlaybackGestureTimer = null;
+  state.fullscreenGestureIndicatorTimer = null;
+  state.fullscreenGesture = null;
+  hideFullscreenShortcutHint();
+  hideChatContextMenu();
+  setFullscreenInteractionLocked(false);
+  state.viewRotation = 0;
+  state.viewZoom = 1;
+  updatePlayerTransform();
+  updateFullscreenBrightness(1);
+  try { screen.orientation?.unlock?.(); } catch (_) {}
+  elements.playerContainer.classList.remove('fullscreen-active', 'controls-visible', 'fullscreen-interaction-locked');
+  document.body.classList.remove('fullscreen-open');
+  elements.fullscreenGestureIndicator?.classList.remove('is-visible');
+  elements.fullscreenGestureIndicator?.setAttribute('aria-hidden', 'true');
+  if (elements.fullscreenOverlay?.contains(document.activeElement)) document.activeElement.blur?.();
+  syncFullscreenAccessibility();
+}
 
 function syncFullscreenAccessibility() {
   const active = isPlayerFullscreen(); const visible = active && elements.playerContainer.classList.contains('controls-visible');
@@ -9387,21 +9565,23 @@ function syncFullscreenAccessibility() {
 }
 
 function handleFullscreenChange() {
-  const nativeActive = document.fullscreenElement === elements.playerContainer;
+  const nativeActive = nativeFullscreenElement() === elements.playerContainer;
   if (nativeActive) state.pseudoFullscreen = false;
   const active = nativeActive || state.pseudoFullscreen;
+  const entering = active && !state.fullscreenActive;
+  state.fullscreenActive = active;
   if (window.SyncWatchAndroid?.setImmersiveMode) {
     try { window.SyncWatchAndroid.setImmersiveMode(Boolean(active)); } catch (_) {}
   }
   relocateChatContextMenu(active);
   relocateToastRegion(active);
   elements.playerContainer.classList.toggle('fullscreen-active', active); document.body.classList.toggle('fullscreen-open', active);
-  if (active) { suppressFullscreenInterruptions(); renderFullscreenChat(); setChatMode(state.chatMode); showFullscreenControls(); }
+  if (active) {
+    suppressFullscreenInterruptions(); renderFullscreenChat(); setChatMode(state.chatMode); showFullscreenControls();
+    if (entering) showFullscreenShortcutHintIfNeeded();
+  }
   else {
-    hideChatContextMenu();
-    clearTimeout(state.fullscreenHideTimer); elements.playerContainer.classList.remove('controls-visible');
-    if (elements.fullscreenOverlay?.contains(document.activeElement)) document.activeElement.blur?.();
-    syncFullscreenAccessibility();
+    cleanupFullscreenState();
     if (state.pendingQualityRequest) {
       const request = state.pendingQualityRequest; state.pendingQualityRequest = null;
       queueMicrotask(() => handleQualityChangeRequest(request));
@@ -9447,6 +9627,7 @@ function relocateChatContextMenu(fullscreenActive) {
 
 function handleFullscreenStageClick(event) {
   if (!isPlayerFullscreen() || event.target.closest('#fullscreenOverlay, #fullscreenShowBtn, button, input, select, audio')) return;
+  if (performance.now() < state.fullscreenGestureBlockUntil) return;
   if (elements.playerContainer.classList.contains('controls-visible')) hideFullscreenControls(true); else showFullscreenControls();
 }
 
@@ -9458,7 +9639,7 @@ function handlePlayerDoubleClick(event) {
   if (playerTapIsInteractive(event.target)) return;
   cancelPendingFullscreenPlaybackGesture();
   event.preventDefault();
-  if (isPlayerFullscreen()) showFullscreenControls();
+  if (isPlayerFullscreen()) { showFullscreenControls(); openFullscreenChat(); }
   else void togglePlayerFullscreen();
 }
 function handlePlayerDoubleTap(event) {
@@ -9466,6 +9647,7 @@ function handlePlayerDoubleTap(event) {
     lastPlayerTap = null;
     return;
   }
+  if (state.fullscreenGesture?.moved) { lastPlayerTap = null; return; }
   const current = { at: performance.now(), x: event.clientX, y: event.clientY };
   const previous = lastPlayerTap;
   lastPlayerTap = current;
@@ -9473,7 +9655,7 @@ function handlePlayerDoubleTap(event) {
   lastPlayerTap = null;
   cancelPendingFullscreenPlaybackGesture();
   event.preventDefault();
-  if (isPlayerFullscreen()) showFullscreenControls();
+  if (isPlayerFullscreen()) { showFullscreenControls(); openFullscreenChat(); }
   else void togglePlayerFullscreen();
 }
 
@@ -10854,14 +11036,19 @@ async function togglePlayerFullscreen() {
     handleFullscreenChange();
     return;
   }
-  if (document.fullscreenElement === elements.playerContainer) {
-    try { await document.exitFullscreen(); } catch (error) { toast(`无法退出全屏：${localizedError(error, '请按返回键重试')}`, 'error'); }
+  if (nativeFullscreenElement() === elements.playerContainer) {
+    try {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (!exit) throw new Error('当前浏览器不支持退出全屏');
+      await exit.call(document);
+    } catch (error) { toast(`无法退出全屏：${localizedError(error, '请按返回键重试')}`, 'error'); }
     return;
   }
   if (state.pseudoFullscreen) { state.pseudoFullscreen = false; handleFullscreenChange(); return; }
   try {
-    if (!elements.playerContainer.requestFullscreen) throw new Error('当前浏览器不支持原生全屏');
-    await elements.playerContainer.requestFullscreen();
+    const request = elements.playerContainer.requestFullscreen || elements.playerContainer.webkitRequestFullscreen;
+    if (!request) throw new Error('当前浏览器不支持原生全屏');
+    await request.call(elements.playerContainer);
   } catch (_) {
     state.pseudoFullscreen = true; handleFullscreenChange();
   }
@@ -10954,23 +11141,35 @@ async function toggleFloatingPlayer() {
       if (entered !== false && entered !== 'false') { state.floatingPlayerActive = true; toast('已进入手机悬浮窗播放', 'success'); return; }
     } catch (_) {}
   }
-  const failures = [];
   if (window.documentPictureInPicture?.requestWindow) {
     try {
       await openDanmakuPictureInPicture(video);
       return;
-    } catch (error) { failures.push(error); }
-  }
-  if (typeof video.requestPictureInPicture === 'function' && document.pictureInPictureEnabled !== false) {
-    try {
-      if (video.readyState === HTMLMediaElement.HAVE_NOTHING && !video.srcObject) throw new DOMException('视频尚未完成加载', 'InvalidStateError');
-      await video.requestPictureInPicture();
-      state.floatingPlayerActive = true;
-      toast(failures.length ? '弹幕悬浮窗不可用，已切换到系统画中画' : '已进入系统画中画模式', 'success');
+    } catch (error) {
+      if (typeof video.requestPictureInPicture === 'function' && document.pictureInPictureEnabled !== false) {
+        toastWithAction('带弹幕的悬浮窗未能打开。请点击“改用系统画中画”，浏览器会用这次新点击重新确认权限。', '改用系统画中画', () => openStandardPictureInPicture(), 12000);
+        return;
+      }
+      toast(floatingPlayerErrorMessage([error]), 'error', 8000);
       return;
-    } catch (error) { failures.push(error); }
+    }
   }
-  toast(floatingPlayerErrorMessage(failures), 'error', 8000);
+  await openStandardPictureInPicture(video);
+}
+
+async function openStandardPictureInPicture(video = activeFloatingVideo()) {
+  if (!video || typeof video.requestPictureInPicture !== 'function' || document.pictureInPictureEnabled === false) {
+    toast('当前系统不支持系统画中画，请改用最新版 Chrome、Edge、SyncWatch同步观影 客户端或安卓客户端。', 'error', 8000);
+    return;
+  }
+  try {
+    if (video.readyState === HTMLMediaElement.HAVE_NOTHING && !video.srcObject) throw new DOMException('视频尚未完成加载', 'InvalidStateError');
+    await video.requestPictureInPicture();
+    state.floatingPlayerActive = true;
+    toast('已进入系统画中画模式', 'success');
+  } catch (error) {
+    toast(floatingPlayerErrorMessage([error]), 'error', 8000);
+  }
 }
 
 function floatingPlayerErrorMessage(errors = []) {
@@ -11368,6 +11567,7 @@ function onMediaCanPlay() {
 }
 
 function beginPlayerSeekDrag() {
+  if (isPlayerFullscreen() && state.fullscreenInteractionLocked) return;
   if (!elements.playerSeekSlider || elements.playerSeekSlider.disabled) return;
   state.playerSeekDragging = true;
   state.playerSeekTarget = Number(elements.playerSeekSlider.value);
@@ -11375,6 +11575,7 @@ function beginPlayerSeekDrag() {
 }
 
 function previewPlayerSeek() {
+  if (isPlayerFullscreen() && state.fullscreenInteractionLocked) return;
   const next = Number(elements.playerSeekSlider?.value);
   if (!Number.isFinite(next)) return;
   state.playerSeekDragging = true;
@@ -11390,6 +11591,7 @@ function cancelPlayerSeekDrag() {
 }
 
 function commitPlayerSeek() {
+  if (isPlayerFullscreen() && state.fullscreenInteractionLocked) { cancelPlayerSeekDrag(); return; }
   const slider = elements.playerSeekSlider;
   const next = Number(state.playerSeekTarget ?? slider?.value);
   state.playerSeekDragging = false;
@@ -15074,7 +15276,12 @@ async function handleAccountAction(event) {
   }
   if (action === 'configure-location-status-notices') { await configureLocationStatusNotices(); renderAccountPage('security'); return; }
   if (action === 'restore-location-status-notices') { restoreLocationStatusNotices(); renderAccountPage('security'); return; }
-  if (action === 'restore-f11-prompt') { localStorage.removeItem('syncwatchF11Prompt'); toast('已恢复进入房间时的全屏提示', 'success'); return; }
+  if (action === 'restore-f11-prompt') {
+    localStorage.removeItem('syncwatchF11Prompt');
+    localStorage.removeItem(fullscreenChatHintStorageKey());
+    toast('已恢复全屏与 F2 边看边聊提示', 'success');
+    return;
+  }
   if (action === 'restore-playback-rate-prompt') { localStorage.removeItem(PLAYBACK_RATE_PROMPT_KEY); toast('已恢复倍速调整提示', 'success'); return; }
   if (action === 'restore-control-prompts') { state.controlSuppressions = {}; localStorage.removeItem('syncwatchControlSuppressions'); toast('已恢复所有成员的控制申请提示', 'success'); return; }
   if (action === 'restore-all-prompts') {
@@ -15082,7 +15289,7 @@ async function handleAccountAction(event) {
     localStorage.removeItem('syncwatchControlSuppressions'); localStorage.removeItem('syncwatchF11Prompt'); localStorage.removeItem(PLAYBACK_RATE_PROMPT_KEY);
     for (let index = localStorage.length - 1; index >= 0; index -= 1) {
       const key = localStorage.key(index);
-      if (key?.startsWith('syncwatchIgnoreTemporary:') || key?.startsWith('syncwatchRoomEntryNotice:') || key?.startsWith(LOGIN_ROOM_REMINDER_KEY_PREFIX)) localStorage.removeItem(key);
+      if (key?.startsWith('syncwatchIgnoreTemporary:') || key?.startsWith('syncwatchRoomEntryNotice:') || key?.startsWith(LOGIN_ROOM_REMINDER_KEY_PREFIX) || key?.startsWith(FULLSCREEN_CHAT_HINT_KEY_PREFIX)) localStorage.removeItem(key);
     }
     toast('已恢复所有可以关闭的提示', 'success'); renderAccountPage('security'); return;
   }

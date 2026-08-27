@@ -44,11 +44,11 @@ if (-not $outputRoot.StartsWith($workspacePrefix, [StringComparison]::OrdinalIgn
 }
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
-$clientArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Experience-Client-Portable-v2.2.5-x64.exe'
+$clientArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Experience-Client-Portable-v2.2.6-x64.exe'
 if (-not (Test-Path -LiteralPath $clientArtifact -PathType Leaf)) {
     throw 'Missing separate Windows client artifact in root dist/. Build the Experience client first.'
 }
-$androidArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Android-v2.2.5-universal.apk'
+$androidArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Android-v2.2.6-universal.apk'
 
 $deploymentGuidePath = 'docs\server-deployment-guide.md'
 $architectureGuidePath = 'docs\architecture.md'
@@ -62,7 +62,7 @@ $requiredFiles = @(
     'scripts\collect-macos-distribution.ps1',
     $standaloneReadmePath, $deploymentGuidePath, $architectureGuidePath, $macosGuidePath,
     'server\index.js', 'server\ai-relay.js', 'server\macos-distribution.js', 'server\latest-release.js', 'server\client-address-privacy.js', 'public\index.html', 'public\js\app.js', 'public\css\style.css',
-    'dist\SyncWatch-Android-v2.2.5-universal.apk',
+    'dist\SyncWatch-Android-v2.2.6-universal.apk',
     'tests\standalone-package-smoke.js',
     'node_modules\compression\package.json', 'node_modules\express\package.json', 'node_modules\multer\package.json',
     'node_modules\nodemailer\package.json', 'node_modules\socket.io\package.json',
@@ -149,8 +149,8 @@ try {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'vendor\cloudflared.exe') -Destination (Join-Path $stage 'vendor\cloudflared.exe') -Force
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'public') -Destination (Join-Path $stage 'public') -Recurse
     New-Item -ItemType Directory -Path (Join-Path $stage 'mobile') -Force | Out-Null
-    Copy-Item -LiteralPath $androidArtifact -Destination (Join-Path $stage 'mobile\SyncWatch同步观影-v2.2.5.apk')
-    Copy-Item -LiteralPath $clientArtifact -Destination (Join-Path $stage 'SyncWatch同步观影-Client-v2.2.5.exe')
+    Copy-Item -LiteralPath $androidArtifact -Destination (Join-Path $stage 'mobile\SyncWatch同步观影-v2.2.6.apk')
+    Copy-Item -LiteralPath $clientArtifact -Destination (Join-Path $stage 'SyncWatch同步观影-Client-v2.2.6.exe')
     $macDirectory = Join-Path $stage 'mac'
     & (Join-Path $PSScriptRoot 'scripts\collect-macos-distribution.ps1') -SourceRoot $PSScriptRoot -Destination $macDirectory -Version $version
 
@@ -206,7 +206,7 @@ try {
             "$folderName/server/index.js", "$folderName/server/ai-relay.js", "$folderName/server/macos-distribution.js", "$folderName/server/latest-release.js", "$folderName/server/client-address-privacy.js", "$folderName/server/standalone-tunnel.js", "$folderName/public/index.html",
             "$folderName/vendor/cloudflared.exe",
             "$folderName/scripts/collect-macos-distribution.ps1",
-            "$folderName/mobile/SyncWatch同步观影-v2.2.5.apk", "$folderName/SyncWatch同步观影-Client-v2.2.5.exe", "$folderName/server-standalone.js",
+            "$folderName/mobile/SyncWatch同步观影-v2.2.6.apk", "$folderName/SyncWatch同步观影-Client-v2.2.6.exe", "$folderName/server-standalone.js",
             "$folderName/README.md", "$folderName/docs/server-deployment-guide.md", "$folderName/docs/architecture.md", "$folderName/docs/macos-build.md", "$folderName/mac-distribution.example.json",
             "$folderName/node_modules/compression/package.json", "$folderName/node_modules/express/package.json", "$folderName/node_modules/nodemailer/package.json",
             "$folderName/node_modules/ffmpeg-static/package.json", "$folderName/node_modules/ffprobe-static/package.json",
@@ -227,7 +227,7 @@ try {
                 throw "Package contains dependency test residue: $entry"
             }
             if ($entry.EndsWith('.exe', [StringComparison]::OrdinalIgnoreCase) -and
-                $entry -ne "$folderName/SyncWatch同步观影-Client-v2.2.5.exe" -and
+                $entry -ne "$folderName/SyncWatch同步观影-Client-v2.2.6.exe" -and
                 $entry -ne "$folderName/vendor/cloudflared.exe" -and
                 $entry -notmatch '/node_modules/(?:ffmpeg-static/ffmpeg\.exe|ffprobe-static/bin/win32/(?:ia32|x64)/ffprobe\.exe)$') {
                 throw "Package contains an unexpected executable: $entry"

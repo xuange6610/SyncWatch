@@ -114,8 +114,8 @@
 
 ## 13. 当前发布基线
 
-- 当前线上正式版本：`v2.2.4`；远端 `main` 与 annotated Tag `v2.2.4` 指向提交 `66eabf7a6129e51b33206f9971d56172e5614c0f`。原子工作流 run `33040168896` attempt 3 成功，Release API 有 26 个维护者资产，页面连同 GitHub 源码归档共 28 个文件，并已设为 Latest。`v2.2.5` 仍是候选，当前本地候选提交为 `f96be3d`，尚无远端 tag、Release 或 Actions 回执。
+- 当前线上正式版本：`v2.2.5`；远端 `main` 与 annotated Tag `v2.2.5` 指向提交 `5d23e2a376d53d141ab1352c8cd0393adb1668e9`。原子工作流 run `33089176049` 成功，Release API 有 26 个维护者资产，页面连同 GitHub 源码归档共 28 个文件，并已设为 Latest。`v2.2.6` 仍是候选，尚无远端 tag、Release 或 Actions 回执。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
-- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3 与 v2.2.4 均已验证为 26 个维护者资产，加 2 个 GitHub 源码归档，每个版本共 28 个可见文件；v2.2.4 已设为 Latest。v2.2.5 在同一门禁完成前必须保持候选状态。
+- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4 与 v2.2.5 均已验证为 26 个维护者资产，加 2 个 GitHub 源码归档，每个版本共 28 个可见文件；v2.2.5 已设为 Latest。v2.2.6 在同一门禁完成前必须保持候选状态。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。

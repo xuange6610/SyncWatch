@@ -100,7 +100,7 @@ assert.match(css, /:fullscreen:not\(\.controls-visible\)\s+\.player-progress-bar
   '全屏隐藏界面时不能残留播放进度条');
 assert.match(app, /LOGIN_ROOM_REMINDER_KEY_PREFIX/);
 assert.match(app, /dataset\.mobileModuleActive\s*=\s*module/);
-assert.match(app, /if \(isPlayerFullscreen\(\)\) showFullscreenControls\(\);[\s\S]{0,120}else void togglePlayerFullscreen\(\);/,
+assert.match(app, /if \(isPlayerFullscreen\(\)\)\s*\{?\s*showFullscreenControls\(\);[\s\S]{0,180}(?:openFullscreenChat\(\);)?[\s\S]{0,80}\}?\s*else void togglePlayerFullscreen\(\);/,
   '全屏双击必须重新显示聊天与控件');
 assert.match(app, /state\.room\.playback\.isPlaying\s*=\s*action === ['"]play['"][\s\S]{0,120}syncPlayPauseButton/,
   '播放暂停按钮必须在服务端确认前先即时更新');

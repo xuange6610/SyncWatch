@@ -987,8 +987,36 @@ async function main() {
     assert.ok(mobileWebShare.minButtonHeight >= 43.5, JSON.stringify(mobileWebShare));
     const mobileWebSharePath = path.join(outputDir, 'web-share-mobile.png'); await capture(cdp, mobileWebSharePath); images.push(mobileWebSharePath);
     await evaluate(cdp, `elements.webShareModal.classList.add('is-hidden'); true`);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    const conciseDesktop = await evaluate(cdp, `(() => {
+      document.body.classList.add('concise-mode');
+      const workspace = elements.mainPage.querySelector('.workspace');
+      const theater = elements.theater.getBoundingClientRect();
+      const result = {
+        columns: getComputedStyle(workspace).gridTemplateColumns.trim().split(/\\s+/).length,
+        fileDisplay: getComputedStyle(elements.filePanel).display,
+        userDisplay: getComputedStyle(elements.userPanel).display,
+        theaterWidth: theater.width,
+        viewport: innerWidth
+      };
+      document.body.classList.remove('concise-mode');
+      elements.chatPanel.classList.remove('mobile-chat-collapsed');
+      result.chatRows = getComputedStyle(elements.chatPanel).gridTemplateRows;
+      result.voiceRow = getComputedStyle(elements.liveVoiceBar).gridRow;
+      result.historyRow = getComputedStyle(elements.chatHistory).gridRow;
+      result.chatDisplay = getComputedStyle(elements.chatPanel).display;
+      return result;
+    })()`);
+    assert.equal(conciseDesktop.columns, 1, JSON.stringify(conciseDesktop));
+    assert.equal(conciseDesktop.fileDisplay, 'none', JSON.stringify(conciseDesktop));
+    assert.equal(conciseDesktop.userDisplay, 'none', JSON.stringify(conciseDesktop));
+    assert.ok(conciseDesktop.theaterWidth >= conciseDesktop.viewport - 24, JSON.stringify(conciseDesktop));
+    assert.equal(conciseDesktop.chatRows.trim().split(/\s+/).length, 8, JSON.stringify(conciseDesktop));
+    assert.equal(conciseDesktop.voiceRow, '4', JSON.stringify(conciseDesktop));
+    assert.equal(conciseDesktop.historyRow, '5', JSON.stringify(conciseDesktop));
+    assert.equal(conciseDesktop.chatDisplay, 'grid', JSON.stringify(conciseDesktop));
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 812, height: 375, deviceScaleFactor: 1, mobile: true });
-    await evaluate(cdp, `state.pseudoFullscreen = true; handleFullscreenChange(); true`); await delay(140);
+    await evaluate(cdp, `localStorage.removeItem(fullscreenChatHintStorageKey()); state.pseudoFullscreen = true; handleFullscreenChange(); true`); await delay(140);
     const fullscreenInitial = await evaluate(cdp, `(() => {
       const player = elements.playerContainer.getBoundingClientRect();
       const actions = elements.fullscreenOverlay.querySelector('.fullscreen-actions');
@@ -1000,7 +1028,7 @@ async function main() {
       if (videoWasHidden) elements.videoPlayer.classList.add('is-hidden');
       if (!emptyWasHidden) elements.emptyStage.classList.remove('is-hidden');
       return {
-        controls: elements.playerContainer.classList.contains('controls-visible'), showHidden: elements.fullscreenShowBtn.classList.contains('is-hidden'),
+        controls: elements.playerContainer.classList.contains('controls-visible'), showHidden: elements.fullscreenShowBtn.classList.contains('is-hidden'), hintVisible: !elements.fullscreenShortcutHint.classList.contains('is-hidden'), lockSize: [elements.fullscreenLockBtn.getBoundingClientRect().width, elements.fullscreenLockBtn.getBoundingClientRect().height],
         player: [player.left, player.top, player.width, player.height], video: [video.left, video.top, video.width, video.height],
         actionsPosition: getComputedStyle(actions).position, actions: [actionsRect.left, actionsRect.top, actionsRect.right, actionsRect.bottom],
         viewport: [innerWidth, innerHeight], bodyWidth: document.body.scrollWidth
@@ -1008,6 +1036,8 @@ async function main() {
     })()`);
     assert.equal(fullscreenInitial.controls, true, JSON.stringify(fullscreenInitial));
     assert.equal(fullscreenInitial.showHidden, true, JSON.stringify(fullscreenInitial));
+    assert.equal(fullscreenInitial.hintVisible, true, JSON.stringify(fullscreenInitial));
+    assert.ok(fullscreenInitial.lockSize[0] >= 44 && fullscreenInitial.lockSize[1] >= 44, JSON.stringify(fullscreenInitial));
     assert.deepEqual(fullscreenInitial.player.map(Math.round), [0, 0, 812, 375], JSON.stringify(fullscreenInitial));
     assert.deepEqual(fullscreenInitial.video.map(Math.round), [0, 0, 812, 375], JSON.stringify(fullscreenInitial));
     assert.equal(fullscreenInitial.actionsPosition, 'absolute', JSON.stringify(fullscreenInitial));
@@ -1029,8 +1059,41 @@ async function main() {
     await evaluate(cdp, `elements.playerContainer.dispatchEvent(new MouseEvent('click', { bubbles: true })); true`); await delay(120);
     const fullscreenRestored = await evaluate(cdp, `({ controls: elements.playerContainer.classList.contains('controls-visible'), showHidden: elements.fullscreenShowBtn.classList.contains('is-hidden'), overlayHidden: elements.fullscreenOverlay.getAttribute('aria-hidden') })`);
     assert.deepEqual(fullscreenRestored, { controls: true, showHidden: true, overlayHidden: 'false' });
+    const fullscreenV226Controls = await evaluate(cdp, `(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      const f2Focused = document.activeElement === elements.fullscreenChatInput;
+      const hintHidden = elements.fullscreenShortcutHint.classList.contains('is-hidden');
+      elements.fullscreenLockBtn.click();
+      const locked = state.fullscreenInteractionLocked && elements.playerContainer.classList.contains('fullscreen-interaction-locked') && elements.playerSeekSlider.disabled && !elements.videoPlayer.controls;
+      elements.fullscreenLockBtn.click();
+      const unlocked = !state.fullscreenInteractionLocked && !elements.playerContainer.classList.contains('fullscreen-interaction-locked') && elements.videoPlayer.controls;
+      beginFullscreenAdjustmentGesture({ isPrimary: true, button: 0, target: elements.videoPlayer, pointerId: 77, clientX: 100, clientY: 250 });
+      updateFullscreenAdjustmentGesture({ pointerId: 77, clientX: 100, clientY: 120, preventDefault() {} });
+      const brightnessRaised = state.fullscreenBrightness > 1 && /brightness/.test(elements.videoPlayer.style.filter);
+      endFullscreenAdjustmentGesture({ pointerId: 77 });
+      return { f2Focused, hintHidden, locked, unlocked, brightnessRaised };
+    })()`);
+    assert.deepEqual(fullscreenV226Controls, { f2Focused: true, hintHidden: true, locked: true, unlocked: true, brightnessRaised: true }, JSON.stringify(fullscreenV226Controls));
     const fullscreenLandscapePath = path.join(outputDir, 'fullscreen-812x375.png'); await capture(cdp, fullscreenLandscapePath); images.push(fullscreenLandscapePath);
     await evaluate(cdp, `state.pseudoFullscreen = false; handleFullscreenChange(); true`);
+    const fullscreenCleanup = await evaluate(cdp, `(() => {
+      const first = {
+        body: document.body.classList.contains('fullscreen-open'),
+        active: elements.playerContainer.classList.contains('fullscreen-active'),
+        controls: elements.playerContainer.classList.contains('controls-visible'),
+        locked: state.fullscreenInteractionLocked,
+        rotation: state.viewRotation,
+        zoom: state.viewZoom,
+        brightness: state.fullscreenBrightness,
+        filter: elements.videoPlayer.style.filter
+      };
+      state.pseudoFullscreen = true; handleFullscreenChange();
+      const sameDayHintHidden = elements.fullscreenShortcutHint.classList.contains('is-hidden');
+      state.pseudoFullscreen = false; handleFullscreenChange();
+      return { first, sameDayHintHidden };
+    })()`);
+    assert.deepEqual(fullscreenCleanup.first, { body: false, active: false, controls: false, locked: false, rotation: 0, zoom: 1, brightness: 1, filter: '' }, JSON.stringify(fullscreenCleanup));
+    assert.equal(fullscreenCleanup.sameDayHintHidden, true, JSON.stringify(fullscreenCleanup));
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const aiMobileLayout = await evaluate(cdp, `(() => {
       document.body.classList.add('android-client');
