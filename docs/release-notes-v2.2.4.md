@@ -2,7 +2,7 @@
 
 和朋友、家人、情侣远程一起看电影。v2.2.4 在 v2.2.3 的稳定基线上继续完善全屏观影、账户级简洁模式、地址隐私、房间迁移、播放队列、登录解限、权限和跨端更新检查。
 
-> 发布状态以 [GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 的实时结果为准：只有页面公开、API 恰有 26 个维护者资产，且页面连同 GitHub 自动生成的两个源码归档共显示 28 个文件时，本版本才算发布完成。
+> v2.2.4 已于 2026-08-27 正式发布并设为 Latest：[GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 公开可见，API 恰有 26 个维护者资产，页面连同 GitHub 自动生成的两个源码归档共显示 28 个文件。
 
 > 第一次使用服务器请用默认账号 `admin`、默认密码 `admin888` 登录，并立即修改默认密码。首次改密豁免只适用于内置 `admin` 刚完成账号密码认证后的初始化流程；被授予超级管理员的普通账号不再被强制改密。
 
@@ -119,7 +119,7 @@
 - Windows 自己开房：标准服务器便携版；需要跨平台离线下载中心时选择完整安装版或完整便携版。
 - Mac 自己开房：按 Intel x64 或 Apple Silicon arm64 选择服务器版；需要离线下载中心时选择完整离线版。
 - 源码或独立服务器：安装官方 Node.js 22+；正式桌面包已内置运行时，无需重复安装。
-- 只从 [GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 的真实资产列表下载；页面不存在、仍是草稿或资产不足时继续使用 [v2.2.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.3)。
+- 只从 [GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 的真实资产列表下载；若文件名、大小或哈希与 Release 记录不一致，应停止安装并报告，不使用第三方改名包或来源不明文件。
 
 ## 跨平台完整套装
 
@@ -131,7 +131,7 @@ Windows 正式服务器包内置 Electron/Node.js 运行时、应用前后端、
 
 ## macOS
 
-v2.2.4 的客户端、服务器和完整离线版分别提供 Intel x64 与 Apple Silicon arm64 的 DMG/ZIP，共 12 项。它们必须由真实 macOS runner 从最终 Tag 构建，不能用 Windows 产物、改名旧包或只更新应用显示版本替代。签名、公证和 Gatekeeper 状态以最终构建记录为准。
+v2.2.4 的客户端、服务器和完整离线版分别提供 Intel x64 与 Apple Silicon arm64 的 DMG/ZIP，共 12 项。它们已由真实 macOS runner 从最终 Tag 构建并完成启动与包闭包验证，没有使用 Windows 产物、改名旧包或只更新应用显示版本替代。签名、公证和 Gatekeeper 状态以最终构建记录为准。
 
 ## 架构支持边界
 
@@ -155,7 +155,7 @@ v2.2.4 的客户端、服务器和完整离线版分别提供 Intel x64 与 Appl
 2. 升级前停止旧服务器并备份整个 `SyncWatch同步观影-Data/`，不要只复制 `config.json`。
 3. 房间复制/迁移会复制媒体文件，执行前确认目标磁盘空间并保留独立备份；超级管理员覆盖迁移需要明确二次确认。
 4. 不公开数据目录、SMTP 密钥、Tunnel 令牌、签名文件、聊天记录、真实 IP 或带权限的房间链接。
-5. 只有 v2.2.4 Release 已公开、26+2 文件和哈希全部验证后才升级生产环境。
+5. v2.2.4 Release 已公开且 26+2 文件和哈希均已验证；部署时仍应按资产名和 SHA-256 复核后再升级生产环境。
 
 ## 已知限制
 

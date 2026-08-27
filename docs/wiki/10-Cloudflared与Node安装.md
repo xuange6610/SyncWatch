@@ -1,6 +1,6 @@
 # cloudflared 与 Node.js 安装使用
 
-普通用户安装 `SyncWatch-v2.2.3-Full-Offline-Installer-x64.exe` 或运行 `SyncWatch-Standard-Server-Portable` 时无需另装环境。cloudflared 负责临时/固定公网入口，Node.js 只用于源码和独立服务器。Release 另提供 Cloudflare 官方 Windows MSI：x64 用户下载 `cloudflared-windows-x64-installer.msi`，32 位 Windows 下载 `cloudflared-windows-x86-installer.msi`；双击 MSI 才会启动安装向导，命令行 EXE 直接双击只会打开黑色终端，这是正常行为。
+普通用户安装 `SyncWatch-v2.2.4-Full-Offline-Installer-x64.exe` 或运行 `SyncWatch-Standard-Server-Portable-v2.2.4-x64.exe` 时无需另装环境。cloudflared 负责临时/固定公网入口，Node.js 只用于源码和独立服务器。Release 另提供 Cloudflare 官方 Windows MSI：x64 用户下载 `cloudflared-windows-x64-installer.msi`，32 位 Windows 下载 `cloudflared-windows-x86-installer.msi`；双击 MSI 才会启动安装向导，命令行 EXE 直接双击只会打开黑色终端，这是正常行为。
 
 最新正式下载仍为 v2.2.3。v2.2.4 的 Node.js 4 项和 cloudflared 5 项尚待核对官方来源、平台/架构、字节数和 SHA-256；这些文件不是 SyncWatch 源码生成的启动程序，候选公告列出名称不等于已经上传。
 

@@ -95,9 +95,9 @@ SyncWatch同步观影是一套开源、自托管的多人同步观影与实时�
 - **临时公网地址**：Cloudflare Quick Tunnel 依赖出站网络、DNS、代理/VPN/TUN 和 Cloudflare 服务，地址不固定；网络受限时应使用固定 HTTPS 反向代理。
 - **AI 工作台**：`server/ai-relay.js` 和前端配置支持兼容 Responses API/Chat Completions 的中转，但模型、密钥、额度和可用能力由用户提供的服务决定。
 - **屏幕/系统音频共享**：浏览器、Electron、Android 有不同的权限和 API；系统级音频与浏览器支持范围取决于平台版本和用户授权。
-- **发布架构**：v2.2.3 正式 Release 已按固定清单提供 Windows、Android、macOS、Node.js 与 cloudflared 资产；v2.2.4 仍必须以 GitHub Release 中实际存在的文件为准。
-- **发布数量标准**：2026-08-27 复核 v2.2.3 为 Latest 且有 26 个维护者资产，加上 GitHub 自动生成的 2 个源码归档后页面显示 28 个文件；后续版本仍须通过 [Release 资产清单](docs/release/release-manifest.md)门禁后才能发布。
-- **当前版本**：v2.2.4 包含全屏手势与弹幕、简洁模式、地址隐私、房间复制/迁移、登录解限、更新检查、清晰度申请、独立快进权限、片头片尾和批量队列。17 个应用包必须由最终 Tag 重建，9 个 Node.js/cloudflared 上游文件须核对官方来源与 SHA-256；在 Release API 达到 26 项前保持待发布。
+- **发布架构**：v2.2.4 正式 Release 已按固定清单提供 Windows、Android、macOS、Node.js 与 cloudflared 资产；下载文件以 GitHub Release 中实际存在的文件为准。
+- **发布数量标准**：2026-08-27 复核 v2.2.4 为 Latest 且有 26 个维护者资产，加上 GitHub 自动生成的 2 个源码归档后页面显示 28 个文件；后续版本仍须通过 [Release 资产清单](docs/release/release-manifest.md)门禁后才能发布。
+- **当前版本**：v2.2.4 包含全屏手势与弹幕、简洁模式、地址隐私、房间复制/迁移、登录解限、更新检查、清晰度申请、独立快进权限、片头片尾和批量队列。17 个应用包由最终 Tag 重建，9 个 Node.js/cloudflared 上游文件已核对官方来源与 SHA-256，Release API 已达到 26 项并完成远端哈希回读。
 
 ### 计划开发
 
