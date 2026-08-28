@@ -2828,6 +2828,28 @@ body.ui-copy-editable [data-ui-copy-attribute-keys]:hover { --copy-edit-outline:
 @media (max-width: 560px) {
   .ui-copy-editor-row { grid-template-columns: 1fr; gap: 5px; }
 }
+
+/* v2.2.7: keep the complete login card reachable in short or zoomed windows. */
+.login-page {
+  height: auto;
+  min-height: calc(100dvh - var(--mobile-web-appbar, 58px));
+  align-items: start;
+  padding-bottom: max(36px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.login-page > .auth-card,
+.login-page #authCard.auth-card {
+  align-self: start;
+  max-height: none;
+  overflow: visible;
+  margin-block: 18px 48px;
+}
+@media (max-width: 924px) {
+  .login-page { min-height: calc(100dvh - var(--mobile-web-appbar, 58px)); }
+  .login-page #authCard.auth-card { margin-block: 10px 48px; }
+}
+
 /* Account-scoped distraction controls and fullscreen safety. */
 .danmaku-item {
   color: var(--account-danmaku-color, #fff);
