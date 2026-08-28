@@ -41,7 +41,7 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
-      - name: Verify annotated tag, commit, tree, version, and empty Release target
+      - name: Verify annotated tag, commit, tree, version, and Release target
         id: source
         shell: bash
         env:
@@ -75,8 +75,11 @@ jobs:
             if(matches.length>1)throw new Error(`Multiple Releases target ${process.env.RELEASE_TAG}.`);
             if(matches.length===1) {
               const release=matches[0];
-              if(release.draft!==true || !Array.isArray(release.assets) || release.assets.length!==0) {
-                throw new Error(`The existing Release must be an empty draft before this run starts.`);
+              if(!Array.isArray(release.assets) || ![0,26].includes(release.assets.length)) {
+                throw new Error(`The existing Release must contain either zero assets or the complete 26-asset set.`);
+              }
+              if(release.assets.length===0 && release.draft!==true) {
+                throw new Error(`An empty existing Release must remain a draft.`);
               }
             }
           '
@@ -417,30 +420,39 @@ jobs:
           assert_remote_tag
 
           release_touched=0
+          replacement_ready=0
           release_id=""
+          old_asset_count=0
           rollback_release() {
             status=$?
             if [[ "$status" -ne 0 && "$release_touched" -eq 1 ]]; then
               set +e
-              gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" --jq '.assets[].id' > .build/rollback-asset-ids.txt
-              while IFS= read -r asset_id; do
-                [[ -z "$asset_id" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
-              done < .build/rollback-asset-ids.txt
-              if ! gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
-                -f tag_name="$RELEASE_TAG" \
-                -f name="SyncWatch同步观影 $RELEASE_TAG" \
-                -F "body=@${NOTES_FILE}" \
-                -F draft=true \
-                -F prerelease=false > /dev/null; then
-                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
-                gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
-                  -f tag_name="$RELEASE_TAG" \
-                  -f name="SyncWatch同步观影 $RELEASE_TAG" \
-                  -F "body=@${NOTES_FILE}" \
-                  -F draft=true \
-                  -F prerelease=false > /dev/null
+              if [[ -s .build/asset-swap.tsv ]]; then
+                while IFS=$'\t' read -r official old_id new_id old_backup temporary; do
+                  if [[ "$replacement_ready" -eq 1 ]]; then
+                    [[ "$old_id" = "0" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}" >/dev/null 2>&1
+                  else
+                    gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/assets/${new_id}" -f name="$temporary" >/dev/null 2>&1
+                    gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${new_id}" >/dev/null 2>&1
+                    [[ "$old_id" = "0" ]] || gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}" -f name="$official" >/dev/null 2>&1
+                  fi
+                done < .build/asset-swap.tsv
               fi
-              echo "Atomic publication failed; this run's 26 expected names were removed and the Release was restored to draft." >&2
+              if [[ "$replacement_ready" -eq 1 ]]; then
+                gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+                  -f tag_name="$RELEASE_TAG" -f name="SyncWatch同步观影 $RELEASE_TAG" \
+                  -F "body=@${NOTES_FILE}" -F draft=false -F prerelease=false -f make_latest=true >/dev/null 2>&1
+                echo "The replacement set passed readback; recovery published the verified new 26-asset set." >&2
+              else
+                old_name="$(node -p "require('./.build/pre-upload-release.json').name || 'SyncWatch同步观影 ' + process.env.RELEASE_TAG")"
+                node -e 'require(`fs`).writeFileSync(`.build/previous-release-body.md`,require(`./.build/pre-upload-release.json`).body||``)'
+                old_draft="$(node -p "String(require('./.build/pre-upload-release.json').draft===true)")"
+                old_prerelease="$(node -p "String(require('./.build/pre-upload-release.json').prerelease===true)")"
+                gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+                  -f tag_name="$RELEASE_TAG" -f name="$old_name" -F "body=@.build/previous-release-body.md" \
+                  -F draft="$old_draft" -F prerelease="$old_prerelease" $([[ "$old_draft" = false ]] && printf '%s' '-f make_latest=true') >/dev/null 2>&1
+                echo "Atomic replacement failed before cutover; the previous 26 assets and public Release state were restored." >&2
+              fi
             fi
             exit "$status"
           }
@@ -457,15 +469,13 @@ jobs:
             gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/pre-upload-release.json
             RELEASE_JSON=.build/pre-upload-release.json node -e '
               const r=require(`./${process.env.RELEASE_JSON}`);
-              if(r.draft!==true || !Array.isArray(r.assets) || r.assets.length!==0) {
-                throw new Error(`Release target changed after preparation; refusing to replace it.`);
+              if(!Array.isArray(r.assets) || ![0,26].includes(r.assets.length)) {
+                throw new Error(`Release target changed after preparation; expected zero or 26 assets.`);
               }
             '
+            old_asset_count="$(node -p "require('./.build/pre-upload-release.json').assets.length")"
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
-              -f tag_name="$RELEASE_TAG" \
-              -f name="SyncWatch同步观影 $RELEASE_TAG" \
-              -F "body=@${NOTES_FILE}" \
-              -F draft=true \
+              -f tag_name="$RELEASE_TAG" -F draft=true \
               -F prerelease=false > .build/pre-upload-release.json
           else
             gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
@@ -479,13 +489,19 @@ jobs:
           test "$release_id" -gt 0
           release_touched=1
 
-          gh release upload "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY"
+          mkdir -p .build/replacement-upload
+          : > .build/replacement-map.tsv
+          replacement_files=()
+          for index in "${!files[@]}"; do
+            official="${asset_names[$index]}"
+            temporary="${official}.replacement-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            target=".build/replacement-upload/${temporary}"
+            cp "${files[$index]}" "$target"
+            replacement_files+=("$target")
+            printf '%s\t%s\t%s\n' "$official" "$temporary" "${files[$index]}" >> .build/replacement-map.tsv
+          done
+          gh release upload "$RELEASE_TAG" "${replacement_files[@]}" --repo "$GITHUB_REPOSITORY"
           gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/uploaded-release.json
-          node scripts/release-candidate-gate.js \
-            --selection release \
-            --version "$RELEASE_VERSION" \
-            --metadata .build/uploaded-release.json \
-            --expected-manifest .build/SHA256SUMS-release-26.txt
 
           RELEASE_JSON=.build/uploaded-release.json node -e '
             const fs=require(`fs`);
@@ -495,11 +511,13 @@ jobs:
               if(!match)throw new Error(`Invalid local checksum row: ${line}`);
               return [match[2],match[1]];
             }));
-            if(release.assets.length!==26 || sums.size!==26)throw new Error(`Remote readback requires exactly 26 assets.`);
-            const rows=release.assets.map((a)=>{
-              const expected=sums.get(a.name);
-              if(!expected || !Number.isSafeInteger(a.id))throw new Error(`Missing draft readback metadata for ${a.name}`);
-              return `${expected}\t${a.name}\t${a.id}`;
+            const mappings=fs.readFileSync(`.build/replacement-map.tsv`,`utf8`).trim().split(/\r?\n/).map((line)=>line.split(`\t`));
+            if(mappings.length!==26 || sums.size!==26)throw new Error(`Replacement readback requires exactly 26 mapped assets.`);
+            const rows=mappings.map(([official,temporary])=>{
+              const asset=release.assets.find((entry)=>entry.name===temporary);
+              const expected=sums.get(official);
+              if(!asset || !expected || !Number.isSafeInteger(asset.id))throw new Error(`Missing replacement metadata for ${official}`);
+              return `${expected}\t${official}\t${asset.id}`;
             });
             fs.writeFileSync(`.build/download-verification.tsv`,rows.join(`\n`)+`\n`);
           '
@@ -519,6 +537,42 @@ jobs:
               exit 1
             fi
           done < .build/download-verification.tsv
+
+          RELEASE_JSON=.build/uploaded-release.json node -e '
+            const fs=require(`fs`);
+            const release=require(`./${process.env.RELEASE_JSON}`);
+            const mappings=fs.readFileSync(`.build/replacement-map.tsv`,`utf8`).trim().split(/\r?\n/).map((line)=>line.split(`\t`));
+            const rows=mappings.map(([official,temporary])=>{
+              const oldAsset=release.assets.find((entry)=>entry.name===official);
+              const newAsset=release.assets.find((entry)=>entry.name===temporary);
+              if(!newAsset)throw new Error(`Replacement asset missing: ${temporary}`);
+              const oldBackup=`${official}.previous-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
+              return `${official}\t${oldAsset?.id||0}\t${newAsset.id}\t${oldBackup}\t${temporary}`;
+            });
+            fs.writeFileSync(`.build/asset-swap.tsv`,rows.join(`\n`)+`\n`);
+          '
+          while IFS=$'\t' read -r official old_id new_id old_backup temporary; do
+            [[ "$old_id" = "0" ]] || gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}" -f name="$old_backup" >/dev/null
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/assets/${new_id}" -f name="$official" >/dev/null
+          done < .build/asset-swap.tsv
+
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/replacement-ready-release.json
+          RELEASE_JSON=.build/replacement-ready-release.json node -e '
+            const fs=require(`fs`);
+            const release=require(`./${process.env.RELEASE_JSON}`);
+            const expected=new Set(fs.readFileSync(`.build/release-files-26.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>line.replace(/^dist\//,``)));
+            const filtered={...release,assets:release.assets.filter((asset)=>expected.has(asset.name))};
+            if(filtered.assets.length!==26)throw new Error(`Cutover verification requires 26 official replacement names.`);
+            fs.writeFileSync(`.build/replacement-official-release.json`,JSON.stringify(filtered));
+          '
+          node scripts/release-candidate-gate.js \
+            --selection release --version "$RELEASE_VERSION" \
+            --metadata .build/replacement-official-release.json \
+            --expected-manifest .build/SHA256SUMS-release-26.txt
+          replacement_ready=1
+          while IFS=$'\t' read -r official old_id new_id old_backup temporary; do
+            [[ "$old_id" = "0" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}"
+          done < .build/asset-swap.tsv
 
           gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
             -f tag_name="$RELEASE_TAG" \

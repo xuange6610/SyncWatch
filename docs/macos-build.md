@@ -2,7 +2,7 @@
 
 SyncWatch同步观影 的 macOS 服务器和客户端使用 Electron，支持 Intel x64 与 Apple Silicon arm64。macOS 产物必须在 macOS 主机或 macOS CI 上构建，Windows 不能生成可运行、可签名和可 notarize 的 macOS DMG。
 
-v2.2.6 当前是候选版本。下面 12 个 macOS 应用资产待真实 macOS x64/arm64 runner 从最终 Tag 构建，并由发布工作流完成平台/架构、包闭包、实际启动、大小和 SHA-256 验证；验证前请使用 [GitHub Release v2.2.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.4) 的实时资产列表。
+v2.2.6 已由真实 macOS x64/arm64 runner 从最终 Tag 构建，并由发布工作流完成平台/架构、包闭包、实际启动、大小和 SHA-256 验证；当前资产列表以 [GitHub Release v2.2.6](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.6) 为准。
 
 ## 构建前
 

@@ -22,7 +22,9 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前正式发布：[v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5)（Latest，26 个维护者资产 + 2 个 GitHub 源码归档，共 28 个文件）；`v2.2.6` 正在 `release/v2.2.6` 候选分支等待完整构建验证。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前正式发布：[v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5)；v2.2.6 候选分支包含本轮源码候选改动，等待最终 Tag 构建、哈希回读、Release、Pages 与 Wiki 核对后再替换线上同版本资产。线上旧 v2.2.6 仅作为待更正基线，不能证明安装包已包含本轮修复；许可证：[Apache-2.0](LICENSE) · 作者：xuan
+
+本项目正式 Release 的固定交付契约仍是 26 个维护者资产，加两个 GitHub 源码归档，共 28 个文件；本轮 v2.2.6 在新集合完成验证前保持候选状态。
 
 ## 在线参观
 
@@ -51,12 +53,11 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 | [`SyncWatch-Full-Offline-macOS-v2.2.6-arm64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-arm64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.6-arm64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-arm64.zip) | 完整版；Apple Silicon Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 arm64 cloudflared |
 | [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/cloudflared-windows-x86-installer.msi) | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
 | [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/node-v24.19.0-arm64.msi) / [`node-v24.19.0-macos-x64.pkg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/node-v24.19.0-macos-x64.pkg) / [`node-v24.19.0-darwin-arm64.tar.gz`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/node-v24.19.0-darwin-arm64.tar.gz) | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
-| Android APK | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
-| macOS 服务器/客户端 | Mac 用户 | Intel Mac 使用 x64，Apple Silicon 使用 arm64 |
-| 独立服务器 ZIP | Windows/Linux 服务器管理员 | 使用 Node.js 启动服务，适合长期部署和 Docker |
-| Source code | 开发者 | 阅读、修改和自行构建，需要安装 Node.js 和依赖 |
-
-v2.2.6 已完成源码候选改动，等待最终 annotated Tag、原子构建工作流、26 个维护者资产和远端哈希回读；在此之前请使用当前 Latest v2.2.5。完整改动、验证门禁与已知限制见 [v2.2.6 发布说明](docs/release-notes-v2.2.6.md)。
+| [`SyncWatch-Android-v2.2.6-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Android-v2.2.6-universal.apk) | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
+| macOS 客户端：[x64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-x64.dmg) / [x64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-x64.zip) / [arm64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-arm64.dmg) / [arm64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-arm64.zip) | Mac 普通成员 | Intel Mac 使用 x64，Apple Silicon 使用 arm64；只连接已有服务器 |
+| macOS 服务器：[x64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-x64.dmg) / [x64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-x64.zip) / [arm64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-arm64.dmg) / [arm64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-arm64.zip) | Mac 房主 | 按芯片选择可开房的服务器包 |
+| [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 26 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
+| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.6.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.6.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
 ## 第一次启动服务器
 

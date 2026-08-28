@@ -26,7 +26,7 @@
 
 ## 当前事实边界
 
-- 当前正式版本为 [v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5)，已设为 Latest；`v2.2.6` 正在候选分支等待完整构建。正式下载以 GitHub Release API 实际资产为准。
+- [v2.2.6](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.6) 正在进行同版本更正发布；线上旧 Release 的 26 个资产不能作为本轮修复证据。最终 Tag 构建、哈希回读、Release、Pages 与 Wiki 核对全部完成前，正式下载以 GitHub Release API 实际资产和发布公告状态为准。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
 - 可下载的桌面、Android、macOS 和独立服务器成品以 GitHub Releases 中实际存在的资产为准，不以文件名猜测平台支持。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。

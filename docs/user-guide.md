@@ -1,6 +1,6 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.2.6 候选版；当前正式下载、哈希与资产列表仍以 [GitHub Release v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5) 为准。v2.2.6 的 26 个维护者资产和 2 个源码归档待本轮发布门禁完成。
+适用范围：v2.2.6 正式版；当前正式下载、哈希与资产列表以 [GitHub Release v2.2.6](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.6) 为准，Release API 有 26 个维护者资产，页面连同 2 个源码归档共 28 个文件。
 
 ## 直接使用
 
