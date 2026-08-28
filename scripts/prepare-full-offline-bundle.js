@@ -8,11 +8,7 @@ const repositoryRoot = path.resolve(__dirname, '..');
 function expectedFiles(version) {
   return [
     `windows/SyncWatch-Experience-Client-Portable-v${version}-x64.exe`,
-    `android/SyncWatch-Android-v${version}-universal.apk`,
-    `mac/SyncWatch-Server-macOS-v${version}-x64.zip`,
-    `mac/SyncWatch-Server-macOS-v${version}-arm64.zip`,
-    `mac/SyncWatch-Client-macOS-v${version}-x64.zip`,
-    `mac/SyncWatch-Client-macOS-v${version}-arm64.zip`
+    `android/SyncWatch-Android-v${version}-universal.apk`
   ];
 }
 

@@ -493,12 +493,6 @@ jobs:
         with:
           name: ${{ inputs.artifact_prefix }}-android
           path: .build/full-inputs/android
-      - name: Download same-run macOS base artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: ${{ inputs.artifact_prefix }}-mac-base-*
-          path: .build/full-inputs/mac
-          merge-multiple: true
       - name: Verify Full Offline inputs and source contracts
         shell: pwsh
         run: |
@@ -540,7 +534,7 @@ jobs:
                 try { $config = Invoke-RestMethod -Uri "http://127.0.0.1:$port/api/public-config" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 500 }
               }
               if (-not $config) { throw "$label did not start its HTTP service." }
-              if ($config.version -ne "v$env:RELEASE_VERSION" -or -not $config.androidApkAvailable -or -not $config.clientDownloadAvailable -or $config.macServerDownloads.Count -ne 2 -or $config.macClientDownloads.Count -ne 2) {
+              if ($config.version -ne "v$env:RELEASE_VERSION" -or -not $config.androidApkAvailable -or -not $config.clientDownloadAvailable) {
                 throw "$label Full Offline closure/version verification failed."
               }
             } finally {
