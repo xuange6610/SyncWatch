@@ -120,6 +120,7 @@
 - 用户补充的 v2.2.7 Windows 完整离线资产要求：必须上传并在 Release Assets 中核对 `SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe` 与 `SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe`。这两个文件必须由最终 v2.2.7 Tag 对应的修改后源码真实构建、完成启动/闭包/版本/非空大小/SHA-256 验证后上传；不得使用 v2.2.5 或其他旧包改名、占位文件或未验证文件替代。若本地或 Actions 尚未生成真实成品，Release 保持 `pending`，先完成构建和验证再上传。
 - v2.2.7 原子运行 `33182040163` 第一次失败原因：源码门禁执行 `scripts/collect-macos-distribution.ps1` 时，`mac-distribution.example.json` 仍含 `v2.2.6` 示例文件名，导致旧版本文件名被当前版本校验拒绝。修复：将示例清单中的 macOS 文件名更新为当前版本，并在本地通过 macOS 下载/便携包契约测试；后续触发前先搜索示例清单中的旧版本字符串。
 - v2.2.7 原子运行 `33182622343` 第二次失败原因：`tests/platform-contracts.test.js` 按当前 `package.json` 版本检查 Docker 部署必须包含对应版本的 Android/Windows 客户端，但根目录 `Dockerfile` 与 `.dockerignore` 仍硬编码 `v2.2.6` 文件名，导致源码门禁在构建前失败。修复：同步更新为 `v2.2.7` 文件名；后续版本升级必须在版本字段变更后搜索 Docker/部署配置中的旧版本字符串并通过平台契约测试，再触发唯一一次原子构建。
+- v2.2.7 原子运行 `33183457621` 已取消，原因是旧版工作流仍包含 macOS base jobs，macOS Server arm64 检查失败且 Windows/Android 构建被依赖链阻断；复用仓库已有的 Windows+Android 发布收敛提交（停用 macOS job、切换 10+2 文件契约、复用第三方缓存和成品门禁修复）后，下一次才允许重新触发一次原子发布。
 - 复盘补充：取消未完成的原子运行可能留下部分旧资产（例如 6 个官方 Windows 文件）；下一次发布准备阶段允许识别并清理 6/26 的历史部分集合，但最终发布仍必须严格为当前 10 个 Windows/Android 维护者资产，不能把部分集合当作完成。
 - 固定第三方分发文件（Node.js/cloudflared）可作为已核验的本地缓存长期保留：首次下载必须记录官方来源、版本、平台/架构和 SHA-256；后续版本可直接从该缓存复制到根目录 `dist/`，不得重复生成或改名冒充应用包，但上传前仍必须逐项做非空、名称、版本/架构和 SHA-256 回读。缓存不包含 SyncWatch 应用安装包；macOS 应用包仍按上一条范围完全停用。
 
