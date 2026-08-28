@@ -22,9 +22,9 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前正式发布：[v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5)；v2.2.7 候选分支包含本轮源码候选改动，等待最终 Tag 构建、哈希回读、Release、Pages 与 Wiki 核对后再替换线上同版本资产。线上旧 v2.2.7 仅作为待更正基线，不能证明安装包已包含本轮修复；许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前正式发布：[v2.2.7](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.7)，已正式发布并设为 Latest；该版本已完成最终 Tag 构建、原子工作流、Release、Pages 与 Wiki 核对。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-本项目正式 Release 的固定交付契约是 10 个维护者资产，加两个 GitHub 源码归档，共 12 个文件；本轮 v2.2.7 在新集合完成验证前保持候选状态。
+本项目正式 Release 的固定交付契约是 10 个维护者资产，加两个 GitHub 源码归档，共 12 个文件；v2.2.7 Release 已按此清单发布。
 
 ## 在线参观
 
