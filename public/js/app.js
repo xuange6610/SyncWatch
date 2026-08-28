@@ -132,7 +132,7 @@ const state = {
   operationHistory: [], operationHistoryBefore: '', operationHistoryHasMore: false, operationHistoryLoading: false,
   operationHistoryQuery: '', operationHistoryScope: '', selectedOperations: new Set(), returnToManagementAfterChild: false,
   managementOnlyAuth: false,
-  managementSection: 'server', managementHomeParent: null, managementHomeNextSibling: null, adminRefreshTimer: null, adminRefreshInFlight: false,
+  managementSection: 'server', managementScope: 'full', managementHomeParent: null, managementHomeNextSibling: null, adminRefreshTimer: null, adminRefreshInFlight: false,
   controlRequest: null, controlSuppressions: {}, lanRooms: [], selectedLanRooms: new Set(), onlineRooms: [], lanScanResolver: null,
   screenPeers: new Map(), remoteScreenPeer: null, remoteScreenStream: null, screenSignalQueues: new Map(),
   screenAudioContext: null, screenAudioNextTime: 0, screenAudioSequence: 0, screenAudioQueue: [], screenAudioLastSequence: 0, screenAudioLastSequenceAt: 0, screenAudioProcessor: null, screenAudioSource: null,
@@ -317,7 +317,7 @@ const elements = {};
 const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn
   loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
  loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
-roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
+roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountRoomSettingsBtn accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
   fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText openRoomManagementBtn
  playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn skipSettingsBtn skipSettingsModal closeSkipSettingsBtn skipSettingsForm skipSettingsEnabled skipIntroSeconds skipOutroSeconds skipSettingsStatus saveSkipSettingsBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
@@ -4425,9 +4425,22 @@ function hideRoomSwitchSuccess() {
   elements.roomSwitchSuccessOverlay?.classList.add('is-hidden');
 }
 
-function openManagementHub(section = 'server', { allowLogin = false } = {}) {
+const ROOM_OWNER_MANAGEMENT_SECTIONS = new Set(['room', 'permissions', 'chat']);
+
+function applyManagementNavigationScope() {
+  const roomOwnerScope = state.managementScope === 'room-owner';
+  document.querySelectorAll('#managementHubModal [data-management-section]').forEach((button) => {
+    const visible = !roomOwnerScope || ROOM_OWNER_MANAGEMENT_SECTIONS.has(button.dataset.managementSection);
+    button.classList.toggle('is-hidden', !visible);
+    button.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    button.tabIndex = visible ? 0 : -1;
+  });
+}
+
+function openManagementHub(section = 'server', { allowLogin = false, scope = 'full' } = {}) {
   const canManage = Boolean(state.authenticated && (state.capabilities.owner || state.capabilities.serverHost || state.capabilities.superAdmin || state.permissions.manageRoom || state.permissions.manageChat));
   if ((!state.authenticated && !allowLogin) || (state.authenticated && !canManage)) return toast('当前账号没有管理权限', 'error');
+  state.managementScope = scope === 'room-owner' ? 'room-owner' : 'full';
   if (!state.managementHomeParent) {
     state.managementHomeParent = elements.adminTab.parentNode;
     state.managementHomeNextSibling = elements.adminTab.nextSibling;
@@ -4435,6 +4448,8 @@ function openManagementHub(section = 'server', { allowLogin = false } = {}) {
   elements.managementContentHost.appendChild(elements.adminTab);
   elements.adminTab.classList.remove('is-hidden');
   elements.managementHubModal.classList.remove('is-hidden');
+  applyManagementNavigationScope();
+  if (state.managementScope === 'room-owner' && !ROOM_OWNER_MANAGEMENT_SECTIONS.has(section)) section = 'room';
   showManagementSection(section);
   if (!state.authenticated && allowLogin) {
     elements.managementAuth?.classList.remove('is-hidden');
@@ -4442,7 +4457,8 @@ function openManagementHub(section = 'server', { allowLogin = false } = {}) {
     setTimeout(() => elements.adminUsername?.focus(), 80);
     return;
   }
-  if (state.capabilities.superAdmin && !state.adminSettings && !state.adminSettingsLoading) {
+  const needsRoomSettings = state.managementScope === 'room-owner';
+  if ((state.capabilities.superAdmin || needsRoomSettings) && !state.adminSettingsLoading) {
     state.adminSettingsLoading = true;
     elements.managementHubModal.classList.add('management-loading');
     elements.managementContentHost?.setAttribute('aria-busy', 'true');
@@ -4467,9 +4483,12 @@ function closeManagementHub() {
   elements.managementHubModal.classList.add('is-hidden');
   elements.adminTab.classList.add('is-hidden');
   if (state.managementHomeParent) state.managementHomeParent.insertBefore(elements.adminTab, state.managementHomeNextSibling);
+  state.managementScope = 'full';
+  applyManagementNavigationScope();
 }
 
 function showManagementSection(section = 'room') {
+  if (state.managementScope === 'room-owner' && !ROOM_OWNER_MANAGEMENT_SECTIONS.has(section)) section = 'room';
   state.managementSection = section;
   if (elements.permissionContextRoom) elements.permissionContextRoom.textContent = state.room?.id || '--';
   if (elements.permissionContextOwner) {
@@ -15193,7 +15212,15 @@ async function deleteSelectedAccountAuditLogs() {
   await loadAccountAuditLogs(true);
 }
 
-async function handleAccountMenu(event) { if (['logoutBtn', 'logoutKeepCredentialsBtn', 'androidApkBtn', 'downloadClientMainBtn', 'downloadMacServerMainBtn', 'downloadMacClientMainBtn'].includes(event.target.id)) return; const button = event.target.closest('[data-account-page]'); if (!button) return; setAccountDropdownOpen(false); await openAccount(button.dataset.accountPage); }
+async function handleAccountMenu(event) {
+  if (['logoutBtn', 'logoutKeepCredentialsBtn', 'androidApkBtn', 'downloadClientMainBtn', 'downloadMacServerMainBtn', 'downloadMacClientMainBtn'].includes(event.target.id)) return;
+  if (event.target.closest('#accountRoomSettingsBtn')) {
+    setAccountDropdownOpen(false);
+    if (!state.authenticated || !(state.capabilities.owner || state.capabilities.superAdmin || state.permissions.manageRoom)) return toast('请先进入自己拥有的房间后再打开房间设置', 'error');
+    return openManagementHub('room', { scope: 'room-owner' });
+  }
+  const button = event.target.closest('[data-account-page]'); if (!button) return; setAccountDropdownOpen(false); await openAccount(button.dataset.accountPage);
+}
 async function openAccount(page = 'home') { const result = await emitAck('account-action', { action: 'get-profile' }); if (!result.success) return toast(result.error, 'error'); state.profile = result.profile; updateAccountAvatar(result.profile?.avatar); elements.accountModal.classList.remove('is-hidden'); renderAccountPage(page); }
 
 async function refreshProfile() {
@@ -15288,7 +15315,7 @@ function renderProfileRooms() {
   const roomCards = rooms.map((room) => {
     const passwordText = room.passwordRequired ? room.accessRemembered ? '密码已记住' : '首次进入需密码' : '无需密码';
     const ownerText = room.owned ? '我的房间' : `房主：${escapeHtml(room.ownerName || room.ownerUsername || '未知')}`;
-    return `<article class="profile-item profile-room-item room-directory-card ${room.pinned ? 'pinned' : ''}" data-profile-room-id="${escapeHtml(room.id)}"><header><label class="profile-room-select"><input data-profile-item-select="room" type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedProfileRooms.has(room.id) ? 'checked' : ''}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span><span>${escapeHtml(room.category || '未分类')}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room, state.room?.id))} · 在线 ${room.online}/${room.maxUsers} 人 · ${passwordText}</small>${room.note ? `<small class="room-card-note">备注：${escapeHtml(room.note)}</small>` : ''}</div></header>${renderRoomDirectoryDetails(room)}<div class="profile-room-actions actions"><button data-profile-action="pin-room" data-room-id="${escapeHtml(room.id)}" data-pinned="${room.pinned ? '1' : '0'}" type="button">${room.pinned ? '取消置顶' : '置顶'}</button>${room.owned ? `<button data-profile-action="rename-room" data-room-id="${escapeHtml(room.id)}" type="button">重命名</button>` : ''}<button data-profile-action="enter-room" data-room-id="${escapeHtml(room.id)}" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button></div></article>`;
+    return `<article class="profile-item profile-room-item room-directory-card ${room.pinned ? 'pinned' : ''}" data-profile-room-id="${escapeHtml(room.id)}"><header><label class="profile-room-select"><input data-profile-item-select="room" type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedProfileRooms.has(room.id) ? 'checked' : ''}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span><span>${escapeHtml(room.category || '未分类')}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room, state.room?.id))} · 在线 ${room.online}/${room.maxUsers} 人 · ${passwordText}</small>${room.note ? `<small class="room-card-note">备注：${escapeHtml(room.note)}</small>` : ''}</div></header>${renderRoomDirectoryDetails(room)}<div class="profile-room-actions actions"><button data-profile-action="pin-room" data-room-id="${escapeHtml(room.id)}" data-pinned="${room.pinned ? '1' : '0'}" type="button">${room.pinned ? '取消置顶' : '置顶'}</button>${room.owned ? `<button data-profile-action="rename-room" data-room-id="${escapeHtml(room.id)}" type="button">重命名</button><button data-profile-action="room-settings" data-room-id="${escapeHtml(room.id)}" type="button">房间设置</button>` : ''}<button data-profile-action="enter-room" data-room-id="${escapeHtml(room.id)}" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button></div></article>`;
   }).join('');
   elements.accountContent.innerHTML = `<div class="settings-title"><div><h2>我的房间</h2><p>已拥有 ${Number(p.ownedRoomCount) || 0}/${p.superAdmin ? '99999' : Number(p.roomQuota) >= 9999 ? '不限' : Number(p.roomQuota) || 1} 个房间</p></div><button data-profile-action="request-room-quota" class="secondary-button" type="button">申请更多房间</button></div>${profileToolbar('room', rooms.length, state.selectedProfileRooms)}<div class="profile-list">${roomCards || '<div class="room-directory-empty"><p class="muted">暂无符合条件的房间</p><button data-profile-action="create-room" class="primary-button" type="button">创建正式房间</button></div>'}</div>`;
 }
@@ -15690,6 +15717,16 @@ async function handleAccountAction(event) {
   }
   if (action === 'create-room') { elements.accountModal.classList.add('is-hidden'); return openCreateRoom(); }
   if (action === 'enter-room') { elements.accountModal.classList.add('is-hidden'); return switchToRoomDirect(button.dataset.roomId, { source: '我的房间' }); }
+  if (action === 'room-settings') {
+    const roomId = String(button.dataset.roomId || '').trim().toUpperCase();
+    if (!roomId) return toast('未找到要设置的房间', 'error');
+    elements.accountModal.classList.add('is-hidden');
+    const switched = roomId === String(state.room?.id || '').toUpperCase()
+      ? true
+      : await switchToRoomDirect(roomId, { source: '我的房间' });
+    if (switched) openManagementHub('room', { scope: 'room-owner' });
+    return;
+  }
   if (action === 'request-room-quota') return requestMoreRooms();
   if (action === 'pin-room') {
     const result = await emitAck('account-action', { action: 'pin-room', roomId: button.dataset.roomId, pinned: button.dataset.pinned !== '1' });
