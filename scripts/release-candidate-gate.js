@@ -31,8 +31,11 @@ function manifestForVersion(version = defaultVersion) {
     asset(`SyncWatch-Standard-Server-Portable-v${v}-x64.exe`, 50 * MIB, 'windows-base', { maximumBytes: GIB })
   ];
   const windowsFull = [
-    asset(`SyncWatch-v${v}-Full-Offline-Installer-x64.exe`, GIB, 'windows-full', { maximumBytes: 2 * GIB }),
-    asset(`SyncWatch-v${v}-Full-Offline-Portable-x64.exe`, GIB, 'windows-full', { maximumBytes: 2 * GIB })
+    // The Windows + Android-only offline closure is normally ~430 MiB after
+    // macOS payloads were retired; keep a 300 MiB floor to reject incomplete
+    // packages without requiring the obsolete 1 GiB macOS-inclusive bundle.
+    asset(`SyncWatch-v${v}-Full-Offline-Installer-x64.exe`, 300 * MIB, 'windows-full', { maximumBytes: 2 * GIB }),
+    asset(`SyncWatch-v${v}-Full-Offline-Portable-x64.exe`, 300 * MIB, 'windows-full', { maximumBytes: 2 * GIB })
   ];
   const android = [asset(`SyncWatch-Android-v${v}-universal.apk`, 150 * MIB, 'android', { maximumBytes: GIB })];
   const officialByName = new Map(THIRD_PARTY_ASSETS.map((entry) => [entry.name, entry]));
