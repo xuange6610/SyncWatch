@@ -497,6 +497,11 @@ jobs:
           key: syncwatch-third-party-${{ hashFiles('scripts/release-third-party-assets.js') }}
           restore-keys: |
             syncwatch-third-party-
+      - name: Restore same-run verified official asset cache
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-official
+          path: .cache/release-third-party
       - name: Prepare pinned Cloudflare Tunnel binary
         shell: pwsh
         run: |

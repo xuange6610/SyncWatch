@@ -247,7 +247,7 @@ jobs:
 
   windows_full:
     name: Build and verify Windows Full Offline packages
-    needs: [prepare, android, windows_base]
+    needs: [prepare, android, windows_base, official_assets]
     uses: ./.github/workflows/release-windows.yml
     with:
       phase: full
