@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | [`SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe) | 体验版 | Windows 普通成员 | 连接已有服务器，不在本机启动服务端 |
 | [`SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe) | 标准版 | Windows 房主 | 便携启动基本服务器，内置运行环境和 cloudflared |
-| [`SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe) | 完整安装版 | Windows 房主 | 安装向导、完整服务器和跨平台离线下载中心 |
+| [`SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe) | 完整安装版 | Windows 房主 | 安装向导、完整 Windows 服务器与 Android 离线资源 |
 | [`SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe) | 完整便携版 | Windows 房主 | 独立 EXE 直接运行，内容与安装版一致 |
 | [`SyncWatch-Android-v2.2.7-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Android-v2.2.7-universal.apk) | Android | 手机成员或房主 | 连接现有服务器，也可运行受支持的手机内嵌服务 |
 | Node.js 24.19.0 官方 Windows MSI（2 项） | 第三方运行时 | 源码或独立服务器用户 | 官方原始分发，桌面 SyncWatch 包无需重复安装 |
@@ -19,6 +19,15 @@
 ## 从 v2.2.5 到 v2.2.7 的更新公告
 
 本节只记录当前源码相对 v2.2.5 的真实变化。更早版本已经具备的房间复制、权限、地址隐私、队列、简洁模式和全屏聊天能力继续保留，不在本节重复包装成新增功能。
+
+### v2.2.7 本轮界面与交互补充
+
+- 下载中心移除 macOS 新包入口，完整便携版 Windows EXE 增加“推荐”高亮；历史 Release 资产不受影响。
+- 从房间发现、局域网扫描或“我的房间”点击加入后，立即显示加入进度，成功后明确播报房间名称、房间号、正式/临时类型和房主。
+- 全屏锁定/解锁使用锁住与打开锁图标，并在画面内显示轻量状态提示；不会触发普通弹窗。
+- 顶部“界面 / 当前主题”字段支持双击直接打开主题风格设置。
+- 管理中心采用先显示窗口、再异步加载服务器设置的方式，降低打开时的空白卡顿；权限和数据请求逻辑不变。
+- “我的房间”卡片重新分层显示房间名、房间号、正式/临时、房主、密码状态、在线人数和备注，窄屏自动换行。
 
 ### PC 简洁模式与布局
 
@@ -57,7 +66,7 @@
 
 - Android `versionName` 更新为 `2.2.7`，`versionCode` 更新为 `20206`；User-Agent、内嵌 APK 名和构建配置同步更新。
 - 修正 Android 发布脚本的 APK 元数据门禁，使 `versionName 2.2.7` 与最终包内版本严格一致，避免构建成功后被旧版本校验误拒。
-- Windows 体验版、标准版、完整安装版和完整便携版，以及 macOS 客户端/服务器/完整离线版的构建输出统一使用 v2.2.7，并继续要求所有应用包从最终 Tag 重新构建。
+- Windows 体验版、标准版、完整安装版和完整便携版，以及 Android APK 的构建输出统一使用 v2.2.7，并继续要求所有应用包从最终 Tag 重新构建；macOS 新包按维护要求停用。
 - 全屏锁、首次提示和手势提示沿用现有深色影院控件、可见焦点和移动端安全区域；本轮没有引入新前端框架或改变既有主题体系。
 
 ### 文档、构建与测试
@@ -65,8 +74,8 @@
 - README、PRODUCT、DESIGN、Pages 源与生成页面、仓库内 `docs/wiki/`、维护要求、发布清单和本版本 Wiki 公告同步到 v2.2.7 同版本更正版；旧 Tag SHA、旧 Actions run 和旧资产只作为线上基线，不冒充本轮证据。
 - 新增 v2.2.7 登录并发和客户端模式申请的真实 Socket.IO 集成测试，并保留 v2.2.4/v2.2.5 历史回归；浏览器烟测覆盖桌面和移动视口、简洁模式、F2、全屏锁、亮度手势及退出清理。
 - 原子发布工作流支持安全替换同版本资产：新 26 项全部构建后以临时名上传并回读哈希，再切换正式名称；旧 26 项只在新集合验证完整后删除，切换前失败会恢复旧 Release。
-- 发布仍使用唯一 `release/v2.2.7` 分支、annotated Tag 和原子工作流。根目录 `dist/` 必须先形成恰好 28 个非空文件，再只上传 26 个维护者资产；GitHub 自动生成另外两个源码归档。
-- 17 个 SyncWatch 应用资产（Windows 4、Android 1、macOS 12）必须由最终 Tag 对应源码真实重建；Node.js 4 项和 cloudflared 5 项必须按官方来源另行核验。
+- 发布仍使用唯一 `release/v2.2.7` 分支、annotated Tag 和原子工作流。根目录 `dist/` 必须先形成恰好 12 个非空文件，再只上传 10 个维护者资产；GitHub 自动生成另外两个源码归档。
+- 5 个 SyncWatch 应用资产（Windows 4、Android 1）必须由最终 Tag 对应源码真实重建；Node.js 2 项和 cloudflared 3 项从已核验官方缓存复用并逐项核验。
 
 ## 保持不变的核心能力
 
@@ -83,21 +92,21 @@
 | 源码与 UI | 仓库规范、核心集成、v2.2.7 专项、桌面/移动浏览器冒烟和发布契约通过 |
 | Windows 4 项 | 最终 Tag 在 Windows runner 重建，完成启动、闭包、版本、大小和 SHA-256 验证 |
 | Android 1 项 | 最终 Tag 签名构建，完成 ABI、签名、模拟器安装/启动/登录和包内资源验证；小米 14/HyperOS 未验证 |
-| macOS 12 项 | 真实 Intel 与 Apple Silicon runner 构建，验证原生架构、DMG/ZIP、启动和闭包 |
-| Node.js / cloudflared 9 项 | 固定官方版本和来源，核对平台/架构、字节大小和 SHA-256 |
-| `dist/` 与 Release | 最终目录恰好 28 个文件；Release API 恰好 26 个维护者资产并逐项远端回读哈希 |
+| macOS 新包 | 本版本不构建、不上传；历史 Release 资产保留 |
+| Node.js / cloudflared 5 项 | 固定官方版本和来源，核对平台/架构、字节大小和 SHA-256 |
+| `dist/` 与 Release | 最终目录恰好 12 个文件；Release API 恰好 10 个维护者资产并逐项远端回读哈希 |
 | Latest 与下载 | 只有 Release 公开、非预发布、`releases/latest` 指向 v2.2.7、26 条下载直链可访问并完成本轮远端哈希回读，才可标记完成 |
 
 ## 普通用户怎么选
 
-- 只加入别人服务器：Windows 体验版、Android APK、macOS 客户端或浏览器。
+- 只加入别人服务器：Windows 体验版、Android APK 或浏览器。
 - Windows 自己开房：标准服务器便携版；需要全平台离线下载中心时选择完整安装版或完整便携版。
-- Mac 自己开房：按 Intel x64 或 Apple Silicon arm64 选择服务器版；需要离线下载中心时选择完整离线版。
+- macOS 新包已停用；历史版本仅用于已有用户回滚，不在本版本重新构建或上传。
 - 源码或独立服务器：安装官方 Node.js 22+；正式桌面包已内置运行时，无需重复安装。
 
 ## 跨平台完整套装
 
-完整离线包只接收同一最终 Tag 构建并验证的 Windows 客户端、Android APK、macOS x64/arm64 客户端与服务器 ZIP。缺少任一真实文件时，完整包构建必须失败，不能嵌入旧版本或占位文件。
+完整离线包只接收同一最终 Tag 构建并验证的 Windows 客户端与 Android APK。缺少任一真实文件时，完整包构建必须失败，不能嵌入旧版本或占位文件。
 
 ## 一键运行包含什么
 
@@ -105,22 +114,22 @@ Windows 正式服务器包内置 Electron/Node.js、应用前后端、生产依�
 
 ## macOS
 
-客户端、服务器和完整离线版分别提供 Intel x64 与 Apple Silicon arm64 的 DMG/ZIP，共 12 项；必须由真实 macOS runner 从最终 Tag 构建，Windows 文件不能冒充。
+v2.2.7 起不再构建或上传 macOS 新包；历史 Release 资产按维护规则保留。
 
 ## 架构支持边界
 
 - Windows 桌面：x64。
 - Android 通用 APK：`armeabi-v7a`、`arm64-v8a`、`x86_64`，以 APK 解包和签名检查为准。
-- macOS：Intel x64 与 Apple Silicon arm64。
+- macOS：仅保留历史 Release 资产，不代表本版本提供新包。
 - Android 本机不内嵌桌面版 cloudflared；手机跨网访问应连接已开启 HTTPS/Tunnel 的服务器。
 
 ## cloudflared 独立工具
 
-Release 提供 Windows x64 EXE、Windows x64/x86 MSI、macOS x64/arm64 二进制共 5 项。它们来自 Cloudflare 官方分发，用于手工 Tunnel 与诊断，不是 SyncWatch 启动程序。
+Release 提供 Windows x64 EXE、Windows x64/x86 MSI 共 3 项。它们来自 Cloudflare 官方分发，用于手工 Tunnel 与诊断，不是 SyncWatch 启动程序。
 
 ## Node.js 官方环境包
 
-Release 提供 Windows x64/ARM64 MSI、macOS x64 PKG 和 macOS arm64 tar.gz 共 4 项，供源码和独立服务器使用；正式桌面包已内置运行时。
+Release 提供 Windows x64/ARM64 MSI 共 2 项，供源码和独立服务器使用；正式桌面包已内置运行时。
 
 ## 首次启动、升级与安全
 

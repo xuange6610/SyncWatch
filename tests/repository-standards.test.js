@@ -177,7 +177,7 @@ const currentReleaseNotesPath = `docs/release-notes-${sourceTag}.md`;
 assert.ok(exists(currentReleaseNotesPath), `missing current release notes: ${currentReleaseNotesPath}`);
 const currentReleaseNotes = read(currentReleaseNotesPath);
 assert.match(currentReleaseNotes, new RegExp(`SyncWatch同步观影 ${escapeRegExp(sourceTag)} 发布说明`));
-assert.match(currentReleaseNotes, /17 个 SyncWatch 应用资产/);
+assert.match(currentReleaseNotes, /5 个 SyncWatch 应用资产/);
 assert.match(currentReleaseNotes, /最终.*Tag.*真实重建/s);
 
 const pages = read('.github/workflows/pages.yml');

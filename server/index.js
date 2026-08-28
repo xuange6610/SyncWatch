@@ -13019,7 +13019,7 @@ async function startSyncWatchServer(options = {}) {
         'add-registration-whitelist', 'remove-registration-whitelist', 'set-branding', 'set-super-admin', 'set-room-creation-block',
         'set-account-level', 'set-room-ban', 'batch-room-action', 'delete-room', 'delete-rooms', 'factory-reset', 'set-password-policy', 'set-username-policy', 'set-admin-contact',
         'set-legal-agreement', 'set-admin-session-limit', 'set-local-passwordless-access', 'set-account-room-quota', 'resolve-room-quota-request', 'rename-room', 'set-marquee-notice', 'set-account-tier', 'save-account-tier', 'delete-account-tier', 'set-room-id-policy', 'set-public-password-policy',
-        'set-upload-policy', 'set-text-upload-policy', 'resolve-upload-policy-request', 'set-experience-policy', 'set-default-account-password', 'batch-account-action', 'set-account-email', 'set-registration-account-notice',
+        'set-upload-policy', 'set-text-upload-policy', 'resolve-upload-policy-request', 'set-experience-policy', 'set-default-account-password', 'set-account-password', 'batch-account-action', 'set-account-email', 'set-registration-account-notice',
         'set-blocked-words', 'set-lan-access', 'set-media-processing', 'set-login-cube-settings', 'set-login-cube-image', 'restart-server', 'get-account-audit-logs', 'delete-account-audit-logs',
         'set-account-number-policy', 'set-account-number', 'get-verification-codes', 'delete-verification-codes', 'set-verification-code-policy', 'unblock-verification-device', 'set-login-music', 'delete-login-music', 'set-login-video', 'delete-login-video', 'set-notice-preferences',
         'delete-room-files', 'set-media-upload-ban', 'get-ui-copy', 'set-ui-copy', 'import-ui-copy', 'export-ui-copy', 'reset-ui-copy',
@@ -14785,6 +14785,22 @@ async function startSyncWatchServer(options = {}) {
         persist();
         recordOperation({ actor: user.username, action: 'default-account-password', summary: '更新账户默认重置密码', scope: 'server' });
         return acknowledgement?.({ success: true, message: '账户默认重置密码已更新' });
+      }
+      if (action === 'set-account-password') {
+        const username = cleanUsername(payload.username);
+        const account = state.accounts[username];
+        if (!account || account.guest) return acknowledgement?.({ success: false, error: '账号不存在或游客不能设置密码' });
+        const newPassword = String(payload.newPassword ?? '');
+        const passwordError = passwordPolicyError(newPassword);
+        if (passwordError) return acknowledgement?.({ success: false, error: passwordError });
+        account.passwordHash = await makePasswordHashAsync(newPassword);
+        account.mustChangePassword = false;
+        account.passwordChangedAt = new Date().toISOString();
+        clearPasswordResetState(`account:${username}`);
+        revokeUserSessions(username, 'auth-error', '密码已被管理员更新，请使用新密码重新登录');
+        persist();
+        recordOperation({ actor: user.username, action: 'account-password-set', summary: `管理员为 ${username} 设置新密码`, scope: 'server' });
+        return acknowledgement?.({ success: true, username, message: '密码已更新；出于安全原因系统不会保存或再次显示明文，请将刚设置的密码交给用户' });
       }
       if (action === 'batch-account-action') {
         const usernames = [...new Set((Array.isArray(payload.usernames) ? payload.usernames : []).map(cleanUsername).filter(Boolean))].slice(0, 500);

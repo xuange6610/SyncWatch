@@ -2,7 +2,7 @@
 
 和朋友、家人、情侣远程一起看电影。
 
-SyncWatch 是一个开源、自托管、跨平台的 Watch Party / 同步观影系统。一个人启动服务器，其他人通过 Windows、Android、macOS 或浏览器加入房间，即可同步播放、暂停、拖动进度和倍速，同时支持聊天、弹幕、语音、屏幕共享和媒体管理。
+SyncWatch 是一个开源、自托管的 Watch Party / 同步观影系统。一个人启动服务器，其他人通过 Windows、Android 或浏览器加入房间，即可同步播放、暂停、拖动进度和倍速，同时支持聊天、弹幕、语音、屏幕共享和媒体管理。
 
 你的服务器、你的影片、你的数据。无需依赖第三方同步观影平台。
 
@@ -11,14 +11,14 @@ SyncWatch 是一个开源、自托管、跨平台的 Watch Party / 同步观影�
 [![GitHub Forks](https://img.shields.io/github/forks/xuange6610/SyncWatch)](https://github.com/xuange6610/SyncWatch/network/members)
 [![License](https://img.shields.io/github/license/xuange6610/SyncWatch)](LICENSE)
 [![Pages](https://github.com/xuange6610/SyncWatch/actions/workflows/pages.yml/badge.svg)](https://github.com/xuange6610/SyncWatch/actions/workflows/pages.yml)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20macOS%20%7C%20Web-1769aa)](https://github.com/xuange6610/SyncWatch/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20Web-1769aa)](https://github.com/xuange6610/SyncWatch/releases)
 [![Self Hosted](https://img.shields.io/badge/self--hosted-yes-success)](https://github.com/xuange6610/SyncWatch)
 
 ![SyncWatch同步观影项目封面：跨平台、自托管、同步播放](docs/screenshots/project-cover.png)
 
 ![SyncWatch同步观影主界面：媒体库、同步播放、房主控制和在线成员](docs/screenshots/main-interface.png)
 
-Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏幕共享
+Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏幕共享
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
@@ -47,15 +47,12 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 | --- | --- | --- |
 | [`SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe) | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
 | [`SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe) | 标准版；房主 | 绿色便携服务器，内置运行环境和 cloudflared，双击即用 |
-| [`SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端、Android APK、macOS x64/arm64 客户端与服务器 ZIP |
+| [`SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端与 Android APK |
 | [`SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe) | 完整版；Windows 房主 | 无需安装的独立 EXE；功能和内嵌文件与安装完整版一致 |
-| [`SyncWatch-Full-Offline-macOS-v2.2.7-x64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Full-Offline-macOS-v2.2.7-x64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.7-x64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Full-Offline-macOS-v2.2.7-x64.zip) | 完整版；Intel Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 Intel cloudflared |
-| [`SyncWatch-Full-Offline-macOS-v2.2.7-arm64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Full-Offline-macOS-v2.2.7-arm64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.7-arm64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Full-Offline-macOS-v2.2.7-arm64.zip) | 完整版；Apple Silicon Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 arm64 cloudflared |
 | [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/cloudflared-windows-x86-installer.msi) | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
-| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-arm64.msi) / [`node-v24.19.0-macos-x64.pkg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-macos-x64.pkg) / [`node-v24.19.0-darwin-arm64.tar.gz`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-darwin-arm64.tar.gz) | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-arm64.msi) | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
 | [`SyncWatch-Android-v2.2.7-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Android-v2.2.7-universal.apk) | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
-| macOS 客户端：[x64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Client-macOS-v2.2.7-x64.dmg) / [x64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Client-macOS-v2.2.7-x64.zip) / [arm64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Client-macOS-v2.2.7-arm64.dmg) / [arm64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Client-macOS-v2.2.7-arm64.zip) | Mac 普通成员 | Intel Mac 使用 x64，Apple Silicon 使用 arm64；只连接已有服务器 |
-| macOS 服务器：[x64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Server-macOS-v2.2.7-x64.dmg) / [x64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Server-macOS-v2.2.7-x64.zip) / [arm64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Server-macOS-v2.2.7-arm64.dmg) / [arm64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Server-macOS-v2.2.7-arm64.zip) | Mac 房主 | 按芯片选择可开房的服务器包 |
+| macOS 新包 | 本版本不构建或上传；历史 Release 资产保留 | macOS 用户请使用历史版本或浏览器连接 Windows/自托管服务器 |
 | [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 10 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
 | Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.7.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.7.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
@@ -367,3 +364,9 @@ QQ: 2590813506<br>
 
 
 本项目将持续开源，欢迎大家学习、交流和共同改进。如果你在使用过程中发现问题、有新的功能想法，或者希望一起优化代码，都可以联系我沟通。也欢迎提交建议、反馈问题和分享改进方案，希望通过大家共同参与，让项目不断完善，变得更加稳定、实用和好用。
+
+### v2.2.7 维护说明
+
+- Windows 服务器启动设置窗口已适配短屏滚动，底部保存/取消按钮不会再被裁切；“申请多设备登录”提示支持自动换行。
+- 管理中心标题会显示当前客户端主题。账号密码只保存不可逆哈希，管理员不能读取历史明文；如需协助用户，进入账号管理后使用“设置新密码”，旧会话会立即失效。
+- v2.2.7 新构建仅提供 Windows 与 Android；macOS 新包停用，历史版本资产继续保留。

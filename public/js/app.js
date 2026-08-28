@@ -347,6 +347,7 @@ webShareModal closeWebShareBtn webUrlInput pasteWebUrlBtn openWebUrlBtn shareWeb
   myRoomsModal closeMyRoomsBtn myRoomsTitle myRoomsHint myRoomsList loginRoomReminderControls loginRoomReminderPreference loginTemporaryRoomBtn accountOverviewModal closeAccountOverviewBtn accountOverviewSearch accountOverviewPresence accountOverviewSort accountOverviewCount accountOverviewList openAccountOverviewBtn accountAuditLogModal closeAccountAuditLogBtn refreshAccountAuditLogsBtn accountAuditLogSearch accountAuditLogType accountAuditLogSelectAll deleteSelectedAccountAuditLogsBtn accountAuditLogList memberProfileModal closeMemberProfileBtn memberProfileContent locationAuthorizationsModal closeLocationAuthorizationsBtn refreshLocationAuthorizationsBtn locationAuthorizationsList viewLocationAuthorizationsBtn adminContactModal closeAdminContactBtn adminContactTitle adminContactNoteDisplay adminContactList tunnelTutorialModal closeTunnelTutorialBtn uploadLimitTutorialModal closeUploadLimitTutorialBtn uploadLimitTutorialActionBtn noticeModal closeNoticeBtn noticeForm noticeText noticeFont noticeDuration noticeFontSize noticeColor noticeScopeGroup noticeScope openPermissionsFromNoticeBtn conversionProgressModal closeConversionProgressBtn refreshConversionProgressBtn conversionProgressSummary mediaProcessingAdminControls mediaCompatibilityAutoConvert mediaProcessingConcurrency saveMediaProcessingBtn openConvertedMediaFolderBtn mediaProcessingControlStatus mediaProcessingSearch mediaProcessingSelectAll mediaProcessingDeleteSource deleteSelectedMediaProcessingBtn conversionProgressList downloadCenterModal closeDownloadCenterBtn checkDownloadUpdateBtn openGithubProjectBtn openGithubLatestBtn downloadUpdateStatus agreementModal agreementTitle agreementVersion agreementText agreementCheck acceptAgreementBtn declineAgreementBtn ownerExitModal ownerExitTitle desktopCloseModal desktopCloseStatus screenNoticeOverlay screenNoticeSender screenNoticeText closeScreenNoticeBtn roomSwitchSuccessOverlay roomSwitchSuccessText
 appDialog appDialogCloseBtn appDialogForm appDialogTitle appDialogDescription appDialogInputGroup appDialogInputLabel appDialogInput appDialogPasswordToggle appDialogSelectGroup appDialogSelectLabel appDialogSelect appDialogConfirmGroup appDialogConfirmLabel appDialogConfirmInput appDialogConfirmPasswordToggle appDialogError appDialogFillRiskBtn appDialogBackBtn appDialogCancelBtn appDialogConfirmBtn`.split(/\s+/);
 for (const id of ids) elements[id] = document.getElementById(id);
+elements.managementThemeStatus = document.getElementById('managementThemeStatus');
 elements.fullscreenAutoLockToggle = document.getElementById('fullscreenAutoLockToggle');
 elements.fullscreenAutoLockToolbarToggle = document.getElementById('fullscreenAutoLockToolbarToggle');
 elements.roomOwnershipMeta = document.getElementById('roomOwnershipMeta');
@@ -2259,6 +2260,10 @@ function bindUiEvents() {
   });
   elements.webProbeResults?.addEventListener('click', handleWebProbeAction);
   elements.themeBtn?.addEventListener('click', () => elements.themeModal.classList.remove('is-hidden'));
+  elements.headerThemeStatus?.addEventListener('dblclick', () => {
+    elements.themeModal?.classList.remove('is-hidden');
+    toast('已打开主题风格设置', 'success', 2600);
+  });
   elements.topbarDisplayModeBtn?.addEventListener('click', toggleTopbarDisplayMode);
   elements.themeFontSearch?.addEventListener('input', () => renderThemeFontOptions(elements.themeFontSearch.value));
   elements.applyThemeFontBtn?.addEventListener('click', applySelectedThemeFont);
@@ -3304,7 +3309,8 @@ function renderLoginRoomList() {
   elements.myRoomsList.innerHTML = `<div class="room-directory-toolbar"><p class="room-quota-summary">已拥有 ${state.loginOwnedRoomCount}/${quotaText} 个房间</p><label class="check-line"><input data-login-room-select-all type="checkbox" ${state.selectedLoginRooms.size === rooms.length ? 'checked' : ''}> 全选</label><button data-login-room-action="delete-selected" class="danger-button" type="button" ${state.selectedLoginRooms.size ? '' : 'disabled'}>删除所选（${state.selectedLoginRooms.size}）</button></div>${rooms.map((room) => {
     const selected = state.selectedLoginRooms.has(room.id) ? 'checked' : '';
     const passwordText = room.passwordRequired ? room.accessRemembered ? '密码已记住' : '首次进入需密码' : '无需密码';
-    return `<article class="room-directory-card room-history-choice"><header><label class="global-room-select"><input data-login-room-select type="checkbox" value="${escapeHtml(room.id)}" ${selected}><span>选择</span></label><div><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><small>${escapeHtml(roomDirectoryStateText(room))} · ${room.online}/${room.maxUsers} 人 · ${room.owned ? '我拥有' : `房主 ${escapeHtml(room.ownerName || room.ownerUsername || '未设置')}`} · ${passwordText}</small></div><span>${room.passwordRequired ? '需密码' : '公开'}</span></header>${renderRoomDirectoryDetails(room)}<div class="actions"><button data-my-room="${escapeHtml(room.id)}" class="primary-button" type="button" ${room.banned ? 'disabled' : ''}>选择进入</button><button data-login-room-action="delete" data-room-id="${escapeHtml(room.id)}" class="danger-button" type="button">${room.owned ? '永久删除' : '移除记录'}</button></div></article>`;
+    const ownerText = room.owned ? '我的房间' : `房主：${escapeHtml(room.ownerName || room.ownerUsername || '未设置')}`;
+    return `<article class="room-directory-card room-history-choice"><header><label class="global-room-select"><input data-login-room-select type="checkbox" value="${escapeHtml(room.id)}" ${selected}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room))} · 在线 ${room.online}/${room.maxUsers} 人 · ${passwordText}</small></div></header>${renderRoomDirectoryDetails(room)}<div class="actions"><button data-my-room="${escapeHtml(room.id)}" class="primary-button" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button><button data-login-room-action="delete" data-room-id="${escapeHtml(room.id)}" class="danger-button" type="button">${room.owned ? '永久删除' : '移除记录'}</button></div></article>`;
   }).join('')}`;
 }
 
@@ -4362,6 +4368,7 @@ async function switchRoom(event) {
 async function switchToRoomDirect(roomId, { address = '', source = '房间列表' } = {}) {
   const id = String(roomId || '').trim().toUpperCase();
   if (!state.authenticated) return false;
+  toast(`正在加入房间 ${id}…`, '', 2200);
   const previousRoom = state.room ? `${state.room.name || '当前房间'}（${state.room.id || ''}）` : '当前房间';
   let roomPassword = '';
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -4369,7 +4376,9 @@ async function switchToRoomDirect(roomId, { address = '', source = '房间列表
     if (result.success) {
       await finishAuthentication(result, state.rememberSession);
       showRoomSwitchSuccess(previousRoom, `${result.room?.name || '目标房间'}（${result.room?.id || id}）`);
-      toast(`已从${source}直接切换到房间 ${id}`, 'success');
+      const roomKind = result.room?.temporary ? '临时房间' : '正式房间';
+      const owner = result.room?.ownerName || result.room?.ownerDisplayName || result.room?.ownerUsername || '';
+      toast(`已加入${roomKind} ${result.room?.name || id}（${id}）${owner ? ` · 房主 ${owner}` : ''}`, 'success', 6000);
       return true;
     }
     if (attempt === 0 && (result.code === 'ROOM_PASSWORD_REQUIRED' || /房间密码/.test(result.error || ''))) {
@@ -4426,7 +4435,19 @@ function openManagementHub(section = 'server', { allowLogin = false } = {}) {
     setTimeout(() => elements.adminUsername?.focus(), 80);
     return;
   }
-  if (state.capabilities.superAdmin && !state.adminSettings) void loadAdminSettings();
+  if (state.capabilities.superAdmin && !state.adminSettings && !state.adminSettingsLoading) {
+    state.adminSettingsLoading = true;
+    elements.managementHubModal.classList.add('management-loading');
+    elements.managementContentHost?.setAttribute('aria-busy', 'true');
+    requestAnimationFrame(() => setTimeout(async () => {
+      try { await loadAdminSettings(); }
+      finally {
+        state.adminSettingsLoading = false;
+        elements.managementHubModal?.classList.remove('management-loading');
+        elements.managementContentHost?.removeAttribute('aria-busy');
+      }
+    }, 0));
+  }
 }
 
 function openServerSettingsFromLogin() {
@@ -4700,6 +4721,7 @@ function handleLanRoomAction(event) {
     state.roomIdTouched = true;
     void loadRoomInfo();
     setLoginStatus(`已选择房间 ${roomId}，请输入账号和密码后进入`, true);
+    toast(`已选择房间 ${roomId}，登录后将自动加入`, 'success', 4500);
     elements.username?.focus();
     return;
   }
@@ -5428,6 +5450,7 @@ function applyUiTheme(themeId) {
   else document.documentElement.dataset.uiTheme = validTheme;
   const theme = UI_THEMES.find(([id]) => id === validTheme) || UI_THEMES[0];
   if (elements.headerThemeStatus) elements.headerThemeStatus.textContent = `${theme[3] || '00'} ${theme[1]}`;
+  if (elements.managementThemeStatus) elements.managementThemeStatus.textContent = `当前主题：${theme[3] || '00'} ${theme[1]}`;
 }
 
 function applyTopbarDisplayMode(mode) {
@@ -9672,7 +9695,9 @@ function setFullscreenInteractionLocked(locked) {
 }
 
 function toggleFullscreenInteractionLock() {
-  setFullscreenInteractionLocked(!state.fullscreenInteractionLocked);
+  const nextLocked = !state.fullscreenInteractionLocked;
+  setFullscreenInteractionLocked(nextLocked);
+  showFullscreenGestureIndicator(nextLocked ? '🔒 已锁定画面操作' : '🔓 已解除画面锁定');
   showFullscreenControls();
 }
 
@@ -14100,9 +14125,9 @@ function renderAdminAccounts(accounts) {
       : { configured: account.passwordStatus !== 'not-set' };
     const passwordStatusLine = !passwordMeta.configured
       ? '\u767b\u5f55\u5bc6\u7801\uff1a\u672a\u8bbe\u7f6e'
-      : `\u767b\u5f55\u5bc6\u7801\uff1a\u5df2\u5b89\u5168\u8bbe\u7f6e${passwordMeta.mustChange ? ' \u00b7 \u5f85\u4fee\u6539' : ''}${passwordMeta.expired ? ' \u00b7 \u5df2\u8fc7\u671f' : ''}${passwordMeta.changedAt ? ` \u00b7 \u66f4\u65b0\u4e8e ${formatDate(passwordMeta.changedAt)}` : ''}\uff08\u4e0d\u53ef\u67e5\u770b\u660e\u6587\uff09`;
+      : `\u767b\u5f55\u5bc6\u7801\uff1a\u5df2\u5b89\u5168\u8bbe\u7f6e${passwordMeta.mustChange ? ' \u00b7 \u5f85\u4fee\u6539' : ''}${passwordMeta.expired ? ' \u00b7 \u5df2\u8fc7\u671f' : ''}${passwordMeta.changedAt ? ` \u00b7 \u66f4\u65b0\u4e8e ${formatDate(passwordMeta.changedAt)}` : ''}\uff08\u4e0d\u53ef\u6062\u590d\u660e\u6587\uff0c\u53ef\u8bbe\u7f6e\u65b0\u5bc6\u7801\uff09`;
     const actions = canManageAccounts
-      ? `<button data-admin-account="rename">强制改名</button><button data-admin-account="remark">备注</button><button data-admin-account="reset">重置为默认密码</button><button data-admin-account="location-request" ${account.username === state.user?.username ? 'disabled' : ''}>重新申请位置</button><div class="account-admin-email-actions"><button data-admin-account="email-change">强制修改邮箱</button><button data-admin-account="email-clear" ${account.email ? '' : 'disabled'}>清除邮箱绑定</button></div>${canManageSuperAdmins ? `<button data-admin-account="super">${account.superAdmin ? '撤销超管' : '设为超管'}</button>` : ''}<button data-admin-account="room-block">${account.roomCreationBlocked ? '允许建房' : '禁止建房'}</button>${account.username === 'admin' ? '' : '<button data-admin-account="delete">删除账号</button>'}`
+      ? `<button data-admin-account="rename">强制改名</button><button data-admin-account="remark">备注</button><button data-admin-account="reset">重置为默认密码</button><button data-admin-account="set-password">设置新密码</button><button data-admin-account="location-request" ${account.username === state.user?.username ? 'disabled' : ''}>重新申请位置</button><div class="account-admin-email-actions"><button data-admin-account="email-change">强制修改邮箱</button><button data-admin-account="email-clear" ${account.email ? '' : 'disabled'}>清除邮箱绑定</button></div>${canManageSuperAdmins ? `<button data-admin-account="super">${account.superAdmin ? '撤销超管' : '设为超管'}</button>` : ''}<button data-admin-account="room-block">${account.roomCreationBlocked ? '允许建房' : '禁止建房'}</button>${account.username === 'admin' ? '' : '<button data-admin-account="delete">删除账号</button>'}`
       : '<span class="admin-action-note">输入服务器管理员密码并重新加载后可改名或管理账号</span>';
     const renameEditor = canManageAccounts ? `<div class="admin-inline-editor is-hidden" data-admin-rename-editor><label>新名字<input data-admin-rename-input maxlength="24" autocomplete="off" value="${escapeHtml(displayName)}"></label><button data-admin-account="rename-save" type="button">保存改名</button><button data-admin-account="rename-cancel" type="button">取消</button></div>` : '';
     const levelEditor = canManageAccounts ? `<div class="account-level-editor account-profile-editor"><label>经验值<input data-account-experience type="number" min="0" max="10000000" value="${Math.max(0, Number(account.experience) || 0)}"></label><label>固定等级<select data-account-level><option value="0" ${account.levelOverride ? '' : 'selected'}>按经验自动升级</option>${(state.adminSettings?.watchLevels || []).map((level) => `<option value="${level.level}" ${Number(account.levelOverride) === level.level ? 'selected' : ''}>Lv.${level.level} ${escapeHtml(level.name)}</option>`).join('')}</select></label><label>注册天数<input data-account-registration-days type="number" min="0" max="36500" value="${Math.max(0, Number(account.registrationDays) || 0)}"></label><label>累计在线秒数<input data-account-online-seconds type="number" min="0" max="3153600000" value="${Math.max(0, Number(account.onlineSeconds) || 0)}"></label><label class="wide">个性签名<input data-account-signature maxlength="160" value="${escapeHtml(account.signature || '')}"></label><button data-admin-account="level-save" type="button">保存资料与等级</button></div>` : '';
@@ -14236,6 +14261,10 @@ async function handleAdminAccountAction(event) {
     } else if (action === 'reset') {
       if (!await showAppConfirm(`将 ${username} 重置为“账户与注册”中配置的默认密码，并让现有登录立即失效？`, { title: '重置为默认密码', confirmText: '确认重置', danger: true })) return;
       result = await adminAction('reset-account-password', { username, useDefault: true });
+    } else if (action === 'set-password') {
+      const newPassword = await showAppInput({ title: `为 ${username} 设置新密码`, description: '密码会以不可逆哈希保存，管理员无法查看历史明文。设置后现有会话立即失效，请把本次输入的密码安全交给用户。', label: '新密码', inputType: 'password', required: true, maxLength: 4096, confirmText: '保存新密码' });
+      if (newPassword === null) return;
+      result = await adminAction('set-account-password', { username, newPassword });
     } else if (action === 'level-save') {
       result = await adminAction('set-account-level', {
         username, experience: Number(row.querySelector('[data-account-experience]')?.value || 0),
@@ -15242,7 +15271,8 @@ function renderProfileRooms() {
   state.selectedProfileRooms = new Set([...state.selectedProfileRooms].filter((id) => (p.recentRooms || []).some((room) => room.id === id)));
   const roomCards = rooms.map((room) => {
     const passwordText = room.passwordRequired ? room.accessRemembered ? '密码已记住' : '首次进入需密码' : '无需密码';
-    return `<article class="profile-item profile-room-item room-directory-card ${room.pinned ? 'pinned' : ''}" data-profile-room-id="${escapeHtml(room.id)}"><header><label class="profile-room-select"><input data-profile-item-select="room" type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedProfileRooms.has(room.id) ? 'checked' : ''}><span>选择</span></label><div><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><small>${escapeHtml(roomDirectoryStateText(room, state.room?.id))} · ${room.online}/${room.maxUsers} 人 · ${room.owned ? '我拥有' : `房主 ${escapeHtml(room.ownerName || room.ownerUsername || '未知')}`} · ${passwordText} · ${escapeHtml(room.category || '未分类')}</small></div><span>${escapeHtml(room.note || '暂无备注')}</span></header>${renderRoomDirectoryDetails(room)}<div class="profile-room-actions actions"><button data-profile-action="pin-room" data-room-id="${escapeHtml(room.id)}" data-pinned="${room.pinned ? '1' : '0'}" type="button">${room.pinned ? '取消置顶' : '置顶'}</button>${room.owned ? `<button data-profile-action="rename-room" data-room-id="${escapeHtml(room.id)}" type="button">重命名</button>` : ''}<button data-profile-action="enter-room" data-room-id="${escapeHtml(room.id)}" type="button" ${room.banned ? 'disabled' : ''}>进入</button></div></article>`;
+    const ownerText = room.owned ? '我的房间' : `房主：${escapeHtml(room.ownerName || room.ownerUsername || '未知')}`;
+    return `<article class="profile-item profile-room-item room-directory-card ${room.pinned ? 'pinned' : ''}" data-profile-room-id="${escapeHtml(room.id)}"><header><label class="profile-room-select"><input data-profile-item-select="room" type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedProfileRooms.has(room.id) ? 'checked' : ''}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span><span>${escapeHtml(room.category || '未分类')}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room, state.room?.id))} · 在线 ${room.online}/${room.maxUsers} 人 · ${passwordText}</small>${room.note ? `<small class="room-card-note">备注：${escapeHtml(room.note)}</small>` : ''}</div></header>${renderRoomDirectoryDetails(room)}<div class="profile-room-actions actions"><button data-profile-action="pin-room" data-room-id="${escapeHtml(room.id)}" data-pinned="${room.pinned ? '1' : '0'}" type="button">${room.pinned ? '取消置顶' : '置顶'}</button>${room.owned ? `<button data-profile-action="rename-room" data-room-id="${escapeHtml(room.id)}" type="button">重命名</button>` : ''}<button data-profile-action="enter-room" data-room-id="${escapeHtml(room.id)}" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button></div></article>`;
   }).join('');
   elements.accountContent.innerHTML = `<div class="settings-title"><div><h2>我的房间</h2><p>已拥有 ${Number(p.ownedRoomCount) || 0}/${p.superAdmin ? '99999' : Number(p.roomQuota) >= 9999 ? '不限' : Number(p.roomQuota) || 1} 个房间</p></div><button data-profile-action="request-room-quota" class="secondary-button" type="button">申请更多房间</button></div>${profileToolbar('room', rooms.length, state.selectedProfileRooms)}<div class="profile-list">${roomCards || '<div class="room-directory-empty"><p class="muted">暂无符合条件的房间</p><button data-profile-action="create-room" class="primary-button" type="button">创建正式房间</button></div>'}</div>`;
 }

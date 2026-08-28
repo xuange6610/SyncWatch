@@ -76,35 +76,21 @@ if ($LASTEXITCODE -ne 0) { throw 'Standard server artifact smoke test failed.' }
 Invoke-Builder 'electron-builder-client.json'
 $client = Assert-Artifact 'SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe' 50MB
 
-$requiredMacZips = @(
-    'SyncWatch-Server-macOS-v2.2.7-x64.zip',
-    'SyncWatch-Server-macOS-v2.2.7-arm64.zip',
-    'SyncWatch-Client-macOS-v2.2.7-x64.zip',
-    'SyncWatch-Client-macOS-v2.2.7-arm64.zip'
-)
-$missingMacZips = @($requiredMacZips | Where-Object { -not (Test-Path -LiteralPath (Join-Path $distRoot $_) -PathType Leaf) })
-if ($missingMacZips.Count) {
-    throw ('Full Offline packages require real macOS runner ZIPs in dist/: ' + ($missingMacZips -join ', '))
-}
-
 try {
     Remove-BuildPath $offlineRoot
-    foreach ($folder in @('windows', 'android', 'mac')) {
+    foreach ($folder in @('windows', 'android')) {
         New-Item -ItemType Directory -Path (Join-Path $offlineRoot $folder) -Force | Out-Null
     }
     Copy-Item -LiteralPath $client -Destination (Join-Path $offlineRoot 'windows\SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe')
     Copy-Item -LiteralPath $android -Destination (Join-Path $offlineRoot 'android\SyncWatch-Android-v2.2.7-universal.apk')
-    foreach ($name in $requiredMacZips) {
-        Copy-Item -LiteralPath (Join-Path $distRoot $name) -Destination (Join-Path $offlineRoot "mac\$name")
-    }
     & $node 'scripts\verify-full-offline-bundle.js'
     if ($LASTEXITCODE -ne 0) { throw 'Full Offline payload verification failed.' }
 
     Write-Host 'Building Windows Full Offline packages into dist/...' -ForegroundColor Cyan
     Invoke-Builder 'electron-builder-windows-installer.json'
-    Assert-Artifact 'SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe' 1GB | Out-Null
+    Assert-Artifact 'SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe' 300MB | Out-Null
     Invoke-Builder 'electron-builder-windows-full-portable.json'
-    Assert-Artifact 'SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe' 1GB | Out-Null
+    Assert-Artifact 'SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe' 300MB | Out-Null
 } finally {
     Remove-BuildPath $offlineRoot
 }
