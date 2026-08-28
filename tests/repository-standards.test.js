@@ -200,7 +200,6 @@ assert.match(read('CONTRIBUTING.md'), /Pull Request/);
 assert.match(read('CONTRIBUTING.md'), /分支保护/);
 
 const windowsRelease = read('.github/workflows/release-windows.yml');
-const macReleaseWorkflow = read('.github/workflows/release-macos.yml');
 const atomicReleaseWorkflow = read('.github/workflows/release-atomic.yml');
 const releaseCandidateGate = read('scripts/release-candidate-gate.js');
 assert.match(windowsRelease, /npm install --global pnpm@11\.9\.0/,
