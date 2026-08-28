@@ -56,7 +56,7 @@ jobs:
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           if [[ -n "$NODE_MOBILE_RUNTIME_RUN_ID" || -n "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" ]]; then
             [[ "$NODE_MOBILE_RUNTIME_RUN_ID" =~ ^[0-9]+$ ]]
-            [[ "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" =~ ^[A-Za-z0-9._-]+$ ]]
+            [[ "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" =~ ^[A-Za-z0-9._*-]+$ ]]
           fi
           test "$WORKFLOW_REF" = "refs/tags/${RELEASE_TAG}"
           test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"

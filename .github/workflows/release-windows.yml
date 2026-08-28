@@ -131,7 +131,7 @@ jobs:
           ref: ff4e063f1f1911047c067335ad0a3d81336236ca
           fetch-depth: 1
       - name: Download previously built pinned Node.js Mobile runtime
-        if: inputs.node_mobile_runtime_run_id != ''
+        if: inputs.node_mobile_runtime_run_id != '' && !contains(inputs.node_mobile_runtime_artifact_name, '*')
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -139,15 +139,25 @@ jobs:
           run-id: ${{ inputs.node_mobile_runtime_run_id }}
           name: ${{ inputs.node_mobile_runtime_artifact_name }}
           path: node-mobile-runtime
+      - name: Download previously built Node.js Mobile ABI candidates
+        if: inputs.node_mobile_runtime_run_id != '' && contains(inputs.node_mobile_runtime_artifact_name, '*')
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.node_mobile_runtime_run_id }}
+          pattern: ${{ inputs.node_mobile_runtime_artifact_name }}
+          path: out_android
+          merge-multiple: true
       - name: Download Node.js Mobile ABI candidates
-        if: inputs.node_mobile_runtime_run_id == ''
+        if: inputs.node_mobile_runtime_run_id == '' || contains(inputs.node_mobile_runtime_artifact_name, '*')
         uses: actions/download-artifact@v4
         with:
           pattern: ${{ inputs.artifact_prefix }}-node-mobile-*
           path: out_android
           merge-multiple: true
       - name: Assemble runtime and provenance
-        if: inputs.node_mobile_runtime_run_id == ''
+        if: inputs.node_mobile_runtime_run_id == '' || contains(inputs.node_mobile_runtime_artifact_name, '*')
         shell: bash
         env:
           RELEASE_SOURCE_REVISION: ff4e063f1f1911047c067335ad0a3d81336236ca

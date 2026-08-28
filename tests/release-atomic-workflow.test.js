@@ -208,6 +208,11 @@ assert.match(
 assert.match(workflows.windows, /github-token:\s*\$\{\{ github\.token \}\}/);
 assert.match(workflows.windows, /run-id:\s*\$\{\{ inputs\.node_mobile_runtime_run_id \}\}/);
 assert.match(workflows.windows, /name:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);
+assert.match(workflows.windows, /pattern:\s*\$\{\{ inputs\.node_mobile_runtime_artifact_name \}\}/);
+assert.ok(
+  workflows.atomic.includes('NODE_MOBILE_RUNTIME_ARTIFACT_NAME') && workflows.atomic.includes('^[A-Za-z0-9._*-]+$'),
+  'atomic workflow must validate ABI artifact prefixes'
+);
 assert.match(workflows.windows, /EXPECTED_SOURCE_REVISION:\s*ff4e063f1f1911047c067335ad0a3d81336236ca/);
 assert.match(workflows.windows, /python3 - <<'PY'[\s\S]*?actual != expected[\s\S]*?type\(actual\.get\('pageSize'\)\) is not int/,
   'reused Node.js Mobile provenance must be parsed and checked by exact typed fields');
