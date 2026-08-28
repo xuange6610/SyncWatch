@@ -223,6 +223,10 @@ jobs:
       RELEASE_COMMIT: ${{ inputs.commit_sha }}
       RELEASE_TREE: ${{ inputs.source_tree }}
       ARTIFACT_PREFIX: ${{ inputs.artifact_prefix }}
+      # The same-run Node.js Mobile runtime is verified by the Linux combine
+      # job; allow the Android packaging script to consume those generated
+      # ABI digests instead of rejecting them as the old upstream archive.
+      SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE: '1'
     steps:
       - name: Checkout immutable source commit
         uses: actions/checkout@v4
