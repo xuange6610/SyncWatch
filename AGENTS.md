@@ -214,3 +214,9 @@
 - 管理中心继续采用先显示窗口、再异步加载设置的策略，隐藏模块使用延迟布局以减少首屏卡顿。
 - 管理员密码安全边界不变：账号列表只返回密码状态和更新时间，管理员通过“设置新密码”协助用户，不得恢复或显示明文/哈希。
 - 旧 Actions run `33193626192` 长时间停留在源码门禁且 `updatedAt` 不再变化；在取消前必须先记录状态和 job，取消后只能从最终 Tag 重新触发一次原子发布，禁止并行重复构建。
+
+### 10. v2.2.7 原子发布失败复盘（2026-08-29）
+
+- Actions run `33195045089` 的源码门禁、第三方运行时核验和 Windows/Android 输入校验均通过，但 Android job `98931577238` 在执行 `mobile/build-apk.ps1` 时失败：`armeabi-v7a/libnode.so` 实际 SHA-256 为 `1F5093C9EC2FBB730D0E9DE0F5E470FDE40B5D157EB4116D4BD7C01853CD2450`，脚本仍按旧官方归档固定值 `D0C41551...` 拒绝了同一运行 Linux combine job 已核验的 16 KB 生成运行时。
+- 处理方式：取消已确定失败且仍占用 Windows runner 的运行；在 `mobile/build-apk.ps1` 中仅对显式 `SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE=1` 的 CI 复用路径跳过旧 ABI 固定摘要（Linux combine job 仍负责来源闭包、三 ABI、SHA-256 和 ELF 16 KB 对齐核验），本地未设置该变量时继续执行官方固定摘要门禁；APK 打包后的旧摘要检查同样只在该显式 CI 模式放宽。
+- 不得把本次失败运行的候选 artifact 当作发布资产，也不得用旧 APK 改名或占位文件替代；修复后必须从最终 `v2.2.7` Tag 只重跑一次完整原子工作流，并重新核对 Windows/Android 成品、哈希、Release 和文档页面。
