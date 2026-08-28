@@ -43,12 +43,35 @@ const LOGIN_CUBE_FACE_DEFAULTS = Object.freeze([
   { id: 'top', label: '顶部', icon: '☁️', title: '多端连接', text: '电脑、网页与手机保持同步', image: '' },
   { id: 'bottom', label: '底部', icon: '✨', title: 'SyncWatch同步观影', text: '多端设备，随时连接', image: '' }
 ]);
+// Built-in login-cube presets are intentionally data-only so they work in the
+// native HTML client as well as Electron/Android WebView. Saving a preset
+// writes the six face values through the existing server settings contract.
+const LOGIN_CUBE_TEMPLATE_NAMES = Object.freeze([
+  '星幕黑金', '霓虹午夜', '极光青蓝', '玫瑰剧场', '森林放映', '海盐银幕', '琥珀胶片', '紫晶影院', '薄荷夜航', '晨曦米白',
+  '深海蓝调', '赤焰首映', '月光放映', '云端白昼', '像素影院', '复古电视', '电影票根', '导演手记', '黑胶舞台', '玻璃剧院',
+  '霜雪银屏', '枫叶秋场', '樱花春幕', '沙丘黄昏', '极地蓝冰', '铜版海报', '墨绿典藏', '珊瑚海岸', '银河远征', '城市夜景',
+  '纸张书页', '黑白放映报', '红毯首映', '静谧灰阶', '赛博影院', '暖灯客厅', '蓝紫幻境', '绿洲观影', '橙光胶片', '金属回声',
+  '青柠清爽', '蓝莓夜色', '葡萄剧院', '奶油信纸', '赤陶海报', '雨夜窗口', '电波频道', '云雾山谷', '流光舞台', '典藏银幕'
+]);
+const LOGIN_CUBE_TEMPLATE_ICONS = Object.freeze(['🎬', '📺', '💬', '🎙️', '☁️', '✨', '🎞️', '🎧', '🌙', '⭐']);
+const LOGIN_CUBE_TEMPLATE_PRESETS = Object.freeze(LOGIN_CUBE_TEMPLATE_NAMES.map((name, index) => ({
+  id: `preset-${String(index + 1).padStart(2, '0')}`,
+  name,
+  faces: LOGIN_CUBE_FACE_DEFAULTS.map((face, faceIndex) => ({
+    ...face,
+    icon: LOGIN_CUBE_TEMPLATE_ICONS[(index + faceIndex) % LOGIN_CUBE_TEMPLATE_ICONS.length],
+    title: `${name} · ${face.title}`,
+    text: `${face.text} · ${name}`
+  }))
+})));
 const SYNCWATCH_SUPPORT_EMAIL = '2590813506@qq.com';
 const PLAYBACK_RATE_PROMPT_KEY = 'syncwatchPlaybackRatePrompt';
 const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
 const ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX = 'syncwatchAccountViewPreferences:';
 const FULLSCREEN_CHAT_HINT_KEY_PREFIX = 'syncwatchFullscreenChatHint:';
 const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20 });
+const ACCOUNT_CHAT_FILTER_KEY_PREFIX = 'syncwatchChatFilter:';
+const ACCOUNT_VOICE_COLLAPSED_KEY_PREFIX = 'syncwatchVoiceCollapsed:';
 const USERNAME_MAX_UTF8_BYTES = 1024;
 const PASSWORD_MAX_UTF8_BYTES = 4096;
 const hostTokenFromHash = new URLSearchParams(location.hash.slice(1)).get('host') || '';
@@ -120,7 +143,7 @@ const state = {
   memberProfileRefreshTimer: null, memberProfileUsername: '', memberProfileSnapshot: null, memberProfileOpenedAt: 0, memberProfileBaseOnlineSeconds: 0,
   memberProfileLastFetchAt: 0, memberProfileHighlightUntil: 0,
   liveVoiceStream: null, liveVoiceMode: '', liveVoiceMuted: false, liveVoicePeers: new Map(), liveVoiceSignalQueues: new Map(), pendingVoiceCallId: '',
-  liveVoiceCollapsed: localStorage.getItem('syncwatchLiveVoiceCollapsed') === '1', liveVoiceFloatingCollapsed: localStorage.getItem('syncwatchVoiceFloatingCollapsed') === '1', liveVoicePushRestoreMuted: null,
+  liveVoiceCollapsed: localStorage.getItem('syncwatchLiveVoiceCollapsed') !== '0', liveVoiceFloatingCollapsed: localStorage.getItem('syncwatchVoiceFloatingCollapsed') !== '0', liveVoicePushRestoreMuted: null,
   roomIdTouched: false, agreementResolver: null, screenNoticeTimer: null, viewRotation: 0, viewZoom: 1,
   webShare: { active: false, url: '', title: '', updatedAt: 0 }, floatingPlayerActive: false, documentPipWindow: null, pipDanmakuLayer: null, ownerExitResolver: null, recentNoticeKeys: new Map(),
   desktopClosePending: false,
@@ -154,7 +177,8 @@ const state = {
   roomEntryNotice: null, roomEntryNoticeTimer: null, roomEntryNoticeEndsAt: 0,
   clipboardPasteFallbacks: new WeakMap(), switchOwnedRoomsLoading: false, switchOwnedRoomSnapshot: [], selectedSwitchOwnedRooms: new Set(),
   loginRoomSnapshot: [], selectedLoginRooms: new Set(), loginRoomQuota: 1, loginOwnedRoomCount: 0, loginRoomPromptActive: false, macDownloadKind: 'client',
-  applicationRefreshInFlight: false, modalLayerCounter: 500, pendingQualityRequest: null, skipOutroHandledGeneration: -1,
+  applicationRefreshInFlight: false, modalLayerCounter: 500, pendingQualityRequest: null,
+  pendingClientModeRequests: [], clientModePromptActive: false, activeClientModeRequestId: '', skipOutroHandledGeneration: -1,
   loginCubeRotationX: -12, loginCubeRotationY: 28, loginCubeDragging: false, loginCubePointerId: null,
   loginCubeLastX: 0, loginCubeLastY: 0, loginCubeLastPointerAt: 0, loginCubeVelocityX: 0, loginCubeVelocityY: 0,
   loginCubeMotionFrame: 0, loginCubeMotionLastAt: 0, loginCubeEditorObjectUrls: new Map(), loginCubeRandomDirection: 'right', loginCubeRandomDirectionUntil: 0,
@@ -292,7 +316,7 @@ localStorage.setItem('syncwatchDeviceId', deviceId);
 const elements = {};
 const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn
   loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
- loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
+ loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
  fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText
@@ -301,13 +325,13 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  controlRequestOverlay controlRequestTitle controlRequestDetail controlRequestSuppress controlRequestDenyBtn controlRequestAllowBtn permissionNotice permissionNoticeTitle permissionNoticeText permissionNoticeCloseBtn
  chatPanel chatHistory chatForm chatInput privateRecipient voiceBtn voiceFileInput chatImageInput chatImageBtn chatEmojiBtn chatEmojiBar chatEmojiCollapseBtn loadHistoryBtn chatToggleBtn chatOnlyToggle danmakuSettingsBtn danmakuSettingsPanel danmakuColorInput danmakuFontSizeInput danmakuFontSizeValue resetDanmakuSettingsBtn chatViewFilterBtn chatViewFilters chatViewChannel chatViewUser chatViewUserMode chatViewQuery chatViewResetBtn reactionBar userList userCount roomCode roomScheme roomShareUrl applyShareDomainBtn copyShareLinkBtn copyRoomCodeBtn copyLanAddressBtn copyPublicAddressBtn resetShareAddressBtn showQrBtn qrBox currentRoomBanner globalRoomSearch
  liveVoiceBar liveVoiceStatus voiceRoomBtn voicePrivateBtn voiceMuteBtn voiceLeaveBtn voiceAudioDock voiceDockToggleBtn liveVoiceFloating voiceFloatingStatus voiceFloatingMuteBtn voicePushToTalkBtn voiceFloatingLeaveBtn voiceFloatingCollapseBtn collapseMembersBtn
-  authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicAudio
+   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeTemplateSelect loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicAudio
    usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus localPasswordlessCard localPasswordlessManagementEnabled localPasswordlessRoomEnabled saveLocalPasswordlessBtn localPasswordlessStatus downloadAssetSettingsCard openDownloadCenterSettingsBtn downloadAssetUploadProgress downloadAssetUploadStatus windowsServerAssetStatus androidClientAssetStatus macServerAssetStatus macClientAssetStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
-  mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
+  mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn clientModeRequestCard clientModeRequestMode clientModeRequestScope clientModeRequestUserPicker clientModeRequestUserList clientModeRequestReason sendClientModeRequestBtn refreshClientModeRequestsBtn clientModeRequestStatus clientModeRequestList loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
  roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn roomCopyCard roomCopySourceId roomCopyTargetName roomCopyReason requestRoomCopyBtn roomCopyStatus roomCopyRequestList roomMigrationCard roomMigrationSource roomMigrationTarget migrateRoomBtn roomMigrationStatus uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permSeek permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSendNotice savePermissionsBtn
  permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermSeek groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
- pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus loginLimitRequestCard loginLimitRequestList accountAdminList refreshAccountsBtn accountViewMode registrationRequestList registrationRequestSelectAll registrationRequestSelectionCount deleteSelectedRegistrationRequestsBtn refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
-  passwordPolicyCard usernamePolicyMode usernamePolicyLengthRestricted usernamePolicyMin usernamePolicyMax usernamePolicyStatus passwordPolicyMode passwordPolicyLengthRestricted passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
+ pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus loginLimitRequestCard loginLimitRequestList loginConcurrencyRequestCard loginConcurrencyRequestList accountAdminList refreshAccountsBtn accountViewMode registrationRequestList registrationRequestSelectAll registrationRequestSelectionCount deleteSelectedRegistrationRequestsBtn refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
+  passwordPolicyCard usernamePolicyMode usernamePolicyLengthRestricted usernamePolicyMin usernamePolicyMax usernamePolicyStatus passwordPolicyMode passwordPolicyLengthRestricted passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus loginConcurrencyPolicyCard accountSessionLimit guestSessionsPerIp accountSessionWhitelistIps guestIpWhitelistIps saveLoginPolicyBtn refreshAccessRecordsBtn clearAccessRecordsBtn loginPolicyStatus accessRecordsList blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
  toastRegion clearAllToastsBtn reconnectOverlay reconnectMessage reconnectRetryBtn closeReconnectOverlayBtn accountModal closeAccountBtn accountNav accountContent theater guestConvertBtn guestConvertModal closeGuestConvertBtn guestConvertForm guestConvertUsername guestConvertPassword guestConvertPasswordConfirm guestConvertEmail guestConvertEmailCode sendGuestConvertEmailCodeBtn guestConvertStatus
  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn downloadMacServerMainBtn downloadMacClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
@@ -394,6 +418,52 @@ function normalizeAccountViewPreferences(value = {}) {
 function accountViewPreferenceStorageKey(username = state.user?.username) {
   const account = String(username || 'anonymous').trim().toLocaleLowerCase();
   return `${ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX}${account}`;
+}
+
+function accountChatFilterStorageKey(username = state.user?.username) {
+  const account = String(username || 'anonymous').trim().toLocaleLowerCase();
+  return `${ACCOUNT_CHAT_FILTER_KEY_PREFIX}${account}`;
+}
+
+function accountVoiceCollapsedStorageKey(username = state.user?.username) {
+  const account = String(username || 'anonymous').trim().toLocaleLowerCase();
+  return `${ACCOUNT_VOICE_COLLAPSED_KEY_PREFIX}${account}`;
+}
+
+function normalizeChatViewFilter(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    channel: ['public', 'private', 'danmaku', 'system'].includes(source.channel) ? source.channel : '',
+    username: String(source.username || '').slice(0, 120),
+    userMode: source.userMode === 'exclude' ? 'exclude' : 'include',
+    query: String(source.query || '').trim().slice(0, 160)
+  };
+}
+
+function readAccountChatFilter(username = state.user?.username) {
+  try { return normalizeChatViewFilter(JSON.parse(localStorage.getItem(accountChatFilterStorageKey(username)) || '{}')); }
+  catch (_) { return { channel: '', username: '', userMode: 'include', query: '' }; }
+}
+
+function cacheAccountChatFilter(filter = state.chatViewFilter, username = state.user?.username) {
+  try { localStorage.setItem(accountChatFilterStorageKey(username), JSON.stringify(normalizeChatViewFilter(filter))); } catch (_) {}
+}
+
+function hydrateAccountScopedViewState(username = state.user?.username) {
+  if (!username) return;
+  try {
+    const voiceValue = localStorage.getItem(accountVoiceCollapsedStorageKey(username));
+    if (voiceValue !== null) state.liveVoiceCollapsed = voiceValue !== '0';
+  } catch (_) {}
+  state.chatViewFilter = readAccountChatFilter(username);
+  if (elements.chatViewChannel) elements.chatViewChannel.value = state.chatViewFilter.channel;
+  if (elements.chatViewUser) elements.chatViewUser.value = state.chatViewFilter.username;
+  if (elements.chatViewUserMode) {
+    elements.chatViewUserMode.value = state.chatViewFilter.userMode;
+    elements.chatViewUserMode.disabled = !state.chatViewFilter.username;
+  }
+  if (elements.chatViewQuery) elements.chatViewQuery.value = state.chatViewFilter.query;
+  applyLiveVoiceCollapsed();
 }
 
 function accountViewPreferencesFromProfile(profile) {
@@ -1633,6 +1703,7 @@ function bindUiEvents() {
   });
   elements.closeLoginStatusBtn?.addEventListener('click', () => setLoginStatus(''));
   elements.requestLoginLimitClearBtn?.addEventListener('click', requestLoginLimitClear);
+  elements.requestLoginConcurrencyBtn?.addEventListener('click', requestLoginConcurrency);
   elements.closeReconnectOverlayBtn?.addEventListener('click', () => setReconnectState(false));
   elements.closeRoomSwitchSuccessBtn?.addEventListener('click', hideRoomSwitchSuccess);
   elements.downloadClientBtn?.addEventListener('click', downloadDesktopClient);
@@ -1981,6 +2052,7 @@ function bindUiEvents() {
   elements.saveBrandingBtn?.addEventListener('click', saveBranding);
   elements.saveLoginCubeSettingsBtn?.addEventListener('click', saveLoginCubeSettings);
   elements.resetLoginCubeSettingsBtn?.addEventListener('click', resetLoginCubeSettingsEditor);
+  elements.loginCubeTemplateSelect?.addEventListener('change', () => applyLoginCubeTemplate(elements.loginCubeTemplateSelect.value));
   elements.loginCubeRotationSpeed?.addEventListener('input', updateLoginCubeSpeedLabel);
   elements.loginCubeDisplayMode?.addEventListener('change', () => applyLoginCubeSettings({ ...state.publicConfig.loginCube, displayMode: elements.loginCubeDisplayMode.value }));
   elements.loginCubeRotationDirection?.addEventListener('change', () => { state.loginCubeRandomDirectionUntil = 0; });
@@ -2017,6 +2089,10 @@ function bindUiEvents() {
     toast(enabled ? '新账号注册通知已开启' : '新账号注册通知已关闭', 'success', 3500);
   });
   elements.saveNoticePreferenceSettingsBtn?.addEventListener('click', saveServerNoticePreferences);
+  elements.clientModeRequestScope?.addEventListener('change', syncClientModeRequestScope);
+  elements.sendClientModeRequestBtn?.addEventListener('click', sendClientModeRequest);
+  elements.refreshClientModeRequestsBtn?.addEventListener('click', () => loadAdminSettings({ silent: true }));
+  elements.clientModeRequestList?.addEventListener('click', handleClientModeRequestListAction);
   elements.f11PromptGlobalEnabled?.addEventListener('change', saveServerNoticePreferences);
   elements.initialPasswordReminderEnabled?.addEventListener('change', saveServerNoticePreferences);
   elements.downloadButtonsVisible?.addEventListener('change', saveServerNoticePreferences);
@@ -2027,6 +2103,10 @@ function bindUiEvents() {
   elements.roomEntryNoticeScope?.addEventListener('change', renderRoomEntryNoticeEditor);
   elements.resetRoomEntryNoticeBtn?.addEventListener('click', resetRoomEntryNoticeSettings);
   elements.savePasswordPolicyBtn?.addEventListener('click', savePasswordPolicy);
+  elements.saveLoginPolicyBtn?.addEventListener('click', saveLoginConcurrencyPolicy);
+  elements.refreshAccessRecordsBtn?.addEventListener('click', refreshAccessRecords);
+  elements.clearAccessRecordsBtn?.addEventListener('click', clearAccessRecords);
+  elements.accessRecordsList?.addEventListener('click', handleAccessRecordAction);
   elements.usernamePolicyLengthRestricted?.addEventListener('change', syncCredentialPolicyLengthControls);
   elements.passwordPolicyLengthRestricted?.addEventListener('change', syncCredentialPolicyLengthControls);
   elements.saveBlockedWordsBtn?.addEventListener('click', saveBlockedWords);
@@ -2065,6 +2145,7 @@ function bindUiEvents() {
   elements.deleteSelectedRegistrationRequestsBtn?.addEventListener('click', deleteSelectedRegistrationRequests);
   elements.roomQuotaRequestList?.addEventListener('click', handleRoomQuotaRequestAction);
   elements.loginLimitRequestList?.addEventListener('click', handleLoginLimitRequestAction);
+  elements.loginConcurrencyRequestList?.addEventListener('click', handleLoginConcurrencyRequestAction);
   elements.dissolveRoomBtn?.addEventListener('click', dissolveCurrentRoom);
   elements.quickDissolveRoomBtn?.addEventListener('click', dissolveCurrentRoom);
   elements.videoPlayer.addEventListener('loadedmetadata', onMediaMetadata);
@@ -2689,6 +2770,7 @@ function connectSocket() {
       updateConnection(true);
       setReconnectState(false);
     }
+    state.socket.emit('login-page-visit', { ...deviceInfo(), username: elements.username?.value || '' }, () => {});
     updateRoomHeader();
   });
   state.socket.io.on('reconnect_attempt', (attempt) => {
@@ -2840,6 +2922,30 @@ function connectSocket() {
   state.socket.on('login-limit-clear-requested', (request = {}) => {
     if (state.user?.username !== 'admin') return;
     toastWithAction(`${request.username || '未知账号'} 申请解除登录限制`, '打开申请中心', () => openManagementHub('applications'), 0);
+  });
+  state.socket.on('login-concurrency-requested', (request = {}) => {
+    if (state.user?.username !== 'admin') return;
+    toastWithAction(`${request.username || '未知账号'} 申请同时登录 ${request.requestedLimit || '多'} 台设备`, '打开申请中心', () => openManagementHub('applications'), 0);
+    void loadAdminSettings({ silent: true });
+  });
+  state.socket.on('login-concurrency-resolved', (result = {}) => {
+    const approved = result.approved === true || (result.sessionLimit > 1 && result.status !== 'revoked');
+    setLoginStatus(result.message || (approved ? '管理员已批准多设备登录申请' : '管理员已拒绝或取消多设备登录申请'), approved);
+    elements.requestLoginConcurrencyBtn?.classList.toggle('is-hidden', approved);
+  });
+  state.socket.on('client-mode-requested', enqueueClientModeRequest);
+  state.socket.on('client-mode-request-cancelled', (result = {}) => {
+    state.pendingClientModeRequests = state.pendingClientModeRequests.filter((entry) => entry.id !== result.requestId);
+    toast(result.message || '管理员已取消客户端模式申请', '', 7000);
+    if (state.adminSettings?.serverAdmin) void loadAdminSettings({ silent: true });
+  });
+  state.socket.on('client-mode-request-resolved', (result = {}) => {
+    if (result.accepted && result.viewPreferences) applyAccountViewPreferences(result.viewPreferences);
+    if (result.notificationSettings && state.profile) state.profile.notificationSettings = result.notificationSettings;
+    if (result.message) toast(result.message, result.accepted ? 'success' : '', 7000);
+  });
+  state.socket.on('client-mode-request-updated', () => {
+    if (state.adminSettings?.serverAdmin) void loadAdminSettings({ silent: true });
   });
   state.socket.on('file-uploaded', upsertFile);
   state.socket.on('file-updated', upsertFile);
@@ -3395,6 +3501,21 @@ function settleAgreement(accepted) {
   resolve(Boolean(accepted));
 }
 
+async function abortAgreementSession(message = '未同意服务协议，已取消本次登录') {
+  state.intentionalLogout = true;
+  state.resumeNeeded = false; state.resumeReconnect = false; clearTimeout(state.resumeRetryTimer);
+  const token = state.token;
+  try { sessionStorage.removeItem('syncwatchGuestLogoutNotice'); } catch (_) {}
+  if (token) {
+    try { await fetchWithTimeout('/api/logout', { method: 'POST', headers: authHeaders({}, token) }, 5000); } catch (_) {}
+  }
+  clearSession();
+  try { state.socket?.disconnect(); } catch (_) {}
+  updateConnection(false, '未登录'); setReconnectState(false); setLoginStatus(message);
+  await refreshLoginSurfaceAfterCancelledAuthentication({ reconnectSocket: false });
+  return false;
+}
+
 async function ensureAgreementAccepted(result) {
   if (!result.capabilities?.agreementRequired) return true;
   const agreement = result.agreement || state.publicConfig.legalAgreement;
@@ -3409,9 +3530,9 @@ async function ensureAgreementAccepted(result) {
 
 async function handleRuntimeAgreementRequired(agreement) {
   const accepted = await requireAgreement(agreement);
-  if (!accepted) return logout();
+  if (!accepted) return abortAgreementSession('未同意服务协议，已退出当前会话');
   const result = await emitAck('agreement-accept', { accepted: true, version: agreement.version }, 20000);
-  if (!result.success) { toast(result.error || '协议确认失败，请重新登录', 'error'); return logout(); }
+  if (!result.success) { toast(result.error || '协议确认失败，请重新登录', 'error'); return abortAgreementSession('协议确认失败，已退出当前会话'); }
   toast('新版本使用协议已确认', 'success');
 }
 
@@ -3923,8 +4044,12 @@ async function submitAccountLogin() {
     if (!result.success) {
       const canRequestClear = result.code === 'LOGIN_RATE_LIMITED' && result.canRequestClear !== false;
       elements.requestLoginLimitClearBtn?.classList.toggle('is-hidden', !canRequestClear);
+      const canRequestConcurrency = result.code === 'LOGIN_CONCURRENCY_LIMIT' && result.canRequest !== false;
+      elements.requestLoginConcurrencyBtn?.classList.toggle('is-hidden', !canRequestConcurrency);
       return setLoginStatus(loginErrorMessage(result));
     }
+    elements.requestLoginLimitClearBtn?.classList.add('is-hidden');
+    elements.requestLoginConcurrencyBtn?.classList.add('is-hidden');
     state.token = result.token; state.rememberSession = elements.autoLogin.checked;
     await finishAuthentication(result, state.rememberSession);
   } catch (error) {
@@ -3969,10 +4094,13 @@ async function guestLogin() {
     const usedFallback = clientFallback || Boolean(result.roomFallback || result.fallbackTemporary);
     if (usedFallback && elements.roomIdInput) elements.roomIdInput.value = '';
     await finishAuthentication(result, false, true);
+    // Agreement rejection intentionally leaves the client unauthenticated.
+    // Do not emit the success toast (or mark the session as a guest) in that path.
+    if (!state.authenticated) return;
     if (usedFallback && state.authenticated) {
       const cleanUrl = new URL(location.href); cleanUrl.searchParams.delete('room'); history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search);
       toast('原房间不存在，已自动进入新建的临时房间', 'success', 6500);
-    } else toast('已以游客身份进入', 'success', 5000);
+    } else toast(`已以游客身份进入临时房间${state.room?.id ? `：${state.room.id}` : ''}`, 'success', 5000);
   } catch (error) {
     const message = localizedError(error, '游客模式登录失败，请检查服务器连接');
     setLoginStatus(message);
@@ -4097,7 +4225,7 @@ async function createRoom(event) {
     state.token = result.token; state.rememberSession = state.authenticated ? state.rememberSession : elements.autoLogin.checked;
     elements.createRoomModal.classList.add('is-hidden');
     await finishAuthentication(result, state.rememberSession);
-    toast(`房间已创建：${result.room.id}`, 'success', 7000);
+    toast(`房间已创建：${result.room.id}（正式房间）`, 'success', 7000);
   } catch (error) { toast(`创建房间失败：${localizedError(error, '请检查服务器连接后重试')}`, 'error'); }
   finally { button.disabled = false; button.textContent = '创建并进入房间'; }
 }
@@ -4644,17 +4772,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   if (Number.isFinite(Number(result.serverTime))) updateServerClock(Number(result.serverTime), Date.now(), Date.now(), 100);
   const sessionResponse = await fetchWithTimeout('/api/session', { method: 'POST', headers: authHeaders({}, token) }, 12000);
   if (!sessionResponse.ok) throw new Error('无法建立媒体访问会话，请重新登录');
-  if (!await ensureAgreementAccepted(result)) {
-    state.intentionalLogout = true;
-    try { sessionStorage.removeItem('syncwatchGuestLogoutNotice'); } catch (_) {}
-    try { await fetchWithTimeout('/api/logout', { method: 'POST', headers: authHeaders({}, token) }, 5000); } catch (_) {}
-    clearSession();
-    state.socket?.disconnect();
-    updateConnection(false, '未登录');
-    setLoginStatus('未同意服务协议，已取消本次登录');
-    void refreshLoginSurfaceAfterCancelledAuthentication({ reconnectSocket: false });
-    return;
-  }
+  if (!await ensureAgreementAccepted(result)) return abortAgreementSession();
   const files = await fetchFiles(token);
   if (!state.socket?.connected || state.socket.id !== socketId || generation !== state.authGeneration) throw new Error('连接在初始化期间发生变化');
 
@@ -4663,6 +4781,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   state.capabilities = result.capabilities || {}; state.permissions = result.permissions || {};
   state.authenticated = true; state.socketAuthenticated = true; state.resumeNeeded = false; state.rememberSession = sessionRemember; state.intentionalLogout = false;
   state.managementOnlyAuth = managementOnly;
+  hydrateAccountScopedViewState(state.user?.username);
   // Keep the room focused on playback on every fresh entry; users can reopen chat with one click.
   state.mobileChatCollapsed = true;
   try { localStorage.setItem('syncwatchMobileChatCollapsed', '1'); } catch (_) {}
@@ -4726,6 +4845,9 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   const currentUrl = new URL(location.href); currentUrl.searchParams.set('room', state.room.id); history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
   if (state.capabilities.serverHost || state.capabilities.superAdmin) startTunnelPolling(); else stopTunnelPolling();
   if (!managementOnly && ((!reconnecting && roomChanged) || !wasAuthenticated)) setTimeout(showF11PromptIfNeeded, 420);
+  if (!managementOnly && !reconnecting && !wasAuthenticated && result.room?.temporary && !result.user?.guest) {
+    setTimeout(() => toast(`房间已创建：${result.room.id}（临时房间）`, 'success', 6500), 180);
+  }
    // Request location as soon as the room is entered. Browsers may still
    // require a user gesture; the room toolbar remains a retry action.
   if (!managementOnly && state.publicConfig.locationAuthorizationRequestsEnabled !== false) setTimeout(() => void reportMemberLocation({ interactive: !reconnecting }), 250);
@@ -4746,7 +4868,8 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
 }
 
 async function refreshLoginSurfaceAfterCancelledAuthentication({ reconnectSocket = true } = {}) {
-  state.intentionalLogout = false;
+  state.intentionalLogout = !reconnectSocket;
+  state.resumeNeeded = false; state.resumeReconnect = false; clearTimeout(state.resumeRetryTimer);
   if (reconnectSocket && !state.socket?.connected) state.socket?.connect();
   await loadPublicConfig(true);
   await Promise.allSettled([loadOnlineRooms(), loadRoomInfo()]);
@@ -5057,10 +5180,10 @@ async function loadPublicConfig(silent = false) {
 
 function applyPublicConfig() {
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.2.3';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.2.6';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.3'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.6'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -5092,7 +5215,7 @@ function applyPublicConfig() {
   const canManageServer = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
   const serverMenu = Boolean(state.publicConfig.serverHostLoginAvailable || state.hostToken || canManageServer);
   elements.adminProfileBtn?.classList.toggle('is-hidden', !(canManageServer || (!state.authenticated && state.publicConfig.serverHostLoginAvailable)));
-  elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', state.authenticated && !canManageServer);
+  elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', !state.authenticated || !canManageServer);
   elements.resetAdminPasswordBtn?.classList.toggle('is-hidden', !serverMenu);
   elements.restartServerBtn?.classList.toggle('is-hidden', !canManageServer);
   elements.loginHostShortcuts?.classList.toggle('is-hidden', ![elements.serverAdminLoginBtn, elements.serverAdminRoomLoginBtn, elements.managementLogoutBtn, elements.resetAdminPasswordBtn, elements.restartServerBtn]
@@ -5735,7 +5858,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch同步观影-v2.2.3.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.2.6-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -5796,7 +5919,10 @@ function setLoginStatus(message, success = false) {
   elements.loginStatus.classList.toggle('success', success);
   elements.loginStatusWrap?.classList.toggle('is-hidden', !text);
   elements.loginStatusWrap?.classList.toggle('success', success);
-  if (!text || success) elements.requestLoginLimitClearBtn?.classList.add('is-hidden');
+  if (!text || success) {
+    elements.requestLoginLimitClearBtn?.classList.add('is-hidden');
+    elements.requestLoginConcurrencyBtn?.classList.add('is-hidden');
+  }
   clearTimeout(setLoginStatus.timer);
   if (text && success) setLoginStatus.timer = setTimeout(() => setLoginStatus(''), 3600);
 }
@@ -5814,6 +5940,31 @@ async function requestLoginLimitClear() {
   elements.requestLoginLimitClearBtn.disabled = false;
   setLoginStatus(result.message || result.error, Boolean(result.success));
   if (result.success) elements.requestLoginLimitClearBtn.classList.add('is-hidden');
+}
+
+async function requestLoginConcurrency() {
+  const username = String(elements.username?.value || '').trim();
+  if (!username) return setLoginStatus('请先填写要申请多设备登录的账号');
+  const requestedLimit = await showAppInput({
+    title: '申请多设备登录',
+    description: '申请会发送给内置 admin。批准后该账号可在指定数量的设备同时登录。',
+    label: '希望允许的设备数量', initialValue: '2', minLength: 1, maxLength: 2,
+    validate: (value) => { const number = Number(value); return Number.isInteger(number) && number >= 2 && number <= 20 ? '' : '请输入 2-20 之间的整数'; },
+    confirmText: '提交申请'
+  });
+  if (requestedLimit === null) return;
+  const reason = await showAppInput({
+    title: '申请说明', description: '可选，管理员会在用户申请中心看到。',
+    label: '申请说明（可选）', required: false, maxLength: 240,
+    placeholder: '例如：需要在电脑和手机同时观看', confirmText: '发送申请', allowBack: true
+  });
+  if (reason === APP_DIALOG_BACK) return requestLoginConcurrency();
+  if (reason === null) return;
+  elements.requestLoginConcurrencyBtn.disabled = true;
+  const result = await emitAck('login-concurrency-request', { username, requestedLimit: Number(requestedLimit), reason, password: elements.password?.value || '', ...deviceInfo() }, 20000);
+  elements.requestLoginConcurrencyBtn.disabled = false;
+  setLoginStatus(result.message || result.error, Boolean(result.success));
+  if (result.success) elements.requestLoginConcurrencyBtn.classList.add('is-hidden');
 }
 
 function handleLoginLimitClearResolved(result = {}) {
@@ -8586,7 +8737,7 @@ function renderMemberProfileContent(profile = {}, loading = false) {
   const highlight = Date.now() < Number(state.memberProfileHighlightUntil || 0) ? ' level-up-highlight' : '';
   const privateRemarkAction = profile.canSetPrivateRemark ? `<div class="member-profile-admin-actions member-profile-private-remark"><span>我的私人备注：${escapeHtml(profile.privateRemark || '暂无')}</span><button data-member-profile-action="private-remark" data-username="${escapeHtml(profile.username || '')}" type="button">${profile.privateRemark ? '修改备注' : '设置备注'}</button></div>` : '';
   const adminRemarkAction = profile.canEditAccount ? `<div class="member-profile-admin-actions"><span>管理员备注：${escapeHtml(profile.adminRemark || '暂无')}</span><button data-member-profile-action="admin-remark" data-username="${escapeHtml(profile.username || '')}" type="button">设置管理员备注</button></div>` : '';
-  return `<div class="member-profile-hero"><span class="member-profile-avatar">${avatar}</span><div><p class="eyebrow">成员资料</p><h2>${escapeHtml(name)}</h2><p>${escapeHtml(profile.username || '')} · ${levelEmoji(profile.level)} Lv.${Math.max(1, Number(profile.level) || 1)} ${escapeHtml(profile.levelName || '初映小星')}</p></div></div><p class="member-signature">${escapeHtml(profile.signature || '这个成员还没有填写个性签名')}</p>${privateRemarkAction}${adminRemarkAction}<div class="level-progress-card${highlight}"><div><strong>${Math.max(0, Number(profile.experience) || 0)} 经验</strong><small>${profile.nextLevelExperience === null ? '已达最高等级' : `还差 ${Math.max(0, Number(profile.experienceToNext) || 0)} 经验升级`}</small></div><progress max="100" value="${progress}"></progress><small>${progress}% · 当前等级已获得 ${Math.max(0, Number(profile.currentLevelExperience) || 0)} 经验</small></div><div class="member-profile-stats"><div><strong>${Math.max(0, Number(profile.experience) || 0)}</strong><small>经验值</small></div><div><strong>${Math.max(0, Number(profile.registrationDays) || 0)}</strong><small>注册天数</small></div><div><strong>${escapeHtml(timeText)}</strong><small>累计在线 · ${onlineSeconds} 秒</small></div></div><dl class="member-profile-details"><div><dt>账户等级</dt><dd>${tier ? escapeHtml(tier) : '普通成员'}</dd></div><div><dt>房间身份</dt><dd>${profile.isOwner ? '房主' : profile.isSuperAdmin ? '超级管理员' : profile.permissions?.administrator ? '管理员' : '成员'}</dd></div><div><dt>所在权限组</dt><dd>${escapeHtml(groupName)}</dd></div><div><dt>分组权限</dt><dd>${escapeHtml(permissions)}</dd></div><div><dt>所在地</dt><dd>${escapeHtml(formatMemberAddress(profile.location))}</dd></div><div><dt>加入时间</dt><dd>${escapeHtml(profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('zh-CN') : '未提供')}</dd></div></dl>${loading ? '<p class="muted">正在同步完整资料…</p>' : ''}`;
+  return `<div class="member-profile-hero"><span class="member-profile-avatar">${avatar}</span><div><p class="eyebrow">成员资料</p><h2>${escapeHtml(name)}</h2><p>${escapeHtml(profile.username || '')} · ${levelEmoji(profile.level)} Lv.${Math.max(1, Number(profile.level) || 1)} ${escapeHtml(profile.levelName || '初映小星')}</p></div><div class="member-profile-actions">${memberProfileFriendAction(profile)}</div></div><p class="member-signature">${escapeHtml(profile.signature || '这个成员还没有填写个性签名')}</p>${privateRemarkAction}${adminRemarkAction}<div class="level-progress-card${highlight}"><div><strong>${Math.max(0, Number(profile.experience) || 0)} 经验</strong><small>${profile.nextLevelExperience === null ? '已达最高等级' : `还差 ${Math.max(0, Number(profile.experienceToNext) || 0)} 经验升级`}</small></div><progress max="100" value="${progress}"></progress><small>${progress}% · 当前等级已获得 ${Math.max(0, Number(profile.currentLevelExperience) || 0)} 经验</small></div><div class="member-profile-stats"><div><strong>${Math.max(0, Number(profile.experience) || 0)}</strong><small>经验值</small></div><div><strong>${Math.max(0, Number(profile.registrationDays) || 0)}</strong><small>注册天数</small></div><div><strong>${escapeHtml(timeText)}</strong><small>累计在线 · ${onlineSeconds} 秒</small></div></div><dl class="member-profile-details"><div><dt>账户等级</dt><dd>${tier ? escapeHtml(tier) : '普通成员'}</dd></div><div><dt>房间身份</dt><dd>${profile.isOwner ? '房主' : profile.isSuperAdmin ? '超级管理员' : profile.permissions?.administrator ? '管理员' : '成员'}</dd></div><div><dt>所在权限组</dt><dd>${escapeHtml(groupName)}</dd></div><div><dt>分组权限</dt><dd>${escapeHtml(permissions)}</dd></div><div><dt>所在地</dt><dd>${escapeHtml(formatMemberAddress(profile.location))}</dd></div><div><dt>加入时间</dt><dd>${escapeHtml(profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('zh-CN') : '未提供')}</dd></div></dl>${loading ? '<p class="muted">正在同步完整资料…</p>' : ''}`;
 }
 
 function formatOnlineDuration(seconds) {
@@ -8598,6 +8749,26 @@ function formatOnlineDuration(seconds) {
 async function handleMemberProfileAction(event) {
   const button = event.target.closest('[data-member-profile-action]');
   if (!button) return;
+  if (button.dataset.memberProfileAction === 'friend-request') {
+    const username = String(button.dataset.username || '').trim();
+    if (!username || username === String(state.user?.username || '').trim()) return;
+    const message = await showAppInput({
+      title: `添加 ${state.memberProfileSnapshot?.displayName || username} 为好友`,
+      description: '附言可以留空，发送后对方会在好友申请中心看到。',
+      label: '好友申请附言（选填）', required: false, maxLength: 160,
+      placeholder: '例如：周末一起看电影吧', confirmText: '发送申请'
+    });
+    if (message === null) return;
+    const result = await emitAck('account-action', { action: 'friend-request', username, message });
+    toast(result.message || result.error, result.success ? 'success' : 'error', 6000);
+    if (result.success) {
+      state.memberProfileSnapshot = { ...state.memberProfileSnapshot, friendRequestPending: true };
+      elements.memberProfileContent.innerHTML = renderMemberProfileContent(state.memberProfileSnapshot);
+      decorateLevelRuleHelp(elements.memberProfileContent); bringMemberProfileToFront();
+      void refreshProfile();
+    }
+    return;
+  }
   if (button.dataset.memberProfileAction === 'level-help') {
     const levels = Array.isArray(state.adminSettings?.watchLevels) ? state.adminSettings.watchLevels : [];
     const perMinute = Math.max(0, Number(state.publicConfig.experiencePerMinute) || 0);
@@ -8651,6 +8822,17 @@ function decorateLevelRuleHelp(root) {
   const help = document.createElement('button'); help.type = 'button'; help.className = 'level-rule-help'; help.dataset.memberProfileAction = 'level-help'; help.textContent = '?';
   help.title = `观影经验按有效播放时长计算，当前每观看一分钟获得 ${Math.max(0, Number(state.publicConfig.experiencePerMinute) || 0)} 经验；服务器管理员可在“观影等级与经验”中调整。`;
   target.append(' ', help);
+}
+
+function memberProfileFriendAction(profile = {}) {
+  const username = String(profile.username || '').trim();
+  if (!username || username === String(state.user?.username || '').trim()) return '';
+  if (profile.isFriend === true || state.profile?.friends?.some((friend) => friend.username === username)) {
+    return '<button type="button" disabled>已是好友</button>';
+  }
+  const pending = profile.friendRequestPending === true
+    || (state.profile?.friendRequests || []).some((request) => request.status === 'pending' && (request.to === username || request.from === username));
+  return `<button data-member-profile-action="friend-request" data-username="${escapeHtml(username)}" type="button" ${pending ? 'disabled' : ''}>${pending ? '等待处理' : '添加好友'}</button>`;
 }
 
 function canViewMemberLocations() {
@@ -9053,10 +9235,11 @@ function toggleChatViewFilters() {
 }
 
 function updateChatViewFilter() {
-  state.chatViewFilter = {
+  state.chatViewFilter = normalizeChatViewFilter({
     channel: elements.chatViewChannel?.value || '', username: elements.chatViewUser?.value || '',
     userMode: elements.chatViewUserMode?.value || 'include', query: String(elements.chatViewQuery?.value || '').trim()
-  };
+  });
+  cacheAccountChatFilter(state.chatViewFilter);
   elements.chatViewUserMode.disabled = !state.chatViewFilter.username;
   elements.chatViewFilterBtn?.classList.toggle('active', chatViewFilterActive());
   elements.chatViewFilterBtn.textContent = chatViewFilterActive() ? '筛选中' : '筛选';
@@ -9586,6 +9769,42 @@ function handleFullscreenChange() {
       const request = state.pendingQualityRequest; state.pendingQualityRequest = null;
       queueMicrotask(() => handleQualityChangeRequest(request));
     }
+    if (state.pendingClientModeRequests.length) queueMicrotask(processNextClientModeRequest);
+  }
+}
+
+function enqueueClientModeRequest(request = {}) {
+  if (!request.id || !state.user || request.username !== state.user.username) return;
+  if (state.pendingClientModeRequests.some((entry) => entry.id === request.id) || state.activeClientModeRequestId === request.id) return;
+  state.pendingClientModeRequests.push(request);
+  if (!isPlayerFullscreen()) void processNextClientModeRequest();
+}
+
+async function processNextClientModeRequest() {
+  if (state.clientModePromptActive || isPlayerFullscreen() || !state.authenticated) return;
+  const request = state.pendingClientModeRequests.shift();
+  if (!request) return;
+  state.clientModePromptActive = true;
+  state.activeClientModeRequestId = request.id;
+  const description = [
+    `${request.requestedByName || request.requestedBy || '服务器管理员'}申请将当前账号切换为“${request.modeLabel || '指定模式'}”。`,
+    request.reason ? `说明：${request.reason}` : '',
+    '该设置会同步到这个账号的所有客户端；只有您同意后才会生效。'
+  ].filter(Boolean).join('\n\n');
+  try {
+    const accepted = await showAppConfirm(description, {
+      title: '客户端模式切换申请', confirmText: '同意并应用', cancelText: '拒绝'
+    });
+    const result = await emitAck('client-mode-request-response', { requestId: request.id, accepted }, 15000);
+    if (!result.success) toast(result.error || '模式申请处理失败', 'error', 8000);
+    else if (result.accepted && result.viewPreferences) {
+      applyAccountViewPreferences(result.viewPreferences);
+      if (state.profile) state.profile.notificationSettings = result.notificationSettings || state.profile.notificationSettings;
+    }
+  } finally {
+    state.clientModePromptActive = false;
+    state.activeClientModeRequestId = '';
+    if (state.pendingClientModeRequests.length && !isPlayerFullscreen()) queueMicrotask(processNextClientModeRequest);
   }
 }
 
@@ -9744,6 +9963,9 @@ function applyLiveVoiceCollapsed() {
 function toggleLiveVoiceCollapsed() {
   state.liveVoiceCollapsed = !state.liveVoiceCollapsed;
   localStorage.setItem('syncwatchLiveVoiceCollapsed', state.liveVoiceCollapsed ? '1' : '0');
+  if (state.user?.username) {
+    try { localStorage.setItem(accountVoiceCollapsedStorageKey(), state.liveVoiceCollapsed ? '1' : '0'); } catch (_) {}
+  }
   applyLiveVoiceCollapsed();
 }
 
@@ -12184,7 +12406,7 @@ function updateAdministrativeAccess() {
   const button = document.querySelector('.tab-button[data-tab="admin"]'); button?.classList.toggle('is-hidden', !allowed);
   elements.managementHubBtn?.classList.toggle('is-hidden', !state.authenticated || !allowed);
   elements.lanScanBtn?.classList.remove('is-hidden');
-  elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', state.authenticated && !(state.capabilities.serverHost || state.capabilities.superAdmin));
+  elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', !state.authenticated || !(state.capabilities.serverHost || state.capabilities.superAdmin));
   elements.changeCurrentRoomIdBtn?.classList.toggle('is-hidden', !state.authenticated || !(state.capabilities.owner || state.capabilities.superAdmin));
   elements.convertTemporaryRoomBtn?.classList.toggle('is-hidden', !state.authenticated || !state.room?.temporary || !(state.capabilities.owner || state.capabilities.superAdmin || state.permissions.manageRoom));
   elements.viewLocationAuthorizationsBtn?.classList.toggle('is-hidden', !state.authenticated || !canViewMemberLocations());
@@ -12325,6 +12547,13 @@ async function loadAdminSettings({ silent = false } = {}) {
     elements.passwordPolicyExpiryDays.value = Number(passwordPolicy.expiryDays) || 0;
     syncCredentialPolicyLengthControls();
     elements.adminMaxConcurrentSessions.value = Math.max(1, Math.min(20, Number(result.admin.adminMaxConcurrentSessions) || 5));
+    state.adminSettings.loginPolicy = result.admin.loginPolicy || state.adminSettings.loginPolicy || { accountSessionLimit: 1, guestSessionsPerIp: 1, accountSessionWhitelistIps: [], guestIpWhitelistIps: [] };
+    state.adminSettings.accessRecords = result.admin.accessRecords || [];
+    state.adminSettings.loginConcurrencyRequests = result.admin.loginConcurrencyRequests || [];
+    state.adminSettings.clientModeRequests = result.admin.clientModeRequests || [];
+    renderLoginConcurrencyPolicy(state.adminSettings);
+    renderClientModeRequestControls(result.admin);
+    renderClientModeRequests(result.admin.clientModeRequests || []);
     const passwordLengthText = credentialPolicyLengthText(passwordPolicy, PASSWORD_MAX_UTF8_BYTES);
     elements.passwordPolicyStatus.textContent = Number(passwordPolicy.expiryDays) > 0
       ? `当前规则已用于注册、改密与管理员重置；${passwordLengthText}；密码每 ${passwordPolicy.expiryDays} 天需要修改`
@@ -12386,7 +12615,7 @@ async function loadAdminSettings({ silent = false } = {}) {
   renderRegistrationRequests(result.admin.registrationRequests || []); renderRegistrationWhitelist(result.admin.registrationIpWhitelist || []);
   renderRoomQuotaRequests(result.admin.roomQuotaRequests || []); renderLoginLimitRequests(result.admin.loginLimitRequests || []);
   renderRoomCopyRequests(result.admin.roomCopyRequests || []); renderRoomMigrationControls(result.admin);
-  renderPending(result.admin.pendingFiles); renderBlacklist(result.admin.blacklist); renderAdminAccounts(result.admin.accounts); renderGlobalRooms(result.admin.rooms || []); applySelectedPermissions(); if (result.admin.serverAdmin) void loadServerLogs(); if (!silent) toast('管理设置已加载', 'success');
+  renderPending(result.admin.pendingFiles); renderBlacklist(result.admin.blacklist); renderAdminAccounts(result.admin.accounts); renderGlobalRooms(result.admin.rooms || []); renderLoginConcurrencyRequests(result.admin.loginConcurrencyRequests || []); renderClientModeRequestControls(result.admin); renderClientModeRequests(result.admin.clientModeRequests || []); applySelectedPermissions(); if (result.admin.serverAdmin) void loadServerLogs(); if (!silent) toast('管理设置已加载', 'success');
 }
 
 async function loadServerLogs() {
@@ -12665,6 +12894,14 @@ function renderLoginCubeSettings(value = state.adminSettings?.loginCube || state
   if (!elements.loginCubeSettingsGrid) return;
   const settings = normalizeClientLoginCube(value);
   revokeLoginCubeEditorObjectUrls();
+  if (elements.loginCubeTemplateSelect) {
+    const currentValue = elements.loginCubeTemplateSelect.value;
+    if (!elements.loginCubeTemplateSelect.options.length || elements.loginCubeTemplateSelect.options.length < LOGIN_CUBE_TEMPLATE_PRESETS.length + 1) {
+      elements.loginCubeTemplateSelect.replaceChildren(new Option('当前自定义', ''));
+      for (const preset of LOGIN_CUBE_TEMPLATE_PRESETS) elements.loginCubeTemplateSelect.appendChild(new Option(preset.name, preset.id));
+    }
+    elements.loginCubeTemplateSelect.value = currentValue && LOGIN_CUBE_TEMPLATE_PRESETS.some((preset) => preset.id === currentValue) ? currentValue : '';
+  }
   if (elements.loginCubeDisplayMode) elements.loginCubeDisplayMode.value = settings.displayMode;
   if (elements.loginCubeRotationDirection) elements.loginCubeRotationDirection.value = settings.rotationDirection;
   if (elements.loginCubeAutoRotate) elements.loginCubeAutoRotate.checked = settings.autoRotate;
@@ -12693,6 +12930,14 @@ function renderLoginCubeSettings(value = state.adminSettings?.loginCube || state
         <div class="login-cube-image-actions"><label class="secondary-button login-cube-file-button">选择图片<input data-login-cube-image-file type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><button data-login-cube-clear-image class="text-button" type="button">清除图片</button></div>
       </div>
     </article>`).join('');
+}
+
+function applyLoginCubeTemplate(templateId) {
+  const preset = LOGIN_CUBE_TEMPLATE_PRESETS.find((entry) => entry.id === templateId);
+  if (!preset) return renderLoginCubeSettings(state.adminSettings?.loginCube || state.publicConfig.loginCube);
+  const current = normalizeClientLoginCube(state.adminSettings?.loginCube || state.publicConfig.loginCube);
+  renderLoginCubeSettings({ ...current, faces: preset.faces.map((face) => ({ ...face })) });
+  if (elements.loginCubeSettingsStatus) elements.loginCubeSettingsStatus.textContent = `已载入“${preset.name}”预制风格，点击保存后同步到所有客户端`;
 }
 
 function updateLoginCubeEditorPreview(editor) {
@@ -13010,6 +13255,83 @@ async function savePasswordPolicy() {
   elements.passwordPolicyStatus.textContent = `${result.message}；${credentialPolicyLengthText(result.passwordPolicy, PASSWORD_MAX_UTF8_BYTES)}；${expiryText}；${deviceResult.message}`;
   applyPublicConfig(); toast('密码与登录策略已保存', 'success');
 }
+
+function normalizeIpListInput(value) {
+  return [...new Set(String(value || '').split(/[\r\n,，]+/).map((entry) => entry.trim()).filter(Boolean))].slice(0, 500);
+}
+
+function renderAccessRecords(records = []) {
+  if (!elements.accessRecordsList) return;
+  const rows = Array.isArray(records) ? records : [];
+  elements.accessRecordsList.innerHTML = rows.length ? rows.slice(0, 500).map((entry) => {
+    const ip = String(entry.ipAddress || '').trim();
+    const buttons = ip && ip !== 'unknown' ? `<div class="actions"><button data-access-record-action="account-whitelist" data-access-record-ip="${escapeHtml(ip)}" type="button">账号白名单</button><button data-access-record-action="guest-whitelist" data-access-record-ip="${escapeHtml(ip)}" type="button">游客白名单</button><button data-access-record-action="ban" data-access-record-ip="${escapeHtml(ip)}" class="danger-text-button" type="button">封禁 IP</button></div>` : '';
+    return `<div class="manage-list-row"><div><strong>${escapeHtml(entry.username || '未填写账号')}</strong><small>${escapeHtml(entry.timestamp || '')} · ${escapeHtml(ip || '未知地址')} · ${escapeHtml(entry.deviceName || '未知设备')}</small></div><span>${escapeHtml(entry.result || entry.action || '')}<br><small>${escapeHtml(entry.message || '')}</small>${buttons}</span></div>`;
+  }).join('') : '<p class="muted">暂无访问记录</p>';
+}
+
+async function handleAccessRecordAction(event) {
+  const button = event.target.closest('[data-access-record-action]');
+  const ip = button?.dataset.accessRecordIp;
+  if (!button || !ip) return;
+  const action = button.dataset.accessRecordAction;
+  if (action === 'ban') {
+    if (!await showAppConfirm(`确定封禁 IP ${ip} 吗？该地址的现有会话会被立即撤销。`, { title: '封禁访问地址', confirmText: '确认封禁', danger: true })) return;
+    const result = await adminAction('ban-user', { ipAddress: ip, username: `IP ${ip}` });
+    toast(result.message || result.error, result.success ? 'success' : 'error');
+    if (result.success) await loadAdminSettings({ silent: true });
+    return;
+  }
+  const current = state.adminSettings?.loginPolicy || {};
+  const key = action === 'guest-whitelist' ? 'guestIpWhitelistIps' : 'accountSessionWhitelistIps';
+  const next = [...new Set([...(current[key] || []), ip])];
+  const result = await adminAction('set-access-record-policy', { [key]: next });
+  toast(result.message || result.error, result.success ? 'success' : 'error');
+  if (result.success) { state.adminSettings.loginPolicy = result.loginPolicy || { ...current, [key]: next }; renderLoginConcurrencyPolicy(state.adminSettings); }
+}
+
+function renderLoginConcurrencyPolicy(settings = state.adminSettings || {}) {
+  const policy = settings.loginPolicy || {};
+  if (elements.accountSessionLimit) elements.accountSessionLimit.value = Math.max(1, Math.min(20, Number(policy.accountSessionLimit) || 1));
+  if (elements.guestSessionsPerIp) elements.guestSessionsPerIp.value = Math.max(1, Math.min(20, Number(policy.guestSessionsPerIp) || 1));
+  if (elements.accountSessionWhitelistIps) elements.accountSessionWhitelistIps.value = (policy.accountSessionWhitelistIps || []).join('\n');
+  if (elements.guestIpWhitelistIps) elements.guestIpWhitelistIps.value = (policy.guestIpWhitelistIps || []).join('\n');
+  renderAccessRecords(settings.accessRecords || []);
+}
+
+async function saveLoginConcurrencyPolicy() {
+  if (!state.adminSettings?.serverAdmin) return toast('请先验证服务器管理员身份并加载设置', 'error');
+  const result = await adminAction('login-concurrency-policy', { policy: {
+    accountSessionLimit: Number(elements.accountSessionLimit?.value) || 1,
+    guestSessionsPerIp: Number(elements.guestSessionsPerIp?.value) || 1,
+    accountSessionWhitelistIps: normalizeIpListInput(elements.accountSessionWhitelistIps?.value),
+    guestIpWhitelistIps: normalizeIpListInput(elements.guestIpWhitelistIps?.value)
+  } });
+  if (!result.success) return toast(result.error || '登录并发策略保存失败', 'error');
+  state.adminSettings.loginPolicy = result.loginPolicy;
+  state.publicConfig.loginPolicy = result.loginPolicy;
+  renderLoginConcurrencyPolicy(state.adminSettings);
+  if (elements.loginPolicyStatus) elements.loginPolicyStatus.textContent = result.message || '登录并发策略已保存';
+  toast(result.message || '登录并发策略已保存', 'success');
+}
+
+async function refreshAccessRecords() {
+  if (!state.adminSettings?.serverAdmin) return;
+  const result = await adminAction('get-access-records', {});
+  if (!result.success) return toast(result.error || '访问记录读取失败', 'error');
+  state.adminSettings.accessRecords = result.records || [];
+  state.adminSettings.loginPolicy = result.loginPolicy || state.adminSettings.loginPolicy;
+  renderLoginConcurrencyPolicy(state.adminSettings);
+}
+
+async function clearAccessRecords() {
+  if (!state.adminSettings?.serverAdmin || !await showAppConfirm('确定清空全部登录访问记录吗？', { title: '清空访问记录', confirmText: '清空记录', danger: true })) return;
+  const result = await adminAction('set-access-record-policy', { clearAccessRecords: true });
+  if (!result.success) return toast(result.error || '访问记录清理失败', 'error');
+  state.adminSettings.accessRecords = [];
+  renderAccessRecords([]);
+  toast('访问记录已清空', 'success');
+}
 async function saveBlockedWords() {
   if (!state.adminSettings?.serverAdmin) return toast('请先验证服务器管理员密码并加载设置', 'error');
   const blockedWords = String(elements.blockedWordsInput?.value || '').split(/[\r\n,，]+/).map((word) => word.trim()).filter(Boolean);
@@ -13160,7 +13482,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.3-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.6-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
@@ -13491,6 +13813,91 @@ function renderLoginLimitRequests(requests = []) {
     const actions = request.status === 'pending' ? '<div class="actions"><button data-login-limit-action="approve" type="button">同意并解除</button><button data-login-limit-action="deny" type="button">拒绝</button></div>' : '';
     return `<article class="admin-row" data-login-limit-request="${escapeHtml(request.id)}"><header><strong>${escapeHtml(request.username || '未知账号')}</strong><small>${escapeHtml(status)}</small></header><small>来源 ${escapeHtml(request.ipAddress || '未知地址')} · ${escapeHtml(request.deviceName || '浏览器设备')}</small><p>${escapeHtml(request.reason || '未填写申请说明')}</p>${actions}</article>`;
   }).join('') : '<p class="muted">暂无登录限制解除申请</p>';
+}
+
+function renderLoginConcurrencyRequests(requests = []) {
+  if (!elements.loginConcurrencyRequestList) return;
+  const entries = Array.isArray(requests) ? requests : [];
+  elements.loginConcurrencyRequestList.innerHTML = entries.length ? entries.map((request) => {
+    const status = request.status === 'pending' ? '待处理' : request.status === 'approved' ? '已同意' : request.status === 'denied' ? '已拒绝' : request.status || '未知';
+    const actions = request.status === 'pending'
+      ? '<div class="actions"><button data-login-concurrency-action="approve" type="button">同意</button><button data-login-concurrency-action="deny" class="danger-text-button" type="button">拒绝</button></div>'
+      : request.status === 'approved'
+        ? `<div class="actions"><button data-login-concurrency-action="revoke" class="danger-text-button" type="button">取消授权并恢复默认</button></div>` : '';
+    return `<article class="admin-row" data-login-concurrency-request="${escapeHtml(request.id)}"><header><strong>${escapeHtml(request.username || '未知账号')}</strong><small>${escapeHtml(status)}</small></header><small>当前上限 ${Number(request.currentLimit) || 1} · 申请上限 ${Number(request.requestedLimit) || 1} · ${escapeHtml(request.createdAt || '')}</small><p>${escapeHtml(request.reason || '未填写申请说明')}</p>${actions}</article>`;
+  }).join('') : '<p class="muted">暂无多设备登录申请</p>';
+}
+
+async function handleLoginConcurrencyRequestAction(event) {
+  const button = event.target.closest('[data-login-concurrency-action]');
+  const requestId = button?.closest('[data-login-concurrency-request]')?.dataset.loginConcurrencyRequest;
+  if (!button || !requestId) return;
+  button.disabled = true;
+  const action = button.dataset.loginConcurrencyAction;
+  const request = (state.adminSettings?.loginConcurrencyRequests || []).find((entry) => entry.id === requestId);
+  const result = action === 'revoke'
+    ? await adminAction('revoke-login-concurrency', { requestId, username: request?.username })
+    : await adminAction('resolve-login-concurrency-request', { requestId, approved: action === 'approve' });
+  toast(result.message || result.error || '多设备登录申请处理失败', result.success && button.dataset.loginConcurrencyAction === 'approve' ? 'success' : result.success ? '' : 'error', 8000);
+  if (result.success) await loadAdminSettings({ silent: true });
+}
+
+function syncClientModeRequestScope() {
+  const usersScope = elements.clientModeRequestScope?.value === 'users';
+  elements.clientModeRequestUserPicker?.classList.toggle('is-hidden', !usersScope);
+  if (elements.clientModeRequestUserList) elements.clientModeRequestUserList.disabled = !usersScope;
+}
+
+function renderClientModeRequestControls(admin = {}) {
+  if (!elements.clientModeRequestCard) return;
+  const canSend = Boolean(admin.serverAdmin || admin.superAdmin || admin.serverHost);
+  elements.clientModeRequestCard.classList.toggle('is-hidden', !canSend);
+  if (!canSend) return;
+  const accounts = Array.isArray(admin.accounts) ? admin.accounts : [];
+  const current = state.user?.username || '';
+  const options = accounts.filter((account) => account?.username && account.username !== current && account.guest !== true);
+  if (elements.clientModeRequestUserList) {
+    const selected = new Set([...elements.clientModeRequestUserList.selectedOptions].map((option) => option.value));
+    elements.clientModeRequestUserList.innerHTML = options.map((account) => `<option value="${escapeHtml(account.username)}" ${selected.has(account.username) ? 'selected' : ''}>${escapeHtml(account.displayName && account.displayName !== account.username ? `${account.displayName}（${account.username}）` : account.username)}</option>`).join('');
+  }
+  syncClientModeRequestScope();
+}
+
+function renderClientModeRequests(requests = []) {
+  if (!elements.clientModeRequestList) return;
+  const entries = Array.isArray(requests) ? requests : [];
+  const labels = { concise: '简洁模式', 'notifications-off': '关闭普通通知', professional: '专业模式' };
+  const statusLabels = { pending: '待用户确认', approved: '已同意', denied: '已拒绝', cancelled: '已取消' };
+  elements.clientModeRequestList.innerHTML = entries.length ? entries.map((request) => {
+    const action = request.status === 'pending' ? `<button data-client-mode-action="cancel" type="button">取消申请</button>` : '';
+    return `<article class="admin-row" data-client-mode-request="${escapeHtml(request.id)}"><header><strong>${escapeHtml(request.username || '未知账号')}</strong><small>${escapeHtml(statusLabels[request.status] || request.status || '未知')}</small></header><small>${escapeHtml(labels[request.mode] || request.mode || '客户端模式')} · ${escapeHtml(request.scope === 'room' ? `房间 ${request.roomId || ''}` : request.scope === 'server' ? '全服务器' : '指定用户')} · ${escapeHtml(request.createdAt || '')}</small><p>${escapeHtml(request.reason || '未填写申请说明')}</p>${action ? `<div class="actions">${action}</div>` : ''}</article>`;
+  }).join('') : '<p class="muted">暂无模式申请记录</p>';
+}
+
+async function sendClientModeRequest() {
+  const scope = elements.clientModeRequestScope?.value || 'users';
+  const mode = elements.clientModeRequestMode?.value || 'concise';
+  const usernames = scope === 'users' ? [...(elements.clientModeRequestUserList?.selectedOptions || [])].map((option) => option.value) : [];
+  if (scope === 'users' && !usernames.length) return toast('请至少选择一个目标用户', 'error');
+  const result = await adminAction('send-client-mode-request', {
+    scope, mode, usernames, roomId: state.room?.id || '', reason: elements.clientModeRequestReason?.value || ''
+  });
+  if (elements.clientModeRequestStatus) elements.clientModeRequestStatus.textContent = result.message || result.error || '';
+  toast(result.message || result.error || '模式申请发送失败', result.success ? 'success' : 'error', 8000);
+  if (result.success) {
+    if (elements.clientModeRequestReason) elements.clientModeRequestReason.value = '';
+    await loadAdminSettings({ silent: true });
+  }
+}
+
+async function handleClientModeRequestListAction(event) {
+  const button = event.target.closest('[data-client-mode-action="cancel"]');
+  const requestId = button?.closest('[data-client-mode-request]')?.dataset.clientModeRequest;
+  if (!button || !requestId) return;
+  button.disabled = true;
+  const result = await adminAction('cancel-client-mode-request', { requestId });
+  toast(result.message || result.error || '取消模式申请失败', result.success ? 'success' : 'error', 7000);
+  if (result.success) await loadAdminSettings({ silent: true });
 }
 
 async function handleLoginLimitRequestAction(event) {

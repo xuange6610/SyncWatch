@@ -602,6 +602,7 @@ textarea:focus { border-color: var(--pink); box-shadow: 0 0 0 3px #52c7b820; }
 .profile-processing-summary { margin: 10px 0; }
 .agreement-modal { z-index: 480; }.agreement-card { width: min(720px, 100%); display: grid; gap: 12px; }.agreement-card h2 { margin: 0; }.agreement-card > small { color: var(--muted); }.agreement-text { max-height: min(52dvh, 480px); overflow-y: auto; padding: 16px; white-space: pre-wrap; line-height: 1.8; background: #0000001a; border: 1px solid var(--line); border-radius: 8px; overflow-wrap: anywhere; }.agreement-card .check-line { align-items: flex-start; margin: 0; line-height: 1.6; }
 .owner-exit-card { width: min(590px, 100%); }.owner-exit-card h2 { margin: 5px 0 8px; font-size: 22px; }.owner-exit-actions { display: grid; gap: 9px; margin-top: 18px; }.owner-exit-actions > button { width: 100%; min-height: 62px; display: grid; justify-items: start; align-content: center; gap: 3px; padding: 11px 14px; text-align: left; }.owner-exit-actions > button small { color: var(--muted); font-weight: 400; line-height: 1.45; }.owner-exit-actions > .warning-button small { color: #f3dca9; }.owner-exit-actions > .danger-button small { color: #ffd0d6; }.owner-exit-actions > .text-button { min-height: 38px; place-items: center; text-align: center; }
+.owner-exit-actions > .owner-exit-default { color: var(--primary-button-text, #07120e); box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, var(--pink)) 34%, transparent), 0 12px 30px #0005; }.owner-exit-actions > .owner-exit-default small { color: currentColor; opacity: .78; }
 .desktop-close-modal { z-index: 520; background: #050504e8; backdrop-filter: blur(10px); }
 .desktop-close-card { width: min(560px, 100%); overflow: hidden; padding: 26px; color: var(--text); background: linear-gradient(145deg, color-mix(in srgb, var(--panel-2) 94%, #050504), color-mix(in srgb, var(--panel) 96%, #000)) !important; border: 1px solid color-mix(in srgb, var(--pink) 64%, transparent); border-radius: min(8px, var(--radius)); box-shadow: 0 28px 90px #000d, inset 0 1px #ffffff0b; }
 .desktop-close-heading { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid color-mix(in srgb, var(--pink) 30%, transparent); }
@@ -1304,7 +1305,10 @@ body.topbar-compact .room-header { gap: clamp(9px, 1.4vw, 20px); }
 .user-info[data-user-action="profile"]:hover > strong { color: var(--pink-2); }
 
 .member-profile-card { width: min(560px, 100%); }
-.member-profile-hero { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; align-items: center; }
+.member-profile-hero { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.member-profile-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.member-profile-actions button { min-height: 36px; padding: 7px 11px; color: var(--text); background: var(--theme-button, #ffffff0c); border: 1px solid var(--line); border-radius: 7px; white-space: nowrap; }
+.member-profile-actions button:hover:not(:disabled), .member-profile-actions button:focus-visible:not(:disabled) { color: var(--pink-2); border-color: color-mix(in srgb, var(--pink) 58%, var(--line)); background: color-mix(in srgb, var(--pink) 10%, var(--theme-button, #ffffff0c)); }
 .member-profile-hero h2, .member-profile-hero p { margin: 2px 0; }
 .member-profile-avatar { display: grid; width: 72px; height: 72px; place-items: center; overflow: hidden; color: var(--theme-accent-ink, #071715); background: var(--pink); border-radius: 50%; font-size: 24px; font-weight: 900; }
 .member-signature { margin: 16px 0; padding: 11px 12px; color: var(--muted); background: color-mix(in srgb, var(--pink) 6%, #ffffff07); border: 1px solid color-mix(in srgb, var(--pink) 24%, var(--line)); border-radius: 7px; overflow-wrap: anywhere; }
@@ -1986,6 +1990,8 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
   .account-admin-list .admin-account-detail > header { grid-template-columns: auto minmax(0, 1fr); }
   .account-admin-list .admin-account-detail > header > small { grid-column: 2; justify-self: start; }
   .member-profile-admin-actions { align-items: stretch; flex-direction: column; }
+  .member-profile-hero { grid-template-columns: 56px minmax(0, 1fr); }
+  .member-profile-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 .primary-button, .send-button { color: var(--theme-accent-ink, #08201c); background: var(--pink); border-color: var(--pink); }
 .secondary-button, .compact-button, .icon-button, .warning-button { color: var(--text); background: var(--theme-button, #ffffff0c); border-color: var(--line); }

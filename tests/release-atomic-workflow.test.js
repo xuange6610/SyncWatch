@@ -73,8 +73,13 @@ assert.match(
   workflows.atomic,
   /artifact_prefix=release-\$\{RELEASE_TAG\}-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/
 );
-assert.match(workflows.atomic, /existing Release must be an empty draft/);
+assert.match(workflows.atomic, /existing Release must contain either zero assets or the complete 26-asset set/);
 assert.match(workflows.atomic, /Release target changed after preparation/);
+assert.match(workflows.atomic, /replacement-upload/);
+assert.match(workflows.atomic, /\.replacement-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/);
+assert.match(workflows.atomic, /\.previous-\$\{process\.env\.GITHUB_RUN_ID\}-\$\{process\.env\.GITHUB_RUN_ATTEMPT\}/);
+assert.match(workflows.atomic, /replacement_ready=1/);
+assert.match(workflows.atomic, /previous 26 assets and public Release state were restored/);
 
 for (const source of [workflows.windows, workflows.macos]) {
   const uploadBlocks = source.match(/uses:\s*actions\/upload-artifact@v4[\s\S]*?retention-days:\s*3/g) || [];
@@ -106,7 +111,7 @@ assert.equal(
   1,
   'all 26 maintained assets must be uploaded by one command'
 );
-assert.match(workflows.atomic, /gh release upload "\$RELEASE_TAG" "\$\{files\[@\]\}"/);
+assert.match(workflows.atomic, /gh release upload "\$RELEASE_TAG" "\$\{replacement_files\[@\]\}"/);
 assert.doesNotMatch(workflows.atomic, /gh release upload[^\n]*(?:\*|--clobber)/);
 assert.match(workflows.atomic, /test "\$\{#files\[@\]\}" -eq 26/);
 assert.match(workflows.atomic, /releases\?per_page=100/);
@@ -116,10 +121,10 @@ assert.ok(
   count(workflows.atomic, /-f tag_name="\$RELEASE_TAG"/g) >= 4,
   'draft creation and every draft update must preserve the requested tag name'
 );
-assert.match(workflows.atomic, /--method DELETE "repos\/\$\{GITHUB_REPOSITORY\}\/releases\/assets\/\$\{asset_id\}"/);
+assert.match(workflows.atomic, /--method DELETE "repos\/\$\{GITHUB_REPOSITORY\}\/releases\/assets\/\$\{old_id\}"/);
 assert.doesNotMatch(workflows.atomic, /releases\/tags\/\$\{RELEASE_TAG\}" > \.build\/(?:pre-upload|uploaded)-release\.json/);
 assert.match(workflows.atomic, /-F draft=true/);
-assert.match(workflows.atomic, /Atomic publication failed/);
+assert.match(workflows.atomic, /Atomic replacement failed/);
 assert.ok(
   count(workflows.atomic, /--expected-manifest \.build\/SHA256SUMS-release-26\.txt/g) >= 2,
   'remote digests must be checked both before and after publication'

@@ -1,6 +1,6 @@
 # SyncWatch同步观影 技术架构、模块与依赖说明
 
-适用版本：v2.2.6 候选（正式发布状态待 Release API 与 Actions 验证）
+适用版本：v2.2.6 正式版（Actions run 33123938548 已通过）
 文档日期：2026-08-27
 
 ## 1. 项目定位
@@ -349,7 +349,7 @@ npm run start:server
 powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
 ```
 
-该脚本会先运行完整回归，再构建并验证签名 APK、Windows 标准服务器和体验客户端；所有正式候选直接写入根目录 `dist/`。完整离线 EXE 只有在同一目录存在真实 macOS x64/arm64 ZIP 后才继续构建。
+该脚本会先运行完整回归，再构建并验证签名 APK、Windows 标准服务器和体验客户端；所有正式成品直接写入根目录 `dist/`。完整离线 EXE 只有在同一目录存在真实 macOS x64/arm64 ZIP 后才继续构建。
 
 ### 7.4 生成 Android APK
 

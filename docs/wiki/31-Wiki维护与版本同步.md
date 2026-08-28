@@ -46,9 +46,10 @@
 
 ## v2.2.6 当前合同与发布回执
 
+v2.2.6 已正式发布：annotated Tag 指向 `61e42d7c9f56beafe442e7429f757c096e9b06be`，原子工作流 run `33123938548` 成功，Release API 有 26 个维护者资产，页面连同两个 GitHub 源码归档共 28 个可见文件，并已设为 Latest。
+
 - 项目主页、GitHub Wiki、页面“关于”和 Electron“帮助”使用同一 canonical URL；生成 Pages HTML 后逐项检查链接。
 - 注册申请说明必须覆盖数量提交、部分/全部撤回、内置 `admin` 单条/批量删除，以及已处理申请不可重复操作。
 - 密码说明只写状态与安全重置，不得声称管理员能查看明文或哈希；重置必须说明会撤销会话。
 - 网页协作区分服务器权威 URL/revision 与各端 sandbox 独立加载；跨域、Cookie、地区、CSP/X-Frame-Options 不能被写成已同步交互，完全同画面使用实时共享。
 - Node 独立控制台说明没有 Electron 原生菜单，等价入口是 `--help`、`--open-browser`、控制台摘要和 `服务器运行信息.txt`。
-

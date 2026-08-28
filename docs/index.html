@@ -351,18 +351,22 @@ npm start</code></pre>
       <div class="shell download-layout">
         <div class="section-heading section-heading--dark">
           <h2>下载时先认清文件用途</h2>
-          <p>当前正式版为 v2.2.5（Latest）：26 个维护者资产加 2 个 GitHub 源码归档，共 28 个可见文件；v2.2.6 正在候选分支等待完整构建验证。仓库自动生成的 Source code ZIP 是源码，不等于完整安装包；可直接使用的文件以 Releases 中真实存在的资产为准。</p>
+          <p>v2.2.6 正在进行同版本更正发布：新 26 项资产完成最终 Tag 构建、哈希回读与线上核对前，旧下载包不能作为本轮修复证据。仓库自动生成的 Source code ZIP 是源码，不等于完整安装包；可直接使用的文件以 Releases 中真实存在且已核验的资产为准。</p>
         </div>
         <div class="download-actions">
           <a class="button button--primary" href="https://github.com/xuange6610/SyncWatch/releases/latest">打开最新 Release</a>
           <a class="button button--quiet" href="user-guide.html">阅读完整使用说明</a>
         </div>
         <ul class="download-notes">
-          <li><strong>Experience 体验版</strong><span>Windows 成员客户端，只连接已有服务器。</span></li>
-          <li><strong>Standard 标准版</strong><span>Windows 绿色便携服务器，内置运行环境与 cloudflared。</span></li>
-          <li><strong>Full Installer 完整版</strong><span>Windows 安装向导、快捷方式、卸载入口和完整服务器运行时。</span></li>
-          <li><strong>源码与独立服务端</strong><span>需要 Node.js，适合开发、审查或长期部署。</span></li>
-          <li><strong>macOS</strong><span>Intel 为 x64，Apple Silicon 为 arm64；现代 macOS 不支持 32 位应用。</span></li>
+          <li><strong><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Experience-Client-Portable-v2.2.6-x64.exe">Experience 体验版</a></strong><span>Windows 成员客户端，只连接已有服务器。</span></li>
+          <li><strong><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Standard-Server-Portable-v2.2.6-x64.exe">Standard 标准版</a></strong><span>Windows 绿色便携服务器，内置运行环境与 cloudflared。</span></li>
+          <li><strong><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-v2.2.6-Full-Offline-Installer-x64.exe">Full Installer 完整安装版</a></strong> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-v2.2.6-Full-Offline-Portable-x64.exe">完整便携版</a><span>Windows 完整服务器与离线下载中心。</span></li>
+          <li><strong><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Android-v2.2.6-universal.apk">Android APK</a></strong><span>通用 ABI，加入房间或在受支持设备运行手机服务器。</span></li>
+          <li><strong>macOS 客户端</strong><span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-x64.dmg">x64 DMG</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-x64.zip">x64 ZIP</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-arm64.dmg">arm64 DMG</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-arm64.zip">arm64 ZIP</a></span></li>
+          <li><strong>macOS 服务器</strong><span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-x64.dmg">x64 DMG</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-x64.zip">x64 ZIP</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-arm64.dmg">arm64 DMG</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-arm64.zip">arm64 ZIP</a></span></li>
+          <li><strong>macOS 完整离线版</strong><span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-x64.dmg">x64 DMG</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-x64.zip">x64 ZIP</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-arm64.dmg">arm64 DMG</a> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-arm64.zip">arm64 ZIP</a></span></li>
+          <li><strong>源码与独立服务端</strong><span><a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.6.zip">源码 ZIP</a> · <a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.6.tar.gz">源码 TAR.GZ</a>；需要 Node.js，适合开发、审查或长期部署。</span></li>
+          <li><strong>Node.js / cloudflared</strong><span>官方工具和 26 项完整资产请在<a href="https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.6">v2.2.6 Release</a>中按平台选择并校验 SHA-256。</span></li>
         </ul>
       </div>
     </section>

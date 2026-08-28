@@ -3,7 +3,7 @@
 - [Release 文件说明](../release-artifacts.md)
 - [28 文件发布资产清单](release-manifest.md)
 - [Release 文件地图 HTML](../release-artifacts.html)
-- [v2.2.6 发布说明（候选，待 26+2 文件门禁）](../release-notes-v2.2.6.md)
+- [v2.2.6 发布说明（正式版，26+2 文件门禁已通过）](../release-notes-v2.2.6.md)
 - [v2.2.3 发布说明（历史正式版）](../release-notes-v2.2.3.md)
 - [v2.2.0 发布说明](../release-notes-v2.2.0.md)
 - [v2.1.9 发布说明](../release-notes-v2.1.9.md)
