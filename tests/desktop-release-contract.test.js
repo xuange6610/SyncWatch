@@ -171,7 +171,7 @@ assert.doesNotMatch(windowsReleaseWorkflow, /gh release (?:create|upload|edit)|-
 assert.match(atomicReleaseWorkflow, /name: Build, verify, and publish one atomic release/);
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_REF\" = \"refs\/tags\/\$\{RELEASE_TAG\}\"/);
 assert.match(atomicReleaseWorkflow, /test \"\$\(find dist -maxdepth 1 -type f \| wc -l \| tr -d ' '\)\" = \"28\"/);
-assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{files\[@\]\}\"/);
+assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{replacement_files\[@\]\}\"/);
 assert.match(atomicReleaseWorkflow, /-F draft=false[\s\S]{0,100}-f make_latest=true/);
 assert.match(atomicReleaseWorkflow, /download-verification\.tsv/);
 

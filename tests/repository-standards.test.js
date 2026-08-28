@@ -238,9 +238,9 @@ assert.doesNotMatch(macReleaseWorkflow, /gh release upload|--draft=false|--lates
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_REF\" = \"refs\/tags\/\$\{RELEASE_TAG\}\"/);
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_SHA\" = \"\$commit_sha\"/);
 assert.match(atomicReleaseWorkflow, /Generate source archives directly in dist and verify exact 28/);
-assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{files\[@\]\}\"/);
+assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{replacement_files\[@\]\}\"/);
 assert.match(atomicReleaseWorkflow, /-F draft=false[\s\S]*-f make_latest=true/);
-assert.match(atomicReleaseWorkflow, /Atomic publication failed; this run's 26 expected names were removed/);
+assert.match(atomicReleaseWorkflow, /Atomic replacement failed before cutover/);
 
 const site = read('docs/index.html');
 assert.match(site, /<html\s+lang="zh-CN">/);
