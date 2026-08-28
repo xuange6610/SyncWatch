@@ -35,36 +35,23 @@ function manifestForVersion(version = defaultVersion) {
     asset(`SyncWatch-v${v}-Full-Offline-Portable-x64.exe`, GIB, 'windows-full', { maximumBytes: 2 * GIB })
   ];
   const android = [asset(`SyncWatch-Android-v${v}-universal.apk`, 150 * MIB, 'android', { maximumBytes: GIB })];
-  const macClient = [];
-  const macServer = [];
-  const macFull = [];
-  for (const arch of ['x64', 'arm64']) {
-    for (const extension of ['dmg', 'zip']) {
-      macClient.push(asset(`SyncWatch-Client-macOS-v${v}-${arch}.${extension}`, 100 * MIB, 'mac-client', { maximumBytes: GIB }));
-      macServer.push(asset(`SyncWatch-Server-macOS-v${v}-${arch}.${extension}`, 100 * MIB, 'mac-server', { maximumBytes: GIB }));
-      macFull.push(asset(`SyncWatch-Full-Offline-macOS-v${v}-${arch}.${extension}`, GIB, 'mac-full', { maximumBytes: 2 * GIB }));
-    }
-  }
   const officialByName = new Map(THIRD_PARTY_ASSETS.map((entry) => [entry.name, entry]));
   const nodeRuntime = [
     ['node-v24.19.0-x64.msi', 20 * MIB],
     ['node-v24.19.0-arm64.msi', 20 * MIB],
-    ['node-v24.19.0-macos-x64.pkg', 50 * MIB],
-    ['node-v24.19.0-darwin-arm64.tar.gz', 30 * MIB]
+    
   ].map(([name, minimumBytes]) => asset(name, minimumBytes, 'node', {
     kind: 'third-party', maximumBytes: 256 * MIB, sha256: officialByName.get(name)?.sha256
   }));
   const cloudflared = [
     'cloudflared-windows-x64.exe',
     'cloudflared-windows-x64-installer.msi',
-    'cloudflared-windows-x86-installer.msi',
-    'cloudflared-macos-x64',
-    'cloudflared-macos-arm64'
+    'cloudflared-windows-x86-installer.msi'
   ].map((name) => asset(name, 10 * MIB, 'cloudflared', {
     kind: 'third-party', maximumBytes: 128 * MIB, sha256: officialByName.get(name)?.sha256
   }));
-  const manifest = [...windowsBase, ...windowsFull, ...android, ...macClient, ...macServer, ...macFull, ...nodeRuntime, ...cloudflared];
-  if (manifest.length !== 26 || manifest.some((entry) => entry.kind === 'third-party' && !entry.sha256)) {
+  const manifest = [...windowsBase, ...windowsFull, ...android, ...nodeRuntime, ...cloudflared];
+  if (manifest.length !== 10 || manifest.some((entry) => entry.kind === 'third-party' && !entry.sha256)) {
     throw new Error('Release manifest is incomplete or is missing a pinned third-party digest.');
   }
   return manifest;
@@ -83,14 +70,11 @@ function requiredForPhase(phase, version = defaultVersion) {
   const manifest = manifestForVersion(version);
   const byGroup = (...groups) => manifest.filter((entry) => groups.includes(entry.group));
   const android = byGroup('android');
-  const macBase = byGroup('mac-client', 'mac-server');
   const windowsBase = byGroup('windows-base');
   switch (phase) {
     case 'android': return [];
-    case 'mac-base': return android;
-    case 'windows-base': return [...android, ...macBase];
-    case 'windows-full':
-    case 'mac-full': return [...android, ...macBase, ...windowsBase];
+    case 'windows-base': return [...android];
+    case 'windows-full': return [...android, ...windowsBase];
     case 'final': return manifest;
     case 'bundle': return [...manifest, ...sourceArchivesForVersion(version)];
     default: throw new Error(`Unknown release candidate phase: ${phase}`);
@@ -104,10 +88,7 @@ function assetsForSelection(selection, version = defaultVersion) {
   if (selection === 'bundle') return [...manifest, ...sourceArchivesForVersion(version)];
   if (selection === 'applications') return manifest.filter((entry) => entry.kind === 'application');
   if (selection === 'official') return manifest.filter((entry) => entry.kind === 'third-party');
-  if (['android', 'windows-base', 'windows-full', 'mac-full'].includes(selection)) return byGroup(selection);
-  if (selection === 'mac-base') return byGroup('mac-client', 'mac-server');
-  const match = /^(mac-client|mac-server|mac-full)-(x64|arm64)$/.exec(selection);
-  if (match) return byGroup(match[1]).filter((entry) => entry.name.includes(`-${match[2]}.`));
+  if (['android', 'windows-base', 'windows-full'].includes(selection)) return byGroup(selection);
   throw new Error(`Unknown release asset selection: ${selection}`);
 }
 

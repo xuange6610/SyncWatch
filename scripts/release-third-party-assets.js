@@ -41,22 +41,6 @@ const ASSETS = Object.freeze([
     upstream: `Node.js v${NODE_VERSION}`
   },
   {
-    name: `node-v${NODE_VERSION}-macos-x64.pkg`,
-    sourceName: `node-v${NODE_VERSION}.pkg`,
-    url: `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.pkg`,
-    sha256: '13ecebfefa0234e3d618b4a0af8c5803bdeedab30b84ee37cccafb7276d90a0e',
-    sourceSha256: '13ecebfefa0234e3d618b4a0af8c5803bdeedab30b84ee37cccafb7276d90a0e',
-    upstream: `Node.js v${NODE_VERSION}`
-  },
-  {
-    name: `node-v${NODE_VERSION}-darwin-arm64.tar.gz`,
-    sourceName: `node-v${NODE_VERSION}-darwin-arm64.tar.gz`,
-    url: `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-arm64.tar.gz`,
-    sha256: '8294b7aa9b03997481c06babf1e8b270c859358f27da57a11509afe537ac381d',
-    sourceSha256: '8294b7aa9b03997481c06babf1e8b270c859358f27da57a11509afe537ac381d',
-    upstream: `Node.js v${NODE_VERSION}`
-  },
-  {
     name: 'cloudflared-windows-x64.exe',
     sourceName: 'cloudflared-windows-amd64.exe',
     url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-windows-amd64.exe`,
@@ -80,24 +64,6 @@ const ASSETS = Object.freeze([
     sourceSha256: 'c8d16c3cf20106958ec907361844c170cbeafb1f1c8ba24c906f332413381dc5',
     upstream: `cloudflared ${CLOUDFLARED_VERSION}`
   },
-  {
-    name: 'cloudflared-macos-x64',
-    sourceName: 'cloudflared-darwin-amd64.tgz',
-    url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-darwin-amd64.tgz`,
-    sha256: 'b0f770e1e0b281399a57219b840fd8eef1cc25387a404124248157ea2073727a',
-    sourceSha256: 'f1727723c586500e2092368ae21871b3df7ddfd2cb097f22d81bee4a9c458bb4',
-    upstream: `cloudflared ${CLOUDFLARED_VERSION}`,
-    archive: true
-  },
-  {
-    name: 'cloudflared-macos-arm64',
-    sourceName: 'cloudflared-darwin-arm64.tgz',
-    url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-darwin-arm64.tgz`,
-    sha256: 'b61054d3d6326ea558cb49826eebf5676e0d0a36d51b546975096ca3e0e3c89d',
-    sourceSha256: '9042c2c5d8b2de78e60f313d5fb31b6c5c1cebde787a3caf1f2c9588084ac442',
-    upstream: `cloudflared ${CLOUDFLARED_VERSION}`,
-    archive: true
-  }
 ]);
 
 function digest(bytes) {
@@ -174,7 +140,7 @@ function writeVerifiedFile(outputDirectory, entry, bytes) {
   const staging = `${target}.${process.pid}.tmp`;
   fs.writeFileSync(staging, bytes, { flag: 'wx' });
   fs.renameSync(staging, target);
-  if (entry.name.startsWith('cloudflared-macos-')) fs.chmodSync(target, 0o755);
+  if (entry.name.startsWith('cloudflared-windows-')) fs.chmodSync(target, 0o755);
   return {
     name: entry.name, bytes: bytes.length, sha256: actual,
     upstream: entry.upstream, sourceName: entry.sourceName, sourceUrl: entry.url,

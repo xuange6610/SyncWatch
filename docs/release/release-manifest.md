@@ -2,21 +2,21 @@
 
 ## 数量规则
 
-每个正式版本在 GitHub Release 页面应显示 12 个文件：
+按当前维护者范围，每个新正式版本只发布 Windows 与 Android，页面应显示 12 个文件：
 
 - 2 个 GitHub 自动生成的源码归档：`Source code (zip)`、`Source code (tar.gz)`。
 - 10 个维护者上传的真实构建资产，按下表分组。
 
 Release API 的 `assets` 数量必须为 10；页面把两个源码归档也算进去后就是用户看到的 12 个文件。源码归档不需要手工上传，也不计入 10 个构建资产的 SHA-256 清单。
 
-## 10 个维护者资产
+## 10 个维护者资产（Windows + Android）
 
 | 数量 | 分组 | 文件模式 |
 | ---: | --- | --- |
 | 4 | Windows 桌面 | `SyncWatch-Experience-Client-Portable-vX.Y.Z-x64.exe`、`SyncWatch-Standard-Server-Portable-vX.Y.Z-x64.exe`、`SyncWatch-vX.Y.Z-Full-Offline-Installer-x64.exe`、`SyncWatch-vX.Y.Z-Full-Offline-Portable-x64.exe` |
 | 1 | Android | `SyncWatch-Android-vX.Y.Z-universal.apk` |
 | 2 | Node.js Windows 运行时 | `node-v24.19.0-x64.msi`、`node-v24.19.0-arm64.msi` |
-| 3 | cloudflared Windows | `cloudflared-windows-x64.exe`、Windows x64/x86 installer MSI |
+| 3 | cloudflared Windows 工具 | `cloudflared-windows-x64.exe`、Windows x64/x86 installer MSI |
 
 ## 发布前检查
 
