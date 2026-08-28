@@ -12,6 +12,9 @@ const THIRD_PARTY_EVIDENCE_SCHEMA = 'syncwatch-third-party-evidence-v1';
 const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
 const DOWNLOAD_ATTEMPTS = 3;
 const PROJECT_VERSION = String(require('../package.json').version);
+const DEFAULT_CACHE_DIRECTORY = path.resolve(
+  process.env.SYNCWATCH_THIRD_PARTY_CACHE || path.join('.cache', 'release-third-party')
+);
 let proxyDispatcher;
 
 function getProxyDispatcher() {
@@ -41,22 +44,6 @@ const ASSETS = Object.freeze([
     upstream: `Node.js v${NODE_VERSION}`
   },
   {
-    name: `node-v${NODE_VERSION}-macos-x64.pkg`,
-    sourceName: `node-v${NODE_VERSION}.pkg`,
-    url: `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.pkg`,
-    sha256: '13ecebfefa0234e3d618b4a0af8c5803bdeedab30b84ee37cccafb7276d90a0e',
-    sourceSha256: '13ecebfefa0234e3d618b4a0af8c5803bdeedab30b84ee37cccafb7276d90a0e',
-    upstream: `Node.js v${NODE_VERSION}`
-  },
-  {
-    name: `node-v${NODE_VERSION}-darwin-arm64.tar.gz`,
-    sourceName: `node-v${NODE_VERSION}-darwin-arm64.tar.gz`,
-    url: `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-arm64.tar.gz`,
-    sha256: '8294b7aa9b03997481c06babf1e8b270c859358f27da57a11509afe537ac381d',
-    sourceSha256: '8294b7aa9b03997481c06babf1e8b270c859358f27da57a11509afe537ac381d',
-    upstream: `Node.js v${NODE_VERSION}`
-  },
-  {
     name: 'cloudflared-windows-x64.exe',
     sourceName: 'cloudflared-windows-amd64.exe',
     url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-windows-amd64.exe`,
@@ -80,24 +67,6 @@ const ASSETS = Object.freeze([
     sourceSha256: 'c8d16c3cf20106958ec907361844c170cbeafb1f1c8ba24c906f332413381dc5',
     upstream: `cloudflared ${CLOUDFLARED_VERSION}`
   },
-  {
-    name: 'cloudflared-macos-x64',
-    sourceName: 'cloudflared-darwin-amd64.tgz',
-    url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-darwin-amd64.tgz`,
-    sha256: 'b0f770e1e0b281399a57219b840fd8eef1cc25387a404124248157ea2073727a',
-    sourceSha256: 'f1727723c586500e2092368ae21871b3df7ddfd2cb097f22d81bee4a9c458bb4',
-    upstream: `cloudflared ${CLOUDFLARED_VERSION}`,
-    archive: true
-  },
-  {
-    name: 'cloudflared-macos-arm64',
-    sourceName: 'cloudflared-darwin-arm64.tgz',
-    url: `https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-darwin-arm64.tgz`,
-    sha256: 'b61054d3d6326ea558cb49826eebf5676e0d0a36d51b546975096ca3e0e3c89d',
-    sourceSha256: '9042c2c5d8b2de78e60f313d5fb31b6c5c1cebde787a3caf1f2c9588084ac442',
-    upstream: `cloudflared ${CLOUDFLARED_VERSION}`,
-    archive: true
-  }
 ]);
 
 function digest(bytes) {
@@ -174,12 +143,28 @@ function writeVerifiedFile(outputDirectory, entry, bytes) {
   const staging = `${target}.${process.pid}.tmp`;
   fs.writeFileSync(staging, bytes, { flag: 'wx' });
   fs.renameSync(staging, target);
-  if (entry.name.startsWith('cloudflared-macos-')) fs.chmodSync(target, 0o755);
+  if (entry.name.startsWith('cloudflared-windows-')) fs.chmodSync(target, 0o755);
   return {
     name: entry.name, bytes: bytes.length, sha256: actual,
     upstream: entry.upstream, sourceName: entry.sourceName, sourceUrl: entry.url,
     sourceSha256: entry.sourceSha256
   };
+}
+
+function writeCacheFile(cacheDirectory, entry, bytes) {
+  fs.mkdirSync(cacheDirectory, { recursive: true });
+  const target = path.join(cacheDirectory, entry.name);
+  if (fs.existsSync(target)) {
+    const existing = fs.readFileSync(target);
+    if (digest(existing) !== entry.sourceSha256) {
+      throw new Error(`Refusing to replace an invalid cached official asset: ${target}`);
+    }
+    return target;
+  }
+  const staging = `${target}.${process.pid}.tmp`;
+  fs.writeFileSync(staging, bytes, { flag: 'wx' });
+  fs.renameSync(staging, target);
+  return target;
 }
 
 function findCloudflared(directory) {
@@ -195,11 +180,23 @@ function findCloudflared(directory) {
   return '';
 }
 
-async function prepareAsset(outputDirectory, entry) {
-  const downloaded = await download(entry.url);
-  const sourceDigest = digest(downloaded);
-  if (sourceDigest !== entry.sourceSha256) {
-    throw new Error(`Upstream SHA-256 mismatch for ${entry.sourceName}: expected ${entry.sourceSha256}, got ${sourceDigest}`);
+async function prepareAsset(outputDirectory, entry, cacheDirectory) {
+  let downloaded;
+  const cachedPath = path.join(cacheDirectory, entry.name);
+  if (fs.existsSync(cachedPath)) {
+    downloaded = fs.readFileSync(cachedPath);
+    if (digest(downloaded) !== entry.sourceSha256) {
+      throw new Error(`Cached official asset SHA-256 mismatch for ${entry.name}; remove the cache entry and retry.`);
+    }
+    console.log(`${entry.name} | reused verified local cache ${cachedPath}`);
+  } else {
+    downloaded = await download(entry.url);
+    const sourceDigest = digest(downloaded);
+    if (sourceDigest !== entry.sourceSha256) {
+      throw new Error(`Upstream SHA-256 mismatch for ${entry.sourceName}: expected ${entry.sourceSha256}, got ${sourceDigest}`);
+    }
+    writeCacheFile(cacheDirectory, entry, downloaded);
+    console.log(`${entry.name} | downloaded and cached at ${cachedPath}`);
   }
   if (!entry.archive) return writeVerifiedFile(outputDirectory, entry, downloaded);
 
@@ -220,12 +217,12 @@ async function prepareAsset(outputDirectory, entry) {
 }
 
 function parseArguments(argv) {
-  const options = { output: '', evidence: '', only: [], runId: '', runAttempt: '' };
+  const options = { output: '', evidence: '', only: [], runId: '', runAttempt: '', cacheDirectory: DEFAULT_CACHE_DIRECTORY };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     const value = argv[index + 1];
     if (key === '--print-manifest') { options.print = true; continue; }
-    if (!['--output', '--evidence', '--only', '--run-id', '--run-attempt'].includes(key) || !value) {
+    if (!['--output', '--evidence', '--only', '--run-id', '--run-attempt', '--cache-directory'].includes(key) || !value) {
       throw new Error(`Invalid argument: ${key}`);
     }
     const optionName = key.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -252,7 +249,7 @@ async function main(argv = process.argv.slice(2)) {
   await verifyUpstreamManifests(selected);
   const evidence = [];
   for (const entry of selected) {
-    const row = await prepareAsset(outputDirectory, entry);
+    const row = await prepareAsset(outputDirectory, entry, path.resolve(options.cacheDirectory));
     evidence.push(row);
     console.log(`${row.name} | ${row.bytes} bytes | SHA-256 ${row.sha256}`);
   }
@@ -281,6 +278,7 @@ module.exports = {
   THIRD_PARTY_EVIDENCE_SCHEMA,
   DOWNLOAD_TIMEOUT_MS,
   DOWNLOAD_ATTEMPTS,
+  DEFAULT_CACHE_DIRECTORY,
   digest,
   parseArguments,
   verifyUpstreamManifests

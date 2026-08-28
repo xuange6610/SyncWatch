@@ -10,10 +10,6 @@ const version = String(require(path.join(repositoryRoot, 'package.json')).versio
 const expected = [
   [`windows/SyncWatch-Experience-Client-Portable-v${version}-x64.exe`, 50 * 1024 * 1024],
   [`android/SyncWatch-Android-v${version}-universal.apk`, 50 * 1024 * 1024],
-  [`mac/SyncWatch-Server-macOS-v${version}-x64.zip`, 100 * 1024 * 1024],
-  [`mac/SyncWatch-Server-macOS-v${version}-arm64.zip`, 100 * 1024 * 1024],
-  [`mac/SyncWatch-Client-macOS-v${version}-x64.zip`, 100 * 1024 * 1024],
-  [`mac/SyncWatch-Client-macOS-v${version}-arm64.zip`, 100 * 1024 * 1024]
 ];
 
 function listFiles(directory) {
@@ -35,7 +31,7 @@ for (const [relative, minimum] of expected) {
 assert.deepEqual(
   listFiles(root).sort(),
   expected.map(([relative]) => relative).sort(),
-  'Full Offline bundle must contain exactly the six curated platform files'
+  'Full Offline bundle must contain exactly the two Windows/Android platform files'
 );
-assert.ok(total >= 900 * 1024 * 1024, `Full offline payload is unexpectedly small (${total} bytes)`);
+assert.ok(total >= 100 * 1024 * 1024, `Full offline payload is unexpectedly small (${total} bytes)`);
 console.log(`Full offline bundle verified: ${expected.length} platform files, ${total} bytes.`);

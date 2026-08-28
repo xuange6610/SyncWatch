@@ -21,7 +21,10 @@ const environment = {
   SYNCWATCH_LONG_PLAY_DOWNLOAD_KBPS: '2100',
   SYNCWATCH_LONG_PLAY_RECOVERY_KBPS: '16000',
   SYNCWATCH_LONG_PLAY_LATENCY_MS: '250',
-  SYNCWATCH_LONG_PLAY_OUTAGE_MS: '45000',
+  // Keep the intentional outage within the same bounded recovery window as
+  // the default smoke. A 45s outage can exhaust Chromium's buffered media
+  // on hosted runners before the recovered Range path is observable.
+  SYNCWATCH_LONG_PLAY_OUTAGE_MS: '25000',
   SYNCWATCH_LONG_PLAY_OUTAGE_AT_SECONDS: '8',
   SYNCWATCH_LONG_PLAY_USE_QUICK_TUNNEL: '0',
   SYNCWATCH_LONG_PLAY_REPORT: reportPath

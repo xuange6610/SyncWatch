@@ -19,7 +19,6 @@ const electronServer = read('electron-pink.js');
 const electronClient = read('electron-client.js');
 const clientPreload = read('electron-client-preload.js');
 const launcher = read('client-launcher.html');
-const macReleaseWorkflow = read('.github/workflows/release-macos.yml');
 const windowsReleaseWorkflow = read('.github/workflows/release-windows.yml');
 const atomicReleaseWorkflow = read('.github/workflows/release-atomic.yml');
 const fullOfflinePreparation = read('scripts/prepare-full-offline-bundle.js');
@@ -115,15 +114,15 @@ for (const [label, config] of [
   ['macOS Full', macFullConfig]
 ]) {
   const resources = (config.extraResources || []).map((entry) => `${entry.from || ''} -> ${entry.to || ''}`);
-  for (const directory of ['.build/offline-bundle/windows', '.build/offline-bundle/android', '.build/offline-bundle/mac']) {
+  for (const directory of ['.build/offline-bundle/windows', '.build/offline-bundle/android']) {
     assert.ok(resources.some((entry) => entry.includes(directory)), `${label} must embed ${directory}`);
   }
 }
 assert.match(fullOfflinePreparation, /SyncWatch-Experience-Client-Portable/);
 assert.match(fullOfflinePreparation, /SyncWatch-Android/);
-assert.equal((fullOfflinePreparation.match(/macOS-v\$\{version\}/g) || []).length, 4);
+assert.equal((fullOfflinePreparation.match(/macOS-v\$\{version\}/g) || []).length, 0);
 assert.doesNotMatch(fullOfflinePreparation, /Standard-Server|\.dmg/);
-assert.match(fullOfflineVerification, /exactly the six curated platform files/);
+assert.match(fullOfflineVerification, /exactly the two Windows\/Android platform files/);
 assert.equal(fullInstallerConfig.nsis.artifactName, `SyncWatch-v${manifest.version}-Full-Offline-Installer-\${arch}.exe`);
 assert.equal(fullPortableConfig.portable.artifactName, `SyncWatch-v${manifest.version}-Full-Offline-Portable-\${arch}.exe`);
 assert.equal(manifest.build.portable.artifactName, `SyncWatch-Standard-Server-Portable-v${manifest.version}-\${arch}.exe`);
@@ -138,18 +137,8 @@ assert.match(electronServer, /offline-downloads['"], ['"]mac/);
 assert.doesNotMatch(windowsBuild, /SyncWatch同步观影-Client-v2\.1\.7\.exe/);
 assert.match(windowsBuild, new RegExp(`SyncWatch-Experience-Client-Portable-v${manifest.version.replaceAll('.', '\\.')}-x64\\.exe`));
 
-// Platform workflows only build immutable candidates. The atomic caller
-// collects one same-run set, verifies it, and is the sole Release publisher.
-assert.match(macReleaseWorkflow, /name: Build macOS release artifacts/);
-assert.match(macReleaseWorkflow, /workflow_call:/);
-assert.match(macReleaseWorkflow, /if: inputs\.phase == 'base'/);
-assert.match(macReleaseWorkflow, /if: inputs\.phase == 'full'/);
-assert.match(macReleaseWorkflow, /release-candidate-gate\.js[\s\S]{0,260}--selection \"\$RELEASE_SELECTION\"/);
-assert.doesNotMatch(macReleaseWorkflow, /gh release (?:create|upload|edit)|--draft=false|--latest/,
-  'macOS candidate workflow must not mutate a Release');
-assert.match(macReleaseWorkflow, /RELEASE_ROLE: \$\{\{ matrix\.role \}\}/);
-assert.match(macReleaseWorkflow, /SyncWatch-\$\{RELEASE_ROLE\}-macOS-v\$\{RELEASE_VERSION\}-\$\{RELEASE_ARCH\}\.dmg/);
-assert.match(macReleaseWorkflow, /SyncWatch-\$\{RELEASE_ROLE\}-macOS-v\$\{RELEASE_VERSION\}-\$\{RELEASE_ARCH\}\.zip/);
+// Platform workflow only builds immutable Windows/Android candidates. The
+// atomic caller collects one same-run set and is the sole Release publisher.
 for (const publicPattern of [
   'SyncWatch-Experience-Client-Portable-v$env:RELEASE_VERSION-x64.exe',
   'SyncWatch-Standard-Server-Portable-v$env:RELEASE_VERSION-x64.exe',
@@ -170,7 +159,7 @@ assert.doesNotMatch(windowsReleaseWorkflow, /gh release (?:create|upload|edit)|-
   'Windows candidate workflow must not mutate a Release');
 assert.match(atomicReleaseWorkflow, /name: Build, verify, and publish one atomic release/);
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_REF\" = \"refs\/tags\/\$\{RELEASE_TAG\}\"/);
-assert.match(atomicReleaseWorkflow, /test \"\$\(find dist -maxdepth 1 -type f \| wc -l \| tr -d ' '\)\" = \"28\"/);
+assert.match(atomicReleaseWorkflow, /find dist -maxdepth 1 -type f[\s\S]*= \"12\"/);
 assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{replacement_files\[@\]\}\"/);
 assert.match(atomicReleaseWorkflow, /-F draft=false[\s\S]{0,100}-f make_latest=true/);
 assert.match(atomicReleaseWorkflow, /download-verification\.tsv/);

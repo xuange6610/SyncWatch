@@ -102,6 +102,7 @@ main { height: calc(100% - 58px); }
 .auth-check { display: flex; align-items: center; justify-content: center; }.auth-check input, .check-line input { width: auto; }
 .form-status { min-width: 0; min-height: 20px; margin: 0; color: var(--red); text-align: left; line-height: 1.55; overflow-wrap: anywhere; }.form-status.success { color: var(--green); }
 .login-status-banner { display: grid; grid-template-columns: minmax(0, 1fr) 30px; gap: 8px; align-items: center; margin: 10px 0 8px; padding: 9px 9px 9px 12px; color: var(--red); background: color-mix(in srgb, var(--red) 9%, var(--panel-2)); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); border-radius: 7px; box-shadow: 0 8px 24px #0003; }
+.login-status-banner .secondary-button { grid-column: 1 / -1; width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; line-height: 1.35; }
 .login-status-banner.success { background: color-mix(in srgb, var(--green) 9%, var(--panel-2)); border-color: color-mix(in srgb, var(--green) 55%, transparent); }
 .login-status-banner button { display: grid; width: 30px; height: 30px; min-height: 30px; place-items: center; padding: 0; color: currentColor; background: transparent; border: 0; border-radius: 6px; font-size: 20px; line-height: 1; }
 .login-status-banner button:hover { color: var(--text); background: #ffffff12; }
@@ -355,6 +356,7 @@ body.ambient-light-on .topbar, body.ambient-light-on .side-panel { background-co
 .management-modal-card { width: min(820px, 100%); min-height: min(560px, calc(100dvh - 36px)); display: flex; flex-direction: column; }
 .management-hub-card { width: min(1080px, 100%); height: min(760px, calc(100dvh - 36px)); overflow: hidden; padding: 0; }.management-hub-layout { height: 100%; display: grid; grid-template-columns: 210px minmax(0, 1fr); }.management-nav { display: grid; align-content: start; gap: 4px; padding: 22px 14px; background: #12171a; border-right: 1px solid var(--line); }.management-nav h2 { margin: 3px 0 16px; }.management-nav button { min-height: 40px; padding: 9px 11px; text-align: left; color: var(--muted); background: transparent; border: 0; border-radius: 7px; }.management-nav button.active { color: #09201c; background: var(--pink); font-weight: 800; }.management-content { min-width: 0; overflow-y: auto; padding: 18px 24px 28px; }.management-content #adminTab { padding: 0; }.management-content [data-management-panel].management-filtered { display: none !important; }
 .management-content, .account-content { min-height: 0; scrollbar-color: var(--theme-accent, var(--pink)) color-mix(in srgb, var(--panel-2) 86%, transparent); scrollbar-width: thin; }
+.management-theme-status { display: inline-block; margin-left: 8px; color: var(--theme-accent, var(--pink-2)); font-size: .55em; font-weight: 600; vertical-align: middle; white-space: nowrap; }
 .management-content::-webkit-scrollbar, .account-content::-webkit-scrollbar { width: 9px; }.management-content::-webkit-scrollbar-track, .account-content::-webkit-scrollbar-track { background: color-mix(in srgb, var(--panel-2) 88%, transparent); }.management-content::-webkit-scrollbar-thumb, .account-content::-webkit-scrollbar-thumb { background: var(--theme-accent, var(--pink)); border: 2px solid color-mix(in srgb, var(--panel-2) 92%, transparent); border-radius: 6px; }
 .live-voice-bar { display: flex; align-items: center; gap: 7px; padding: 8px 10px; background: #ffffff06; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }.live-voice-bar > div { display: grid; min-width: 0; margin-right: auto; }.live-voice-bar strong { font-size: 11px; }.live-voice-bar small { color: var(--muted); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.live-voice-bar button { flex: 0 0 auto; min-height: 30px; padding: 5px 8px; font-size: 9px; }.live-voice-bar.is-collapsed > :not(:first-child):not(.voice-fold-button) { display: none; }.live-voice-bar.is-collapsed .voice-fold-button { margin-left: auto; }.voice-fold-button { min-width: 82px; }.voice-audio-dock { position: fixed; width: 1px; height: 1px; overflow: hidden; opacity: .01; pointer-events: none; }
 .user-card.super-admin { border-color: #6ad9f366; }.user-permissions { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2877,6 +2879,18 @@ body.fullscreen-open .toast-region,
 body.fullscreen-open #clearAllToastsBtn { display: none !important; }
 .player-container:fullscreen .danmaku-container,
 .player-container.fullscreen-active .danmaku-container { display: block !important; visibility: visible !important; opacity: 1 !important; }
+.player-container:fullscreen:not(.controls-visible) .fullscreen-lock-button,
+.player-container.fullscreen-active:not(.controls-visible) .fullscreen-lock-button { opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px); }
+.fullscreen-lock-button { transition: opacity .18s ease, visibility .18s ease, transform .18s ease; }
+.room-ownership-meta { display: block; margin-top: 4px; color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+.fullscreen-auto-lock-option { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .76rem; color: var(--muted); }
+.fullscreen-auto-lock-option input { accent-color: var(--pink); }
+.fullscreen-chat-card { font-size: .86rem; }
+.fullscreen-chat-history { font-size: .82rem; }
+.chat-head { min-width: 0; }
+.chat-head-actions { min-width: 0; flex-wrap: wrap; }
+.chat-head-actions #chatToggleBtn { flex: 0 0 auto; white-space: nowrap; position: relative; z-index: 2; }
+.chat-only-toggle { writing-mode: horizontal-tb !important; white-space: nowrap; display: inline-flex !important; align-items: center; gap: 5px; }
 .fullscreen-chat-card {
   width: min(390px, 38vw);
   min-width: min(300px, calc(100vw - 28px));
@@ -2900,4 +2914,25 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .player-container.fullscreen-active .fullscreen-actions { left: 8px; right: 8px; max-width: none; max-height: 38dvh; }
   .queue-bulk-toolbar { align-items: stretch; }
   .queue-bulk-toolbar > * { flex: 1 1 130px; }
+  .chat-head-actions { width: 100%; justify-content: flex-end; gap: 5px; }
+  .chat-head-actions > * { max-width: 100%; }
+  .chat-only-toggle { order: -1; }
+  .fullscreen-chat-card { font-size: .78rem; }
+  .fullscreen-chat-history { font-size: .74rem; }
 }
+/* v2.2.7 usability refinements */
+.management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }
+.management-hub-card.management-loading .management-content { content-visibility: auto; contain: layout paint; }
+.management-content .management-filtered { content-visibility: auto; contain-intrinsic-size: 220px; }
+.room-card-main { gap: 6px !important; }
+.room-card-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.room-card-title strong { color: var(--text); font-size: 1rem; line-height: 1.35; }
+.room-card-title code { color: var(--theme-accent, var(--pink-2)); font-size: .82rem; letter-spacing: .08em; }
+.room-card-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.room-card-badges span { padding: 2px 7px; color: var(--theme-accent, var(--pink-2)); font-size: .72rem; line-height: 1.35; border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 36%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--theme-accent, var(--pink)) 9%, transparent); }
+.room-card-meta, .room-card-note { font-size: .78rem !important; line-height: 1.45; }
+.room-card-note { color: var(--text-muted, var(--muted)); }
+.download-recommended { outline: 2px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 70%, transparent); outline-offset: -2px; background: color-mix(in srgb, var(--theme-accent, var(--pink)) 10%, transparent); }
+.download-recommended-badge { display: inline-block; margin-right: 7px; padding: 2px 6px; color: #0b1c16; font-size: .72rem; font-weight: 800; border-radius: 999px; background: var(--theme-accent, var(--pink)); }
+.fullscreen-lock-button[data-lock-state="locked"] span:last-child { color: var(--theme-accent, var(--pink-2)); font-weight: 800; }
+.fullscreen-lock-button[data-lock-state="unlocked"] span:last-child { color: #fff; }

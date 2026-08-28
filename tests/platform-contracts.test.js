@@ -75,8 +75,8 @@ assert.ok(!packageManifest.build.extraResources.some((entry) => ['mac', 'mobile'
 assert.match(embeddedMacReadme, /scripts\/build-macos\.sh/);
 assert.match(windowsBuild, /\$buildRoot\s*=.*['"]\.build['"][\s\S]{0,160}\$offlineRoot\s*=\s*Join-Path\s+\$buildRoot\s+['"]offline-bundle['"]/,
   'Windows Full Offline packaging must use the temporary offline bundle');
-assert.ok(windowsBuild.includes(`SyncWatch-Server-macOS-v${packageManifest.version}-x64.zip`),
-  'Windows Full Offline packaging must require canonical macOS artifacts from root dist');
+assert.ok(windowsBuild.includes(`SyncWatch-Android-v${packageManifest.version}-universal.apk`),
+  'Windows Full Offline packaging must require the canonical Android artifact from root dist');
 assert.doesNotMatch(windowsBuild, /win-unpacked\\resources\\mac/,
   'Windows packaging must not copy macOS payloads into the Windows executable');
 assert.ok(standalone.includes(`SyncWatch-Server-macOS-v${packageManifest.version}`));

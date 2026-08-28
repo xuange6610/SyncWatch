@@ -19,7 +19,6 @@ const requiredFiles = [
   '.github/PULL_REQUEST_TEMPLATE.md',
   '.github/CODEOWNERS',
   '.github/workflows/ci.yml',
-  '.github/workflows/release-macos.yml',
   '.github/workflows/release-windows.yml',
   '.github/workflows/release-atomic.yml',
   '.github/workflows/pages.yml',
@@ -84,7 +83,6 @@ const requiredFiles = [
   'tests/release-candidate-gate.test.js',
   'tests/release-third-party-assets.test.js',
   'electron-builder-windows-full-portable.json',
-  'electron-builder-mac-full.json',
   'assets/app-icon.png',
   'assets/app-icon.ico'
 ];
@@ -138,34 +136,32 @@ assert.match(readme, /微信:\s*love_020804/);
 assert.match(readme, /xuange6610\.github\.io\/SyncWatch\//);
 assert.match(readme, /docs\/screenshots\/main-interface\.png/);
 const stableReleaseBanner = new RegExp(`当前正式发布：\\[${escapeRegExp(latestStableTag)}\\]\\(https:\\/\\/github\\.com\\/xuange6610\\/SyncWatch\\/releases\\/tag\\/${escapeRegExp(latestStableTag)}\\).*Latest`);
-const candidateReleaseBanner = readme.includes('当前正式发布：[v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5)') && readme.includes('v2.2.6') && readme.includes('候选分支');
+const candidateReleaseBanner = readme.includes('当前正式发布：[v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5)') && readme.includes('v2.2.7') && readme.includes('候选分支');
 assert.ok(stableReleaseBanner.test(readme) || candidateReleaseBanner, 'README must describe either the published version or an explicitly pending candidate');
 assert.ok(new RegExp(`${escapeRegExp(latestStableTag)}.*发布并设为 Latest`, 's').test(readme) || new RegExp(`${escapeRegExp(latestStableTag)}.*源码候选改动.*等待`, 's').test(readme));
-assert.match(readme, /26 个维护者资产.*(?:两个|2 个)(?: GitHub)? 源码归档.*28 个文件/s);
+assert.match(readme, /10 个维护者资产.*(?:两个|2 个)(?: GitHub)? 源码归档.*12 个文件/s);
 assert.match(readme, new RegExp(`SyncWatch-${escapeRegExp(latestStableTag)}-Full-Offline-Installer-x64\\.exe`));
 assert.match(readme, new RegExp(`SyncWatch-${escapeRegExp(latestStableTag)}-Full-Offline-Portable-x64\\.exe`));
-assert.match(readme, new RegExp(`SyncWatch-Full-Offline-macOS-${escapeRegExp(latestStableTag)}-x64\\.dmg`));
-assert.match(readme, new RegExp(`SyncWatch-Full-Offline-macOS-${escapeRegExp(latestStableTag)}-arm64\\.dmg`));
 assert.match(readme, /cloudflared-windows-x64-installer\.msi/);
 assert.match(readme, /node-v24\.19\.0-x64\.msi/);
 
 const agents = read('AGENTS.md');
-assert.match(agents, /28 个可见文件/);
-assert.match(agents, /26 个维护者资产/);
+assert.match(agents, /12 个可见文件/);
+assert.match(agents, /10 个维护者资产/);
 assert.match(agents, /每次开始新任务/);
 assert.match(agents, /每次任务完成/);
 assert.match(agents, /docs\/maintenance\/maintainer-requirements\.md/);
 const stableAgentSnapshot = `当前最新正式版本为 ${String.fromCharCode(96)}${latestStableTag}${String.fromCharCode(96)}`;
-assert.ok(agents.includes(stableAgentSnapshot) || (agents.includes('当前线上正式版本仍为 `v2.2.5`') && agents.includes(`${latestStableTag}`) && agents.includes('候选分支')));
+assert.ok(agents.includes(stableAgentSnapshot) || (agents.includes(`${latestStableTag}`) && agents.includes('候选')));
 const maintainerRequirements = read('docs/maintenance/maintainer-requirements.md');
 assert.match(maintainerRequirements, /每次开始任务必须执行/);
-assert.match(maintainerRequirements, /26 个维护者真实资产/);
-assert.match(maintainerRequirements, /28 个可见文件/);
+assert.match(maintainerRequirements, /10 个维护者真实资产/);
+assert.match(maintainerRequirements, /12 个可见文件/);
 assert.match(maintainerRequirements, /任何历史 Release、历史 tag 和旧版本资产都必须保留/);
 assert.match(maintainerRequirements, /Release 正文与更新公告/);
 assert.match(maintainerRequirements, /Android 验收要求/);
 const stableMaintainerSnapshot = `当前线上正式版本：${String.fromCharCode(96)}${latestStableTag}${String.fromCharCode(96)}`;
-assert.ok(maintainerRequirements.includes(stableMaintainerSnapshot) || (maintainerRequirements.includes('当前线上正式版本：`v2.2.5`') && maintainerRequirements.includes(`${latestStableTag}`) && maintainerRequirements.includes('仍是候选')));
+assert.ok(maintainerRequirements.includes(stableMaintainerSnapshot) || (maintainerRequirements.includes(`${latestStableTag}`) && maintainerRequirements.includes('候选')));
 const releaseManifest = read('docs/release/release-manifest.md');
 assert.match(releaseManifest, /Source code \(zip\)/);
 assert.match(releaseManifest, /26 个维护者资产/);
@@ -181,7 +177,7 @@ const currentReleaseNotesPath = `docs/release-notes-${sourceTag}.md`;
 assert.ok(exists(currentReleaseNotesPath), `missing current release notes: ${currentReleaseNotesPath}`);
 const currentReleaseNotes = read(currentReleaseNotesPath);
 assert.match(currentReleaseNotes, new RegExp(`SyncWatch同步观影 ${escapeRegExp(sourceTag)} 发布说明`));
-assert.match(currentReleaseNotes, /17 个 SyncWatch 应用资产/);
+assert.match(currentReleaseNotes, /5 个 SyncWatch 应用资产/);
 assert.match(currentReleaseNotes, /最终.*Tag.*真实重建/s);
 
 const pages = read('.github/workflows/pages.yml');
@@ -202,7 +198,6 @@ assert.match(read('CONTRIBUTING.md'), /Pull Request/);
 assert.match(read('CONTRIBUTING.md'), /分支保护/);
 
 const windowsRelease = read('.github/workflows/release-windows.yml');
-const macReleaseWorkflow = read('.github/workflows/release-macos.yml');
 const atomicReleaseWorkflow = read('.github/workflows/release-atomic.yml');
 const releaseCandidateGate = read('scripts/release-candidate-gate.js');
 assert.match(windowsRelease, /npm install --global pnpm@11\.9\.0/,
@@ -231,13 +226,9 @@ assert.match(windowsRelease, /if: inputs\.phase == 'android'/);
 assert.match(windowsRelease, /if: inputs\.phase == 'base'/);
 assert.match(windowsRelease, /if: inputs\.phase == 'full'/);
 assert.doesNotMatch(windowsRelease, /gh release upload|--draft=false|--latest/);
-assert.match(macReleaseWorkflow, /workflow_call:/);
-assert.match(macReleaseWorkflow, /if: inputs\.phase == 'base'/);
-assert.match(macReleaseWorkflow, /if: inputs\.phase == 'full'/);
-assert.doesNotMatch(macReleaseWorkflow, /gh release upload|--draft=false|--latest/);
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_REF\" = \"refs\/tags\/\$\{RELEASE_TAG\}\"/);
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_SHA\" = \"\$commit_sha\"/);
-assert.match(atomicReleaseWorkflow, /Generate source archives directly in dist and verify exact 28/);
+assert.match(atomicReleaseWorkflow, /Generate source archives directly in dist and verify exact 12/);
 assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{replacement_files\[@\]\}\"/);
 assert.match(atomicReleaseWorkflow, /-F draft=false[\s\S]*-f make_latest=true/);
 assert.match(atomicReleaseWorkflow, /Atomic replacement failed before cutover/);

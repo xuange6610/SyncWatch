@@ -43,11 +43,17 @@ function Assert-NodeMobileRuntime([string]$root) {
         throw "Node.js Mobile header checksum mismatch in ${root}. Expected $NodeMobileHeaderSha256, got $headerHash."
     }
 
+    # The Linux combine job may provide a freshly rebuilt 16 KB runtime. That
+    # runtime is verified there against its source closure and ELF alignment,
+    # so the Android packaging step must not reject its ABI-specific digests
+    # as if they were the original upstream archive. Local builds keep the
+    # pinned upstream digest gate unless this CI-only handoff is explicit.
+    $allowGeneratedRuntime = $env:SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE -eq '1'
     foreach ($abi in $NodeMobileLibSha256.Keys) {
         $library = Join-Path $root "bin\$abi\libnode.so"
         $actualHash = Get-Sha256 $library
         $expectedHash = $NodeMobileLibSha256[$abi]
-        if ($actualHash -ne $expectedHash) {
+        if (-not $allowGeneratedRuntime -and $actualHash -ne $expectedHash) {
             throw "Node.js Mobile $abi checksum mismatch in ${root}. Expected $expectedHash, got $actualHash."
         }
     }
@@ -314,7 +320,7 @@ function Assert-ApkPayload([string]$apkPath, [string]$repositoryRoot) {
             $entryName = "lib/$abi/libnode.so"
             $actualHash = Get-ZipEntrySha256 $entries[$entryName]
             $expectedHash = $NodeMobilePackagedLibSha256[$abi]
-            if ($actualHash -ne $expectedHash) {
+            if (-not ($env:SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE -eq '1') -and $actualHash -ne $expectedHash) {
                 throw "APK contains an unexpected NDK-stripped Node.js Mobile library for ${abi}. Expected $expectedHash, got $actualHash."
             }
         }
@@ -509,7 +515,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Android release build failed.' }
 
 $builtApk = Join-Path $PSScriptRoot 'app\build\outputs\apk\release\app-release.apk'
 $distRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\dist'))
-$deliveryApk = Join-Path $distRoot 'SyncWatch-Android-v2.2.6-universal.apk'
+$deliveryApk = Join-Path $distRoot 'SyncWatch-Android-v2.2.7-universal.apk'
 if (-not (Test-Path -LiteralPath $builtApk)) { throw 'Gradle completed without the expected release APK.' }
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
@@ -525,7 +531,7 @@ try {
     $aaptExitCode = $LASTEXITCODE
     $badging = $badgingOutput | Select-Object -First 1
     if ($aaptExitCode -ne 0 -or $badging -notmatch "name='com\.xuan\.syncwatch'" -or
-        $badging -notmatch "versionCode='20206'" -or $badging -notmatch "versionName='2\.2\.6'") {
+        $badging -notmatch "versionCode='20207'" -or $badging -notmatch "versionName='2\.2\.7'") {
         throw "APK package metadata verification failed: $badging"
     }
 

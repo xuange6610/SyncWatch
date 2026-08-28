@@ -9,7 +9,6 @@ const workflowDirectory = path.join(root, '.github', 'workflows');
 const filenames = {
   atomic: path.join(workflowDirectory, 'release-atomic.yml'),
   windows: path.join(workflowDirectory, 'release-windows.yml'),
-  macos: path.join(workflowDirectory, 'release-macos.yml')
 };
 const workflows = Object.fromEntries(
   Object.entries(filenames).map(([key, filename]) => [key, fs.readFileSync(filename, 'utf8')])
@@ -36,7 +35,7 @@ assert.equal(
   'only the atomic orchestrator may be dispatched manually'
 );
 assert.match(workflows.atomic, /\bworkflow_dispatch\s*:/);
-for (const source of [workflows.windows, workflows.macos]) {
+for (const source of [workflows.windows]) {
   assert.match(source, /\bworkflow_call\s*:/);
   assert.doesNotMatch(source, /\bworkflow_dispatch\s*:/);
   assert.doesNotMatch(source, /contents:\s*write/);
@@ -73,15 +72,15 @@ assert.match(
   workflows.atomic,
   /artifact_prefix=release-\$\{RELEASE_TAG\}-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/
 );
-assert.match(workflows.atomic, /existing Release must contain either zero assets or the complete 26-asset set/);
+assert.match(workflows.atomic, /existing Release must contain zero, partial legacy 6, legacy 11 .* legacy 26, or current 10 assets/);
 assert.match(workflows.atomic, /Release target changed after preparation/);
 assert.match(workflows.atomic, /replacement-upload/);
 assert.match(workflows.atomic, /\.replacement-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/);
 assert.match(workflows.atomic, /\.previous-\$\{process\.env\.GITHUB_RUN_ID\}-\$\{process\.env\.GITHUB_RUN_ATTEMPT\}/);
 assert.match(workflows.atomic, /replacement_ready=1/);
-assert.match(workflows.atomic, /previous 26 assets and public Release state were restored/);
+assert.match(workflows.atomic, /previous 10 assets and public Release state were restored/);
 
-for (const source of [workflows.windows, workflows.macos]) {
+for (const source of [workflows.windows]) {
   const uploadBlocks = source.match(/uses:\s*actions\/upload-artifact@v4[\s\S]*?retention-days:\s*3/g) || [];
   assert.ok(uploadBlocks.length >= 4, 'each reusable build workflow must upload candidates and evidence');
   for (const block of uploadBlocks) {
@@ -97,23 +96,23 @@ assert.match(workflows.atomic, /phase:\s*android/);
 assert.match(workflows.atomic, /phase:\s*base/);
 assert.match(workflows.atomic, /phase:\s*full/);
 assert.match(workflows.atomic, /official_assets:/);
-assert.match(workflows.atomic, /needs:\s*\[prepare, source_tests, android, windows_base, mac_base, official_assets, windows_full, mac_full\]/);
+assert.match(workflows.atomic, /needs:\s*\[prepare, source_tests, android, windows_base, official_assets, windows_full\]/);
 assert.match(workflows.atomic, /--output dist/);
 assert.match(workflows.atomic, /--selection bundle/);
-assert.match(workflows.atomic, /SHA256SUMS-all-28\.txt/);
-assert.match(workflows.atomic, /SHA256SUMS-release-26\.txt/);
-assert.match(workflows.atomic, /release-files-26\.txt/);
-assert.match(workflows.atomic, /find dist -maxdepth 1 -type f[\s\S]*= "28"/);
+assert.match(workflows.atomic, /SHA256SUMS-all-12\.txt/);
+assert.match(workflows.atomic, /SHA256SUMS-release-10\.txt/);
+assert.match(workflows.atomic, /release-files-10\.txt/);
+assert.match(workflows.atomic, /find dist -maxdepth 1 -type f[\s\S]*= "12"/);
 assert.match(workflows.atomic, /--evidence-directory \.build\/evidence/);
 
 assert.equal(
   count(workflows.atomic, /gh release upload /g),
   1,
-  'all 26 maintained assets must be uploaded by one command'
+  'all 10 maintained assets must be uploaded by one command'
 );
 assert.match(workflows.atomic, /gh release upload "\$RELEASE_TAG" "\$\{replacement_files\[@\]\}"/);
 assert.doesNotMatch(workflows.atomic, /gh release upload[^\n]*(?:\*|--clobber)/);
-assert.match(workflows.atomic, /test "\$\{#files\[@\]\}" -eq 26/);
+assert.match(workflows.atomic, /test "\$\{#files\[@\]\}" -eq 10/);
 assert.match(workflows.atomic, /releases\?per_page=100/);
 assert.match(workflows.atomic, /release_id="\$\(RELEASES_JSON=/);
 assert.match(workflows.atomic, /releases\/\$\{release_id\}/);
@@ -126,7 +125,7 @@ assert.doesNotMatch(workflows.atomic, /releases\/tags\/\$\{RELEASE_TAG\}" > \.bu
 assert.match(workflows.atomic, /-F draft=true/);
 assert.match(workflows.atomic, /Atomic replacement failed/);
 assert.ok(
-  count(workflows.atomic, /--expected-manifest \.build\/SHA256SUMS-release-26\.txt/g) >= 2,
+  count(workflows.atomic, /--expected-manifest \.build\/SHA256SUMS-release-10\.txt/g) >= 2,
   'remote digests must be checked both before and after publication'
 );
 assert.match(workflows.atomic, /releases\/latest/);
@@ -215,14 +214,15 @@ assert.doesNotMatch(workflows.windows, /(?:tr -d ['"]\\r\\n['"]|jq -e)/,
   'runtime provenance must not depend on byte-for-byte JSON line formatting');
 assert.match(workflows.windows, /sha256sum --check --strict/,
   'reused Node.js Mobile digest failures must identify the exact file');
-for (const digest of [
-  '6b7970057e8382e6e8cabeecb8637929054c28d168c3755cb1160b0062fac4c9',
-  '5afcd3be4891f2fcf434f5218ce5faad08380789b6b080d30ea5d5867b1fc4f4',
-  'd0c41551f6cfbb0efd5a6c94ed7c3efc0e74594fe60095147c4c20a6e81a1d58',
-  '57bad09ba77ff33bb0a518eb57ed52cba21a24bdc9f99042a3c407bfdc2f907d'
-]) {
-  assert.ok(workflows.windows.includes(digest), `reused Node.js Mobile runtime must pin ${digest}`);
-}
+assert.match(
+  workflows.windows,
+  /sha256sum --check --strict node-mobile-runtime\/libnode-sha256\.txt/,
+  'fresh Node.js Mobile ABI outputs must be verified against the runtime digest manifest'
+);
+assert.ok(
+  workflows.windows.includes('Unexpected ELF LOAD alignment') && workflows.windows.includes("'^0x4000$'"),
+  'Node.js Mobile ABI outputs must retain the 16 KB ELF page-size contract'
+);
 assert.match(workflows.windows, /Download official Node\.js Mobile 16 KB runtime/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
 assert.match(
@@ -250,37 +250,14 @@ assert.match(workflows.windows, /Start-Process -FilePath \$installer/);
 assert.match(workflows.windows, /Test-ServerExecutable \$installed\.FullName/);
 assert.match(workflows.windows, /Test-ServerExecutable \$portable/);
 assert.match(workflows.windows, /dist\\builder-debug\.yml/);
-for (const source of [workflows.windows, workflows.macos]) {
+for (const source of [workflows.windows]) {
   assert.match(source, /path:\s*\.build\/full-inputs\/windows/);
   assert.match(source, /path:\s*\.build\/full-inputs\/android/);
-  assert.match(source, /path:\s*\.build\/full-inputs\/mac/);
   assert.match(
     source,
     /prepare-full-offline-bundle\.js[\s\S]{0,180}verify-full-offline-bundle\.js/,
-    'Full Offline builds must curate exactly six inputs before packaging'
+    'Full Offline builds must curate exactly two Windows/Android inputs before packaging'
   );
 }
 assert.doesNotMatch(workflows.windows, /path:\s*\.build\/offline-bundle\/(?:windows|android|mac)/);
-assert.doesNotMatch(workflows.macos, /path:\s*\.build\/offline-bundle\/(?:windows|android|mac)/);
-assert.match(workflows.macos, /runner:\s*macos-15-intel/);
-assert.match(workflows.macos, /runner:\s*macos-15(?:\s|$)/m);
-assert.match(workflows.macos, /assert_native_bundle/);
-assert.match(workflows.macos, /Mach-O/);
-assert.match(workflows.macos, /find "\$app\/Contents\/MacOS" "\$app\/Contents\/Frameworks" -type f/);
-assert.match(workflows.macos, /cloudflared-darwin-x64" \| grep -q 'x86_64'/);
-assert.match(workflows.macos, /cloudflared-darwin-arm64" \| grep -q 'arm64'/);
-assert.match(workflows.macos, /Prepare pinned Cloudflare Tunnel binaries[\s\S]{0,220}GH_TOKEN: \$\{\{ github\.token \}\}/);
-assert.match(workflows.macos, /cloudflared-macos-x64 vendor\/cloudflared-darwin-x64/);
-assert.match(workflows.macos, /cloudflared-macos-arm64 vendor\/cloudflared-darwin-arm64/);
-assert.match(workflows.macos, /name: Select matrix architecture for native macOS build/);
-assert.match(workflows.macos, /electron-builder --config "\.build\/electron-builder-mac-\$\{RELEASE_KIND\}-\$\{RELEASE_ARCH\}\.json"/);
-assert.match(workflows.macos, /dist\/builder-debug\.yml/);
-assert.match(workflows.macos, /verify_container "\$zip" zip/);
-assert.match(workflows.macos, /verify_container "\$dmg" dmg/);
-assert.match(workflows.macos, /smoke_client/);
-assert.match(workflows.macos, /smoke_server/);
-assert.match(workflows.macos, /smoke_full_server/);
-assert.match(workflows.macos, /androidApkAvailable===true/);
-assert.match(workflows.macos, /clientDownloadAvailable===true/);
-
-console.log('atomic 28-file release workflow, provenance, rollback, and native startup contracts passed.');
+console.log('atomic Windows/Android release workflow, provenance, rollback, and native startup contracts passed.');

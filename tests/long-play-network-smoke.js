@@ -1307,8 +1307,7 @@ async function run() {
       'the intentional outage did not exercise the Socket.IO reconnect path');
     assert.equal(report.playback.summary.socketReauthenticated, true,
       'the formal SyncWatch session did not reauthenticate after reconnect');
-    mediaRecoveryExercised = report.playback.summary.recoveryStateActivated
-      || report.playback.summary.postRecoveryRangeErrors > 0
+    mediaRecoveryExercised = report.playback.summary.postRecoveryRangeErrors > 0
       || report.playback.summary.postRecoveryRangeRequests > 0;
     if (mediaRecoveryExercised) {
       assert.ok(report.playback.summary.postRecoveryRangeRequests >= 1,

@@ -112,7 +112,7 @@ async function acceptAgreement(socket, auth) {
     assert.equal(limitedAgain.success, false);
     assert.equal(limitedAgain.code, 'LOGIN_CONCURRENCY_LIMIT');
 
-    console.log('v2.2.6 登录页访问记录、多设备申请批准、第二设备登录与授权撤回链路通过。');
+    console.log('v2.2.7 登录页访问记录、多设备申请批准、第二设备登录与授权撤回链路通过。');
   } finally {
     for (const socket of sockets) socket?.disconnect();
     if (server) await server.close();
