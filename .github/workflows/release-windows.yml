@@ -126,7 +126,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout pinned Node.js Mobile source
-        if: inputs.node_mobile_runtime_run_id == ''
+        if: inputs.node_mobile_runtime_run_id == '' || contains(inputs.node_mobile_runtime_artifact_name, '*')
         uses: actions/checkout@v4
         with:
           repository: nodejs-mobile/nodejs-mobile
@@ -151,8 +151,8 @@ jobs:
           pattern: ${{ inputs.node_mobile_runtime_artifact_name }}
           path: out_android
           merge-multiple: true
-      - name: Download Node.js Mobile ABI candidates
-        if: inputs.node_mobile_runtime_run_id == '' || contains(inputs.node_mobile_runtime_artifact_name, '*')
+      - name: Download Node.js Mobile ABI candidates from this run
+        if: inputs.node_mobile_runtime_run_id == ''
         uses: actions/download-artifact@v4
         with:
           pattern: ${{ inputs.artifact_prefix }}-node-mobile-*
