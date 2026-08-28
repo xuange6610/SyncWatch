@@ -544,6 +544,11 @@ jobs:
             [[ "$old_id" = "0" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}"
           done < .build/asset-swap.tsv
 
+          # Refresh after deleting renamed legacy assets. The previous snapshot
+          # still contains those IDs and would make the cleanup pass issue
+          # harmless-but-failing DELETE requests against already removed assets.
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/replacement-ready-release.json
+
           # Remove legacy macOS/unused assets from the same v2.2.6 Release
           # only after the replacement set has passed remote hash validation.
           RELEASE_JSON=.build/replacement-ready-release.json node -e '
