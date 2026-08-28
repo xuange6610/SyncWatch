@@ -12,6 +12,9 @@ const THIRD_PARTY_EVIDENCE_SCHEMA = 'syncwatch-third-party-evidence-v1';
 const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
 const DOWNLOAD_ATTEMPTS = 3;
 const PROJECT_VERSION = String(require('../package.json').version);
+const DEFAULT_CACHE_DIRECTORY = path.resolve(
+  process.env.SYNCWATCH_THIRD_PARTY_CACHE || path.join('.cache', 'release-third-party')
+);
 let proxyDispatcher;
 
 function getProxyDispatcher() {
@@ -148,6 +151,22 @@ function writeVerifiedFile(outputDirectory, entry, bytes) {
   };
 }
 
+function writeCacheFile(cacheDirectory, entry, bytes) {
+  fs.mkdirSync(cacheDirectory, { recursive: true });
+  const target = path.join(cacheDirectory, entry.name);
+  if (fs.existsSync(target)) {
+    const existing = fs.readFileSync(target);
+    if (digest(existing) !== entry.sourceSha256) {
+      throw new Error(`Refusing to replace an invalid cached official asset: ${target}`);
+    }
+    return target;
+  }
+  const staging = `${target}.${process.pid}.tmp`;
+  fs.writeFileSync(staging, bytes, { flag: 'wx' });
+  fs.renameSync(staging, target);
+  return target;
+}
+
 function findCloudflared(directory) {
   const queue = [directory];
   while (queue.length) {
@@ -161,11 +180,23 @@ function findCloudflared(directory) {
   return '';
 }
 
-async function prepareAsset(outputDirectory, entry) {
-  const downloaded = await download(entry.url);
-  const sourceDigest = digest(downloaded);
-  if (sourceDigest !== entry.sourceSha256) {
-    throw new Error(`Upstream SHA-256 mismatch for ${entry.sourceName}: expected ${entry.sourceSha256}, got ${sourceDigest}`);
+async function prepareAsset(outputDirectory, entry, cacheDirectory) {
+  let downloaded;
+  const cachedPath = path.join(cacheDirectory, entry.name);
+  if (fs.existsSync(cachedPath)) {
+    downloaded = fs.readFileSync(cachedPath);
+    if (digest(downloaded) !== entry.sourceSha256) {
+      throw new Error(`Cached official asset SHA-256 mismatch for ${entry.name}; remove the cache entry and retry.`);
+    }
+    console.log(`${entry.name} | reused verified local cache ${cachedPath}`);
+  } else {
+    downloaded = await download(entry.url);
+    const sourceDigest = digest(downloaded);
+    if (sourceDigest !== entry.sourceSha256) {
+      throw new Error(`Upstream SHA-256 mismatch for ${entry.sourceName}: expected ${entry.sourceSha256}, got ${sourceDigest}`);
+    }
+    writeCacheFile(cacheDirectory, entry, downloaded);
+    console.log(`${entry.name} | downloaded and cached at ${cachedPath}`);
   }
   if (!entry.archive) return writeVerifiedFile(outputDirectory, entry, downloaded);
 
@@ -186,12 +217,12 @@ async function prepareAsset(outputDirectory, entry) {
 }
 
 function parseArguments(argv) {
-  const options = { output: '', evidence: '', only: [], runId: '', runAttempt: '' };
+  const options = { output: '', evidence: '', only: [], runId: '', runAttempt: '', cacheDirectory: DEFAULT_CACHE_DIRECTORY };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     const value = argv[index + 1];
     if (key === '--print-manifest') { options.print = true; continue; }
-    if (!['--output', '--evidence', '--only', '--run-id', '--run-attempt'].includes(key) || !value) {
+    if (!['--output', '--evidence', '--only', '--run-id', '--run-attempt', '--cache-directory'].includes(key) || !value) {
       throw new Error(`Invalid argument: ${key}`);
     }
     const optionName = key.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -218,7 +249,7 @@ async function main(argv = process.argv.slice(2)) {
   await verifyUpstreamManifests(selected);
   const evidence = [];
   for (const entry of selected) {
-    const row = await prepareAsset(outputDirectory, entry);
+    const row = await prepareAsset(outputDirectory, entry, path.resolve(options.cacheDirectory));
     evidence.push(row);
     console.log(`${row.name} | ${row.bytes} bytes | SHA-256 ${row.sha256}`);
   }
@@ -247,6 +278,7 @@ module.exports = {
   THIRD_PARTY_EVIDENCE_SCHEMA,
   DOWNLOAD_TIMEOUT_MS,
   DOWNLOAD_ATTEMPTS,
+  DEFAULT_CACHE_DIRECTORY,
   digest,
   parseArguments,
   verifyUpstreamManifests

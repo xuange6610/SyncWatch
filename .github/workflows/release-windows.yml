@@ -398,10 +398,17 @@ jobs:
         run: npm install --global pnpm@11.9.0
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Restore verified third-party release cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/release-third-party
+          key: syncwatch-third-party-${{ hashFiles('scripts/release-third-party-assets.js') }}
+          restore-keys: |
+            syncwatch-third-party-
       - name: Prepare pinned Cloudflare Tunnel binary
         shell: pwsh
         run: |
-          node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --only cloudflared-windows-x64.exe
+          node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --cache-directory .\.cache\release-third-party --only cloudflared-windows-x64.exe
           if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
           New-Item -ItemType Directory -Force -Path .\vendor | Out-Null
           Copy-Item -LiteralPath .\.build\embedded-cloudflared\cloudflared-windows-x64.exe -Destination .\vendor\cloudflared.exe
@@ -498,10 +505,17 @@ jobs:
         run: npm install --global pnpm@11.9.0
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Restore verified third-party release cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/release-third-party
+          key: syncwatch-third-party-${{ hashFiles('scripts/release-third-party-assets.js') }}
+          restore-keys: |
+            syncwatch-third-party-
       - name: Prepare pinned Cloudflare Tunnel binary
         shell: pwsh
         run: |
-          node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --only cloudflared-windows-x64.exe
+          node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --cache-directory .\.cache\release-third-party --only cloudflared-windows-x64.exe
           if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
           New-Item -ItemType Directory -Force -Path .\vendor | Out-Null
           Copy-Item -LiteralPath .\.build\embedded-cloudflared\cloudflared-windows-x64.exe -Destination .\vendor\cloudflared.exe

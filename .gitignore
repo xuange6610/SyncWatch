@@ -2,6 +2,7 @@ node_modules/
 dist*/
 /release/
 output/
+.cache/
 SyncWatch同步观影-Data/
 
 # Local runtime and release credentials

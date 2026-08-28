@@ -202,6 +202,13 @@ jobs:
           cache: npm
       - name: Install locked production dependencies for proxy-aware downloads
         run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Restore verified third-party release cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/release-third-party
+          key: syncwatch-third-party-${{ hashFiles('scripts/release-third-party-assets.js') }}
+          restore-keys: |
+            syncwatch-third-party-
       - name: Download fixed upstream files directly into dist
         shell: bash
         env:
@@ -213,6 +220,7 @@ jobs:
           test ! -e dist
           node scripts/release-third-party-assets.js \
             --output dist \
+            --cache-directory .cache/release-third-party \
             --evidence .build/evidence/official.json \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
