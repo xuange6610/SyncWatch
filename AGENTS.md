@@ -115,6 +115,7 @@
 - v2.2.6 原子发布运行 `33161440282` 的 Android 模拟器失败根因已确认：模拟器已正常启动，失败发生在 `adb install --no-streaming` 的系统包校验阶段（`INSTALL_FAILED_VERIFICATION_FAILURE: Integrity verification timed out`），不是 APK 构建或应用启动崩溃。修复：`scripts/android-emulator-smoke.sh` 仅在该明确错误下关闭隔离模拟器的 ADB 包校验并重试一次，其他安装错误仍立即失败；下次发布需从更新后的最终 tag 重新执行一次完整原子工作流。
 - 原子发布运行 `33163785040` 未进入构建，源码门禁中的浏览器媒体恢复 smoke 在 45 秒人为断网后回放恢复进度为 0。该参数过长会在托管 runner 上耗尽 Chromium 缓冲，导致恢复 Range 路径无法观测；将 `tests/media-network-recovery-browser-smoke.js` 的有界断网窗口调整为 25 秒，保留恢复进度至少 5 秒和 Socket.IO 重认证断言，其他错误仍失败。下次仅重跑一次完整原子工作流。
 - 原子发布运行 `33164365939` 的源码、Android、Windows 基础包和完整离线包构建均成功；失败仅发生在完整离线包成品门禁，原因是 434,550,852 字节的 Windows/Android 包被旧的 1 GiB 最低体积规则错误拒绝。修复：`scripts/release-candidate-gate.js` 将 Windows 完整离线包最低体积改为 300 MiB、上限保持 2 GiB，以匹配停用 macOS 后的真实闭包；下次从更新后的最终 tag 只执行一次完整原子发布。
+- 原子发布运行 `33170193880` 的源码、Windows/Android 应用构建、模拟器启动和完整离线包均成功；最后发布收尾因先删除替换后的旧资产、再使用删除前的 `replacement-ready-release.json` 计算遗留资产，导致对已删除资产再次 DELETE 并返回 404。修复：删除替换旧资产后立即重新读取 Release，再计算并清理遗留资产；同一失败原因不得重复触发构建。
 
 本节把本项目历次对话中反复确认的长期要求集中保存，供后续 Codex 会话读取。它不是聊天记录的逐字复制；当同一主题出现冲突时，按“当前用户指令 → 当前代码/运行态 → 最新 Git 历史 → 本节历史要求”的顺序裁决。已经被后续指令撤销的要求只保留为“已覆盖”说明，不得重新执行。
 
