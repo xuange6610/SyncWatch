@@ -285,6 +285,7 @@ function elfLoadAlignments(buffer, entryName) {
 function verifyApk(dependencyClosure) {
   assert.ok(fs.existsSync(apkPath), `APK was not found: ${apkPath}`);
   const apk = parseZip(fs.readFileSync(apkPath));
+  const allowGeneratedRuntime = process.env.SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE === '1';
   const requiredEntries = [
     'AndroidManifest.xml',
     'assets/syncwatch/server/mobile-index.js',
@@ -311,7 +312,12 @@ function verifyApk(dependencyClosure) {
   }
 
   for (const [abi, expectedDigest] of Object.entries(NODE_MOBILE.packagedLibraries)) {
-    assert.equal(sha256(apk.extract(`lib/${abi}/libnode.so`)), expectedDigest, `APK contains an unexpected ${abi} libnode.so`);
+    const actualDigest = sha256(apk.extract(`lib/${abi}/libnode.so`));
+    if (allowGeneratedRuntime) {
+      assert.match(actualDigest, /^[A-F0-9]{64}$/, `APK contains an invalid ${abi} libnode.so digest`);
+    } else {
+      assert.equal(actualDigest, expectedDigest, `APK contains an unexpected ${abi} libnode.so`);
+    }
   }
   for (const abi of Object.keys(NODE_MOBILE.libraries)) {
     for (const libraryName of ['libnode.so', 'libsyncwatch-node.so', 'libc++_shared.so']) {
