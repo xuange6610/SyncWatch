@@ -215,14 +215,15 @@ assert.doesNotMatch(workflows.windows, /(?:tr -d ['"]\\r\\n['"]|jq -e)/,
   'runtime provenance must not depend on byte-for-byte JSON line formatting');
 assert.match(workflows.windows, /sha256sum --check --strict/,
   'reused Node.js Mobile digest failures must identify the exact file');
-for (const digest of [
-  '6b7970057e8382e6e8cabeecb8637929054c28d168c3755cb1160b0062fac4c9',
-  '5afcd3be4891f2fcf434f5218ce5faad08380789b6b080d30ea5d5867b1fc4f4',
-  'd0c41551f6cfbb0efd5a6c94ed7c3efc0e74594fe60095147c4c20a6e81a1d58',
-  '57bad09ba77ff33bb0a518eb57ed52cba21a24bdc9f99042a3c407bfdc2f907d'
-]) {
-  assert.ok(workflows.windows.includes(digest), `reused Node.js Mobile runtime must pin ${digest}`);
-}
+assert.match(
+  workflows.windows,
+  /sha256sum --check --strict node-mobile-runtime\/libnode-sha256\.txt/,
+  'fresh Node.js Mobile ABI outputs must be verified against the same-run digest manifest'
+);
+assert.ok(
+  workflows.windows.includes('Unexpected ELF LOAD alignment') && workflows.windows.includes("'^0x4000$'"),
+  'Node.js Mobile ABI outputs must retain the 16 KB ELF page-size contract'
+);
 assert.match(workflows.windows, /Download official Node\.js Mobile 16 KB runtime/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
 assert.match(
