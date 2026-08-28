@@ -95,9 +95,9 @@ SyncWatch同步观影是一套开源、自托管的多人同步观影与实时�
 - **临时公网地址**：Cloudflare Quick Tunnel 依赖出站网络、DNS、代理/VPN/TUN 和 Cloudflare 服务，地址不固定；网络受限时应使用固定 HTTPS 反向代理。
 - **AI 工作台**：`server/ai-relay.js` 和前端配置支持兼容 Responses API/Chat Completions 的中转，但模型、密钥、额度和可用能力由用户提供的服务决定。
 - **屏幕/系统音频共享**：浏览器、Electron、Android 有不同的权限和 API；系统级音频与浏览器支持范围取决于平台版本和用户授权。
-- **发布架构**：v2.2.7 候选只包含 Windows、Android、Node.js 与 cloudflared 资产；macOS 新包停用，下载文件以 GitHub Release 中实际存在的文件为准。
-- **发布数量标准**：当前 Latest 为 v2.2.6（26 个维护者资产 + 2 个源码归档，共 28 个可见文件），并已通过 [Release 资产清单](docs/release/release-manifest.md)门禁。
-- **当前版本源码能力**：v2.2.6 包含全屏手势与弹幕、简洁模式、管理员客户端模式申请、登录并发申请与撤回、访问记录、地址隐私、房间复制/迁移、登录解限、更新检查、清晰度申请、独立快进权限、片头片尾和批量队列。安装包只有在最终 Tag 重新构建 17 个应用资产、核验 9 个官方上游文件并完成远端哈希回读后，才能视为包含这些修正。
+- **发布架构**：v2.2.7 正式 Release 只包含 Windows、Android、Node.js 与 cloudflared 资产；macOS 新包停用，历史资产保留，下载文件以 GitHub Release 中实际存在的文件为准。
+- **发布数量标准**：当前 Latest 为 v2.2.7（10 个维护者资产 + 2 个 GitHub 源码归档，共 12 个可见文件），并已通过 [Release 资产清单](docs/release/release-manifest.md)门禁。
+- **当前版本源码能力**：v2.2.7 已验证全屏锁定/F2 边看边聊、简洁模式、加入房间提示、主题双击入口、房主房间设置、登录并发申请、访问记录、地址隐私、房间复制/迁移、登录解限、更新检查、清晰度申请、独立快进权限、片头片尾和批量队列。5 个应用资产由最终 Tag 重新构建，5 个官方 Windows 运行资产按来源与 SHA-256 核验。
 
 ### 计划开发
 

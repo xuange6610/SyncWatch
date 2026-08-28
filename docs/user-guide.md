@@ -1,10 +1,10 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.2.6 正式版；当前正式下载、哈希与资产列表以 [GitHub Release v2.2.6](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.6) 为准，Release API 有 26 个维护者资产，页面连同 2 个源码归档共 28 个文件。
+适用范围：v2.2.7 正式版；当前正式下载、哈希与资产列表以 [GitHub Release v2.2.7](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.7) 为准，Release API 有 10 个维护者资产，页面连同 2 个源码归档共 12 个文件。
 
 ## 直接使用
 
-双击 Release 中的 `SyncWatch-Standard-Server-Portable-v2.2.6-x64.exe`，或选择完整安装版/完整便携版。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
+双击 Release 中的 `SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe`，或选择完整安装版/完整便携版。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
 
 程序窗口打开后，从“系统 → 复制局域网地址”复制链接。同一 Wi-Fi 或有线网络内的手机、平板、电脑、笔记本和电视浏览器均可访问。
 
