@@ -72,7 +72,7 @@ assert.match(
   workflows.atomic,
   /artifact_prefix=release-\$\{RELEASE_TAG\}-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/
 );
-assert.match(workflows.atomic, /existing Release must contain zero, partial legacy 6, legacy 26, or current 10 assets/);
+assert.match(workflows.atomic, /existing Release must contain zero, partial legacy 6, legacy 11 .* legacy 26, or current 10 assets/);
 assert.match(workflows.atomic, /Release target changed after preparation/);
 assert.match(workflows.atomic, /replacement-upload/);
 assert.match(workflows.atomic, /\.replacement-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/);
