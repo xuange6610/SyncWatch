@@ -2,7 +2,7 @@
 
 和朋友、家人、情侣远程一起看电影。
 
-SyncWatch 是一个开源、自托管、跨平台的 Watch Party / 同步观影系统。一个人启动服务器，其他人通过 Windows、Android、macOS 或浏览器加入房间，即可同步播放、暂停、拖动进度和倍速，同时支持聊天、弹幕、语音、屏幕共享和媒体管理。
+SyncWatch 是一个开源、自托管的 Watch Party / 同步观影系统。一个人启动服务器，其他人通过 Windows、Android 或浏览器加入房间，即可同步播放、暂停、拖动进度和倍速，同时支持聊天、弹幕、语音、屏幕共享和媒体管理。
 
 你的服务器、你的影片、你的数据。无需依赖第三方同步观影平台。
 
@@ -11,20 +11,20 @@ SyncWatch 是一个开源、自托管、跨平台的 Watch Party / 同步观影�
 [![GitHub Forks](https://img.shields.io/github/forks/xuange6610/SyncWatch)](https://github.com/xuange6610/SyncWatch/network/members)
 [![License](https://img.shields.io/github/license/xuange6610/SyncWatch)](LICENSE)
 [![Pages](https://github.com/xuange6610/SyncWatch/actions/workflows/pages.yml/badge.svg)](https://github.com/xuange6610/SyncWatch/actions/workflows/pages.yml)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20macOS%20%7C%20Web-1769aa)](https://github.com/xuange6610/SyncWatch/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20Web-1769aa)](https://github.com/xuange6610/SyncWatch/releases)
 [![Self Hosted](https://img.shields.io/badge/self--hosted-yes-success)](https://github.com/xuange6610/SyncWatch)
 
 ![SyncWatch同步观影项目封面：跨平台、自托管、同步播放](docs/screenshots/project-cover.png)
 
 ![SyncWatch同步观影主界面：媒体库、同步播放、房主控制和在线成员](docs/screenshots/main-interface.png)
 
-Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏幕共享
+Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏幕共享
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
 > 当前正式发布：[v2.2.5](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.5)；v2.2.6 候选分支包含本轮源码候选改动，等待最终 Tag 构建、哈希回读、Release、Pages 与 Wiki 核对后再替换线上同版本资产。线上旧 v2.2.6 仅作为待更正基线，不能证明安装包已包含本轮修复；许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-本项目正式 Release 的固定交付契约仍是 26 个维护者资产，加两个 GitHub 源码归档，共 28 个文件；本轮 v2.2.6 在新集合完成验证前保持候选状态。
+本项目新版本 Release 的固定交付契约是 10 个维护者资产，加两个 GitHub 源码归档，共 12 个文件；Node.js 与 cloudflared 固定官方文件可从已核验本地缓存复用，Windows/Android 应用包仍必须从最终 Tag 重新构建。
 
 ## 在线参观
 
@@ -47,7 +47,7 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 | --- | --- | --- |
 | [`SyncWatch-Experience-Client-Portable-v2.2.6-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Experience-Client-Portable-v2.2.6-x64.exe) | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
 | [`SyncWatch-Standard-Server-Portable-v2.2.6-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Standard-Server-Portable-v2.2.6-x64.exe) | 标准版；房主 | 绿色便携服务器，内置运行环境和 cloudflared，双击即用 |
-| [`SyncWatch-v2.2.6-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-v2.2.6-Full-Offline-Installer-x64.exe) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端、Android APK、macOS x64/arm64 客户端与服务器 ZIP |
+| [`SyncWatch-v2.2.6-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-v2.2.6-Full-Offline-Installer-x64.exe) | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端与 Android APK |
 | [`SyncWatch-v2.2.6-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-v2.2.6-Full-Offline-Portable-x64.exe) | 完整版；Windows 房主 | 无需安装的独立 EXE；功能和内嵌文件与安装完整版一致 |
 | [`SyncWatch-Full-Offline-macOS-v2.2.6-x64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-x64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.6-x64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-x64.zip) | 完整版；Intel Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 Intel cloudflared |
 | [`SyncWatch-Full-Offline-macOS-v2.2.6-arm64.dmg`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-arm64.dmg) / [`SyncWatch-Full-Offline-macOS-v2.2.6-arm64.zip`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Full-Offline-macOS-v2.2.6-arm64.zip) | 完整版；Apple Silicon Mac 房主 | 完整 Mac 服务端和全平台离线下载中心，内置 arm64 cloudflared |
@@ -56,7 +56,7 @@ Windows · Android · macOS · Web  ·  同步播放 · 弹幕 · 聊天 · 语�
 | [`SyncWatch-Android-v2.2.6-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Android-v2.2.6-universal.apk) | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
 | macOS 客户端：[x64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-x64.dmg) / [x64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-x64.zip) / [arm64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-arm64.dmg) / [arm64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Client-macOS-v2.2.6-arm64.zip) | Mac 普通成员 | Intel Mac 使用 x64，Apple Silicon 使用 arm64；只连接已有服务器 |
 | macOS 服务器：[x64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-x64.dmg) / [x64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-x64.zip) / [arm64 DMG](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-arm64.dmg) / [arm64 ZIP](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.6/SyncWatch-Server-macOS-v2.2.6-arm64.zip) | Mac 房主 | 按芯片选择可开房的服务器包 |
-| [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 26 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
+| [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 当前 10 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
 | Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.6.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.6.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
 ## 第一次启动服务器
