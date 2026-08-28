@@ -77,7 +77,7 @@ assert.match(read('public/js/app.js'), /fullscreenInteractionLocked/);
 assert.match(read('public/js/app.js'), /requestWindow/);
 assert.match(read('public/js/app.js'), /改用系统画中画/);
 assert.match(read('docs/release-notes-v2.2.6.md'), /SyncWatch同步观影 v2\.2\.6 发布说明/);
-assert.match(read('docs/release-notes-v2.2.6.md'), /17 个 SyncWatch 应用资产/);
+assert.match(read('docs/release-notes-v2.2.6.md'), /5 个 SyncWatch 应用资产/);
 assert.match(read('docs/release-notes-v2.2.6.md'), /最终 Tag.*重新构建/s);
 assert.match(read('docs/wiki/37-v2.2.6更新公告.md'), /v2\.2\.6 更新公告/);
 
