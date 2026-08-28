@@ -220,3 +220,4 @@
 - Actions run `33195045089` 的源码门禁、第三方运行时核验和 Windows/Android 输入校验均通过，但 Android job `98931577238` 在执行 `mobile/build-apk.ps1` 时失败：`armeabi-v7a/libnode.so` 实际 SHA-256 为 `1F5093C9EC2FBB730D0E9DE0F5E470FDE40B5D157EB4116D4BD7C01853CD2450`，脚本仍按旧官方归档固定值 `D0C41551...` 拒绝了同一运行 Linux combine job 已核验的 16 KB 生成运行时。
 - 处理方式：取消已确定失败且仍占用 Windows runner 的运行；在 `mobile/build-apk.ps1` 中仅对显式 `SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE=1` 的 CI 复用路径跳过旧 ABI 固定摘要（Linux combine job 仍负责来源闭包、三 ABI、SHA-256 和 ELF 16 KB 对齐核验），本地未设置该变量时继续执行官方固定摘要门禁；APK 打包后的旧摘要检查同样只在该显式 CI 模式放宽。
 - 不得把本次失败运行的候选 artifact 当作发布资产，也不得用旧 APK 改名或占位文件替代；修复后必须从最终 `v2.2.7` Tag 只重跑一次完整原子工作流，并重新核对 Windows/Android 成品、哈希、Release 和文档页面。
+- 同一修复后的运行 `33196278435` 中，Android Gradle 已成功生成 `versionCode='20207' versionName='2.2.7'`，但 `mobile/build-apk.ps1` 的 aapt 元数据门禁仍残留 v2.2.6 的 `20206/2.2.6`，导致在签名和 APK 载荷校验前失败；已将门禁更新为 v2.2.7，并要求后续版本同步检查脚本中的版本元数据，避免只更新 Gradle/输出文件名而遗漏验证值。

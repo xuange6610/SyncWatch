@@ -531,7 +531,7 @@ try {
     $aaptExitCode = $LASTEXITCODE
     $badging = $badgingOutput | Select-Object -First 1
     if ($aaptExitCode -ne 0 -or $badging -notmatch "name='com\.xuan\.syncwatch'" -or
-        $badging -notmatch "versionCode='20206'" -or $badging -notmatch "versionName='2\.2\.6'") {
+        $badging -notmatch "versionCode='20207'" -or $badging -notmatch "versionName='2\.2\.7'") {
         throw "APK package metadata verification failed: $badging"
     }
 
