@@ -319,7 +319,7 @@ const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyr
  loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
- fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText
+  fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText openRoomManagementBtn
  playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn skipSettingsBtn skipSettingsModal closeSkipSettingsBtn skipSettingsForm skipSettingsEnabled skipIntroSeconds skipOutroSeconds skipSettingsStatus saveSkipSettingsBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
  playerContainer emptyStage emptyStageHint videoPlayer imageViewer documentViewer textViewer textReaderControls textReaderPreviousBtn textReaderPage textReaderPageCount textReaderNextBtn textReaderProgress sharedWebViewer sharedWebEmpty downloadViewer downloadTitle downloadLink screenShareCanvas screenShareVideo screenShareStatus syncNotice resumePlaybackBtn danmakuContainer reactionLayer friendVideoNoticeLayer playerInfo playerResolution playerCodec hardwareDecode
  controlRequestOverlay controlRequestTitle controlRequestDetail controlRequestSuppress controlRequestDenyBtn controlRequestAllowBtn permissionNotice permissionNoticeTitle permissionNoticeText permissionNoticeCloseBtn
@@ -2215,6 +2215,7 @@ function bindUiEvents() {
   elements.lanScanSelectAll?.addEventListener('change', toggleAllLanRooms);
   elements.deleteSelectedLanRoomsBtn?.addEventListener('click', deleteSelectedLanRooms);
   elements.managementHubBtn?.addEventListener('click', () => openManagementHub('server'));
+  elements.openRoomManagementBtn?.addEventListener('click', () => openManagementHub('room'));
   elements.closeManagementHubBtn?.addEventListener('click', closeManagementHub);
   document.querySelectorAll('[data-management-section]').forEach((button) => button.addEventListener('click', () => showManagementSection(button.dataset.managementSection)));
   elements.closeCreateRoomBtn?.addEventListener('click', () => elements.createRoomModal.classList.add('is-hidden'));
@@ -2261,6 +2262,11 @@ function bindUiEvents() {
   elements.webProbeResults?.addEventListener('click', handleWebProbeAction);
   elements.themeBtn?.addEventListener('click', () => elements.themeModal.classList.remove('is-hidden'));
   elements.headerThemeStatus?.addEventListener('dblclick', () => {
+    elements.themeModal?.classList.remove('is-hidden');
+    toast('已打开主题风格设置', 'success', 2600);
+  });
+  elements.roomHeader?.addEventListener('dblclick', (event) => {
+    if (event.target.closest('button, input, select, a')) return;
     elements.themeModal?.classList.remove('is-hidden');
     toast('已打开主题风格设置', 'success', 2600);
   });
@@ -4409,6 +4415,7 @@ function showRoomSwitchSuccess(fromRoom, toRoom) {
   if (!elements.roomSwitchSuccessOverlay) return;
   clearTimeout(state.roomSwitchSuccessTimer);
   elements.roomSwitchSuccessText.textContent = `从 ${fromRoom} 切换到 ${toRoom}`;
+  elements.roomSwitchSuccessOverlay.setAttribute('aria-label', `已加入${toRoom}`);
   elements.roomSwitchSuccessOverlay.classList.remove('is-hidden');
   state.roomSwitchSuccessTimer = setTimeout(hideRoomSwitchSuccess, 2600);
 }
@@ -9692,12 +9699,21 @@ function setFullscreenInteractionLocked(locked) {
     elements.playerSeekSlider.disabled = true;
     elements.playerSeekSlider.setAttribute('aria-disabled', 'true');
   }
+  if (elements.fullscreenLockBtn) {
+    elements.fullscreenLockBtn.title = state.fullscreenInteractionLocked
+      ? '当前已锁定：点击解锁（快捷键 L）'
+      : '当前未锁定：点击锁定，防止误触暂停和拖动进度（快捷键 L）';
+  }
 }
 
 function toggleFullscreenInteractionLock() {
   const nextLocked = !state.fullscreenInteractionLocked;
   setFullscreenInteractionLocked(nextLocked);
   showFullscreenGestureIndicator(nextLocked ? '🔒 已锁定画面操作' : '🔓 已解除画面锁定');
+  // Keep the confirmation inside the player so fullscreen never opens a
+  // blocking dialog or browser toast, while still making the state change
+  // unambiguous to keyboard, mouse, and touch users.
+  elements.fullscreenLockBtn?.setAttribute('data-lock-state', nextLocked ? 'locked' : 'unlocked');
   showFullscreenControls();
 }
 
@@ -9715,7 +9731,7 @@ function showFullscreenGestureIndicator(label) {
   state.fullscreenGestureIndicatorTimer = setTimeout(() => {
     elements.fullscreenGestureIndicator?.classList.remove('is-visible');
     elements.fullscreenGestureIndicator?.setAttribute('aria-hidden', 'true');
-  }, 720);
+  }, 1400);
 }
 
 function beginFullscreenAdjustmentGesture(event) {

@@ -2922,6 +2922,8 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
 }
 /* v2.2.7 usability refinements */
 .management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }
+.management-hub-card.management-loading .management-content { content-visibility: auto; contain: layout paint; }
+.management-content .management-filtered { content-visibility: auto; contain-intrinsic-size: 220px; }
 .room-card-main { gap: 6px !important; }
 .room-card-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
 .room-card-title strong { color: var(--text); font-size: 1rem; line-height: 1.35; }
@@ -2932,3 +2934,5 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
 .room-card-note { color: var(--text-muted, var(--muted)); }
 .download-recommended { outline: 2px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 70%, transparent); outline-offset: -2px; background: color-mix(in srgb, var(--theme-accent, var(--pink)) 10%, transparent); }
 .download-recommended-badge { display: inline-block; margin-right: 7px; padding: 2px 6px; color: #0b1c16; font-size: .72rem; font-weight: 800; border-radius: 999px; background: var(--theme-accent, var(--pink)); }
+.fullscreen-lock-button[data-lock-state="locked"] span:last-child { color: var(--theme-accent, var(--pink-2)); font-weight: 800; }
+.fullscreen-lock-button[data-lock-state="unlocked"] span:last-child { color: #fff; }

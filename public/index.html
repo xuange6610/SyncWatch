@@ -16,7 +16,7 @@
   <header class="topbar">
     <div class="brand"><span class="brand-mark">▶</span><div><strong data-copy-key="topbar.appName">SyncWatch同步观影</strong><small>多人观影空间</small></div></div>
     <button id="mobileMenuBtn" class="mobile-menu-button" type="button" aria-label="打开功能菜单" aria-expanded="false" aria-controls="topbarActions"><span aria-hidden="true">☰</span></button>
-    <div id="roomHeader" class="room-header is-hidden">
+    <div id="roomHeader" class="room-header is-hidden" title="双击顶部界面状态可切换主题">
       <span><small data-copy-key="topbar.room">房间</small><strong id="headerRoomName">私人影院</strong></span>
       <span class="header-online-stat"><small data-copy-key="topbar.online">在线成员</small><strong class="header-online-value"><b id="headerOnline">0</b><i aria-hidden="true">/</i><b id="headerMax">8</b></strong></span>
       <span><small>状态</small><strong id="headerStatus" class="healthy">同步正常</strong></span>
@@ -71,7 +71,7 @@
   <div id="downloadCenterModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="downloadCenterTitle"><div class="modal-card download-center-card"><button id="closeDownloadCenterBtn" class="modal-close" type="button" aria-label="关闭下载中心">×</button><div class="settings-title download-center-heading"><div><p class="eyebrow">SyncWatch同步观影 · v2.2.7</p><h2 id="downloadCenterTitle">更新与完整下载中心</h2><p>按用途选择文件。服务器内置下载缺失时可跳转 GitHub Latest；正式 Windows EXE 已内置运行环境，无需另装 Node.js。</p></div><div class="download-center-actions"><button id="checkDownloadUpdateBtn" class="primary-button" type="button">立即检查更新</button><button id="openGithubProjectBtn" class="secondary-button" type="button">GitHub 项目主页</button><button id="openGithubLatestBtn" class="secondary-button" type="button">Latest 下载页</button></div></div><p id="downloadUpdateStatus" class="setting-status" role="status" aria-live="polite">当前应用版本 v2.2.7；点击按钮可核对 GitHub 最新正式版本。</p><div class="download-center-table-wrap"><table class="download-center-table"><thead><tr><th>下载文件</th><th>版本标识</th><th>最适合谁</th><th>一句话说明</th></tr></thead><tbody>
     <tr><td><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe" target="_blank" rel="noopener noreferrer">SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe</a></td><td>体验版</td><td>Windows 普通成员</td><td>连接已有服务器，不在本机启动服务端</td></tr>
     <tr><td><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe" target="_blank" rel="noopener noreferrer">SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe</a></td><td>标准版</td><td>不想安装的 Windows 房主</td><td>内置运行环境和 cloudflared，绿色便携运行</td></tr>
-    <tr><td><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe" target="_blank" rel="noopener noreferrer">SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe</a></td><td>完整版</td><td>需要离线全平台下载中心的 Windows 房主</td><td>安装向导、完整服务器运行时，并内嵌 Windows、Android 与 macOS 发布文件</td></tr>
+    <tr><td><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe" target="_blank" rel="noopener noreferrer">SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe</a></td><td>完整版</td><td>需要离线安装的 Windows 房主</td><td>安装向导和完整 Windows 服务器运行时；本版本不包含 macOS 新包</td></tr>
     <tr class="download-recommended"><td><span class="download-recommended-badge">推荐</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe" target="_blank" rel="noopener noreferrer">SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe</a></td><td>完整版</td><td>不想安装的 Windows 房主</td><td>独立 EXE，直接双击运行；功能和离线资源与安装完整版相同</td></tr>
     <tr><td><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/cloudflared-windows-x64-installer.msi" target="_blank" rel="noopener noreferrer">cloudflared Windows x64 MSI</a> / <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/cloudflared-windows-x86-installer.msi" target="_blank" rel="noopener noreferrer">x86 MSI</a></td><td>公网工具</td><td>需要手工安装 Tunnel 的 Windows 用户</td><td>双击 MSI 安装；不要把命令行 EXE 当成安装向导</td></tr>
     <tr><td><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-x64.msi" target="_blank" rel="noopener noreferrer">Node.js Windows x64 MSI</a> / <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/node-v24.19.0-arm64.msi" target="_blank" rel="noopener noreferrer">Windows ARM64 MSI</a></td><td>开发环境</td><td>源码开发或独立服务器用户</td><td>安装后运行 node --version；正式 SyncWatch EXE 无需另装 Node.js</td></tr>
@@ -240,6 +240,7 @@
 
           <div id="ownerControls" class="owner-controls is-hidden">
             <strong>🎬 房主控制</strong>
+            <button id="openRoomManagementBtn" class="compact-button" type="button" title="打开当前房间设置">房间设置</button>
             <button id="controlLockBtn" class="compact-button" type="button">🔒 已锁定</button>
             <button id="forceSyncBtn" class="compact-button" type="button">强制同步</button>
             <label><input id="volumeSyncToggle" type="checkbox"> 音量同步</label>
@@ -502,7 +503,7 @@
               <label class="check-line"><input id="registrationAccountNoticeToggle" type="checkbox" checked> 超级管理员收到新账号注册提示</label>
               <label class="check-line"><input id="f11PromptGlobalEnabled" type="checkbox" checked> 新进入房间时显示 F11 全屏提示</label>
               <label class="check-line"><input id="initialPasswordReminderEnabled" type="checkbox" checked> 初始或管理员重置密码登录时显示修改提醒</label>
-              <label class="check-line"><input id="downloadButtonsVisible" type="checkbox" checked> 显示 Windows、Android 和 macOS 下载入口</label>
+              <label class="check-line"><input id="downloadButtonsVisible" type="checkbox" checked> 显示 Windows 和 Android 下载入口</label>
               <label class="check-line"><input id="locationStatusNoticesEnabled" type="checkbox" checked> 向管理员和房主显示成员位置状态提醒</label>
               <label class="check-line"><input id="locationAuthorizationRequestsEnabled" type="checkbox" checked> 允许进房自动提示及管理员发起位置授权请求</label>
               <p class="form-hint">关闭后会同时隐藏登录页和账号菜单中的服务器客户端、安卓客户端、苹果服务器与苹果客户端按钮；已内嵌的离线文件不会被删除。</p>

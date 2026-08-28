@@ -10,7 +10,7 @@ web
 
 - 想和朋友、家人或小型团队远程同步观影的普通用户。
 - 希望把服务和数据保存在自己设备上的房主或服务器管理员。
-- 需要通过 Windows、Android、macOS 或浏览器加入房间的成员。
+- 需要通过 Windows、Android 或浏览器加入房间的成员；macOS 仅保留历史资产。
 - GitHub 仓库文档与展示站优先照顾第一次接触 Node.js、Electron 和自托管服务的新手。
 
 ## Product Purpose
@@ -33,7 +33,7 @@ SyncWatch同步观影是一套开源、自托管的多人同步观影与实时�
 ## Capabilities and Constraints
 
 - 支持同步播放、媒体库、多房间、聊天、弹幕、语音、屏幕与网页共享、成员管理、媒体处理、数据备份及可配置的 AI 中转。
-- 支持 Windows、Web、Android 与 macOS 构建；具体可下载平台和架构以 GitHub Releases 中实际存在的构建产物为准。
+- 支持 Windows、Web 与 Android；v2.2.7 起停止构建新的 macOS 安装包，历史 Release 资产仍保留。
 - 公网访问需要网络连接；临时公网地址由第三方 Cloudflare Tunnel 提供，不承诺固定域名或长期可用。
 - 应用 UI、文档和发布标题使用完整名称 `SyncWatch同步观影`。
 - GitHub 仓库 slug 保留为 `SyncWatch`，因为仓库地址和既有链接需要稳定。
@@ -91,11 +91,11 @@ SyncWatch同步观影是一套开源、自托管的多人同步观影与实时�
 
 - **Android**：APK 嵌入 Node.js Mobile、WebView、手机服务器和 MediaProjection 屏幕共享；真实设备上的后台策略、通知权限、网络和签名环境会影响结果，不能只凭源码断言所有厂商都一致。
 - **Android Node 兼容**：服务端为可能缺少 `crypto.randomUUID` 和 `Intl` 的 Node.js Mobile 18 运行时提供 UUID v4 与本地时间格式回退；回归测试覆盖管理员、同房游客、成员退出和游客重新登录，签名 APK 已在 Android 15 x86_64 模拟器中真实启动内嵌服务并验证登录。
-- **macOS**：仓库包含 x64/arm64 构建配置、脚本和 CI 工作流；当前工作站是 Windows，macOS 成品应以对应 runner 的实际 Release 资产为准。
+- **macOS**：v2.2.7 起不再构建或上传新安装包；历史资产仅用于兼容下载，Windows/Android 新版不依赖 macOS 文件。
 - **临时公网地址**：Cloudflare Quick Tunnel 依赖出站网络、DNS、代理/VPN/TUN 和 Cloudflare 服务，地址不固定；网络受限时应使用固定 HTTPS 反向代理。
 - **AI 工作台**：`server/ai-relay.js` 和前端配置支持兼容 Responses API/Chat Completions 的中转，但模型、密钥、额度和可用能力由用户提供的服务决定。
 - **屏幕/系统音频共享**：浏览器、Electron、Android 有不同的权限和 API；系统级音频与浏览器支持范围取决于平台版本和用户授权。
-- **发布架构**：v2.2.6 已按固定清单发布 Windows、Android、macOS、Node.js 与 cloudflared 资产；下载文件以 GitHub Release 中实际存在的文件为准。
+- **发布架构**：v2.2.7 候选只包含 Windows、Android、Node.js 与 cloudflared 资产；macOS 新包停用，下载文件以 GitHub Release 中实际存在的文件为准。
 - **发布数量标准**：当前 Latest 为 v2.2.6（26 个维护者资产 + 2 个源码归档，共 28 个可见文件），并已通过 [Release 资产清单](docs/release/release-manifest.md)门禁。
 - **当前版本源码能力**：v2.2.6 包含全屏手势与弹幕、简洁模式、管理员客户端模式申请、登录并发申请与撤回、访问记录、地址隐私、房间复制/迁移、登录解限、更新检查、清晰度申请、独立快进权限、片头片尾和批量队列。安装包只有在最终 Tag 重新构建 17 个应用资产、核验 9 个官方上游文件并完成远端哈希回读后，才能视为包含这些修正。
 
@@ -115,7 +115,7 @@ SyncWatch同步观影是一套开源、自托管的多人同步观影与实时�
 
 - 服务器启动设置窗口在短屏幕上可滚动，底部保存/取消操作始终可见；登录并发申请按钮支持自动换行和窄屏适配。
 - 管理中心标题显示当前客户端主题；账号管理新增“设置新密码”操作。密码仍仅保存不可逆哈希，管理员不能查看历史明文。
-- v2.2.7 新构建范围仅 Windows 与 Android，macOS 新包停用，历史 Release 资产保留。
+- v2.2.7 新构建范围仅 Windows 与 Android，完整离线包不再内嵌 macOS 文件；历史 Release 资产保留。
 
 1. 单个 `SyncWatch同步观影-Data/` 只能由一个实例写入；不要让桌面端、独立 Node 服务和 Docker 同时使用同一目录。
 2. GitHub Pages 是静态站，不能替代自托管服务器，也不能在页面中真实创建房间、上传文件或开启 Tunnel。
