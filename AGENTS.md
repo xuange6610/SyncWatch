@@ -98,6 +98,27 @@
 
 ## 对话要求归档
 
+### 0. 发布失败复盘与防重复执行（2026-08-28）
+
+- 每次执行任何命令前，必须先读取本文件（`AGENTS.md`）和 `docs/maintenance/maintainer-requirements.md`，再检查当前分支、远端、Actions、Release 状态；不得只依据上一轮聊天摘要。
+- v2.2.6 原子发布运行 `33153068879` 的第一次失败原因：复用历史 Android ABI 时，`release-windows.yml` 的输入校验拒绝了合法的 `*` artifact pattern。修复：允许 `[A-Za-z0-9._*-]+`，并保留 `android` phase 限制。
+- v2.2.6 原子发布运行 `33153947802` 的第二次失败原因：复用历史 ABI 时没有检出固定版本的 Node.js Mobile 源码，却执行了 `./configure`；同时还尝试下载本次运行尚未生成的 ABI。修复：通配符复用模式仍检出固定源码，只下载历史 ABI，不下载当前运行候选。
+- 同一运行的 Android 包检查随后因仍硬编码旧官方 `libnode.so` SHA-256 而失败。修复：在 `SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE=1` 的 CI 复用模式下校验生成哈希格式、来源闭包和 16KB ELF/APK 对齐；普通本地构建继续执行官方固定哈希门禁。
+- 失败运行不得删除公开 Release 资产，也不得用占位文件凑数；应先取消失败运行、读取失败 job 日志、做最小修复、提交到唯一 `release/vX.Y.Z` 分支，并从最终 tag 重新触发一次。禁止为同一版本创建新的 `codex/*` 或额外 release 分支。
+- 发布运行只允许在“源码门禁成功 + 5 个应用资产真实构建验证 + 5 个官方文件来源/缓存核验 + 10 个维护者资产汇总验证”后覆盖 Release；在此之前状态必须保持 `pending`。
+- 防止浪费 token：不要对同一失败原因重复触发构建；先用 `gh run view <run> --json status,conclusion,jobs` 和失败 job 日志确认根因，再修改。长任务只做有间隔的状态查询，不要并行启动重复 workflow。
+- 每次本次复盘新增的事实、修复和验证命令都要追加到本节，形成可追溯的自我学习记录；下次任务开始先阅读本节并执行前置检查。
+- 用户最新范围变更（2026-08-28）：后续正式构建与 Release 只保留 Windows 桌面/服务器包和 Android APK；不再构建、上传或要求任何 macOS 客户端、服务器、完整离线包、Node.js macOS 包或 cloudflared macOS 二进制。修改工作流、资产清单和文档时必须同步移除 macOS 依赖，并验证 Windows/Android 核心功能不受影响；历史 Release 的 macOS 资产按历史保留规则不得删除。
+- 复盘补充：取消未完成的原子运行可能留下部分旧资产（例如 6 个官方 Windows 文件）；下一次发布准备阶段允许识别并清理 6/10 的历史部分集合，但最终发布仍必须严格为当前 10 个 Windows/Android 维护者资产，不能把部分集合当作完成。
+- 固定第三方分发文件（Node.js/cloudflared）统一作为一个长期保留的本地缓存集合（`.cache/release-third-party/`）保存：首次下载必须记录官方来源、版本、平台/架构和 SHA-256；后续版本直接从该集合复制到根目录 `dist/`，不再重复下载、生成或改名。复制前后仍必须逐项核对非空、文件名、版本/架构、官方来源和 SHA-256；任一校验失败立即停止，不得覆盖缓存或用占位文件替代。该缓存只适用于固定第三方分发文件，不包含 SyncWatch 应用安装包；macOS 应用包仍按上一条范围完全停用。
+- 本地缓存已在 2026-08-28 填充并逐项回读验证：`node-v24.19.0-x64.msi`、`node-v24.19.0-arm64.msi`、`cloudflared-windows-x64.exe`、`cloudflared-windows-x64-installer.msi`、`cloudflared-windows-x86-installer.msi`；后续发布直接复用这 5 个文件，不重复下载。
+- v2.2.6 原子发布运行 `33161440282` 的 Android 模拟器失败根因已确认：模拟器已正常启动，失败发生在 `adb install --no-streaming` 的系统包校验阶段（`INSTALL_FAILED_VERIFICATION_FAILURE: Integrity verification timed out`），不是 APK 构建或应用启动崩溃。修复：`scripts/android-emulator-smoke.sh` 仅在该明确错误下关闭隔离模拟器的 ADB 包校验并重试一次，其他安装错误仍立即失败；下次发布需从更新后的最终 tag 重新执行一次完整原子工作流。
+- 原子发布运行 `33163785040` 未进入构建，源码门禁中的浏览器媒体恢复 smoke 在 45 秒人为断网后回放恢复进度为 0。该参数过长会在托管 runner 上耗尽 Chromium 缓冲，导致恢复 Range 路径无法观测；将 `tests/media-network-recovery-browser-smoke.js` 的有界断网窗口调整为 25 秒，保留恢复进度至少 5 秒和 Socket.IO 重认证断言，其他错误仍失败。下次仅重跑一次完整原子工作流。
+- 原子发布运行 `33164365939` 的源码、Android、Windows 基础包和完整离线包构建均成功；失败仅发生在完整离线包成品门禁，原因是 434,550,852 字节的 Windows/Android 包被旧的 1 GiB 最低体积规则错误拒绝。修复：`scripts/release-candidate-gate.js` 将 Windows 完整离线包最低体积改为 300 MiB、上限保持 2 GiB，以匹配停用 macOS 后的真实闭包；下次从更新后的最终 tag 只执行一次完整原子发布。
+- 原子发布运行 `33170193880` 的源码、Windows/Android 应用构建、模拟器启动和完整离线包均成功；最后发布收尾因先删除替换后的旧资产、再使用删除前的 `replacement-ready-release.json` 计算遗留资产，导致对已删除资产再次 DELETE 并返回 404。修复：删除替换旧资产后立即重新读取 Release，再计算并清理遗留资产；同一失败原因不得重复触发构建。
+- 随后运行 `33172876079` 在准备阶段发现上一轮恢复留下 11 个资产（10 个当前 Windows/Android/官方文件 + 1 个旧 macOS 资产），原预检只允许 0/6/10/26，因而提前失败。修复：预检与上传阶段允许识别 11 项“当前 10 + 单个可清理遗留”状态，以便安全清理后完成 10 项正式资产发布；不放宽最终成品门禁。
+- 用户补充的 v2.2.7 Windows 完整离线资产要求：必须上传并在 Release Assets 中核对 `SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe` 与 `SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe`。这两个文件必须由最终 v2.2.7 Tag 对应的修改后源码真实构建、完成启动/闭包/版本/非空大小/SHA-256 验证后上传；不得使用 v2.2.5 或其他旧包改名、占位文件或未验证文件替代。若本地或 Actions 尚未生成真实成品，Release 保持 `pending`，先完成构建和验证再上传。
+
 本节把本项目历次对话中反复确认的长期要求集中保存，供后续 Codex 会话读取。它不是聊天记录的逐字复制；当同一主题出现冲突时，按“当前用户指令 → 当前代码/运行态 → 最新 Git 历史 → 本节历史要求”的顺序裁决。已经被后续指令撤销的要求只保留为“已覆盖”说明，不得重新执行。
 
 ### 1. 产品名称、仓库和署名
