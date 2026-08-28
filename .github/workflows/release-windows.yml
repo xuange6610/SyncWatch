@@ -64,7 +64,9 @@ jobs:
           if [[ -n "$NODE_MOBILE_RUNTIME_RUN_ID" || -n "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" ]]; then
             [[ "$RELEASE_PHASE" == "android" ]]
             [[ "$NODE_MOBILE_RUNTIME_RUN_ID" =~ ^[0-9]+$ ]]
-            [[ "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" =~ ^[A-Za-z0-9._-]+$ ]]
+            # A wildcard is supported when reusing the three ABI candidate
+            # artifacts from a prior verified run (download-artifact pattern).
+            [[ "$NODE_MOBILE_RUNTIME_ARTIFACT_NAME" =~ ^[A-Za-z0-9._*-]+$ ]]
           fi
 
   node_mobile_build:
