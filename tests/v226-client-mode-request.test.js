@@ -166,7 +166,7 @@ async function login(socket, username, password, roomId, deviceId) {
     assert.ok(settings.admin.clientModeRequests.some((entry) => entry.id === offlineRequest.id && entry.status === 'approved'));
     assert.ok(settings.admin.clientModeRequests.some((entry) => entry.id === cancellable.requests[0].id && entry.status === 'cancelled'));
 
-    console.log('v2.2.6 管理员客户端模式申请、用户确认、离线补投与取消链路通过。');
+    console.log('v2.2.7 管理员客户端模式申请、用户确认、离线补投与取消链路通过。');
   } finally {
     for (const socket of sockets) socket?.disconnect();
     if (server) await server.close();

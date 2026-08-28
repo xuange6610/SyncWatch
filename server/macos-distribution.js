@@ -8,11 +8,11 @@ const MAC_FORMATS = ['dmg', 'zip'];
 const MAC_KINDS = ['server', 'client'];
 
 function releaseVersion(value) {
-  const normalized = String(value || '2.2.6').trim().replace(/^v/i, '');
-  return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized) ? normalized : '2.2.6';
+  const normalized = String(value || '2.2.7').trim().replace(/^v/i, '');
+  return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized) ? normalized : '2.2.7';
 }
 
-function macArtifactFilename(kind, architecture, format, version = '2.2.6') {
+function macArtifactFilename(kind, architecture, format, version = '2.2.7') {
   const label = kind === 'server' ? '服务器' : '客户端';
   if (!MAC_ARCHITECTURES.includes(architecture)) throw new Error(`不支持的 macOS 架构：${architecture}`);
   if (!MAC_FORMATS.includes(format)) throw new Error(`不支持的 macOS 产物格式：${format}`);
@@ -188,7 +188,7 @@ function addReleaseBaseUrl(distribution, kind, value, version) {
 }
 
 function createMacDistribution({
-  kind, version = '2.2.6', legacyPaths = {}, configured = {}, roots = [],
+  kind, version = '2.2.7', legacyPaths = {}, configured = {}, roots = [],
   manifestPaths = [], env = process.env, includeDefaultRoots = true
 } = {}) {
   if (!MAC_KINDS.includes(kind)) throw new Error(`不支持的 macOS 产物类型：${kind}`);

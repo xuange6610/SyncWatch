@@ -64,4 +64,4 @@ assert.doesNotMatch(html, /SyncWatch同步观影 · v2\.2\.3/);
 assert.doesNotMatch(html, /当前应用版本 v2\.2\.3/);
 assert.doesNotMatch(app, /SyncWatch同步观影-v2\.2\.3/);
 
-console.log('v2.2.6 correction login, policy, agreement, friend, fullscreen and UI contracts passed.');
+console.log('v2.2.7 correction login, policy, agreement, friend, fullscreen and UI contracts passed.');

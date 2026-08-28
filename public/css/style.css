@@ -2877,6 +2877,18 @@ body.fullscreen-open .toast-region,
 body.fullscreen-open #clearAllToastsBtn { display: none !important; }
 .player-container:fullscreen .danmaku-container,
 .player-container.fullscreen-active .danmaku-container { display: block !important; visibility: visible !important; opacity: 1 !important; }
+.player-container:fullscreen:not(.controls-visible) .fullscreen-lock-button,
+.player-container.fullscreen-active:not(.controls-visible) .fullscreen-lock-button { opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px); }
+.fullscreen-lock-button { transition: opacity .18s ease, visibility .18s ease, transform .18s ease; }
+.room-ownership-meta { display: block; margin-top: 4px; color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+.fullscreen-auto-lock-option { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .76rem; color: var(--muted); }
+.fullscreen-auto-lock-option input { accent-color: var(--pink); }
+.fullscreen-chat-card { font-size: .86rem; }
+.fullscreen-chat-history { font-size: .82rem; }
+.chat-head { min-width: 0; }
+.chat-head-actions { min-width: 0; flex-wrap: wrap; }
+.chat-head-actions #chatToggleBtn { flex: 0 0 auto; white-space: nowrap; position: relative; z-index: 2; }
+.chat-only-toggle { writing-mode: horizontal-tb !important; white-space: nowrap; display: inline-flex !important; align-items: center; gap: 5px; }
 .fullscreen-chat-card {
   width: min(390px, 38vw);
   min-width: min(300px, calc(100vw - 28px));
@@ -2900,4 +2912,9 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .player-container.fullscreen-active .fullscreen-actions { left: 8px; right: 8px; max-width: none; max-height: 38dvh; }
   .queue-bulk-toolbar { align-items: stretch; }
   .queue-bulk-toolbar > * { flex: 1 1 130px; }
+  .chat-head-actions { width: 100%; justify-content: flex-end; gap: 5px; }
+  .chat-head-actions > * { max-width: 100%; }
+  .chat-only-toggle { order: -1; }
+  .fullscreen-chat-card { font-size: .78rem; }
+  .fullscreen-chat-history { font-size: .74rem; }
 }

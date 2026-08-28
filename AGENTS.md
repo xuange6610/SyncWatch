@@ -55,17 +55,17 @@
 ## GitHub 发布规范
 
 - `main` 是稳定分支；功能在分支和 Pull Request 中验证后合并。版本由 `package.json`、Android `versionName`、Release tag 和发布说明共同更新，当前版本以源码和最新 Release 为准。
-- GitHub Pages 由 `.github/workflows/pages.yml` 发布 `docs/`；Windows/macOS Release 由对应 Actions 构建并上传，发布前必须先通过仓库规范和成品契约测试。
-- 每个正式版本必须严格按 v2.1.7 的 **28 个可见文件**发布：GitHub 自动生成的 `Source code (zip)` 与 `Source code (tar.gz)` 计 2 个，维护者实际上传的 Release 资产计 26 个。不得少传、增加重复资产或只上传 Windows/Android 子集后宣称完整发布。
-- 26 个维护者资产的固定清单为：Windows 体验版、标准版、完整版安装 EXE、完整版便携 EXE（4）；Android 通用 APK（1）；macOS 客户端 x64/arm64 的 DMG/ZIP（4）；macOS 服务器 x64/arm64 的 DMG/ZIP（4）；macOS 完整离线版 x64/arm64 的 DMG/ZIP（4）；Node.js x64 MSI、ARM64 MSI、macOS x64 PKG、macOS arm64 tar.gz（4）；cloudflared Windows x64 EXE、Windows x64/x86 MSI、macOS x64/arm64 二进制（5）。合计 26 个。
-- 每个版本的 Release 正文必须保留并更新“普通用户怎么选”“跨平台完整套装”“一键运行包含什么”“macOS”“架构支持边界”“cloudflared 独立工具”“Node.js 官方环境包”等说明，不得只替换版本号后删减原有使用信息。
+- GitHub Pages 由 `.github/workflows/pages.yml` 发布 `docs/`；Windows/Android Release 由对应 Actions 构建并上传，发布前必须先通过仓库规范和成品契约测试。
+- 每个正式版本必须严格按当前 **12 个可见文件**发布：GitHub 自动生成的 `Source code (zip)` 与 `Source code (tar.gz)` 计 2 个，维护者实际上传的 Release 资产计 10 个。不得少传、增加重复资产或把部分集合宣称完整发布。
+- 10 个维护者资产固定为：Windows 体验版、标准版、完整版安装 EXE、完整版便携 EXE（4）；Android 通用 APK（1）；Node.js Windows x64/ARM64 MSI（2）；cloudflared Windows x64 EXE、Windows x64/x86 MSI（3）。macOS 新包不再构建或上传，历史 Release 资产保留。
+- 每个版本的 Release 正文必须保留并更新“普通用户怎么选”“Windows + Android 套装”“一键运行包含什么”“架构支持边界”“cloudflared 独立工具”“Node.js 官方环境包”等说明，不得只替换版本号后删减原有使用信息。
 - Release 正文第一屏必须保留产品简介、首次修改默认管理员密码提示，以及“下载文件 / 版本标识 / 最适合谁 / 一句话说明”选择表。永久使用说明与上一版本保持同等完整度；“更新公告”只写上一版本到当前版本真实发生的变化，并逐项覆盖代码、功能、Android、UI/颜色、文档、构建、测试与发布流程，不得漏写实际改动或把未变化功能冒充新增。
-- 同一版本因缺陷需要重传时，只删除该版本的维护者资产并重新上传完整 26 项；不得删除历史 Release、历史 tag 或历史版本资产。重传过程中不得把资产数为 0 或不足 26 的 Release 宣称为发布完成。
-- 每次发布的 17 个 SyncWatch 应用资产（Windows 4、Android 1、macOS 12）必须由最终 Tag 对应的修改后源码重新构建，禁止复用、改名或复制上一版本应用包。上传前必须用包内源码/资源闭包、应用版本、平台/架构、签名（适用时）、非空大小、SHA-256 和实际启动/核心流程结果证明它们来自该 Tag。Node.js 与 cloudflared 的 9 个官方原始分发文件不由本项目源码生成，必须核对官方来源、版本、平台/架构和 SHA-256，且不得描述成 SyncWatch 启动程序。任何一项缺少证据时，Release 保持草稿且不得上传残缺集合或对外发布。
+- 同一版本因缺陷需要重传时，只删除该版本的维护者资产并重新上传完整 10 项；不得删除历史 Release、历史 tag 或历史版本资产。重传过程中不得把资产数为 0 或不足 10 的 Release 宣称为发布完成。
+- 每次发布的 5 个 SyncWatch 应用资产（Windows 4、Android 1）必须由最终 Tag 对应的修改后源码重新构建，禁止复用、改名或复制上一版本应用包。上传前必须用包内源码/资源闭包、应用版本、平台/架构、签名（适用时）、非空大小、SHA-256 和实际启动/核心流程结果证明它们来自该 Tag。Node.js 与 cloudflared 的 5 个官方原始分发文件不由本项目源码生成，必须核对官方来源、版本、平台/架构和 SHA-256，且不得描述成 SyncWatch 启动程序。任何一项缺少证据时，Release 保持草稿且不得上传残缺集合或对外发布。
 - 用户确认的交付规则：上传到 GitHub Release 的每一个文件都必须是当前修改后源码重新生成或已核验来源的真实成品；应用包要先验证能启动并完成对应核心流程，再核对版本、平台/架构、非空大小和 SHA-256 后上传。不得把未验证文件、旧版本改名包、占位文件或只通过源码检查的文件当作启动程序上传。
 - 每个版本公开前必须同步更新仓库首页 `README.md`、GitHub Pages 的 `docs/` 源与生成页面、仓库内 `docs/wiki/` 镜像、GitHub Wiki 的 Home/Sidebar/版本公告和受影响教程。完成部署后必须分别读取仓库首页、Pages canonical URL、GitHub Wiki 和 Release 页面，确认版本、下载文件、更新公告与当前 Release 一致；任一页面仍展示旧版、缺少当前版本公告或链接到旧资产时，发布保持 `pending`，不得宣称完成。
 - 发布前必须逐项核对文件名、版本号、平台/架构、非空大小、SHA-256 和 Release 资产数量；缺少任一真实构建产物时，标记版本未完成并停止上传，不用改名文件或占位文件凑数。资产清单以 [docs/release/release-manifest.md](docs/release/release-manifest.md) 为准。
-- 发布执行顺序固定为“完成全部源码与文档改动 → 本地运行/测试 → 真实构建并验证全部成品 → 逐项核对哈希与 26+2 文件数 → 仅清理当前版本旧资产 → 一次性完整覆盖上传”。任何测试、构建或资产校验未完成时不得先发布；历史版本资产不得删除。
+- 发布执行顺序固定为“完成全部源码与文档改动 → 本地运行/测试 → 真实构建并验证应用成品、核验缓存第三方文件 → 逐项核对哈希与 10+2 文件数 → 仅清理当前版本旧资产 → 一次性完整覆盖上传”。任何测试、构建或资产校验未完成时不得先发布；历史版本资产不得删除。
 
 ## 自动版本规则
 
@@ -141,7 +141,7 @@
 
 ### 3. 发布版本和文件硬性要求
 
-- 所有公开版本、分支、Tag、Release 标题、下载链接和公告使用 `vX.Y.Z` 前缀；`package.json` 和 Android 工具链字段保留纯数字 SemVer。当前最新正式版本为 `v2.2.6`；后续版本必须完成真实构建、哈希回读和 Release API 验证后才能切换为正式版。
+- 所有公开版本、分支、Tag、Release 标题、下载链接和公告使用 `vX.Y.Z` 前缀；`package.json` 和 Android 工具链字段保留纯数字 SemVer。当前源码候选版本为 `v2.2.7`，正式发布必须完成真实构建、哈希回读和 Release API 验证后才能切换为正式版。
 - 每个正式 Release 必须有 **28 个可见文件**：26 个维护者真实资产，加 GitHub 自动生成的 `Source code (zip)` 和 `Source code (tar.gz)`。Release API 的维护者资产数必须为 26，不能用空文件、改名旧包、重复文件或占位文件凑数。
 - 每次正式版本构建开始前，必须在项目根目录创建或准备唯一的 `dist/`，所有 **28 个最终交付文件都必须直接生成到该目录**：26 个经过验证的构建/运行资产，加与最终 Tag/提交一致的源码 ZIP 和 TAR.GZ。禁止先把正式成品生成到 `release/`、`dist-client/`、`dist-installer/`、`dist-full-portable/`、`dist-mac-*`、`output/`、项目根目录或其他位置后再复制/汇总；也不得在这些位置保留同一成品副本。构建配置、脚本和 GitHub Actions 必须以根目录 `dist/` 为最终且唯一输出路径。`dist/` 内少于或多于 28 个、存在旧版本、重复、空文件或哈希不一致时，都必须标记构建未完成，不得上传或宣称发布完成。
 - `dist/` 中 28 个文件并非全部都是“启动程序”：GitHub 的两个源码归档用于审阅和自行构建，其余 26 个才是应用、安装包或运行工具。文档和交付清单必须如实区分，不能把源码归档宣传成可双击启动的软件。

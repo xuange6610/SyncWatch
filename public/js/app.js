@@ -84,7 +84,7 @@ try {
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.6', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.7', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -347,6 +347,9 @@ webShareModal closeWebShareBtn webUrlInput pasteWebUrlBtn openWebUrlBtn shareWeb
   myRoomsModal closeMyRoomsBtn myRoomsTitle myRoomsHint myRoomsList loginRoomReminderControls loginRoomReminderPreference loginTemporaryRoomBtn accountOverviewModal closeAccountOverviewBtn accountOverviewSearch accountOverviewPresence accountOverviewSort accountOverviewCount accountOverviewList openAccountOverviewBtn accountAuditLogModal closeAccountAuditLogBtn refreshAccountAuditLogsBtn accountAuditLogSearch accountAuditLogType accountAuditLogSelectAll deleteSelectedAccountAuditLogsBtn accountAuditLogList memberProfileModal closeMemberProfileBtn memberProfileContent locationAuthorizationsModal closeLocationAuthorizationsBtn refreshLocationAuthorizationsBtn locationAuthorizationsList viewLocationAuthorizationsBtn adminContactModal closeAdminContactBtn adminContactTitle adminContactNoteDisplay adminContactList tunnelTutorialModal closeTunnelTutorialBtn uploadLimitTutorialModal closeUploadLimitTutorialBtn uploadLimitTutorialActionBtn noticeModal closeNoticeBtn noticeForm noticeText noticeFont noticeDuration noticeFontSize noticeColor noticeScopeGroup noticeScope openPermissionsFromNoticeBtn conversionProgressModal closeConversionProgressBtn refreshConversionProgressBtn conversionProgressSummary mediaProcessingAdminControls mediaCompatibilityAutoConvert mediaProcessingConcurrency saveMediaProcessingBtn openConvertedMediaFolderBtn mediaProcessingControlStatus mediaProcessingSearch mediaProcessingSelectAll mediaProcessingDeleteSource deleteSelectedMediaProcessingBtn conversionProgressList downloadCenterModal closeDownloadCenterBtn checkDownloadUpdateBtn openGithubProjectBtn openGithubLatestBtn downloadUpdateStatus agreementModal agreementTitle agreementVersion agreementText agreementCheck acceptAgreementBtn declineAgreementBtn ownerExitModal ownerExitTitle desktopCloseModal desktopCloseStatus screenNoticeOverlay screenNoticeSender screenNoticeText closeScreenNoticeBtn roomSwitchSuccessOverlay roomSwitchSuccessText
 appDialog appDialogCloseBtn appDialogForm appDialogTitle appDialogDescription appDialogInputGroup appDialogInputLabel appDialogInput appDialogPasswordToggle appDialogSelectGroup appDialogSelectLabel appDialogSelect appDialogConfirmGroup appDialogConfirmLabel appDialogConfirmInput appDialogConfirmPasswordToggle appDialogError appDialogFillRiskBtn appDialogBackBtn appDialogCancelBtn appDialogConfirmBtn`.split(/\s+/);
 for (const id of ids) elements[id] = document.getElementById(id);
+elements.fullscreenAutoLockToggle = document.getElementById('fullscreenAutoLockToggle');
+elements.fullscreenAutoLockToolbarToggle = document.getElementById('fullscreenAutoLockToolbarToggle');
+elements.roomOwnershipMeta = document.getElementById('roomOwnershipMeta');
 for (const id of ['videoManagementBatchRenameBtn', 'videoManagementRenamePanel', 'closeVideoManagementRenameBtn', 'videoManagementRenameTemplate', 'videoManagementRenameFind', 'videoManagementRenameReplacement', 'videoManagementRenameStart', 'videoManagementRenamePadding', 'videoManagementRenamePreview', 'applyVideoManagementRenameBtn', 'videoManagementPreview', 'videoManagementPreviewTitle', 'videoManagementPreviewMeta', 'closeVideoManagementPreviewBtn', 'videoManagementPreviewPlayer']) {
   elements[id] = document.getElementById(id);
 }
@@ -1823,6 +1826,8 @@ function bindUiEvents() {
     if (enabled) scheduleVolumeCommand(elements.videoPlayer.volume, elements.videoPlayer.muted);
   });
   elements.fullscreenBtn.addEventListener('click', togglePlayerFullscreen);
+  elements.fullscreenAutoLockToggle?.addEventListener('change', () => writeFullscreenAutoLockPreference(elements.fullscreenAutoLockToggle.checked));
+  elements.fullscreenAutoLockToolbarToggle?.addEventListener('change', () => writeFullscreenAutoLockPreference(elements.fullscreenAutoLockToolbarToggle.checked));
   elements.skipSettingsBtn?.addEventListener('click', openSkipSettings);
   elements.closeSkipSettingsBtn?.addEventListener('click', () => elements.skipSettingsModal?.classList.add('is-hidden'));
   elements.skipSettingsForm?.addEventListener('submit', saveSkipSettings);
@@ -4777,7 +4782,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   if (!state.socket?.connected || state.socket.id !== socketId || generation !== state.authGeneration) throw new Error('连接在初始化期间发生变化');
 
   if (roomChanged) resetRoomScopedClientState();
-  state.token = token; state.user = result.user; state.room = result.room;
+  state.token = token; state.user = result.user; state.room = result.room; syncFullscreenAutoLockPreference();
   state.capabilities = result.capabilities || {}; state.permissions = result.permissions || {};
   state.authenticated = true; state.socketAuthenticated = true; state.resumeNeeded = false; state.rememberSession = sessionRemember; state.intentionalLogout = false;
   state.managementOnlyAuth = managementOnly;
@@ -5180,10 +5185,10 @@ async function loadPublicConfig(silent = false) {
 
 function applyPublicConfig() {
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.2.6';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.2.7';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.6'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.7'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -5373,7 +5378,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.6';
+    const current = state.publicConfig.version || 'v2.2.7';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -5841,7 +5846,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.6.apk';
+    link.download = 'SyncWatch同步观影-v2.2.7.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -5858,7 +5863,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch-Android-v2.2.6-universal.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.2.7-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -7298,6 +7303,10 @@ function updateRoomHeader() {
   elements.headerStatus.dataset.state = roomStatus.state;
   elements.headerStatus.classList.toggle('healthy', roomStatus.healthy);
   elements.roomCode.textContent = state.room.id; elements.roomScheme.textContent = `syncwatch://${state.room.id}`;
+  if (elements.roomOwnershipMeta) {
+    const owner = state.room.ownerName || state.room.ownerUsername || '未设置';
+    elements.roomOwnershipMeta.textContent = `房主：${owner} · ${state.room.temporary ? '临时房间' : '正式房间'}`;
+  }
   if (elements.roomShareUrl && !elements.roomShareUrl.dataset.customBase) elements.roomShareUrl.value = roomShareAddress();
   if (elements.currentRoomBanner) {
     elements.currentRoomBanner.classList.remove('is-hidden');
@@ -9592,6 +9601,24 @@ function fullscreenChatHintStorageKey(username = state.user?.username) {
   return `${FULLSCREEN_CHAT_HINT_KEY_PREFIX}${String(username || 'anonymous').trim().toLocaleLowerCase()}`;
 }
 
+function fullscreenAutoLockStorageKey(username = state.user?.username) {
+  return `syncwatchFullscreenAutoLock:${String(username || 'anonymous').trim().toLocaleLowerCase()}`;
+}
+
+function readFullscreenAutoLockPreference() {
+  try { return localStorage.getItem(fullscreenAutoLockStorageKey()) === '1'; } catch (_) { return false; }
+}
+
+function writeFullscreenAutoLockPreference(enabled) {
+  try { localStorage.setItem(fullscreenAutoLockStorageKey(), enabled ? '1' : '0'); } catch (_) {}
+}
+
+function syncFullscreenAutoLockPreference() {
+  const enabled = readFullscreenAutoLockPreference();
+  if (elements.fullscreenAutoLockToggle) elements.fullscreenAutoLockToggle.checked = enabled;
+  if (elements.fullscreenAutoLockToolbarToggle) elements.fullscreenAutoLockToolbarToggle.checked = enabled;
+}
+
 function readFullscreenChatHintPreference() {
   try { return JSON.parse(localStorage.getItem(fullscreenChatHintStorageKey()) || '{}'); }
   catch (_) { return {}; }
@@ -9761,6 +9788,8 @@ function handleFullscreenChange() {
   elements.playerContainer.classList.toggle('fullscreen-active', active); document.body.classList.toggle('fullscreen-open', active);
   if (active) {
     suppressFullscreenInterruptions(); renderFullscreenChat(); setChatMode(state.chatMode); showFullscreenControls();
+    syncFullscreenAutoLockPreference();
+    if (entering && readFullscreenAutoLockPreference()) setFullscreenInteractionLocked(true);
     if (entering) showFullscreenShortcutHintIfNeeded();
   }
   else {
@@ -13482,7 +13511,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.6-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.7-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }

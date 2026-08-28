@@ -285,7 +285,7 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.2.6");
+        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.2.7");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
 
         CookieManager cookieManager = CookieManager.getInstance();

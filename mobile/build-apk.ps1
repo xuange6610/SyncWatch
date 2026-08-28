@@ -509,7 +509,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Android release build failed.' }
 
 $builtApk = Join-Path $PSScriptRoot 'app\build\outputs\apk\release\app-release.apk'
 $distRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\dist'))
-$deliveryApk = Join-Path $distRoot 'SyncWatch-Android-v2.2.6-universal.apk'
+$deliveryApk = Join-Path $distRoot 'SyncWatch-Android-v2.2.7-universal.apk'
 if (-not (Test-Path -LiteralPath $builtApk)) { throw 'Gradle completed without the expected release APK.' }
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
