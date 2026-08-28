@@ -8,7 +8,18 @@ smoke_dir="$workspace/.build/android-smoke"
 apk="$smoke_dir/SyncWatch-Android-v${version}-universal.apk"
 
 test -s "$apk"
-adb install --no-streaming "$apk"
+install_output="$(adb install --no-streaming "$apk" 2>&1)" || {
+  printf '%s\n' "$install_output" >&2
+  if grep -q 'INSTALL_FAILED_VERIFICATION_FAILURE: Integrity verification timed out' <<< "$install_output"; then
+    # Large release APKs can exceed the emulator package-verifier window.
+    # Disable ADB verification for this isolated smoke emulator, then retry once.
+    adb shell settings put global package_verifier_enable 0 || true
+    adb shell settings put global verifier_verify_adb_installs 0 || true
+    adb install --no-streaming "$apk"
+  else
+    exit 1
+  fi
+}
 
 installed_version="$(adb shell dumpsys package com.xuan.syncwatch | sed -n 's/^[[:space:]]*versionName=//p' | head -n 1 | tr -d '\r')"
 test "$installed_version" = "$version"
