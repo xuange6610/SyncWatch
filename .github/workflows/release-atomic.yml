@@ -75,8 +75,8 @@ jobs:
             if(matches.length>1)throw new Error(`Multiple Releases target ${process.env.RELEASE_TAG}.`);
             if(matches.length===1) {
               const release=matches[0];
-              if(!Array.isArray(release.assets) || ![0,10,26].includes(release.assets.length)) {
-                throw new Error(`The existing Release must contain either zero, legacy 26, or current 10 assets.`);
+              if(!Array.isArray(release.assets) || ![0,6,10,26].includes(release.assets.length)) {
+                throw new Error(`The existing Release must contain zero, partial legacy 6, legacy 26, or current 10 assets.`);
               }
               if(release.assets.length===0 && release.draft!==true) {
                 throw new Error(`An empty existing Release must remain a draft.`);
@@ -431,8 +431,8 @@ jobs:
             gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/pre-upload-release.json
             RELEASE_JSON=.build/pre-upload-release.json node -e '
               const r=require(`./${process.env.RELEASE_JSON}`);
-              if(!Array.isArray(r.assets) || ![0,10,26].includes(r.assets.length)) {
-                throw new Error(`Release target changed after preparation; expected zero, legacy 26, or current 10 assets.`);
+              if(!Array.isArray(r.assets) || ![0,6,10,26].includes(r.assets.length)) {
+                throw new Error(`Release target changed after preparation; expected zero, partial legacy 6, legacy 26, or current 10 assets.`);
               }
             '
             old_asset_count="$(node -p "require('./.build/pre-upload-release.json').assets.length")"
