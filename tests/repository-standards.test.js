@@ -19,7 +19,6 @@ const requiredFiles = [
   '.github/PULL_REQUEST_TEMPLATE.md',
   '.github/CODEOWNERS',
   '.github/workflows/ci.yml',
-  '.github/workflows/release-macos.yml',
   '.github/workflows/release-windows.yml',
   '.github/workflows/release-atomic.yml',
   '.github/workflows/pages.yml',
@@ -84,7 +83,6 @@ const requiredFiles = [
   'tests/release-candidate-gate.test.js',
   'tests/release-third-party-assets.test.js',
   'electron-builder-windows-full-portable.json',
-  'electron-builder-mac-full.json',
   'assets/app-icon.png',
   'assets/app-icon.ico'
 ];
