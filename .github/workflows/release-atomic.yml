@@ -75,8 +75,8 @@ jobs:
             if(matches.length>1)throw new Error(`Multiple Releases target ${process.env.RELEASE_TAG}.`);
             if(matches.length===1) {
               const release=matches[0];
-              if(!Array.isArray(release.assets) || ![0,10].includes(release.assets.length)) {
-                throw new Error(`The existing Release must contain either zero assets or the complete 10-asset Windows/Android set.`);
+              if(!Array.isArray(release.assets) || ![0,10,26].includes(release.assets.length)) {
+                throw new Error(`The existing Release must contain either zero, legacy 26, or current 10 assets.`);
               }
               if(release.assets.length===0 && release.draft!==true) {
                 throw new Error(`An empty existing Release must remain a draft.`);
@@ -431,8 +431,8 @@ jobs:
             gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/pre-upload-release.json
             RELEASE_JSON=.build/pre-upload-release.json node -e '
               const r=require(`./${process.env.RELEASE_JSON}`);
-              if(!Array.isArray(r.assets) || ![0,10].includes(r.assets.length)) {
-                throw new Error(`Release target changed after preparation; expected zero or 10 assets.`);
+              if(!Array.isArray(r.assets) || ![0,10,26].includes(r.assets.length)) {
+                throw new Error(`Release target changed after preparation; expected zero, legacy 26, or current 10 assets.`);
               }
             '
             old_asset_count="$(node -p "require('./.build/pre-upload-release.json').assets.length")"
@@ -535,6 +535,18 @@ jobs:
           while IFS=$'\t' read -r official old_id new_id old_backup temporary; do
             [[ "$old_id" = "0" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}"
           done < .build/asset-swap.tsv
+
+          # Remove legacy macOS/unused assets from the same v2.2.6 Release
+          # only after the replacement set has passed remote hash validation.
+          RELEASE_JSON=.build/replacement-ready-release.json node -e '
+            const fs=require(`fs`);
+            const release=require(`./${process.env.RELEASE_JSON}`);
+            const expected=new Set(fs.readFileSync(`.build/release-files-10.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>line.replace(/^dist\//,``)));
+            for(const asset of release.assets) if(!expected.has(asset.name)) process.stdout.write(`${asset.id}\n`);
+          ' > .build/legacy-asset-ids.txt
+          while IFS= read -r legacy_id; do
+            [[ -z "$legacy_id" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${legacy_id}"
+          done < .build/legacy-asset-ids.txt
 
           gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
             -f tag_name="$RELEASE_TAG" \
