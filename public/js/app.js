@@ -2559,7 +2559,7 @@ function enhanceOneSelect(select) {
   const shell = document.createElement('span'); shell.className = 'select-shell';
   select.parentNode.insertBefore(shell, select); shell.appendChild(select);
   const trigger = document.createElement('button');
-  trigger.type = 'button'; trigger.className = 'select-trigger'; trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.type = 'button'; trigger.className = 'select-trigger'; trigger.dataset.copyKey = 'dialog.selectTrigger'; trigger.setAttribute('aria-haspopup', 'listbox');
   trigger.addEventListener('click', () => openEnhancedSelect(select));
   trigger.addEventListener('keydown', (event) => {
     if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); openEnhancedSelect(select); }
@@ -6444,7 +6444,7 @@ function openVideoManagement() {
   const toolbar = elements.videoManagementModal?.querySelector('.video-management-toolbar');
   if (toolbar && !toolbar.querySelector('#videoManagementBatchCoverBtn')) {
     const button = document.createElement('button');
-    button.id = 'videoManagementBatchCoverBtn'; button.className = 'secondary-button'; button.type = 'button'; button.textContent = '批量随机封面';
+    button.id = 'videoManagementBatchCoverBtn'; button.dataset.copyKey = 'media.batchRandomCover'; button.className = 'secondary-button'; button.type = 'button'; button.textContent = '批量随机封面';
     button.addEventListener('click', batchRandomizeManagedCovers);
     toolbar.insertBefore(button, elements.videoManagementBatchDeleteBtn || null);
   }
