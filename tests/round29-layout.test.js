@@ -31,11 +31,11 @@ for (const id of [
   'loginRoomReminderPreference', 'loginTemporaryRoomBtn', 'mediaCompatibilityAutoConvert'
   , 'loginHostShortcuts', 'adminMaxConcurrentSessions', 'lanScanSelectAll', 'deleteSelectedLanRoomsBtn',
   'locationStatusNoticesEnabled', 'locationAuthorizationRequestsEnabled', 'accountTierEditor', 'permissionGroupEditor'
+  , 'onboardingGuideModal', 'openOnboardingGuideBtn', 'onboardingGuideStep'
 ]) hasId(id);
 
-assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('class="topbar-fixed-actions"'), '服务器快捷入口必须位于顶栏固定操作区之前');
-assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('id="loginForm"'), '服务器快捷入口必须脱离登录表单并位于其上方');
-assert.ok(html.indexOf('id="resetAdminPasswordBtn"') < html.indexOf('id="loginForm"'), '重置超级管理员密码入口必须位于登录表单上方');
+assert.ok(html.indexOf('id="loginHostShortcuts"') > html.indexOf('id="myRoomsLoginBtn"'), '服务器快捷入口必须位于我的房间记录之后');
+assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('class="device-ip-row"'), '服务器快捷入口必须位于设备 IP 信息之前');
 assert.doesNotMatch(html, /id=["']adminUnlimitedDevices["']/, 'admin 登录策略应使用明确的并发数量，而不是不限设备开关');
 assert.match(html, /id=["']adminMaxConcurrentSessions["'][^>]*type=["']number["'][^>]*min=["']1["'][^>]*max=["']20["']/);
 assert.match(html, /实时共享网页画面/);
@@ -85,6 +85,10 @@ assert.match(css, /\.login-music-progress-popover\s*\{[^}]*opacity:\s*0;[^}]*poi
 assert.match(css, /\.login-now-playing\.is-expanded\s+\.login-music-progress-popover/);
 assert.match(css, /\.login-host-shortcuts button\s*\{[^}]*height:\s*30px;[^}]*min-height:\s*30px;/s,
   '服务器登录快捷入口必须保持 30px 紧凑高度');
+assert.match(css, /\.login-host-shortcuts\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2/s,
+  '服务器登录快捷入口必须在登录卡片内使用紧凑网格');
+assert.match(css, /body\.android-client \.login-host-shortcuts\s*\{[^}]*display:\s*none\s*!important/s,
+  'Android 客户端不得显示服务器快捷入口');
 assert.match(css, /body\.electron-server \.login-host-shortcuts button\s*\{[^}]*height:\s*30px\s*!important;[^}]*min-height:\s*30px\s*!important;[^}]*font-size:\s*11px;/s,
   'Electron 粗指针环境也必须保持服务器快捷入口紧凑');
 assert.match(app, /function readLoginMusicPreference\(\)/);
@@ -92,6 +96,15 @@ assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stri
   '登录音乐播放、静音与音量偏好必须在本机持久化');
 assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated \|\| state\.managementOnlyAuth\)/,
   '进入普通观影房间后必须隐藏服务器登录快捷入口');
+assert.match(app, /function initializeMiddleMouseScroll\(\)/, '网页端必须注册中键拖动滚动处理');
+assert.match(app, /function initializeOnboardingGuide\(\)/, '首次进入必须注册新手引导');
+assert.match(app, /ONBOARDING_GUIDE_KEY/, '新手引导完成状态必须持久化');
+assert.match(css, /body\.android-client \.login-page\s*\{[^}]*overflow-y:\s*auto;[^}]*touch-action:\s*pan-y/s, 'Android 登录页必须支持手指上下滚动');
+assert.match(app, /event\.button\s*!==\s*1[\s\S]{0,180}isExcluded\(event\.target\)/, '中键滚动必须避开表单和交互控件');
+assert.match(app, /drag\.container\.scrollTop\s*=\s*drag\.startTop\s*-\s*\(event\.clientY\s*-\s*drag\.startY\)/, '中键拖动必须按垂直位移滚动当前容器');
+assert.match(app, /profile-room-item room-directory-card \$\{room\.pinned \? 'pinned' : ''\} \$\{room\.owned \? 'is-owned' : ''\}/, '我的房间卡片必须带有房主高亮状态类');
+assert.match(css, /\.profile-room-item\.is-owned\s*\{[^}]*animation:\s*owned-room-pulse/, '房主房间必须持续呼吸高亮');
+assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]{0,260}\.profile-room-item\.is-owned\s*\{[^}]*animation:\s*none/s, '房主房间高亮必须支持减少动态效果偏好');
 assert.match(css, /\.player-container:fullscreen\s+\.fullscreen-show-button[\s\S]{0,500}pointer-events:\s*auto/);
 assert.doesNotMatch(css, /@import\s+(?:url\()?['"]?https?:\/\//i, '不得引用远程字体或样式');
 assert.match(css, /data-mobile-module-active=["']chat["'][\s\S]{0,900}\.chat-panel/);

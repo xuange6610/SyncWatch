@@ -1,5 +1,7 @@
 # SyncWatch 长期维护与交付要求
 
+当前 `release/v2.2.8` 为候选分支；Release 仍保持 pending，必须完成真实构建、哈希和 10+2 文件核验后才能更新线上 Latest。
+
 本文记录用户已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口，具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
 
 这些要求只适用于 SyncWatch同步观影。新项目只继承 Codex 全局 `AGENTS.md` 中的通用工作流程，不得自动继承本项目的名称、版本号、28 文件或平台清单。

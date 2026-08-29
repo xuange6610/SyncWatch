@@ -25,4 +25,4 @@ assert.match(server, /onSafe\(['"]web-share-start['"]/, '服务端必须提供�
 assert.match(server, /fileId:\s*null[\s\S]{0,240}playbackRate:\s*1/, '网页共享启动必须清空原播放状态');
 assert.match(html, /同步网址.*各端独立浏览/, '网页 URL 模式必须明确各端独立加载边界');
 
-console.log('v2.2.7 room settings and login layout contract passed');
+console.log('v2.2.8 room settings and login layout contract passed');

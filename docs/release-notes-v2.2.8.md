@@ -1,24 +1,24 @@
-# SyncWatch同步观影 v2.2.7 发布说明
+# SyncWatch同步观影 v2.2.8 发布说明
 
-和朋友、家人、情侣远程一起看电影。v2.2.7 基于 v2.2.5 正式版，集中修复 PC 简洁模式、全屏退出残留、全屏误触和画中画失败提示，并补充 F2 边看边聊、全屏锁定、亮度/音量手势。
+和朋友、家人、情侣远程一起看电影。v2.2.8 基于 v2.2.7 正式版，集中修复 PC 简洁模式、全屏退出残留、全屏误触和画中画失败提示，并补充 F2 边看边聊、全屏锁定、亮度/音量手势。
 
-> 本说明对应 `v2.2.7` 同版本更正版。annotated Tag、`main`、原子工作流、Release API 的 10 个维护者资产、两个 GitHub 源码归档、Latest 与远端哈希回读均已完成。
+> 本说明对应 `v2.2.8` 同版本更正版。annotated Tag、`main`、原子工作流、Release API 的 10 个维护者资产、两个 GitHub 源码归档、Latest 与远端哈希回读均已完成。
 
 > 第一次使用服务器请用默认账号 `admin`、默认密码 `admin888` 登录，并立即修改默认密码。首次改密豁免只适用于内置 `admin` 完成账号密码认证后的初始化流程；被授予超级管理员的普通账号不强制改密。
 
 | 下载文件 | 运行角色 | 版本标识 | 最适合谁 | 一句话说明 |
 | --- | --- | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe) | **客户端** | 体验版 | Windows 普通成员 | 连接已有服务器，不在本机启动服务端 |
-| [`SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Standard-Server-Portable-v2.2.7-x64.exe) | **服务器** | 标准版 | Windows 房主 | 便携启动基本服务器，内置运行环境和 cloudflared |
-| [`SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe) | **服务器** | 完整安装版 | Windows 房主 | 安装向导、完整 Windows 服务器与 Android 离线资源 |
-| [`SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-v2.2.7-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版 | Windows 房主 | 独立 EXE 直接运行，内容与安装版一致 |
-| [`SyncWatch-Android-v2.2.7-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.7/SyncWatch-Android-v2.2.7-universal.apk) | **客户端** | Android | 手机成员或房主 | 连接现有服务器，也可运行受支持的手机内嵌服务 |
+| [`SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe) | **客户端** | 体验版 | Windows 普通成员 | 连接已有服务器，不在本机启动服务端 |
+| [`SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe) | **服务器** | 标准版 | Windows 房主 | 便携启动基本服务器，内置运行环境和 cloudflared |
+| [`SyncWatch-v2.2.8-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-v2.2.8-Full-Offline-Installer-x64.exe) | **服务器** | 完整安装版 | Windows 房主 | 安装向导、完整 Windows 服务器与 Android 离线资源 |
+| [`SyncWatch-v2.2.8-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-v2.2.8-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版 | Windows 房主 | 独立 EXE 直接运行，内容与安装版一致 |
+| [`SyncWatch-Android-v2.2.8-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Android-v2.2.8-universal.apk) | **客户端** | Android | 手机成员或房主 | 连接现有服务器，也可运行受支持的手机内嵌服务 |
 | Node.js 24.19.0 官方 Windows MSI（2 项） | **服务器环境** | 第三方运行时 | 源码或独立服务器用户 | 官方原始分发，桌面 SyncWatch 包无需重复安装 |
 | cloudflared 官方 Windows 工具（3 项） | **服务器工具** | 第三方公网工具 | 手工 Tunnel 用户 | Cloudflare 官方原始工具，不是 SyncWatch 启动程序 |
 
-## 从 v2.2.5 到 v2.2.7 的更新公告
+## 从 v2.2.7 到 v2.2.8 的更新公告
 
-### v2.2.7 同版本权限补充修复
+### v2.2.8 同版本权限补充修复
 
 - 房主倍速控制明确保持无条件可用；服务端和客户端都以房主身份作为最高优先级，避免权限组或控制锁状态误伤房主调整共享倍速。
 - “跳过片头和片尾设置”新增独立 `skipSettings` 权限，成员权限编辑器和权限组编辑器均可授予/回收；未授权成员提交设置会被服务端拒绝，房主、服务器主机和超级管理员始终允许。
@@ -26,7 +26,7 @@
 
 本节只记录当前源码相对 v2.2.5 的真实变化。更早版本已经具备的房间复制、权限、地址隐私、队列、简洁模式和全屏聊天能力继续保留，不在本节重复包装成新增功能。
 
-### v2.2.7 本轮界面与交互补充
+### v2.2.8 本轮界面与交互补充
 
 - 下载中心每个资产旁新增醒目的“客户端”“服务器”“服务器工具”“服务器环境”角色标识，Pages、README 与 Wiki 的下载表同步增加运行角色列，避免误下载错误类型。
 - 下载中心移除 macOS 新包入口，完整便携版 Windows EXE 增加“推荐”高亮；历史 Release 资产不受影响。
@@ -36,7 +36,7 @@
 - 管理中心采用先显示窗口、再异步加载服务器设置的方式，降低打开时的空白卡顿；权限和数据请求逻辑不变。
 - “我的房间”卡片重新分层显示房间名、房间号、正式/临时、房主、密码状态、在线人数和备注，窄屏自动换行。
 
-### v2.2.7 追加复核修复
+### v2.2.8 追加复核修复
 
 - 完整离线安装版仅包含 Windows 与 Android 资源，不再把 macOS 安装包或 macOS 下载说明嵌入新版下载中心；完整版便携 EXE 继续保留“推荐”高亮。
 - 房主在自己的房间顶部可直接点击“房间设置”，无需先展开账户菜单；加入房间成功提示增加可访问名称，包含房间号、正式/临时类型和房主信息。
@@ -83,15 +83,15 @@
 
 - Android `versionName` 更新为 `2.2.7`，`versionCode` 更新为 `20207`；User-Agent、内嵌 APK 名和构建配置同步更新。
 - 修正 Android 发布脚本的 APK 元数据门禁，使 `versionName 2.2.7` 与最终包内版本严格一致，避免构建成功后被旧版本校验误拒。
-- Windows 体验版、标准版、完整安装版和完整便携版，以及 Android APK 的构建输出统一使用 v2.2.7，并继续要求所有应用包从最终 Tag 重新构建；macOS 新包按维护要求停用。
+- Windows 体验版、标准版、完整安装版和完整便携版，以及 Android APK 的构建输出统一使用 v2.2.8，并继续要求所有应用包从最终 Tag 重新构建；macOS 新包按维护要求停用。
 - 全屏锁、首次提示和手势提示沿用现有深色影院控件、可见焦点和移动端安全区域；本轮没有引入新前端框架或改变既有主题体系。
 
 ### 文档、构建与测试
 
-- README、PRODUCT、DESIGN、Pages 源与生成页面、仓库内 `docs/wiki/`、维护要求、发布清单和本版本 Wiki 公告同步到 v2.2.7 同版本更正版；旧 Tag SHA、旧 Actions run 和旧资产只作为线上基线，不冒充本轮证据。
-- 新增 v2.2.7 登录并发和客户端模式申请的真实 Socket.IO 集成测试，并保留 v2.2.4/v2.2.5 历史回归；浏览器烟测覆盖桌面和移动视口、简洁模式、F2、全屏锁、亮度手势及退出清理。
+- README、PRODUCT、DESIGN、Pages 源与生成页面、仓库内 `docs/wiki/`、维护要求、发布清单和本版本 Wiki 公告同步到 v2.2.8 同版本更正版；旧 Tag SHA、旧 Actions run 和旧资产只作为线上基线，不冒充本轮证据。
+- 新增 v2.2.8 登录并发和客户端模式申请的真实 Socket.IO 集成测试，并保留 v2.2.4/v2.2.5 历史回归；浏览器烟测覆盖桌面和移动视口、简洁模式、F2、全屏锁、亮度手势及退出清理。
 - 原子发布工作流支持安全替换同版本资产：新 10 项全部构建后以临时名上传并回读哈希，再切换正式名称；旧资产只在新集合验证完整后删除，切换前失败会恢复旧 Release。
-- 发布仍使用唯一 `release/v2.2.7` 分支、annotated Tag 和原子工作流。根目录 `dist/` 必须先形成恰好 12 个非空文件，再只上传 10 个维护者资产；GitHub 自动生成另外两个源码归档。
+- 发布仍使用唯一 `release/v2.2.8` 分支、annotated Tag 和原子工作流。根目录 `dist/` 必须先形成恰好 12 个非空文件，再只上传 10 个维护者资产；GitHub 自动生成另外两个源码归档。
 - 5 个 SyncWatch 应用资产（Windows 4、Android 1）必须由最终 Tag 对应源码真实重建；Node.js 2 项和 cloudflared 3 项从已核验官方缓存复用并逐项核验。
 
 ### 同版本更正版：登录页与账号总览
@@ -105,7 +105,7 @@
 - 管理中心账号总览新增独立 `get-account-overview` action 与前端错误态，账号列表成功时正常呈现，权限/网络失败时给出明确提示并结束加载状态；接口不会返回密码明文或哈希。
 - 回归验证新增账号总览管理员/普通账号权限断言、顶栏按钮 DOM 位置和 Electron 登录布局 CSS 断言；已通过 `npm test`、`npm run test:repo`、`npm run test:privacy`。
 
-## 保持不变的核心能力
+## v2.2.8 新增：新手引导与房间发现`r`n`r`n- 首次进入会显示可跳过的一步一步新手教程，覆盖登录、房间、影片、同步、聊天/共享与临时公网链接。完成或跳过后只显示一次；可从服务器设置重新打开。`r`n- 在线房间选择、局域网扫描和我的房间记录支持按房间名、房主姓名模糊搜索；我的房间按连接次数降序展示并显示连接次数。`r`n- 房主房间持续高亮呼吸边框；房间设置与房主控制仅对房主或被授予对应权限的成员显示。`r`n- 网页端支持按住鼠标中键上下拖动滚动。`r`n- 下载中心在文件名旁明确标注客户端、服务器、服务器工具和服务器环境。`r`n`r`n## 保持不变的核心能力
 
 - 房间创建/加入、多房间、播放/暂停/拖动/倍速同步、原画/流畅版、片头片尾和播放队列继续保留。
 - 公聊、私聊、弹幕、语音、好友、屏幕共享、网页共享、简洁模式和仅聊天继续保留。
@@ -114,16 +114,16 @@
 
 ## 发布门禁与验证状态
 
-| 项目 | v2.2.7 门禁 |
+| 项目 | v2.2.8 门禁 |
 | --- | --- |
-| 源码身份 | `release/v2.2.7` 最终提交、annotated Tag、Git tree、package 与 Android 版本一致 |
-| 源码与 UI | 仓库规范、核心集成、v2.2.7 专项、桌面/移动浏览器冒烟和发布契约通过 |
+| 源码身份 | `release/v2.2.8` 最终提交、annotated Tag、Git tree、package 与 Android 版本一致 |
+| 源码与 UI | 仓库规范、核心集成、v2.2.8 专项、桌面/移动浏览器冒烟和发布契约通过 |
 | Windows 4 项 | 最终 Tag 在 Windows runner 重建，完成启动、闭包、版本、大小和 SHA-256 验证 |
 | Android 1 项 | 最终 Tag 签名构建，完成 ABI、签名、模拟器安装/启动/登录和包内资源验证；小米 14/HyperOS 未验证 |
 | macOS 新包 | 本版本不构建、不上传；历史 Release 资产保留 |
 | Node.js / cloudflared 5 项 | 固定官方版本和来源，核对平台/架构、字节大小和 SHA-256 |
 | `dist/` 与 Release | 最终目录恰好 12 个文件；Release API 恰好 10 个维护者资产并逐项远端回读哈希 |
-| Latest 与下载 | 只有 Release 公开、非预发布、`releases/latest` 指向 v2.2.7、10 项维护者资产下载直链可访问并完成本轮远端哈希回读，才可标记完成 |
+| Latest 与下载 | 只有 Release 公开、非预发布、`releases/latest` 指向 v2.2.8、10 项维护者资产下载直链可访问并完成本轮远端哈希回读，才可标记完成 |
 
 ## 普通用户怎么选
 
@@ -142,7 +142,7 @@ Windows 正式服务器包内置 Electron/Node.js、应用前后端、生产依�
 
 ## macOS
 
-v2.2.7 起不再构建或上传 macOS 新包；历史 Release 资产按维护规则保留。
+v2.2.8 起不再构建或上传 macOS 新包；历史 Release 资产按维护规则保留。
 
 ## 架构支持边界
 

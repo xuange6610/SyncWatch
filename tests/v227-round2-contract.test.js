@@ -8,11 +8,11 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const index = read('public/index.html');
 const app = read('public/js/app.js');
 const css = read('public/css/style.css');
-const notes = read('docs/release-notes-v2.2.7.md');
+const notes = read('docs/release-notes-v2.2.8.md');
 
 assert.match(index, /class="download-recommended"/);
-assert.match(index, /SyncWatch-v2\.2\.7-Full-Offline-Portable-x64\.exe/);
-assert.doesNotMatch(index, /SyncWatch-Full-Offline-macOS-v2\.2\.7/);
+assert.match(index, /SyncWatch-v2\.2\.8-Full-Offline-Portable-x64\.exe/);
+assert.doesNotMatch(index, /SyncWatch-Full-Offline-macOS-v2\.2\.8/);
 assert.doesNotMatch(index, /node-v24\.19\.0-macos/);
 assert.match(index, /id="openRoomManagementBtn"/);
 assert.match(index, /双击顶部界面状态可切换主题/);
@@ -34,4 +34,4 @@ assert.match(notes, /不再.*macOS.*安装包|不再.*macOS.*文件/);
 assert.match(notes, /房间设置/);
 assert.match(notes, /安全边界.*明文|不显示.*明文/);
 
-console.log('v2.2.7 round-2 download, join, fullscreen, theme, management and room readability contracts passed.');
+console.log('v2.2.8 round-2 download, join, fullscreen, theme, management and room readability contracts passed.');
