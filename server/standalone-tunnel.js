@@ -385,7 +385,7 @@ function createStandaloneTunnelManager({
   async function launch(options, attempt, strategy = {}) {
     const binary = resolveBinary(resolvedRoot, resolvedData);
     if (!binary) throw new Error('未找到内置 cloudflared，请确认服务器包包含 vendor/cloudflared.exe');
-    const port = Number(getPort?.()) || 5000;
+    const port = Number(getPort?.()) || 20311;
     const mode = options.mode === 'named' ? 'named' : 'quick';
     if (mode === 'named' && !options.token) throw new Error('稳定隧道需要 Cloudflare Tunnel 令牌');
     const attemptBypassProxy = Object.prototype.hasOwnProperty.call(strategy, 'bypassProxy')

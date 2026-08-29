@@ -17,7 +17,8 @@ function hasId(id) {
 }
 
 for (const id of [
-  'loginMusicNowPlaying', 'loginMusicProgressShell', 'loginMusicProgress', 'loginMusicTime',
+  'loginMusicNowPlaying', 'loginMusicPlayPauseBtn', 'loginMusicMuteBtn', 'loginMusicProgressShell',
+  'loginMusicProgress', 'loginMusicTime', 'loginMusicClientVolume', 'loginMusicClientVolumeText',
   'loginVideoSettingsCard', 'loginVideoEnabled', 'loginVideoFile', 'loginVideoPreview',
   'loginVideoUploadProgress', 'saveLoginVideoBtn', 'removeLoginVideoBtn', 'loginVideoStatus',
   'saveNoticePreferenceSettingsBtn', 'clearAllToastsBtn', 'roomAllowGuests',
@@ -32,13 +33,17 @@ for (const id of [
   'locationStatusNoticesEnabled', 'locationAuthorizationRequestsEnabled', 'accountTierEditor', 'permissionGroupEditor'
 ]) hasId(id);
 
-assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('id="loginForm"'), '服务器快捷入口必须位于登录表单上方');
+assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('class="topbar-fixed-actions"'), '服务器快捷入口必须位于顶栏固定操作区之前');
+assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('id="loginForm"'), '服务器快捷入口必须脱离登录表单并位于其上方');
 assert.ok(html.indexOf('id="resetAdminPasswordBtn"') < html.indexOf('id="loginForm"'), '重置超级管理员密码入口必须位于登录表单上方');
 assert.doesNotMatch(html, /id=["']adminUnlimitedDevices["']/, 'admin 登录策略应使用明确的并发数量，而不是不限设备开关');
 assert.match(html, /id=["']adminMaxConcurrentSessions["'][^>]*type=["']number["'][^>]*min=["']1["'][^>]*max=["']20["']/);
 assert.match(html, /实时共享网页画面/);
 assert.match(html, /同步网址（各端独立浏览）/);
 assert.match(app, /state\.localCapture\s*=\s*stream[\s\S]{0,500}emitAck\(['"]screen-share-start['"]/, '屏幕流必须在通知观看端建连前可用');
+assert.match(app, /get-account-overview/, '账号总览必须使用独立服务端 action');
+assert.match(app, /SyncWatchPlatform\?\.serverApp\) document\.body\.classList\.add\(['"]electron-server['"]\)/, 'Electron 服务端必须使用专用布局标记');
+assert.match(css, /body\.electron-server \.login-visual[\s\S]{0,260}overflow:\s*visible/, 'Electron 服务端立体方块必须保持可见');
 
 assert.doesNotMatch(html, /游客模式\s*·\s*免注册，退出即删除/);
 assert.match(html, /游客模式\s*·\s*免注册/);
@@ -78,6 +83,15 @@ assert.match(css, /login-cube-scene\[data-display-mode=["']hidden["']\]/);
 assert.match(css, /\.clear-all-toasts-button\s*\{[^}]*position:\s*fixed;[^}]*pointer-events:\s*auto;/s);
 assert.match(css, /\.login-music-progress-popover\s*\{[^}]*opacity:\s*0;[^}]*pointer-events:\s*none;/s);
 assert.match(css, /\.login-now-playing\.is-expanded\s+\.login-music-progress-popover/);
+assert.match(css, /\.login-host-shortcuts button\s*\{[^}]*height:\s*30px;[^}]*min-height:\s*30px;/s,
+  '服务器登录快捷入口必须保持 30px 紧凑高度');
+assert.match(css, /body\.electron-server \.login-host-shortcuts button\s*\{[^}]*height:\s*30px\s*!important;[^}]*min-height:\s*30px\s*!important;[^}]*font-size:\s*11px;/s,
+  'Electron 粗指针环境也必须保持服务器快捷入口紧凑');
+assert.match(app, /function readLoginMusicPreference\(\)/);
+assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stringify\(state\.loginMusicPreference\)\)/,
+  '登录音乐播放、静音与音量偏好必须在本机持久化');
+assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated \|\| state\.managementOnlyAuth\)/,
+  '进入普通观影房间后必须隐藏服务器登录快捷入口');
 assert.match(css, /\.player-container:fullscreen\s+\.fullscreen-show-button[\s\S]{0,500}pointer-events:\s*auto/);
 assert.doesNotMatch(css, /@import\s+(?:url\()?['"]?https?:\/\//i, '不得引用远程字体或样式');
 assert.match(css, /data-mobile-module-active=["']chat["'][\s\S]{0,900}\.chat-panel/);

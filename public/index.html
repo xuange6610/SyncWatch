@@ -40,6 +40,7 @@
       <button id="copyrightBtn" class="ghost-button header-feature-button topbar-context-action" type="button" title="关于 SyncWatch同步观影"><span aria-hidden="true">ⓘ</span><span class="button-label">关于</span></button>
       <span id="serverEndpointBadge" class="server-endpoint-badge is-hidden" role="status" aria-live="polite"><i aria-hidden="true"></i><span><small>局域网服务</small><strong id="serverEndpointAddress">--</strong></span><b id="serverEndpointState">检测中</b></span>
       </div>
+      <div id="loginHostShortcuts" class="login-host-shortcuts is-hidden" aria-label="服务器管理快捷入口"><button id="serverAdminLoginBtn" class="primary-button is-hidden" type="button">本机免密进入管理中心</button><button id="serverAdminRoomLoginBtn" class="secondary-button is-hidden" type="button">本机免密进入所选房间</button><button id="managementLogoutBtn" class="danger-button is-hidden" type="button">退出管理登录</button><button id="resetAdminPasswordBtn" class="secondary-button is-hidden" type="button">重置管理员密码</button><button id="restartServerBtn" class="secondary-button is-hidden" type="button">重启服务器软件</button></div>
       <div class="topbar-fixed-actions" aria-label="连接与账户">
       <button id="serverSettingsLoginBtn" class="ghost-button header-feature-button topbar-context-action is-hidden" type="button" title="服务器设置" data-copy-key="topbar.serverSettings"><span aria-hidden="true">⚙</span><span class="button-label">服务器设置</span></button>
       <button id="adminProfileBtn" class="ghost-button header-feature-button topbar-context-action is-hidden" type="button" title="设置管理员个人资料"><span aria-hidden="true">♙</span><span class="button-label">管理员资料</span></button>
@@ -94,14 +95,23 @@
         </div>
       </div>
       <section id="loginMusicNowPlaying" class="login-now-playing is-hidden" aria-label="登录页背景音乐" aria-live="polite">
+        <button id="loginMusicPlayPauseBtn" class="login-music-icon-button login-music-play-button" type="button" title="暂停背景音乐" aria-label="暂停背景音乐" aria-pressed="true">
+          <svg class="login-music-state-icon login-music-play-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 3 14 9-14 9z"></path></svg>
+          <svg class="login-music-state-icon login-music-pause-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14M16 5v14"></path></svg>
+        </button>
         <button id="loginMusicProgressShell" class="login-now-playing-summary" type="button" aria-expanded="false" aria-controls="loginMusicProgressPopover">
           <span class="login-now-playing-pulse" aria-hidden="true"><i></i><i></i><i></i></span>
           <span><small>正在播放</small><strong id="loginMusicNowPlayingTitle">背景音乐</strong></span>
           <span aria-hidden="true">⌃</span>
         </button>
+        <button id="loginMusicMuteBtn" class="login-music-icon-button" type="button" title="静音背景音乐" aria-label="静音背景音乐" aria-pressed="false">
+          <svg class="login-music-state-icon login-music-volume-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"></path></svg>
+          <svg class="login-music-state-icon login-music-muted-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 5 6 9H2v6h4l5 4zM16 9l5 5M21 9l-5 5"></path></svg>
+        </button>
         <div id="loginMusicProgressPopover" class="login-music-progress-popover">
           <input id="loginMusicProgress" type="range" min="0" max="0" step="0.1" value="0" aria-label="拖动登录音乐播放进度">
           <output id="loginMusicTime" for="loginMusicProgress">0:00 / 0:00</output>
+          <label class="login-music-volume-control"><span>音量</span><input id="loginMusicClientVolume" type="range" min="0" max="1" step="0.01" value="0.3" aria-label="登录背景音乐音量"><output id="loginMusicClientVolumeText" for="loginMusicClientVolume">30%</output></label>
         </div>
       </section>
       <audio id="loginMusicAudio" preload="metadata" aria-hidden="true"></audio>
@@ -114,7 +124,6 @@
           <button id="closeLoginStatusBtn" type="button" aria-label="关闭提示" title="关闭提示">×</button>
         </div>
         <p id="authHint" class="muted">一个账号同一时间只能在一台设备登录哦~</p><p id="defaultAdminLoginHint" class="warning is-hidden">首次服务器登录默认账号：admin，默认密码：admin888。登录后请立即设置新密码。<button id="fillDefaultAdminCredentialsBtn" class="text-button" type="button">一键填入</button></p>
-        <div id="loginHostShortcuts" class="login-host-shortcuts is-hidden" aria-label="服务器管理快捷入口"><button id="serverAdminLoginBtn" class="primary-button is-hidden" type="button">本机免密进入管理中心</button><button id="serverAdminRoomLoginBtn" class="secondary-button is-hidden" type="button">本机免密进入所选房间</button><button id="managementLogoutBtn" class="danger-button is-hidden" type="button">退出管理登录</button><button id="resetAdminPasswordBtn" class="secondary-button is-hidden" type="button">重置管理员密码</button><button id="restartServerBtn" class="secondary-button is-hidden" type="button">重启服务器软件</button></div>
         <form id="loginForm" novalidate>
           <label data-copy-key="login.usernameLabel">账号或邮箱<input id="username" autocomplete="username" placeholder="请输入账号或已绑定邮箱"></label>
           <label data-copy-key="login.passwordLabel">密码<span class="password-field"><input id="password" type="password" autocomplete="current-password" placeholder="请输入密码"><button id="togglePasswordBtn" class="password-toggle" type="button" aria-label="显示密码" aria-pressed="false">显示</button></span></label>

@@ -338,7 +338,7 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         LinearLayout connectSection = sectionContainer();
         connectSection.addView(textView("连接现有服务器", 17, COLOR_TEXT, Typeface.BOLD), matchWrap());
         TextView connectHint = textView(
-                "输入电脑端显示的地址，例如 http://192.168.1.20:5000 或 HTTPS 公网地址",
+                "输入电脑端显示的地址，例如 http://192.168.1.20:20311 或 HTTPS 公网地址",
                 14, COLOR_MUTED, Typeface.NORMAL);
         connectHint.setLineSpacing(dp(2), 1f);
         LinearLayout.LayoutParams connectHintParams = matchWrap();
@@ -383,7 +383,7 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         mobileServerPortInput.setSingleLine(true);
         mobileServerPortInput.setInputType(InputType.TYPE_CLASS_NUMBER);
         mobileServerPortInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(5)});
-        mobileServerPortInput.setHint("5000");
+        mobileServerPortInput.setHint("20311");
         mobileServerPortInput.setGravity(Gravity.CENTER);
         styleInput(mobileServerPortInput);
         mobileServerPortInput.setText(String.valueOf(preferences.getInt(

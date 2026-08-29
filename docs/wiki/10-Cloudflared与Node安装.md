@@ -18,21 +18,21 @@ Windows 下载 `cloudflared-windows-x64.exe` 后重命名为 `cloudflared.exe`�
 
 ```powershell
 .\cloudflared.exe --version
-.\cloudflared.exe tunnel --url http://127.0.0.1:5000 --protocol http2
+.\cloudflared.exe tunnel --url http://127.0.0.1:20311 --protocol http2
 ```
 
 macOS 使用 Homebrew：
 
 ```bash
 brew install cloudflared
-cloudflared tunnel --url http://127.0.0.1:5000 --protocol http2
+cloudflared tunnel --url http://127.0.0.1:20311 --protocol http2
 ```
 
 出现 `https://随机名称.trycloudflare.com` 后，把地址发给可信成员；按 `Ctrl+C` 停止。临时地址重启后会变化，没有长期可用性保证。
 
 ## 临时地址接口超时
 
-新版会自动尝试直连和系统网络回退。依次确认本机 `127.0.0.1:5000` 可访问、Windows 防火墙允许 TCP 443/TCP 7844/UDP 7844，并在 VPN/TUN 中将 cloudflared 与 Cloudflare 域名设为直连。必须经过代理的网络可以取消“绕过系统代理”，再执行“网络诊断与修复”。
+新版会自动尝试直连和系统网络回退。依次确认本机 `127.0.0.1:20311` 可访问、Windows 防火墙允许 TCP 443/TCP 7844/UDP 7844，并在 VPN/TUN 中将 cloudflared 与 Cloudflare 域名设为直连。必须经过代理的网络可以取消“绕过系统代理”，再执行“网络诊断与修复”。
 
 ## Node.js 安装
 

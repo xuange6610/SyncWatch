@@ -241,3 +241,29 @@
 - “跳过片头和片尾设置”使用独立权限键 `skipSettings`。默认成员/观众/协管组关闭，管理员组、房主、服务器主机和超级管理员始终开启；成员权限编辑器、权限组编辑器、权限回显和权限变更通知必须同步维护该字段。
 - `room-playback-skip-settings` 必须在服务端以 `isRoomAdmin(user, 'skipSettings')` 重新校验；不能只依赖前端禁用控件。未授权成员提交必须返回失败，授权后立即广播 `room-skip-settings-updated`。
 - 本轮回归重点：`tests/v224-backend.test.js` 覆盖房主倍速、未授权跳过设置拒绝、授权后允许和权限组继承；`tests/v224-frontend.test.js` 覆盖新增控件与保存字段。发布前先运行这些测试，再运行仓库/核心/隐私门禁。
+
+### 12. v2.2.7 继续播放功能与最终发布收尾（2026-08-29）
+
+- 账户级未完成影片进度已落地：服务端在认证响应返回 `resumeHistory`，客户端通过 `watch-progress` 保存进度，并在页面 `pagehide` 尽量冲刷最新位置；重新选择未完成影片时显示“继续上次观看”确认，确认后以权威 seek 恢复并同步房间。已通过 `tests/v227-room-settings-login-layout.test.js`、核心集成和浏览器文案验收。
+- 原子发布 run `33226003174` 最终成功：源码门禁、Windows 体验/标准/完整安装/完整便携包、Android APK、Android 模拟器安装启动、官方 Node.js/cloudflared 核验、最终 12 文件审计、远端哈希回读和 Release 原子替换全部通过。
+- v2.2.7 Release 当前为公开 Latest，维护者资产严格 10 项；`main`、唯一 `release/v2.2.7` 分支和注释 Tag 均指向合并提交 `a4f50847b254dbfe7d02b567a9042d9667694d1e`。本机根目录 `dist/` 已回读 12 个非空文件（10 个维护者资产 + 2 个源码归档），10 项维护者资产大小与 SHA-256 均与 GitHub API 一致。
+- 首页 `https://github.com/xuange6610/SyncWatch`、Pages `https://xuange6610.github.io/SyncWatch/`、Wiki `Home.md` 均已回读包含 v2.2.7；Wiki `_Sidebar.md` 当前无版本号文本，不得据此宣称 Sidebar 含版本号。
+
+### 14. v2.2.7 重发门禁复盘（2026-08-29）
+
+- 原子运行 `33229114210` 在源码门禁失败，唯一失败断言来自 `tests/browser-ui-smoke.js`：把服务器专用 `#loginHostShortcuts` 移到顶栏后，测试在模拟 Android 视口中仍把该组计入触控操作面板，初始高度从门禁要求的 480px 以下增至 531px。
+- 修复方式：`body.android-client .login-host-shortcuts { display:none !important; }`。快捷入口只在桌面/Electron 服务端顶栏显示，不重复进入 Android 触控操作面板；重新运行 `node tests/browser-ui-smoke.js` 已返回 `success:true`，并生成桌面、移动和 Android 账号菜单截图。
+- 失败运行未进入任何构建或 Release 上传，不得把其候选产物当成发布文件。当前最新提交为 `01aed20`，必须将唯一 `v2.2.7` 注释标签移动到该提交后再触发一次原子工作流；不得并行或创建额外分支。
+
+### 15. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
+
+- 用户截图复现 Electron 服务端登录页快捷按钮过大的问题：普通 `.login-host-shortcuts button` 已设为 30px，但 Electron 粗指针媒体规则会把按钮触控高度再次拉伸。
+- 修复在 `public/css/style.css` 增加 `body.electron-server .login-host-shortcuts button` 专用覆盖，固定 `height/min-height: 30px`、11px 字号和紧凑内边距；五个服务器快捷入口仍全部保留，并仅在未登录或管理专用会话显示。
+- `tests/round29-layout.test.js` 已加入覆盖断言；实际 Electron 浏览器测量为高度 30px、内边距 `3px 8px`、字号 11px，截图保存于 `output/playwright/login-shortcuts-compact.png`。`node tests/default-port-contract.test.js`、`node tests/round29-layout.test.js`、`npm run test:ui-close` 和单独 `npm run test:tunnel` 均通过；`npm run test:all` 仅有一次公网 Polling 瞬态断开，随后单独 Tunnel 冒烟重跑通过。
+
+### 13. v2.2.7 登录页与账号总览修复（2026-08-29）
+
+- 用户反馈服务器 Electron 登录窗口中快捷按钮挤压登录卡片、立体方块被推到视口外且滚轮无法完整浏览。修复为将 `#loginHostShortcuts` 固定放在顶栏中间操作区，使用单行横向滚动按钮；Electron 服务端加 `body.electron-server` 专用布局，登录页外层滚动、登录卡片不再内部裁切、立体方块保持可见。
+- 用户反馈管理中心“账号总览”长期停留“正在同步账号状态”。根因是复用完整 `loadAdminSettings()`，任一设置/隧道读取异常都会阻断账号列表。新增服务端 `get-account-overview` action 与前端独立加载/错误态，只返回账号状态元数据，不返回明文或哈希。
+- 本轮已通过 `node --check server/index.js`、`node --check public/js/app.js`、`node tests/account-admin-audit.test.js`、`node tests/round29-layout.test.js`、`npm test`、`npm run test:repo`、`npm run test:privacy` 与 `git diff --check`。桌面/移动浏览器截图检查已完成；Electron 原生窗口的真实交互仍以本机启动日志和源码契约为证，未使用额外分支。
+- 由于本轮改变了 v2.2.7 最终 Tag 对应源码，线上 Release 仍是旧提交；提交并推送后必须从最终 Tag 重新触发唯一原子工作流。未完成前保持发布状态 `pending`，不得宣称旧 Release 包含本轮修改。

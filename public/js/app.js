@@ -69,6 +69,7 @@ const PLAYBACK_RATE_PROMPT_KEY = 'syncwatchPlaybackRatePrompt';
 const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
 const ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX = 'syncwatchAccountViewPreferences:';
 const FULLSCREEN_CHAT_HINT_KEY_PREFIX = 'syncwatchFullscreenChatHint:';
+const LOGIN_MUSIC_PREFERENCE_KEY = 'syncwatchLoginMusicPreferenceV1';
 const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20 });
 const ACCOUNT_CHAT_FILTER_KEY_PREFIX = 'syncwatchChatFilter:';
 const ACCOUNT_VOICE_COLLAPSED_KEY_PREFIX = 'syncwatchVoiceCollapsed:';
@@ -108,8 +109,9 @@ const state = {
   chatManageHasMore: true, chatManageLoading: false, chatManageBeforeId: '', chatManageBefore: '', chatManageGeneration: 0,
   latestDrift: 0, localLatency: null, syncPercent: 100, localBuffering: false, bufferedAheadSeconds: 0,
   networkProbe: { inFlightSequence: 0, sequence: 0, appliedSequence: 0, connectionEpoch: 0, localConnectionState: 'online', tracker: window.SyncWatchNetworkQuality.createTracker() },
-  profile: null, resumeHistory: [], resumePromptedFiles: new Set(), adminSettings: null, mailTemplateDrafts: {}, mailTemplateKey: '',
+  profile: null, resumeHistory: [], resumePromptedFiles: new Set(), adminSettings: null, accountOverviewLoading: false, mailTemplateDrafts: {}, mailTemplateKey: '',
   verificationCodes: [], verificationCodeSearch: '', verificationCodeType: '', verificationCodeStatus: '', selectedVerificationCodes: new Set(), loginMusicObjectUrl: '', loginVideoObjectUrl: '', loginMusicProgressTimer: null,
+  loginMusicPreference: { paused: false, muted: false, volume: null },
   mediaRecorder: null, voiceChunks: [], voiceStopTimer: null, voiceCapturePending: false, voiceProcessing: false, authenticated: false, socketAuthenticated: false,
   resumeInFlight: false, resumeNeeded: false, resumeReconnect: false, resumeRetryTimer: null,
   rememberSession: Boolean(localStorage.getItem('syncwatchToken')), authGeneration: 0,
@@ -325,7 +327,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  controlRequestOverlay controlRequestTitle controlRequestDetail controlRequestSuppress controlRequestDenyBtn controlRequestAllowBtn permissionNotice permissionNoticeTitle permissionNoticeText permissionNoticeCloseBtn
  chatPanel chatHistory chatForm chatInput privateRecipient voiceBtn voiceFileInput chatImageInput chatImageBtn chatEmojiBtn chatEmojiBar chatEmojiCollapseBtn loadHistoryBtn chatToggleBtn chatOnlyToggle danmakuSettingsBtn danmakuSettingsPanel danmakuColorInput danmakuFontSizeInput danmakuFontSizeValue resetDanmakuSettingsBtn chatViewFilterBtn chatViewFilters chatViewChannel chatViewUser chatViewUserMode chatViewQuery chatViewResetBtn reactionBar userList userCount roomCode roomScheme roomShareUrl applyShareDomainBtn copyShareLinkBtn copyRoomCodeBtn copyLanAddressBtn copyPublicAddressBtn resetShareAddressBtn showQrBtn qrBox currentRoomBanner globalRoomSearch
  liveVoiceBar liveVoiceStatus voiceRoomBtn voicePrivateBtn voiceMuteBtn voiceLeaveBtn voiceAudioDock voiceDockToggleBtn liveVoiceFloating voiceFloatingStatus voiceFloatingMuteBtn voicePushToTalkBtn voiceFloatingLeaveBtn voiceFloatingCollapseBtn collapseMembersBtn
-   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeTemplateSelect loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicAudio
+   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeTemplateSelect loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicPlayPauseBtn loginMusicMuteBtn loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicClientVolume loginMusicClientVolumeText loginMusicAudio
    usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus localPasswordlessCard localPasswordlessManagementEnabled localPasswordlessRoomEnabled saveLocalPasswordlessBtn localPasswordlessStatus downloadAssetSettingsCard openDownloadCenterSettingsBtn downloadAssetUploadProgress downloadAssetUploadStatus windowsServerAssetStatus androidClientAssetStatus macServerAssetStatus macClientAssetStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
   mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn clientModeRequestCard clientModeRequestMode clientModeRequestScope clientModeRequestUserPicker clientModeRequestUserList clientModeRequestReason sendClientModeRequestBtn refreshClientModeRequestsBtn clientModeRequestStatus clientModeRequestList loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
  roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn roomCopyCard roomCopySourceId roomCopyTargetName roomCopyReason requestRoomCopyBtn roomCopyStatus roomCopyRequestList roomMigrationCard roomMigrationSource roomMigrationTarget migrateRoomBtn roomMigrationStatus uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permSeek permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSkipSettings permSendNotice savePermissionsBtn
@@ -364,6 +366,7 @@ document.addEventListener('DOMContentLoaded', initialize);
 
 async function initialize() {
   if (window.SyncWatchAndroid) document.body.classList.add('android-client');
+  if (window.SyncWatchPlatform?.serverApp) document.body.classList.add('electron-server');
   initializeManagementArchitecture();
   window.SyncWatchUiCopy?.initialize({ legacyDefaults: UI_COPY_DEFAULTS, onChange: () => {
     if (elements.uiCopyEditorList) renderUiCopySettings(state.uiCopy);
@@ -785,6 +788,7 @@ function initializeLoginMarquee() {
 
 function initializeLoginMusic() {
   if (!elements.loginPage) return;
+  state.loginMusicPreference = readLoginMusicPreference();
   let audio = elements.loginMusicAudio || document.getElementById('loginMusicAudio');
   if (!audio) {
     audio = document.createElement('audio');
@@ -795,7 +799,7 @@ function initializeLoginMusic() {
   if (audio.dataset.ready === '1') return;
   audio.dataset.ready = '1';
   const resume = () => {
-    if (!state.authenticated && state.publicConfig?.loginMusic?.enabled && audio.paused) audio.play().catch(() => {});
+    if (!state.authenticated && state.publicConfig?.loginMusic?.enabled && audio.paused && !state.loginMusicPreference.paused) audio.play().catch(() => {});
     document.removeEventListener('pointerdown', resume); document.removeEventListener('keydown', resume);
   };
   document.addEventListener('pointerdown', resume, { passive: true });
@@ -804,6 +808,10 @@ function initializeLoginMusic() {
   audio.addEventListener('durationchange', updateLoginMusicProgress);
   audio.addEventListener('loadedmetadata', updateLoginMusicProgress);
   audio.addEventListener('ended', updateLoginMusicProgress);
+  audio.addEventListener('play', syncLoginMusicClientControls);
+  audio.addEventListener('pause', syncLoginMusicClientControls);
+  audio.addEventListener('volumechange', syncLoginMusicClientControls);
+  syncLoginMusicClientControls();
 }
 
 function initializeLoginVideo() {
@@ -962,6 +970,24 @@ function renderLoginMusicTracks(value = state.publicConfig.loginMusic || {}) {
   elements.loginMusicTrackList.innerHTML = tracks.length ? tracks.map((track) => `<div class="admin-row login-music-track-row" data-login-music-track="${escapeHtml(track.id)}"><div><strong>${escapeHtml(track.title || track.originalName || '登录音乐')}</strong><small>${escapeHtml(track.originalName || track.url)}${track.size ? ` · ${formatBytes(track.size)}` : ''}</small></div><button type="button" class="danger-text-button" data-login-music-delete="${escapeHtml(track.id)}">删除</button></div>`).join('') : '<p class="muted">暂无登录音乐</p>';
 }
 
+function readLoginMusicPreference() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LOGIN_MUSIC_PREFERENCE_KEY) || '{}');
+    const volume = stored?.volume === null || stored?.volume === undefined ? Number.NaN : Number(stored.volume);
+    return {
+      paused: stored?.paused === true,
+      muted: stored?.muted === true,
+      volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : null
+    };
+  } catch (_) {
+    return { paused: false, muted: false, volume: null };
+  }
+}
+
+function saveLoginMusicPreference() {
+  try { localStorage.setItem(LOGIN_MUSIC_PREFERENCE_KEY, JSON.stringify(state.loginMusicPreference)); } catch (_) {}
+}
+
 function applyLoginMusic(value = {}) {
   const music = normalizedLoginMusic(value);
   state.publicConfig.loginMusic = music;
@@ -970,11 +996,14 @@ function applyLoginMusic(value = {}) {
   if (elements.loginMusicNowPlayingTitle) elements.loginMusicNowPlayingTitle.textContent = title;
   if (elements.loginMusicNowPlaying) elements.loginMusicNowPlaying.classList.toggle('is-hidden', !(music.enabled && music.url && music.showTitle && !state.authenticated));
   if (!audio) return;
-  audio.loop = music.loop; audio.volume = music.volume;
+  audio.loop = music.loop;
+  audio.volume = state.loginMusicPreference.volume ?? music.volume;
+  audio.muted = state.loginMusicPreference.muted;
   if ((audio.getAttribute('src') || '') !== music.url) { audio.pause(); audio.setAttribute('src', music.url || ''); audio.load(); }
-  if (music.enabled && music.url && !state.authenticated) audio.play().catch(() => {});
+  if (music.enabled && music.url && !state.authenticated && !state.loginMusicPreference.paused) audio.play().catch(() => {});
   else if (!music.enabled || state.authenticated) audio.pause();
   updateLoginMusicProgress();
+  syncLoginMusicClientControls();
 }
 
 function applyLoginVideo(value = {}) {
@@ -1043,7 +1072,71 @@ function updateLoginMusicProgress() {
   if (elements.loginMusicTime) elements.loginMusicTime.textContent = `${formatTime(current)} / ${duration ? formatTime(duration) : '--:--'}`;
 }
 
-function revealLoginMusicProgress() {
+function syncLoginMusicClientControls() {
+  const audio = elements.loginMusicAudio;
+  const paused = audio ? audio.paused : state.loginMusicPreference.paused;
+  const muted = audio ? audio.muted : state.loginMusicPreference.muted;
+  const volume = audio ? audio.volume : (state.loginMusicPreference.volume ?? normalizedLoginMusic(state.publicConfig.loginMusic).volume);
+  elements.loginMusicNowPlaying?.classList.toggle('is-paused', paused);
+  elements.loginMusicNowPlaying?.classList.toggle('is-muted', muted);
+  const status = elements.loginMusicNowPlaying?.querySelector('.login-now-playing-summary small');
+  if (status) status.textContent = paused ? '已暂停' : (muted ? '静音播放' : '正在播放');
+  if (elements.loginMusicPlayPauseBtn) {
+    const label = paused ? '播放背景音乐' : '暂停背景音乐';
+    elements.loginMusicPlayPauseBtn.title = label;
+    elements.loginMusicPlayPauseBtn.setAttribute('aria-label', label);
+    elements.loginMusicPlayPauseBtn.setAttribute('aria-pressed', String(!paused));
+  }
+  if (elements.loginMusicMuteBtn) {
+    const label = muted ? '恢复背景音乐声音' : '静音背景音乐';
+    elements.loginMusicMuteBtn.title = label;
+    elements.loginMusicMuteBtn.setAttribute('aria-label', label);
+    elements.loginMusicMuteBtn.setAttribute('aria-pressed', String(muted));
+  }
+  if (elements.loginMusicClientVolume && !elements.loginMusicClientVolume.matches(':active')) elements.loginMusicClientVolume.value = String(volume);
+  if (elements.loginMusicClientVolumeText) elements.loginMusicClientVolumeText.textContent = `${Math.round(volume * 100)}%`;
+}
+
+async function toggleLoginMusicPlayback(event) {
+  event?.stopPropagation();
+  const audio = elements.loginMusicAudio;
+  if (!audio || !state.publicConfig.loginMusic?.url) return;
+  if (!audio.paused) {
+    state.loginMusicPreference.paused = true;
+    saveLoginMusicPreference();
+    audio.pause();
+    return;
+  }
+  state.loginMusicPreference.paused = false;
+  saveLoginMusicPreference();
+  try { await audio.play(); }
+  catch (_) {
+    state.loginMusicPreference.paused = true;
+    saveLoginMusicPreference();
+    syncLoginMusicClientControls();
+  }
+}
+
+function toggleLoginMusicMute(event) {
+  event?.stopPropagation();
+  const audio = elements.loginMusicAudio;
+  if (!audio) return;
+  state.loginMusicPreference.muted = !audio.muted;
+  saveLoginMusicPreference();
+  audio.muted = state.loginMusicPreference.muted;
+}
+
+function changeLoginMusicClientVolume(event) {
+  event?.stopPropagation();
+  const volume = Math.max(0, Math.min(1, Number(event?.target?.value) || 0));
+  state.loginMusicPreference.volume = volume;
+  saveLoginMusicPreference();
+  if (elements.loginMusicAudio) elements.loginMusicAudio.volume = volume;
+  syncLoginMusicClientControls();
+}
+
+function revealLoginMusicProgress(event) {
+  event?.stopPropagation();
   if (!elements.loginMusicProgressShell || !state.publicConfig.loginMusic?.url) return;
   const expanded = elements.loginMusicProgressShell.getAttribute('aria-expanded') !== 'true';
   elements.loginMusicProgressShell.setAttribute('aria-expanded', String(expanded));
@@ -1060,7 +1153,6 @@ function seekLoginMusic() {
   if (!audio || !Number.isFinite(audio.duration)) return;
   audio.currentTime = Math.max(0, Math.min(audio.duration, Number(elements.loginMusicProgress?.value) || 0));
   updateLoginMusicProgress();
-  revealLoginMusicProgress();
 }
 
 function setLoginMediaUploadProgress(container, percent, message) {
@@ -2071,7 +2163,10 @@ function bindUiEvents() {
   elements.saveMarqueeBtn?.addEventListener('click', saveMarqueeSettings);
   elements.loginMusicVolume?.addEventListener('input', updateLoginMusicVolumeLabel);
   elements.loginMusicFile?.addEventListener('change', previewSelectedLoginMusicFile);
-  elements.loginMusicNowPlaying?.addEventListener('click', revealLoginMusicProgress);
+  elements.loginMusicProgressShell?.addEventListener('click', revealLoginMusicProgress);
+  elements.loginMusicPlayPauseBtn?.addEventListener('click', toggleLoginMusicPlayback);
+  elements.loginMusicMuteBtn?.addEventListener('click', toggleLoginMusicMute);
+  elements.loginMusicClientVolume?.addEventListener('input', changeLoginMusicClientVolume);
   elements.loginMusicProgress?.addEventListener('input', seekLoginMusic);
   elements.previewLoginMusicBtn?.addEventListener('click', previewLoginMusic);
   elements.saveLoginMusicBtn?.addEventListener('click', saveLoginMusicSettings);
@@ -5276,8 +5371,10 @@ function applyPublicConfig() {
   elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', !state.authenticated || !canManageServer);
   elements.resetAdminPasswordBtn?.classList.toggle('is-hidden', !serverMenu);
   elements.restartServerBtn?.classList.toggle('is-hidden', !canManageServer);
-  elements.loginHostShortcuts?.classList.toggle('is-hidden', ![elements.serverAdminLoginBtn, elements.serverAdminRoomLoginBtn, elements.managementLogoutBtn, elements.resetAdminPasswordBtn, elements.restartServerBtn]
-    .some((button) => button && !button.classList.contains('is-hidden')));
+  const loginHostShortcutsVisible = (!state.authenticated || state.managementOnlyAuth)
+    && [elements.serverAdminLoginBtn, elements.serverAdminRoomLoginBtn, elements.managementLogoutBtn, elements.resetAdminPasswordBtn, elements.restartServerBtn]
+      .some((button) => button && !button.classList.contains('is-hidden'));
+  elements.loginHostShortcuts?.classList.toggle('is-hidden', !loginHostShortcutsVisible);
   elements.downloadClientBtn?.classList.toggle('is-hidden', !showDownloads || state.authenticated);
   if (elements.downloadClientBtn) {
     elements.downloadClientBtn.title = state.publicConfig.clientDownloadAvailable ? '下载 Windows 服务器客户端' : '当前服务器尚未提供 Windows 客户端文件';
@@ -5377,7 +5474,7 @@ function renderServerEndpointStatus() {
   const address = (state.publicConfig.addresses || []).find((candidate) => {
     try { return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(new URL(candidate).hostname); }
     catch (_) { return false; }
-  }) || state.publicConfig.addresses?.[0] || `http://${location.hostname}:${state.publicConfig.port || location.port || 5000}`;
+  }) || state.publicConfig.addresses?.[0] || `http://${location.hostname}:${state.publicConfig.port || location.port || 20311}`;
   const enabled = state.publicConfig.lanAccessEnabled !== false;
   const known = state.publicConfigKnown !== false;
   elements.serverEndpointAddress.textContent = address.replace(/^https?:\/\//i, '');
@@ -15037,8 +15134,25 @@ async function openAccountOverview() {
   if (!elements.accountOverviewModal || !state.authenticated) return;
   elements.accountOverviewModal.classList.remove('is-hidden');
   if (elements.accountOverviewList) elements.accountOverviewList.innerHTML = '<p class="muted">正在同步账号状态...</p>';
-  if (state.capabilities.superAdmin || state.capabilities.serverHost) await loadAdminSettings({ silent: true });
-  renderAccountOverview();
+  await loadAccountOverview();
+}
+
+async function loadAccountOverview({ silent = false } = {}) {
+  if (!state.authenticated || state.accountOverviewLoading) return;
+  state.accountOverviewLoading = true;
+  if (elements.accountOverviewList && !silent) elements.accountOverviewList.innerHTML = '<p class="muted">正在同步账号状态...</p>';
+  try {
+    const result = await adminAction('get-account-overview', { limit: 500 }, 12000);
+    if (!result.success) throw new Error(result.error || '账号总览读取失败');
+    state.adminSettings = state.adminSettings || {};
+    state.adminSettings.accounts = Array.isArray(result.accounts) ? result.accounts : [];
+    renderAccountOverview();
+  } catch (error) {
+    if (elements.accountOverviewList) elements.accountOverviewList.innerHTML = `<p class="muted">${escapeHtml(localizedError(error, '账号总览读取失败，请稍后重试'))}</p>`;
+    if (!silent) toast(localizedError(error, '账号总览读取失败，请稍后重试'), 'error', 7000);
+  } finally {
+    state.accountOverviewLoading = false;
+  }
 }
 
 function renderAccountOverview() {

@@ -9,7 +9,7 @@ COPY dist/SyncWatch-Android-v2.2.7-universal.apk ./mobile/SyncWatch同步观影-
 COPY dist/SyncWatch-Experience-Client-Portable-v2.2.7-x64.exe ./client/SyncWatch同步观影-Client-v2.2.7.exe
 COPY server-standalone.js ./server-standalone.js
 
-ENV NODE_ENV=production PORT=5000 SYNCWATCH_DATA_DIR=/app/SyncWatch同步观影-Data
-EXPOSE 5000
+ENV NODE_ENV=production PORT=20311 SYNCWATCH_DATA_DIR=/app/SyncWatch同步观影-Data
+EXPOSE 20311
 VOLUME ["/app/SyncWatch同步观影-Data"]
 CMD ["node", "server-standalone.js"]

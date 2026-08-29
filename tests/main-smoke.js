@@ -78,7 +78,7 @@ assert.doesNotMatch(electronSource, /requestSingleInstanceLock\(/,
 assert.match(electronSource, /\[DEFAULT_DATA_DIR, LEGACY_USER_DATA_ROOT\]/);
 console.log('✓ Electron 便携根目录按 EXE 所在文件夹隔离，不同数据目录可并行运行，恢复出厂覆盖新旧应用数据');
 
-assert.equal(electronSettings.normalizeServerSettings({}).port, 5000);
+assert.equal(electronSettings.normalizeServerSettings({}).port, 20311);
 assert.equal(electronSettings.normalizeServerSettings({}).autostart, false);
 assert.equal(electronSettings.normalizeServerSettings({ autostart: true }).autostart, true);
 assert.equal(electronSettings.normalizeServerSettings({}).networkInterface, 'auto');
@@ -97,7 +97,7 @@ for (const publicUrl of [
 ]) {
   assert.throws(() => electronSettings.normalizeServerSettings({ publicUrl }), /publicUrl/);
 }
-console.log('✓ Electron 配置仅在缺少 port 时默认 5000，并严格拒绝非法端口和 publicUrl');
+console.log('✓ Electron 配置仅在缺少 port 时默认 20311，并严格拒绝非法端口和 publicUrl');
 
 const networkInterfaces = {
   'vEthernet (WSL)': [{ address: '172.20.0.1', family: 'IPv4', internal: false }],
@@ -113,10 +113,10 @@ assert.deepEqual(electronSettings.selectableNetworkAdapters(networkInterfaces).m
 ]);
 console.log('✓ 启动网卡支持自动优选、手动指定与断线回退');
 
-assert.deepEqual(electronSettings.tunnelCommandArgs('quick', 5000), [
-  'tunnel', '--url', 'http://127.0.0.1:5000', '--protocol', 'auto', '--edge-ip-version', '4', '--retries', '12', '--no-autoupdate'
+assert.deepEqual(electronSettings.tunnelCommandArgs('quick', 20311), [
+  'tunnel', '--url', 'http://127.0.0.1:20311', '--protocol', 'auto', '--edge-ip-version', '4', '--retries', '12', '--no-autoupdate'
 ]);
-assert.deepEqual(electronSettings.tunnelCommandArgs('named', 5000), [
+assert.deepEqual(electronSettings.tunnelCommandArgs('named', 20311), [
   'tunnel', '--protocol', 'auto', '--edge-ip-version', '4', '--retries', '12', '--no-autoupdate', 'run'
 ]);
 const sanitizedLog = electronSettings.sanitizeTunnelLog('TUNNEL_TOKEN=secret --token another authorization: bearer');

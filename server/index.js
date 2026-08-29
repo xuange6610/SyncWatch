@@ -223,7 +223,7 @@ const DEFAULT_LOGIN_CUBE_FACES = Object.freeze([
 ]);
 const LOGIN_CUBE_IMAGE_LIMIT_BYTES = 2 * 1024 * 1024;
 const LOGIN_CUBE_MODEL_LIMIT_BYTES = 25 * 1024 * 1024;
-const DEFAULT_PORT = 5000;
+const DEFAULT_PORT = 20311;
 const DISCOVERY_PORT = 5001;
 const PASSWORD_ITERATIONS = 180000;
 const VOICE_LIMIT_BYTES = 25 * 1024 * 1024;
@@ -13086,7 +13086,7 @@ async function startSyncWatchServer(options = {}) {
         'set-account-number-policy', 'set-account-number', 'get-verification-codes', 'delete-verification-codes', 'set-verification-code-policy', 'unblock-verification-device', 'set-login-music', 'delete-login-music', 'set-login-video', 'delete-login-video', 'set-notice-preferences',
         'delete-room-files', 'set-media-upload-ban', 'get-ui-copy', 'set-ui-copy', 'import-ui-copy', 'export-ui-copy', 'reset-ui-copy',
         'resolve-login-limit-request', 'login-concurrency-policy', 'resolve-login-concurrency-request', 'revoke-login-concurrency', 'get-access-records', 'set-access-record-policy',
-        'send-client-mode-request', 'cancel-client-mode-request', 'migrate-room', 'delete-registration-request', 'delete-registration-requests'
+        'send-client-mode-request', 'cancel-client-mode-request', 'migrate-room', 'delete-registration-request', 'delete-registration-requests', 'get-account-overview'
       ]);
       // Audit records and super-admin grants are account-wide operations and
       // require an actual logged-in super-admin. Email overrides retain the
@@ -13135,6 +13135,36 @@ async function startSyncWatchServer(options = {}) {
         recordOperation({ actor: user.username, action: 'ui-copy-reset', summary: '恢复默认界面文案', scope: 'server' });
         io.emit('ui-copy-state', snapshot);
         return acknowledgement?.({ success: true, ...snapshot, message: '界面文案已恢复默认并同步' });
+      }
+      if (action === 'get-account-overview') {
+        if (!serverAdmin) return acknowledgement?.({ success: false, error: '只有服务器管理员可以查看账号总览' });
+        const limit = Math.max(1, Math.min(1000, Number(payload.limit) || 500));
+        const accounts = Object.keys(state.accounts).sort((left, right) => left.localeCompare(right, 'zh-CN')).slice(0, limit).map((username) => {
+          const profile = accountProfile(username);
+          const account = state.accounts[username] || {};
+          const latestDevice = account.devices?.[0] || {};
+          const latestLogin = account.loginHistory?.[0] || {};
+          return {
+            ...profile, history: undefined, favoriteFiles: undefined, myFiles: undefined,
+            registrationIp: account.registrationIp || '', lastIp: latestLogin.ip || '',
+            deviceName: latestDevice.name || latestLogin.device || '', platform: latestDevice.platform || '', browser: latestDevice.browser || '',
+            loginHistory: Array.isArray(account.loginHistory) ? account.loginHistory.slice(0, 20) : [],
+            onlineSessions: [...users.values()].filter((member) => member.username === username).map((member) => ({
+              roomId: member.roomId, socketId: member.socketId, deviceName: member.deviceName, platform: member.platform,
+              browser: member.browser, ipAddress: member.ipAddress, joinedAt: member.joinedAt, connectionState: member.connectionState,
+              latency: member.latency, syncPercent: member.syncPercent
+            })),
+            adminRemark: cleanText(account.adminRemark, 80),
+            passwordStatus: {
+              configured: Boolean(account.passwordHash), changedAt: account.passwordChangedAt || account.createdAt || '',
+              mustChange: Boolean(account.mustChangePassword), expired: passwordExpired(username)
+            },
+            superAdmin: user.username === 'admin' ? Boolean(account.superAdmin) : username === user.username && Boolean(account.superAdmin),
+            mustChangePassword: Boolean(account.mustChangePassword), roomCreationBlocked: Boolean(account.roomCreationBlocked),
+            roomQuota: account.roomQuota, ownedRoomCount: ownedRooms(username).length, multiDeviceLogin: concurrentLoginAllowed(username), loginSessionLimit: accountSessionLimit(username)
+          };
+        });
+        return acknowledgement?.({ success: true, accounts });
       }
       if (action === 'get-settings') return acknowledgement?.({ success: true, admin: {
         serverAdmin, superAdmin, roomOwner, roomAdministrator, canManageSuperAdmins: user.username === 'admin',
