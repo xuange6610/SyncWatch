@@ -2301,6 +2301,8 @@ body.android-client .topbar-actions .share-link-button .button-label { min-width
 
 /* Interactive login identity */
 .login-cube-scene { --cube-size: min(360px, 42vw, max(220px, calc(100dvh - 180px))); position: relative; width: var(--cube-size); height: var(--cube-size); perspective: 1100px; cursor: grab; touch-action: none; user-select: none; contain: layout style; }
+.login-visual { align-self: stretch; min-height: clamp(420px, calc(100dvh - 24px), 900px); align-items: center; justify-items: center; }
+.login-cube-scene { margin: auto; }
 .login-cube-scene.is-dragging { cursor: grabbing; }
 .login-cube-model { position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
 .login-cube-scene[data-display-mode="model"].has-loaded-model .login-cube-model { opacity: 1; }
@@ -2320,6 +2322,8 @@ body.android-client .topbar-actions .share-link-button .button-label { min-width
 .login-cube-left { transform: rotateY(-90deg) translateZ(calc(var(--cube-size) / 2)); }
 .login-cube-top { transform: rotateX(90deg) translateZ(calc(var(--cube-size) / 2)); }
 .login-cube-bottom { transform: rotateX(-90deg) translateZ(calc(var(--cube-size) / 2)); }
+
+.video-management-cover { width: 84px; height: 58px; object-fit: cover; border: 1px solid var(--line); border-radius: 7px; background: #000; }
 
 .login-cube-settings-card { overflow: visible; }
 .login-cube-motion-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 14px 0; }

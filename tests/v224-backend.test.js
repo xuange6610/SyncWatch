@@ -241,6 +241,10 @@ async function uploadVideo(baseUrl, token, filename, content) {
     const shared = await ack(source, 'web-share-start', { url: 'https://example.com/watch-together', title: '同步网页' });
     assert.equal(shared.success, true, shared.error);
     assert.equal(shared.webShare.active, true);
+    assert.equal(shared.webShare.url, 'https://example.com/watch-together');
+    const clearedPlayback = await ack(source, 'room-refresh');
+    assert.equal(clearedPlayback.success, true, clearedPlayback.error);
+    assert.equal(clearedPlayback.room.playback.fileId, null, '启用网页共享时必须清除原视频播放状态');
     assert.ok(shared.webShare.revision >= 1);
     const recoveredWebShare = await ack(member, 'web-share-state-request');
     assert.equal(recoveredWebShare.success, true, recoveredWebShare.error);
