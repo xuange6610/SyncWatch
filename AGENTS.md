@@ -249,6 +249,12 @@
 - v2.2.7 Release 当前为公开 Latest，维护者资产严格 10 项；`main`、唯一 `release/v2.2.7` 分支和注释 Tag 均指向合并提交 `a4f50847b254dbfe7d02b567a9042d9667694d1e`。本机根目录 `dist/` 已回读 12 个非空文件（10 个维护者资产 + 2 个源码归档），10 项维护者资产大小与 SHA-256 均与 GitHub API 一致。
 - 首页 `https://github.com/xuange6610/SyncWatch`、Pages `https://xuange6610.github.io/SyncWatch/`、Wiki `Home.md` 均已回读包含 v2.2.7；Wiki `_Sidebar.md` 当前无版本号文本，不得据此宣称 Sidebar 含版本号。
 
+### 14. v2.2.7 重发门禁复盘（2026-08-29）
+
+- 原子运行 `33229114210` 在源码门禁失败，唯一失败断言来自 `tests/browser-ui-smoke.js`：把服务器专用 `#loginHostShortcuts` 移到顶栏后，测试在模拟 Android 视口中仍把该组计入触控操作面板，初始高度从门禁要求的 480px 以下增至 531px。
+- 修复方式：`body.android-client .login-host-shortcuts { display:none !important; }`。快捷入口只在桌面/Electron 服务端顶栏显示，不重复进入 Android 触控操作面板；重新运行 `node tests/browser-ui-smoke.js` 已返回 `success:true`，并生成桌面、移动和 Android 账号菜单截图。
+- 失败运行未进入任何构建或 Release 上传，不得把其候选产物当成发布文件。当前最新提交为 `01aed20`，必须将唯一 `v2.2.7` 注释标签移动到该提交后再触发一次原子工作流；不得并行或创建额外分支。
+
 ### 13. v2.2.7 登录页与账号总览修复（2026-08-29）
 
 - 用户反馈服务器 Electron 登录窗口中快捷按钮挤压登录卡片、立体方块被推到视口外且滚轮无法完整浏览。修复为将 `#loginHostShortcuts` 固定放在顶栏中间操作区，使用单行横向滚动按钮；Electron 服务端加 `body.electron-server` 专用布局，登录页外层滚动、登录卡片不再内部裁切、立体方块保持可见。
