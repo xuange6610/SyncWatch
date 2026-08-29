@@ -2457,6 +2457,10 @@ body.electron-server .auth-card {
   overflow: visible;
   margin-block: 18px 48px;
 }
+/* Server-only shortcuts stay in the desktop Electron topbar.  They are not
+   duplicated into the touch action sheet, where they would consume the
+   compact menu's height and push account controls below the fold. */
+body.android-client .login-host-shortcuts { display: none !important; }
 @media (max-width: 1180px) {
   body.electron-server .login-host-shortcuts { max-width: min(44vw, 560px); }
 }
