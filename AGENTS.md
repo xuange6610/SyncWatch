@@ -241,3 +241,10 @@
 - “跳过片头和片尾设置”使用独立权限键 `skipSettings`。默认成员/观众/协管组关闭，管理员组、房主、服务器主机和超级管理员始终开启；成员权限编辑器、权限组编辑器、权限回显和权限变更通知必须同步维护该字段。
 - `room-playback-skip-settings` 必须在服务端以 `isRoomAdmin(user, 'skipSettings')` 重新校验；不能只依赖前端禁用控件。未授权成员提交必须返回失败，授权后立即广播 `room-skip-settings-updated`。
 - 本轮回归重点：`tests/v224-backend.test.js` 覆盖房主倍速、未授权跳过设置拒绝、授权后允许和权限组继承；`tests/v224-frontend.test.js` 覆盖新增控件与保存字段。发布前先运行这些测试，再运行仓库/核心/隐私门禁。
+
+### 12. v2.2.7 继续播放功能与最终发布收尾（2026-08-29）
+
+- 账户级未完成影片进度已落地：服务端在认证响应返回 `resumeHistory`，客户端通过 `watch-progress` 保存进度，并在页面 `pagehide` 尽量冲刷最新位置；重新选择未完成影片时显示“继续上次观看”确认，确认后以权威 seek 恢复并同步房间。已通过 `tests/v227-room-settings-login-layout.test.js`、核心集成和浏览器文案验收。
+- 原子发布 run `33226003174` 最终成功：源码门禁、Windows 体验/标准/完整安装/完整便携包、Android APK、Android 模拟器安装启动、官方 Node.js/cloudflared 核验、最终 12 文件审计、远端哈希回读和 Release 原子替换全部通过。
+- v2.2.7 Release 当前为公开 Latest，维护者资产严格 10 项；`main`、唯一 `release/v2.2.7` 分支和注释 Tag 均指向合并提交 `a4f50847b254dbfe7d02b567a9042d9667694d1e`。本机根目录 `dist/` 已回读 12 个非空文件（10 个维护者资产 + 2 个源码归档），10 项维护者资产大小与 SHA-256 均与 GitHub API 一致。
+- 首页 `https://github.com/xuange6610/SyncWatch`、Pages `https://xuange6610.github.io/SyncWatch/`、Wiki `Home.md` 均已回读包含 v2.2.7；Wiki `_Sidebar.md` 当前无版本号文本，不得据此宣称 Sidebar 含版本号。
