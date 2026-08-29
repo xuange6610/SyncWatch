@@ -99,7 +99,13 @@ assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated
 assert.match(app, /function initializeMiddleMouseScroll\(\)/, '网页端必须注册中键拖动滚动处理');
 assert.match(app, /function initializeOnboardingGuide\(\)/, '首次进入必须注册新手引导');
 assert.match(app, /ONBOARDING_GUIDE_KEY/, '新手引导完成状态必须持久化');
-assert.match(css, /body\.android-client \.login-page\s*\{[^}]*overflow-y:\s*auto;[^}]*touch-action:\s*pan-y/s, 'Android 登录页必须支持手指上下滚动');
+assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*main \{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,
+  '移动端登录页必须使用文档滚动，不能被固定 main 高度截断');
+assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*\.login-page \{[^}]*height:\s*auto;[^}]*overflow:\s*visible;[^}]*touch-action:\s*pan-y;/s,
+  '手机登录页必须允许手指上下拖动文档');
+assert.match(css, /body\.android-client main\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,
+  'Android WebView 登录页不能嵌套在固定高度 main 滚动容器中');
+assert.match(css, /body\.android-client \.login-page\s*\{[^}]*overflow:\s*visible;[^}]*touch-action:\s*pan-y/s, 'Android 登录页必须支持手指上下滚动');
 assert.match(app, /event\.button\s*!==\s*1[\s\S]{0,180}isExcluded\(event\.target\)/, '中键滚动必须避开表单和交互控件');
 assert.match(app, /drag\.container\.scrollTop\s*=\s*drag\.startTop\s*-\s*\(event\.clientY\s*-\s*drag\.startY\)/, '中键拖动必须按垂直位移滚动当前容器');
 assert.match(app, /profile-room-item room-directory-card \$\{room\.pinned \? 'pinned' : ''\} \$\{room\.owned \? 'is-owned' : ''\}/, '我的房间卡片必须带有房主高亮状态类');
