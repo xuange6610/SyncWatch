@@ -203,7 +203,7 @@
 
 ### 7. 当前发布快照
 
-- 当前最新正式版本为 `v2.2.7`；该版本已完成最终 Tag、Actions run `33198318200`、10 个维护者资产、2 个 GitHub 源码归档、Latest 和远端哈希核对。v2.2.6 的历史交付问题仅作复盘记录，不得覆盖当前状态。
+- 当前最新正式版本为 `v2.2.8`；该版本已完成最终 Tag、Actions run `33249244151`、10 个维护者资产、2 个 GitHub 源码归档、Latest 和远端哈希核对。v2.2.7 的历史交付问题仅作复盘记录，不得覆盖当前状态。
 - 同版本重传不得先清空公开 Assets。旧 26 项保持可用到新 26 项全部构建与本地门禁完成；最终安全切换时先短暂转草稿，以临时名上传并远端回读新资产，再切换正式名称。新集合完整验证前失败要恢复旧名称和公开状态；只有新集合通过后才能删除旧资产并重新公开为 Latest。
 - 维护文档和 Release 说明中的版本、下载名、链接、哈希、大小和测试数量必须以当前 GitHub API、Actions 和源码为准。新会话开始时重新核对，不得只相信本快照。
 - 目前没有小米 14/HyperOS 真机证据；后续若用户再次报告 Android 登录或服务器请求失败，先复现并增加回归测试，再重新构建 APK 和 Release，不得仅修改文案或重新命名旧 APK。
@@ -250,8 +250,8 @@
 
 - 账户级未完成影片进度已落地：服务端在认证响应返回 `resumeHistory`，客户端通过 `watch-progress` 保存进度，并在页面 `pagehide` 尽量冲刷最新位置；重新选择未完成影片时显示“继续上次观看”确认，确认后以权威 seek 恢复并同步房间。已通过 `tests/v227-room-settings-login-layout.test.js`、核心集成和浏览器文案验收。
 - 原子发布 run `33226003174` 最终成功：源码门禁、Windows 体验/标准/完整安装/完整便携包、Android APK、Android 模拟器安装启动、官方 Node.js/cloudflared 核验、最终 12 文件审计、远端哈希回读和 Release 原子替换全部通过。
-- v2.2.7 Release 当前为公开 Latest，维护者资产严格 10 项；`main`、唯一 `release/v2.2.7` 分支和注释 Tag 均指向合并提交 `a4f50847b254dbfe7d02b567a9042d9667694d1e`。本机根目录 `dist/` 已回读 12 个非空文件（10 个维护者资产 + 2 个源码归档），10 项维护者资产大小与 SHA-256 均与 GitHub API 一致。
-- 首页 `https://github.com/xuange6610/SyncWatch`、Pages `https://xuange6610.github.io/SyncWatch/`、Wiki `Home.md` 均已回读包含 v2.2.7；Wiki `_Sidebar.md` 当前无版本号文本，不得据此宣称 Sidebar 含版本号。
+- v2.2.8 Release 当前为公开 Latest，维护者资产严格 10 项；`main` 已通过 PR 合并 v2.2.8 源码与文档，注释 Tag `v2.2.8` 指向最终构建提交 `4a03472f50e8e7248fb93377030869937363e57e`。Actions run `33249244151` 已完成 12 文件审计、远端哈希回读和 Windows/Android 启动验证。
+- 首页 `https://github.com/xuange6610/SyncWatch`、Pages `https://xuange6610.github.io/SyncWatch/`、Wiki `Home.md` 和 v2.2.8 公告均已回读包含当前版本与手机登录滚动修复。
 
 ### 14. v2.2.7 重发门禁复盘（2026-08-29）
 
