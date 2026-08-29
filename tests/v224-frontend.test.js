@@ -15,7 +15,7 @@ function hasId(id) {
 
 for (const id of [
   'conciseModeBtn', 'danmakuSettingsBtn', 'danmakuSettingsPanel', 'danmakuColorInput', 'danmakuFontSizeInput',
-  'chatOnlyToggle', 'skipSettingsBtn', 'skipSettingsModal', 'skipIntroSeconds', 'skipOutroSeconds',
+  'chatOnlyToggle', 'skipSettingsBtn', 'skipSettingsModal', 'skipIntroSeconds', 'skipOutroSeconds', 'permSkipSettings', 'groupPermSkipSettings',
   'libraryQueueSelectAll', 'addSelectedToQueueBtn', 'queueSelectAll', 'removeSelectedQueueBtn',
   'videoManagementBatchRenameBtn', 'videoManagementRenameTemplate', 'videoManagementRenamePreview',
   'applyVideoManagementRenameBtn', 'videoManagementPreviewPlayer'
@@ -63,6 +63,9 @@ assert.match(css, /\.danmaku-item\s*\{[^}]*color:\s*var\(--account-danmaku-color
 
 assert.match(app, /emitAck\(['"]room-playback-skip-settings['"][\s\S]{0,400}introSeconds[\s\S]{0,300}outroSeconds/,
   '片头片尾设置 UI 必须接入房间设置事件');
+assert.match(app, /skipSettings:\s*elements\.permSkipSettings\.checked/, '成员权限保存必须包含跳过片头片尾设置权限');
+assert.match(app, /skipSettings:\s*elements\.groupPermSkipSettings\.checked/, '权限组保存必须包含跳过片头片尾设置权限');
+assert.match(app, /state\.permissions\.skipSettings/, '客户端必须根据 skipSettings 权限控制编辑入口');
 assert.match(app, /state\.socket\.on\(['"]room-skip-settings-updated['"]/,
   '客户端必须实时接收片头片尾设置');
 assert.match(app, /state\.socket\.on\(['"]quality-change-requested['"]/,

@@ -1198,10 +1198,10 @@ function normalizeSharedWebUrl(value) {
 
 function defaultPermissionGroups() {
   return {
-    viewer: { id: 'viewer', name: '观众', system: true, permissions: { control: false, seek: false, upload: false, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false } },
-    member: { id: 'member', name: '成员', system: true, permissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false } },
-    controller: { id: 'controller', name: '协管员', system: true, permissions: { control: true, seek: true, upload: true, delete: false, manageMedia: false, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: false, sendNotice: true } },
-    administrator: { id: 'administrator', name: '管理员', system: true, permissions: { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true } }
+    viewer: { id: 'viewer', name: '观众', system: true, permissions: { control: false, seek: false, upload: false, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false } },
+    member: { id: 'member', name: '成员', system: true, permissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false } },
+    controller: { id: 'controller', name: '协管员', system: true, permissions: { control: true, seek: true, upload: true, delete: false, manageMedia: false, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: false, skipSettings: false, sendNotice: true } },
+    administrator: { id: 'administrator', name: '管理员', system: true, permissions: { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, skipSettings: true, sendNotice: true } }
   };
 }
 
@@ -1231,7 +1231,7 @@ function normalizePermissionGroup(group, fallbackId = '') {
     permissions: {
       control: Boolean(input.control), seek: input.seek === undefined ? Boolean(input.control) : Boolean(input.seek), upload: Boolean(input.upload), delete: Boolean(input.delete), manageMedia: Boolean(input.manageMedia),
       shareScreen: Boolean(input.shareScreen), shareAudio: input.shareAudio === undefined ? Boolean(input.shareScreen) : Boolean(input.shareAudio), shareWeb: Boolean(input.shareWeb), voiceChat: input.voiceChat !== false,
-      manageChat: Boolean(input.manageChat), manageRoom: Boolean(input.manageRoom), sendNotice: Boolean(input.sendNotice)
+      manageChat: Boolean(input.manageChat), manageRoom: Boolean(input.manageRoom), skipSettings: Boolean(input.skipSettings), sendNotice: Boolean(input.sendNotice)
     }
   };
 }
@@ -1396,7 +1396,7 @@ function freshState() {
     admin: {
       passwordHash: makePasswordHash('admin888'), accessPasswordHash: '', mustChangePassword: true, passwordChangedAt: new Date().toISOString(),
       uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, accountTiers: defaultAccountTiers(),
-      defaultPermissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, sendNotice: false },
+      defaultPermissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
       mail: normalizeMailSettings(),
       branding: normalizeBranding(), loginCube: normalizeLoginCubeSettings(), loginMusic: normalizeLoginMusic(), loginVideo: normalizeLoginVideo(), marqueeNotice: normalizeMarqueeNotice(), roomEntryNotice: normalizeRoomEntryNotice(),
       contact: normalizeAdminContact(), legalAgreement: normalizeLegalAgreement(), passwordPolicy: normalizePasswordPolicy(), usernamePolicy: normalizeUsernamePolicy(), roomIdPolicy: normalizeRoomIdPolicy(),
@@ -4305,10 +4305,10 @@ async function startSyncWatchServer(options = {}) {
 
   function permissionFor(username, roomIdValue = currentRoomId()) {
     const room = roomConfig(roomIdValue);
-    if (state.accounts[username]?.superAdmin) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: true, groupId: 'super-admin' };
+    if (state.accounts[username]?.superAdmin) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, skipSettings: true, sendNotice: true, administrator: true, superAdmin: true, groupId: 'super-admin' };
     const serverHost = [...users.values()].some((member) => member.username === username && member.roomId === room.id && sessions.get(member.sessionToken)?.isServerHost);
-    if (serverHost) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'server-host' };
-    if (username && username === room.ownerUsername) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'owner' };
+    if (serverHost) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, skipSettings: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'server-host' };
+    if (username && username === room.ownerUsername) return { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, skipSettings: true, sendNotice: true, administrator: true, superAdmin: false, groupId: 'owner' };
     const groupId = cleanText(room.memberGroups?.[username] || 'member', 32).toLowerCase();
     const group = room.permissionGroups?.[groupId] || room.permissionGroups?.member || defaultPermissionGroups().member;
     const direct = room.permissions[username] || {};
@@ -4316,7 +4316,7 @@ async function startSyncWatchServer(options = {}) {
     if (direct.seek === undefined && direct.control === true) permissions.seek = true;
     if (room.mediaManagementGrants?.[username] === true) permissions.manageMedia = true;
     permissions.administrator = Boolean(direct.administrator || groupId === 'administrator');
-    if (permissions.administrator) Object.assign(permissions, { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, sendNotice: true });
+    if (permissions.administrator) Object.assign(permissions, { control: true, seek: true, upload: true, delete: true, manageMedia: true, shareScreen: true, shareAudio: true, shareWeb: true, voiceChat: true, manageChat: true, manageRoom: true, skipSettings: true, sendNotice: true });
     permissions.superAdmin = false;
     permissions.groupId = permissions.administrator ? 'administrator' : groupId;
     return permissions;
@@ -4899,7 +4899,7 @@ async function startSyncWatchServer(options = {}) {
       permissions: {
         control: Boolean(permissions.control), seek: Boolean(permissions.seek), upload: Boolean(permissions.upload), delete: Boolean(permissions.delete), manageMedia: Boolean(permissions.manageMedia),
         shareScreen: Boolean(permissions.shareScreen), shareAudio: Boolean(permissions.shareAudio), shareWeb: Boolean(permissions.shareWeb), voiceChat: Boolean(permissions.voiceChat),
-        manageChat: Boolean(permissions.manageChat), manageRoom: Boolean(permissions.manageRoom), sendNotice: Boolean(permissions.sendNotice)
+        manageChat: Boolean(permissions.manageChat), manageRoom: Boolean(permissions.manageRoom), skipSettings: Boolean(permissions.skipSettings), sendNotice: Boolean(permissions.sendNotice)
       }
     };
     return {
@@ -12126,7 +12126,7 @@ async function startSyncWatchServer(options = {}) {
       if (socketRateLimited(socket, `room-skip-settings:${socket.id}`, 20, 60 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement);
       if (!user) return;
-      if (!isRoomAdmin(user, 'manageRoom')) return acknowledgement?.({ success: false, error: '只有房主或房间管理员可以设置跳过片头片尾' });
+      if (!isRoomAdmin(user, 'skipSettings')) return acknowledgement?.({ success: false, error: '只有房主、房间管理员或获授权成员可以设置跳过片头片尾' });
       const skipSettings = normalizePlaybackSkipSettings(payload.skipSettings || payload);
       state.room.skipSettings = skipSettings;
       state.room.lastActivityAt = new Date().toISOString();
@@ -14025,7 +14025,7 @@ async function startSyncWatchServer(options = {}) {
           id: requestedId, name: payload.name, permissions: {
             control: payload.control, seek: payload.seek === undefined ? payload.control : payload.seek, upload: payload.upload, delete: payload.delete, manageMedia: payload.manageMedia,
             shareScreen: payload.shareScreen, shareAudio: payload.shareAudio, shareWeb: payload.shareWeb, voiceChat: payload.voiceChat,
-            manageChat: payload.manageChat, manageRoom: payload.manageRoom, sendNotice: payload.sendNotice
+            manageChat: payload.manageChat, manageRoom: payload.manageRoom, skipSettings: payload.skipSettings, sendNotice: payload.sendNotice
           }
         }, requestedId);
         if (!group?.name) return acknowledgement?.({ success: false, error: '请输入权限组名称' });
@@ -14078,7 +14078,7 @@ async function startSyncWatchServer(options = {}) {
         state.permissions[username] = {
           control: Boolean(payload.control), seek: payload.seek === undefined ? Boolean(payload.control) : Boolean(payload.seek), upload: Boolean(payload.upload), delete: Boolean(payload.delete), manageMedia: Boolean(payload.manageMedia),
           shareScreen: Boolean(payload.shareScreen), shareAudio: Boolean(payload.shareAudio), shareWeb: Boolean(payload.shareWeb), voiceChat: payload.voiceChat !== false,
-          manageChat: Boolean(payload.manageChat), manageRoom: Boolean(payload.manageRoom), sendNotice: Boolean(payload.sendNotice),
+          manageChat: Boolean(payload.manageChat), manageRoom: Boolean(payload.manageRoom), skipSettings: Boolean(payload.skipSettings), sendNotice: Boolean(payload.sendNotice),
           administrator: Boolean(payload.administrator)
         };
         const afterEffective = permissionFor(username);
