@@ -32,13 +32,17 @@ for (const id of [
   'locationStatusNoticesEnabled', 'locationAuthorizationRequestsEnabled', 'accountTierEditor', 'permissionGroupEditor'
 ]) hasId(id);
 
-assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('id="loginForm"'), '服务器快捷入口必须位于登录表单上方');
+assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('class="topbar-fixed-actions"'), '服务器快捷入口必须位于顶栏固定操作区之前');
+assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('id="loginForm"'), '服务器快捷入口必须脱离登录表单并位于其上方');
 assert.ok(html.indexOf('id="resetAdminPasswordBtn"') < html.indexOf('id="loginForm"'), '重置超级管理员密码入口必须位于登录表单上方');
 assert.doesNotMatch(html, /id=["']adminUnlimitedDevices["']/, 'admin 登录策略应使用明确的并发数量，而不是不限设备开关');
 assert.match(html, /id=["']adminMaxConcurrentSessions["'][^>]*type=["']number["'][^>]*min=["']1["'][^>]*max=["']20["']/);
 assert.match(html, /实时共享网页画面/);
 assert.match(html, /同步网址（各端独立浏览）/);
 assert.match(app, /state\.localCapture\s*=\s*stream[\s\S]{0,500}emitAck\(['"]screen-share-start['"]/, '屏幕流必须在通知观看端建连前可用');
+assert.match(app, /get-account-overview/, '账号总览必须使用独立服务端 action');
+assert.match(app, /SyncWatchPlatform\?\.serverApp\) document\.body\.classList\.add\(['"]electron-server['"]\)/, 'Electron 服务端必须使用专用布局标记');
+assert.match(css, /body\.electron-server \.login-visual[\s\S]{0,260}overflow:\s*visible/, 'Electron 服务端立体方块必须保持可见');
 
 assert.doesNotMatch(html, /游客模式\s*·\s*免注册，退出即删除/);
 assert.match(html, /游客模式\s*·\s*免注册/);

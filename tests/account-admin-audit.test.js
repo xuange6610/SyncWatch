@@ -84,6 +84,15 @@ async function acceptAgreement(socket, result) {
     assert.equal(Object.hasOwn(managed, 'passwordHash'), false);
     assert.doesNotMatch(JSON.stringify(settings.admin.accounts), /audit-password|wrong-password/);
 
+    const overview = await ack(adminSocket, 'admin-action', { action: 'get-account-overview', limit: 500 });
+    assert.equal(overview.success, true, overview.error);
+    const overviewAccount = overview.accounts.find((account) => account.username === 'AuditUser');
+    assert.ok(overviewAccount, '独立账号总览 action 应返回目标账号');
+    assert.equal(Object.hasOwn(overviewAccount, 'password'), false);
+    assert.equal(Object.hasOwn(overviewAccount, 'passwordHash'), false);
+    const deniedOverview = await ack(accountSocket, 'admin-action', { action: 'get-account-overview' });
+    assert.equal(deniedOverview.success, false, '普通账号不能读取独立账号总览');
+
     let changedEmail = await ack(adminSocket, 'admin-action', {
       action: 'set-account-email', username: 'AuditUser', email: 'not-an-email'
     });

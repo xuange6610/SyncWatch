@@ -248,3 +248,10 @@
 - 原子发布 run `33226003174` 最终成功：源码门禁、Windows 体验/标准/完整安装/完整便携包、Android APK、Android 模拟器安装启动、官方 Node.js/cloudflared 核验、最终 12 文件审计、远端哈希回读和 Release 原子替换全部通过。
 - v2.2.7 Release 当前为公开 Latest，维护者资产严格 10 项；`main`、唯一 `release/v2.2.7` 分支和注释 Tag 均指向合并提交 `a4f50847b254dbfe7d02b567a9042d9667694d1e`。本机根目录 `dist/` 已回读 12 个非空文件（10 个维护者资产 + 2 个源码归档），10 项维护者资产大小与 SHA-256 均与 GitHub API 一致。
 - 首页 `https://github.com/xuange6610/SyncWatch`、Pages `https://xuange6610.github.io/SyncWatch/`、Wiki `Home.md` 均已回读包含 v2.2.7；Wiki `_Sidebar.md` 当前无版本号文本，不得据此宣称 Sidebar 含版本号。
+
+### 13. v2.2.7 登录页与账号总览修复（2026-08-29）
+
+- 用户反馈服务器 Electron 登录窗口中快捷按钮挤压登录卡片、立体方块被推到视口外且滚轮无法完整浏览。修复为将 `#loginHostShortcuts` 固定放在顶栏中间操作区，使用单行横向滚动按钮；Electron 服务端加 `body.electron-server` 专用布局，登录页外层滚动、登录卡片不再内部裁切、立体方块保持可见。
+- 用户反馈管理中心“账号总览”长期停留“正在同步账号状态”。根因是复用完整 `loadAdminSettings()`，任一设置/隧道读取异常都会阻断账号列表。新增服务端 `get-account-overview` action 与前端独立加载/错误态，只返回账号状态元数据，不返回明文或哈希。
+- 本轮已通过 `node --check server/index.js`、`node --check public/js/app.js`、`node tests/account-admin-audit.test.js`、`node tests/round29-layout.test.js`、`npm test`、`npm run test:repo`、`npm run test:privacy` 与 `git diff --check`。桌面/移动浏览器截图检查已完成；Electron 原生窗口的真实交互仍以本机启动日志和源码契约为证，未使用额外分支。
+- 由于本轮改变了 v2.2.7 最终 Tag 对应源码，线上 Release 仍是旧提交；提交并推送后必须从最终 Tag 重新触发唯一原子工作流。未完成前保持发布状态 `pending`，不得宣称旧 Release 包含本轮修改。

@@ -108,7 +108,7 @@ const state = {
   chatManageHasMore: true, chatManageLoading: false, chatManageBeforeId: '', chatManageBefore: '', chatManageGeneration: 0,
   latestDrift: 0, localLatency: null, syncPercent: 100, localBuffering: false, bufferedAheadSeconds: 0,
   networkProbe: { inFlightSequence: 0, sequence: 0, appliedSequence: 0, connectionEpoch: 0, localConnectionState: 'online', tracker: window.SyncWatchNetworkQuality.createTracker() },
-  profile: null, resumeHistory: [], resumePromptedFiles: new Set(), adminSettings: null, mailTemplateDrafts: {}, mailTemplateKey: '',
+  profile: null, resumeHistory: [], resumePromptedFiles: new Set(), adminSettings: null, accountOverviewLoading: false, mailTemplateDrafts: {}, mailTemplateKey: '',
   verificationCodes: [], verificationCodeSearch: '', verificationCodeType: '', verificationCodeStatus: '', selectedVerificationCodes: new Set(), loginMusicObjectUrl: '', loginVideoObjectUrl: '', loginMusicProgressTimer: null,
   mediaRecorder: null, voiceChunks: [], voiceStopTimer: null, voiceCapturePending: false, voiceProcessing: false, authenticated: false, socketAuthenticated: false,
   resumeInFlight: false, resumeNeeded: false, resumeReconnect: false, resumeRetryTimer: null,
@@ -364,6 +364,7 @@ document.addEventListener('DOMContentLoaded', initialize);
 
 async function initialize() {
   if (window.SyncWatchAndroid) document.body.classList.add('android-client');
+  if (window.SyncWatchPlatform?.serverApp) document.body.classList.add('electron-server');
   initializeManagementArchitecture();
   window.SyncWatchUiCopy?.initialize({ legacyDefaults: UI_COPY_DEFAULTS, onChange: () => {
     if (elements.uiCopyEditorList) renderUiCopySettings(state.uiCopy);
@@ -15037,8 +15038,25 @@ async function openAccountOverview() {
   if (!elements.accountOverviewModal || !state.authenticated) return;
   elements.accountOverviewModal.classList.remove('is-hidden');
   if (elements.accountOverviewList) elements.accountOverviewList.innerHTML = '<p class="muted">正在同步账号状态...</p>';
-  if (state.capabilities.superAdmin || state.capabilities.serverHost) await loadAdminSettings({ silent: true });
-  renderAccountOverview();
+  await loadAccountOverview();
+}
+
+async function loadAccountOverview({ silent = false } = {}) {
+  if (!state.authenticated || state.accountOverviewLoading) return;
+  state.accountOverviewLoading = true;
+  if (elements.accountOverviewList && !silent) elements.accountOverviewList.innerHTML = '<p class="muted">正在同步账号状态...</p>';
+  try {
+    const result = await adminAction('get-account-overview', { limit: 500 }, 12000);
+    if (!result.success) throw new Error(result.error || '账号总览读取失败');
+    state.adminSettings = state.adminSettings || {};
+    state.adminSettings.accounts = Array.isArray(result.accounts) ? result.accounts : [];
+    renderAccountOverview();
+  } catch (error) {
+    if (elements.accountOverviewList) elements.accountOverviewList.innerHTML = `<p class="muted">${escapeHtml(localizedError(error, '账号总览读取失败，请稍后重试'))}</p>`;
+    if (!silent) toast(localizedError(error, '账号总览读取失败，请稍后重试'), 'error', 7000);
+  } finally {
+    state.accountOverviewLoading = false;
+  }
 }
 
 function renderAccountOverview() {

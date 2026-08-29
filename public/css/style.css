@@ -2002,9 +2002,11 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
 .link-button:hover, .ghost-button:hover, .text-button:hover, .account-dropdown button:hover, .panel-tabs button:hover, .queue-list button:hover, .file-actions button:hover, .user-actions button:hover, .chat-mode:hover, .reaction-bar button:hover { color: var(--pink-2); background: color-mix(in srgb, var(--pink) 9%, transparent); }
 @media (max-width: 540px) { body:not(.android-client) .topbar-actions, body.android-client .topbar-actions { overflow-x: hidden; } }
 
-.login-host-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0 4px; padding: 9px; border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 28%, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--theme-accent, var(--pink)) 7%, var(--panel-2)); }
-.login-host-shortcuts > :first-child:last-child, .login-host-shortcuts > .primary-button { grid-column: 1 / -1; width: 100%; margin: 0; }
-.login-host-shortcuts button { min-width: 0; min-height: 44px; margin: 0; padding: 8px 10px; }
+.login-host-shortcuts { display: flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; max-width: min(52vw, 760px); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; overflow-x: auto; overflow-y: visible; scrollbar-width: thin; scrollbar-color: var(--theme-accent, #c7a763) transparent; }
+.login-host-shortcuts::-webkit-scrollbar { height: 5px; }
+.login-host-shortcuts::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--theme-accent, #c7a763) 70%, transparent); border-radius: 8px; }
+.login-host-shortcuts button { flex: 0 0 auto; min-width: max-content; min-height: 34px; margin: 0; padding: 6px 9px; font-size: .76rem; line-height: 1.2; white-space: nowrap; }
+.login-host-shortcuts button.primary-button { width: auto; }
 #defaultAdminLoginHint { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
 #defaultAdminLoginHint .text-button { width: auto; min-height: 34px; margin-left: auto; padding: 5px 9px; color: var(--pink-2); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 38%, var(--line)); }
 .login-more-actions, .external-login-providers { margin-top: 8px; }
@@ -2431,6 +2433,37 @@ body.android-client .topbar-actions .share-link-button .button-label { min-width
 /* Keep the identity cube available on touch layouts while reserving a compact, scroll-safe stage. */
 @media (max-width: 924px) {
   .login-visual { display: grid; min-height: clamp(240px, 42dvh, 340px); padding: 22px 0 42px; overflow: visible; }
+}
+
+/* Electron server login: keep the visual cube in view while allowing the
+   complete authentication card to scroll in short/zoomed windows. */
+body.electron-server .login-page {
+  height: 100%;
+  min-height: 0;
+  align-items: start;
+  overflow-y: auto;
+  overscroll-behavior: auto;
+}
+body.electron-server .login-visual {
+  align-self: start;
+  height: min(680px, calc(100dvh - 78px));
+  min-height: 320px;
+  overflow: visible;
+}
+body.electron-server .login-cube-scene { --cube-size: min(360px, 34vw, 52dvh); }
+body.electron-server .auth-card {
+  align-self: start;
+  max-height: none;
+  overflow: visible;
+  margin-block: 18px 48px;
+}
+@media (max-width: 1180px) {
+  body.electron-server .login-host-shortcuts { max-width: min(44vw, 560px); }
+}
+@media (max-width: 924px) {
+  body.electron-server .topbar-actions { align-items: flex-start; }
+  body.electron-server .login-host-shortcuts { flex: 1 1 100%; max-width: none; order: 3; padding-top: 4px; }
+  body.electron-server .login-host-shortcuts button { min-height: 36px; }
 }
 
 @media (max-width: 1100px) and (min-width: 761px) {

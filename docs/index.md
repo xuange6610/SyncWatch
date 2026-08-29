@@ -11,7 +11,7 @@
 | 理解服务端、WebSocket、媒体和数据目录 | [技术架构](architecture.md)、[数据结构与备份迁移](wiki/06-数据结构与备份迁移.md) |
 | 管理中心和权限 | [管理中心详细教程](management-center.md)、[管理中心 Wiki](wiki/13-管理中心完整教程.md) |
 | Android 构建与手机服务器 | [Android README](../mobile/README.md)、[Android/Wiki 教程](wiki/23-运行环境完整教程.md) |
-| macOS 构建与发布 | [macOS 构建](macos-build.md)、[macOS Wiki](wiki/18-macOS构建与发布.md) |
+| macOS 历史兼容说明 | [macOS 构建与发布历史](macos-build.md)、[macOS Wiki](wiki/18-macOS构建与发布.md)（v2.2.7 起不再构建新包） |
 | 错误、诊断、备份和安全 | [故障排查](troubleshooting.md)、[安全策略](../SECURITY.md) |
 | Release、文件地图和贡献 | [v2.2.7 发布说明](release-notes-v2.2.7.md)、[v2.2.6 发布说明](release-notes-v2.2.6.md)、[发布文件说明](release-artifacts.md)、[仓库文件地图](repository-map.md)、[参与贡献](contributing.html)、[CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Codex 长期维护、版本与交付要求 | [维护者长期要求](maintenance/maintainer-requirements.md)、[Release 固定资产清单](release/release-manifest.md) |
@@ -28,7 +28,7 @@
 
 - [v2.2.7](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.7) 已完成同版本更正发布；Release API 有 10 个维护者资产，页面另含两个 GitHub 源码归档。正式下载以 GitHub Release API 实际资产和发布公告状态为准。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
-- 可下载的桌面、Android、macOS 和独立服务器成品以 GitHub Releases 中实际存在的资产为准，不以文件名猜测平台支持。
+- v2.2.7 新构建仅提供 Windows 与 Android；macOS 仅保留历史 Release 资产，是否可下载以对应历史 Release 实际存在的文件为准。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。
 
 ## v2.2.7 文档同步重点
@@ -36,5 +36,6 @@
 - Web“关于”与 Electron“帮助”统一指向项目主页和 Wiki；Node 独立服务端用 `--help`、`--open-browser`、启动摘要和 `服务器运行信息.txt` 提供等价管理入口。
 - 注册名额申请支持按数量提交、部分/全部撤回和内置 `admin` 删除；账户管理只显示密码状态，安全重置不展示明文或哈希。
 - “同步网址”保存房间权威 URL/revision，但各端在沙箱 iframe 中独立加载；跨域、Cookie、登录态、地域和禁止嵌入不由 SyncWatch 绕过，需要同画面时使用实时屏幕/标签页共享。
+- 服务器登录页的本机管理快捷入口位于顶栏中间操作区；Electron 服务端窗口采用外层滚动，立体方块不会被登录卡片推离视口。管理中心账号总览使用独立 action 加载，失败时显示明确错误而非无限等待。
 
 维护文档前请先读根目录 [AGENTS.md](../AGENTS.md)、[维护者长期要求](maintenance/maintainer-requirements.md)、[PRODUCT.md](../PRODUCT.md)、[DESIGN.md](../DESIGN.md) 和 [README.md](../README.md)。
