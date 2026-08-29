@@ -192,14 +192,26 @@ async function uploadVideo(baseUrl, token, filename, content) {
     assert.deepEqual(skip.skipSettings, { enabled: true, introSeconds: 45, outroSeconds: 80 });
     assert.deepEqual((await skipEvent).skipSettings, skip.skipSettings);
 
+    assert.equal((await ack(source, 'select-file', { fileId: remoteA.file.id })).success, true);
+    const ownerRate = await ack(source, 'playback-command', { action: 'rate', playbackRate: 1.5, currentTime: 0 });
+    assert.equal(ownerRate.success, true, ownerRate.error);
+    assert.equal(ownerRate.change.after.playbackRate, 1.5, '房主必须始终可以调整共享倍速');
+
+    const memberSkipDenied = await ack(member, 'room-playback-skip-settings', { enabled: true, introSeconds: 10, outroSeconds: 20 });
+    assert.equal(memberSkipDenied.success, false, '未授予 skipSettings 的成员不能修改片头片尾设置');
+
     const permission = await ack(source, 'admin-action', {
       action: 'set-permissions', username: 'RoomMember', groupId: 'member',
-      control: false, seek: true, upload: true, voiceChat: true
+      control: false, seek: true, upload: true, voiceChat: true, skipSettings: true
     });
     assert.equal(permission.success, true, permission.error);
     assert.equal(permission.permissions.seek, true);
     assert.equal(permission.permissions.control, false);
-    assert.equal((await ack(source, 'select-file', { fileId: remoteA.file.id })).success, true);
+    assert.equal(permission.permissions.skipSettings, true);
+    const memberSkipAllowed = await ack(member, 'room-playback-skip-settings', { enabled: true, introSeconds: 12, outroSeconds: 24 });
+    assert.equal(memberSkipAllowed.success, true, memberSkipAllowed.error);
+    assert.deepEqual(memberSkipAllowed.skipSettings, { enabled: true, introSeconds: 12, outroSeconds: 24 });
+    assert.equal((await ack(source, 'room-playback-skip-settings', { enabled: true, introSeconds: 45, outroSeconds: 80 })).success, true);
     const seek = await ack(member, 'playback-command', { action: 'seek', currentTime: 90 });
     assert.equal(seek.success, true, seek.error);
     assert.equal((await ack(member, 'playback-command', { action: 'pause', currentTime: 90 })).success, false,
@@ -247,14 +259,14 @@ async function uploadVideo(baseUrl, token, filename, content) {
       action: 'save-permission-group', groupId: 'copy-editors', name: '可复制协管组',
       control: true, seek: true, upload: true, delete: false, manageMedia: false,
       shareScreen: false, shareAudio: false, shareWeb: true, voiceChat: true,
-      manageChat: true, manageRoom: false, sendNotice: false
+      manageChat: true, manageRoom: false, skipSettings: true, sendNotice: false
     });
     assert.equal(copiedGroup.success, true, copiedGroup.error);
     const copiedMemberPermission = await ack(source, 'admin-action', {
       action: 'set-permissions', username: 'RoomMember', groupId: 'copy-editors',
       control: true, seek: true, upload: true, delete: false, manageMedia: false,
       shareScreen: false, shareAudio: false, shareWeb: true, voiceChat: true,
-      manageChat: true, manageRoom: false, sendNotice: false
+      manageChat: true, manageRoom: false, skipSettings: true, sendNotice: false
     });
     assert.equal(copiedMemberPermission.success, true, copiedMemberPermission.error);
     const mediaManagementRequest = await ack(member, 'media-management-request', { reason: '验证复制媒体授权' });

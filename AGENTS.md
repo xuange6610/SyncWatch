@@ -226,3 +226,10 @@
 - v2.2.7 修正版原子运行 `33219501154` 的源码、Windows 基础包、Android APK 与模拟器验收均成功；Windows 完整离线包失败于 cloudflared 官方资产下载返回 HTTP 403。根因是 `windows_full` 未等待 `official_assets`，命中旧的 18 MB 缓存后再次请求 GitHub API；修复为让 `windows_full` 依赖 `official_assets` 并下载同一运行的官方资产到 `.cache/release-third-party`，后续只允许重跑一次完整原子工作流。
 - 本轮追加修复（2026-08-29）：账户菜单和“我的房间”自有房间卡片均提供“房间设置”入口；进入卡片入口时先切换到目标房间，再打开管理中心。房主范围通过 `managementScope='room-owner'` 强制只显示“房间与上传”“成员与权限组”“聊天与记录”三个导航模块，关闭窗口后恢复完整管理员导航；房间设置数据会通过当前会话重新读取，不能仅依赖旧表单默认值。
 - 本轮追加修复（2026-08-29）：登录页在短窗口、网页缩放和高 DPI 下改为顶部起始、外层统一滚动，`.auth-card` 不再使用内部固定高度裁切；新增 `tests/v227-room-settings-login-layout.test.js` 契约测试。最终交付时，所有正式成品必须直接生成并保存在仓库根目录 `dist/`，先完成本地测试、非空/版本/平台/架构/SHA-256 与启动验证，再进行同版本 Release 安全替换；不能只留在临时构建目录或 GitHub Actions artifact。
+
+### 11. 本轮新增权限与倍速修复（2026-08-29）
+
+- 房主调整共享倍速属于房主固有能力：服务端 `canControl` 和前端倍速控件都必须保证房主可用，不能因成员权限组或控制锁配置误伤房主。
+- “跳过片头和片尾设置”使用独立权限键 `skipSettings`。默认成员/观众/协管组关闭，管理员组、房主、服务器主机和超级管理员始终开启；成员权限编辑器、权限组编辑器、权限回显和权限变更通知必须同步维护该字段。
+- `room-playback-skip-settings` 必须在服务端以 `isRoomAdmin(user, 'skipSettings')` 重新校验；不能只依赖前端禁用控件。未授权成员提交必须返回失败，授权后立即广播 `room-skip-settings-updated`。
+- 本轮回归重点：`tests/v224-backend.test.js` 覆盖房主倍速、未授权跳过设置拒绝、授权后允许和权限组继承；`tests/v224-frontend.test.js` 覆盖新增控件与保存字段。发布前先运行这些测试，再运行仓库/核心/隐私门禁。
