@@ -782,9 +782,9 @@
         <p class="eyebrow">SyncWatch同步观影</p>
         <h2 id="appDialogTitle">请输入</h2>
         <p id="appDialogDescription" class="muted"></p>
-        <label id="appDialogInputGroup"><span id="appDialogInputLabel">内容</span><span class="password-field"><input id="appDialogInput" type="text" autocomplete="off"><button id="appDialogPasswordToggle" class="password-toggle is-hidden" type="button" aria-label="显示密码" aria-pressed="false">显示</button></span></label>
+        <label id="appDialogInputGroup"><span id="appDialogInputLabel">内容</span><span class="password-field"><input id="appDialogInput" type="text" autocomplete="off"><button id="appDialogPasswordToggle" data-copy-key="dialog.passwordToggle" class="password-toggle is-hidden" type="button" aria-label="显示密码" aria-pressed="false">显示</button></span></label>
         <label id="appDialogSelectGroup" class="is-hidden"><span id="appDialogSelectLabel">请选择</span><select id="appDialogSelect"><option value="">请选择</option></select></label>
-        <label id="appDialogConfirmGroup" class="is-hidden"><span id="appDialogConfirmLabel">确认密码</span><span class="password-field"><input id="appDialogConfirmInput" type="password" autocomplete="new-password"><button id="appDialogConfirmPasswordToggle" class="password-toggle" type="button" aria-label="显示确认密码" aria-pressed="false">显示</button></span></label>
+        <label id="appDialogConfirmGroup" class="is-hidden"><span id="appDialogConfirmLabel">确认密码</span><span class="password-field"><input id="appDialogConfirmInput" type="password" autocomplete="new-password"><button id="appDialogConfirmPasswordToggle" data-copy-key="dialog.confirmPasswordToggle" class="password-toggle" type="button" aria-label="显示确认密码" aria-pressed="false">显示</button></span></label>
         <p id="appDialogError" class="app-dialog-error is-hidden" role="alert"></p>
         <div class="app-dialog-actions"><button id="appDialogFillRiskBtn" class="text-button is-hidden" type="button" data-copy-key="dialog.fillRisk">一键填入确认文字</button><button id="appDialogBackBtn" class="secondary-button is-hidden" type="button" data-copy-key="dialog.back">上一步</button><button id="appDialogCancelBtn" class="secondary-button" type="button" data-copy-key="dialog.cancel">取消</button><button id="appDialogConfirmBtn" class="primary-button" type="submit" data-copy-key="dialog.confirm">确定</button></div>
       </form>
@@ -795,6 +795,6 @@
   <div id="toastRegion" class="toast-region" aria-live="polite"></div>
   <div id="reconnectOverlay" class="reconnect-overlay is-hidden"><button id="closeReconnectOverlayBtn" class="notice-close-button reconnect-close-button" type="button" aria-label="关闭网络提示" title="关闭提示">×</button><span>⚠</span><strong>网络波动</strong><small id="reconnectMessage">正在重新连接…</small><button id="reconnectRetryBtn" class="secondary-button" type="button">立即重试</button></div>
   <script src="/socket.io/socket.io.js"></script><script src="/js/network-quality-policy.js"></script><script src="/js/media-network-recovery.js"></script><script src="/js/friend-account-ui.js"></script><script src="/js/ui-copy-runtime.js"></script><script src="/js/app.js"></script><script src="/js/avatar-tools.js"></script><script src="/js/ai-workbench.js"></script><script src="/js/notification-preferences.js"></script>
-<button id="videoManagementBatchCoverBtn" class="is-hidden" type="button" aria-hidden="true">批量随机封面</button>
+<button id="videoManagementBatchCoverBtn" class="is-hidden" type="button" aria-hidden="true" data-copy-ignore="true">批量随机封面</button>
 </body>
 </html>
