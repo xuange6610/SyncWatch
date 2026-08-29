@@ -7518,7 +7518,11 @@ async function startSyncWatchServer(options = {}) {
         const thumbnailName = `${record.id}.jpg`;
         const thumbnailPath = path.join(thumbnailsDir, thumbnailName);
         try {
-          await captureProcess(ffmpegPath, ['-y', '-ss', '3', '-i', input, '-frames:v', '1', '-vf', 'scale=480:-2', '-q:v', '4', thumbnailPath], 60000, mediaAnalysisProcesses, { record });
+          const duration = Math.max(0, Number(record.metadata?.duration) || 0);
+          // Pick a point from the middle 40% of the video so covers avoid
+          // title slates while still varying between uploads/re-generations.
+          const seekSeconds = duration > 8 ? (duration * (0.3 + Math.random() * 0.4)).toFixed(3) : '3';
+          await captureProcess(ffmpegPath, ['-y', '-ss', seekSeconds, '-i', input, '-frames:v', '1', '-vf', 'scale=480:-2', '-q:v', '4', thumbnailPath], 60000, mediaAnalysisProcesses, { record });
           if (!isActive()) { if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath); return; }
           const thumbnailStats = fs.statSync(thumbnailPath);
           if (!thumbnailStats.isFile() || thumbnailStats.size <= 0) throw new Error('缩略图输出为空');
@@ -8142,6 +8146,44 @@ async function startSyncWatchServer(options = {}) {
     for (const file of files) emitFileToVisible('file-updated', file);
     recordOperation({ actor: username, action: 'file-manage-batch', summary: `批量管理 ${files.length} 个影片${hasCollection ? `，分类为“${collection}”` : ''}${hasNote ? '，并更新备注' : ''}` });
     return res.json({ success: true, files: files.map(publicFile), message: `已更新 ${files.length} 个影片` });
+  });
+
+  app.post('/api/files/cover/batch', requireSession, httpRateLimit('file-cover-batch', 8, 60 * 1000), async (req, res) => {
+    const fileIds = [...new Set((Array.isArray(req.body?.fileIds) ? req.body.fileIds : [])
+      .map((id) => cleanText(id, 80)).filter(Boolean))].slice(0, 200);
+    if (!fileIds.length) return res.status(400).json({ success: false, error: '请选择需要更新封面的影片' });
+    if (!ffmpegPath || !fs.existsSync(ffmpegPath)) return res.status(503).json({ success: false, error: '服务器未配置 FFmpeg，无法生成视频封面' });
+    const roomId = currentRoomId();
+    const username = req.syncWatchSession.username;
+    const files = fileIds.map(findFile);
+    if (files.some((file) => !file || file.roomId !== roomId || file.category !== 'video' || file.sourceType === 'remote')) {
+      return res.status(400).json({ success: false, error: '只能为当前房间中的本地视频批量生成封面' });
+    }
+    const denied = files.find((file) => username !== file.uploadedBy && !canManageMediaLibrary(username, roomId));
+    if (denied) return res.status(403).json({ success: false, error: `没有管理影片“${denied.originalName}”封面的权限` });
+    const updated = [];
+    for (const file of files) {
+      const input = path.join(uploadsDir, file.storedName);
+      if (!fs.existsSync(input)) continue;
+      const thumbnailName = `${file.id}.jpg`;
+      const thumbnailPath = path.join(thumbnailsDir, thumbnailName);
+      const duration = Math.max(0, Number(file.metadata?.duration) || 0);
+      const seekSeconds = duration > 8 ? (duration * (0.3 + Math.random() * 0.4)).toFixed(3) : '3';
+      try {
+        await captureProcess(ffmpegPath, ['-y', '-ss', seekSeconds, '-i', input, '-frames:v', '1', '-vf', 'scale=480:-2', '-q:v', '4', thumbnailPath], 60000, mediaAnalysisProcesses, { record: file });
+        const stats = fs.statSync(thumbnailPath);
+        if (!stats.isFile() || stats.size <= 0) throw new Error('封面输出为空');
+        file.thumbnailName = thumbnailName;
+        updated.push(file);
+      } catch (error) {
+        try { if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath); } catch (_) {}
+        console.warn(`批量封面生成失败 ${file.originalName}:`, error.message);
+      }
+    }
+    persist();
+    updated.forEach((file) => emitFileToVisible('file-updated', file));
+    if (updated.length) recordOperation({ roomId, actor: username, action: 'file-cover-batch', summary: `批量更新 ${updated.length} 个视频封面` });
+    return res.json({ success: true, files: updated.map(publicFile), updated: updated.length, message: `已更新 ${updated.length}/${files.length} 个视频封面` });
   });
 
   app.delete('/api/files/:id', requireSession, httpRateLimit('file-delete', 30, 60 * 1000), async (req, res) => {
@@ -8969,6 +9011,14 @@ async function startSyncWatchServer(options = {}) {
         roomName: state.rooms[request.roomId]?.name || request.roomName || request.roomId
       })),
       friendSettings: normalizeFriendSettings(account?.friendSettings),
+      // Keep a compact, account-scoped resume map in the auth response so a
+      // fresh client can continue unfinished videos without exposing history
+      // from other accounts.
+      resumeHistory: (Array.isArray(account?.watchHistory) ? account.watchHistory : []).slice(-200).map((item) => ({
+        roomId: cleanText(item.roomId || '', 80), fileId: cleanText(item.fileId || '', 80),
+        progress: Math.max(0, Number(item.progress) || 0), duration: Math.max(0, Number(item.duration) || 0),
+        lastWatchTime: cleanText(item.lastWatchTime || '', 40)
+      })),
       roomEntryNotice: effectiveRoomEntryNotice(user.roomId)
     };
   }
@@ -12365,14 +12415,26 @@ async function startSyncWatchServer(options = {}) {
       const url = normalizeSharedWebUrl(payload.url);
       if (!url) return acknowledgement?.({ success: false, error: '请输入有效的 HTTP 或 HTTPS 网址' });
       stopScreenShare(roomState.screenShare.socketId, user.roomId);
+      // A URL share replaces the synchronized media surface. Clear the
+      // previous video/audio state first so clients cannot keep rendering a
+      // stale player underneath the shared page.
+      roomRuntime().playbackGeneration += 1;
+      roomState.playback = {
+        fileId: null, isPlaying: false, stalled: false, currentTime: 0,
+        volume: roomState.playback.volume, muted: Boolean(roomState.playback.muted), playbackRate: 1,
+        updatedAt: Date.now(), changedBy: user.username, revision: roomState.playback.revision + 1
+      };
+      const textReading = resetTextReadingState(null, user.username);
       roomState.webShare = {
         active: true, url, title: cleanText(payload.title || '共享网页', 120),
         changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1
       };
       persist();
+      io.to(roomChannel()).emit('playback-state', playbackSnapshot());
+      io.to(roomChannel()).emit('text-reading-state', textReading);
       io.to(roomChannel()).emit('web-share-state', { roomId: user.roomId, ...roomState.webShare, serverTime: Date.now() });
       recordOperation({ actor: user.username, action: 'web-share-start', summary: `共享网址：${url}` });
-      return acknowledgement?.({ success: true, webShare: { ...roomState.webShare }, message: '网址已同步到当前房间的播放窗口' });
+      return acknowledgement?.({ success: true, webShare: { ...roomState.webShare }, message: '网址已同步到当前房间；原播放画面已清空。网址由各端独立加载，如需相同实时画面请使用标签页/窗口共享' });
     });
 
     onSafe('web-share-stop', (payload = {}, acknowledgement) => {

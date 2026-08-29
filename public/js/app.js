@@ -108,7 +108,7 @@ const state = {
   chatManageHasMore: true, chatManageLoading: false, chatManageBeforeId: '', chatManageBefore: '', chatManageGeneration: 0,
   latestDrift: 0, localLatency: null, syncPercent: 100, localBuffering: false, bufferedAheadSeconds: 0,
   networkProbe: { inFlightSequence: 0, sequence: 0, appliedSequence: 0, connectionEpoch: 0, localConnectionState: 'online', tracker: window.SyncWatchNetworkQuality.createTracker() },
-  profile: null, adminSettings: null, mailTemplateDrafts: {}, mailTemplateKey: '',
+  profile: null, resumeHistory: [], resumePromptedFiles: new Set(), adminSettings: null, mailTemplateDrafts: {}, mailTemplateKey: '',
   verificationCodes: [], verificationCodeSearch: '', verificationCodeType: '', verificationCodeStatus: '', selectedVerificationCodes: new Set(), loginMusicObjectUrl: '', loginVideoObjectUrl: '', loginMusicProgressTimer: null,
   mediaRecorder: null, voiceChunks: [], voiceStopTimer: null, voiceCapturePending: false, voiceProcessing: false, authenticated: false, socketAuthenticated: false,
   resumeInFlight: false, resumeNeeded: false, resumeReconnect: false, resumeRetryTimer: null,
@@ -2215,7 +2215,9 @@ function bindUiEvents() {
   elements.lanScanSelectAll?.addEventListener('change', toggleAllLanRooms);
   elements.deleteSelectedLanRoomsBtn?.addEventListener('click', deleteSelectedLanRooms);
   elements.managementHubBtn?.addEventListener('click', () => openManagementHub('server'));
-  elements.openRoomManagementBtn?.addEventListener('click', () => openManagementHub('room'));
+  // The in-room settings entry is scoped to the current room. Server-wide
+  // administrators can still use the dedicated management-center entry.
+  elements.openRoomManagementBtn?.addEventListener('click', () => openManagementHub('room', { scope: 'room-owner' }));
   elements.closeManagementHubBtn?.addEventListener('click', closeManagementHub);
   document.querySelectorAll('[data-management-section]').forEach((button) => button.addEventListener('click', () => showManagementSection(button.dataset.managementSection)));
   elements.closeCreateRoomBtn?.addEventListener('click', () => elements.createRoomModal.classList.add('is-hidden'));
@@ -2442,6 +2444,9 @@ function bindUiEvents() {
     else startLoginCubeMotion();
   });
   window.addEventListener('pagehide', () => {
+    // Flush the latest account resume point when the tab/window is closed or
+    // backgrounded; the periodic report remains the normal path while open.
+    reportWatchProgress();
     stopLoginCubeMotion();
     revokeLoginCubeEditorObjectUrls();
   });
@@ -4830,7 +4835,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   if (!state.socket?.connected || state.socket.id !== socketId || generation !== state.authGeneration) throw new Error('连接在初始化期间发生变化');
 
   if (roomChanged) resetRoomScopedClientState();
-  state.token = token; state.user = result.user; state.room = result.room; syncFullscreenAutoLockPreference();
+  state.token = token; state.user = result.user; state.resumeHistory = Array.isArray(result.resumeHistory) ? result.resumeHistory : (Array.isArray(result.user?.resumeHistory) ? result.user.resumeHistory : []); state.resumePromptedFiles.clear(); state.room = result.room; syncFullscreenAutoLockPreference();
   state.capabilities = result.capabilities || {}; state.permissions = result.permissions || {};
   state.authenticated = true; state.socketAuthenticated = true; state.resumeNeeded = false; state.rememberSession = sessionRemember; state.intentionalLogout = false;
   state.managementOnlyAuth = managementOnly;
@@ -4876,7 +4881,7 @@ async function finishAuthentication(result, remember, reconnecting = false, opti
   resumeWaitingMediaRecovery();
   if (result.room?.passwordEnforcementRequired && result.capabilities?.owner && !result.room?.passwordRequired) {
     setTimeout(() => toastWithAction('服务器要求当前房间设置访问密码。完成设置前，房主的播放控制会暂停；其他成员可以继续观看。', '现在设置', () => {
-      openManagementHub('room'); setTimeout(() => elements.accessPassword?.focus(), 160);
+      openManagementHub('room', { scope: state.capabilities.owner && !state.capabilities.superAdmin && !state.capabilities.serverHost ? 'room-owner' : 'full' }); setTimeout(() => elements.accessPassword?.focus(), 160);
     }, 0), 280);
   }
   for (const notification of Array.isArray(result.notifications) ? result.notifications : []) showAccountNotification(notification);
@@ -6436,6 +6441,13 @@ function managedVideoFiles() {
 
 function openVideoManagement() {
   if (!state.authenticated) return toast('请先登录后管理影片', 'error');
+  const toolbar = elements.videoManagementModal?.querySelector('.video-management-toolbar');
+  if (toolbar && !toolbar.querySelector('#videoManagementBatchCoverBtn')) {
+    const button = document.createElement('button');
+    button.id = 'videoManagementBatchCoverBtn'; button.className = 'secondary-button'; button.type = 'button'; button.textContent = '批量随机封面';
+    button.addEventListener('click', batchRandomizeManagedCovers);
+    toolbar.insertBefore(button, elements.videoManagementBatchDeleteBtn || null);
+  }
   state.videoManagementVisible = true;
   state.selectedManagementFiles.clear();
   closeVideoManagementPreview();
@@ -6448,7 +6460,8 @@ function openVideoManagement() {
 function renderVideoManagementList() {
   if (!elements.videoManagementList) return;
   const allowed = canManageVideoSystem();
-  for (const control of [elements.videoManagementSearch, elements.videoManagementCategory, elements.videoManagementSelectAll, elements.videoManagementBatchRenameBtn, elements.videoManagementBatchCategoryBtn, elements.videoManagementBatchNoteBtn, elements.videoManagementBatchDeleteBtn, elements.exportVideoManagementBtn, elements.importVideoManagementBtn]) {
+  const coverButton = elements.videoManagementModal?.querySelector('#videoManagementBatchCoverBtn');
+  for (const control of [elements.videoManagementSearch, elements.videoManagementCategory, elements.videoManagementSelectAll, elements.videoManagementBatchRenameBtn, elements.videoManagementBatchCategoryBtn, elements.videoManagementBatchNoteBtn, coverButton, elements.videoManagementBatchDeleteBtn, elements.exportVideoManagementBtn, elements.importVideoManagementBtn]) {
     if (control) control.disabled = !allowed;
   }
   elements.videoManagementModal?.classList.toggle('permission-denied-view', !allowed);
@@ -6460,7 +6473,8 @@ function renderVideoManagementList() {
   state.selectedManagementFiles = new Set([...state.selectedManagementFiles].filter((id) => manageableMediaFiles().some((file) => file.id === id)));
   elements.videoManagementList.innerHTML = files.length ? files.map((file) => {
     const processing = file.compatibility?.required && !file.compatibility?.ready && ['queued', 'converting'].includes(file.compatibility?.status);
-    return `<article class="video-management-row ${processing ? 'processing' : ''}" data-managed-file="${escapeHtml(file.id)}"><label class="manage-row-check"><input type="checkbox" data-managed-file-select="${escapeHtml(file.id)}" ${state.selectedManagementFiles.has(file.id) ? 'checked' : ''} ${processing ? 'disabled' : ''}><span>选择</span></label><span class="video-management-icon">${fileIcon(file.category)}</span><div><strong>${escapeHtml(file.originalName)}</strong><p>${escapeHtml(fileCollectionName(file))} · ${formatSize(file.size)} · ${escapeHtml(file.uploadedBy || '')}</p><small>${escapeHtml(file.note || '暂无备注')}${processing ? ` · 正在转换 ${Math.round(Number(file.compatibility.progress) || 0)}%` : ''}</small></div><div class="actions"><button data-video-manage="${processing ? 'processing-progress' : 'play'}" type="button">${processing ? '查看处理进度' : isTimedFile(file) ? '播放' : '查看'}</button><button data-video-manage="preview" type="button" ${processing || !isTimedFile(file) ? 'disabled' : ''}>预览</button><button data-video-manage="rename" type="button" ${processing ? 'disabled' : ''}>重命名</button><button data-video-manage="category" type="button" ${processing ? 'disabled' : ''}>分类</button><button data-video-manage="note" type="button" ${processing ? 'disabled' : ''}>备注</button><button data-video-manage="favorite" type="button" ${processing ? 'disabled' : ''}>收藏</button><button data-video-manage="delete" class="danger-text-button" type="button" ${processing ? 'disabled' : ''}>删除</button></div></article>`;
+    const cover = file.thumbnailUrl ? `<img class="video-management-cover" src="${escapeHtml(file.thumbnailUrl)}" alt="${escapeHtml(file.originalName)} 封面" loading="lazy">` : `<span class="video-management-icon">${fileIcon(file.category)}</span>`;
+    return `<article class="video-management-row ${processing ? 'processing' : ''}" data-managed-file="${escapeHtml(file.id)}"><label class="manage-row-check"><input type="checkbox" data-managed-file-select="${escapeHtml(file.id)}" ${state.selectedManagementFiles.has(file.id) ? 'checked' : ''} ${processing ? 'disabled' : ''}><span>选择</span></label>${cover}<div><strong>${escapeHtml(file.originalName)}</strong><p>${escapeHtml(fileCollectionName(file))} · ${formatSize(file.size)} · ${escapeHtml(file.uploadedBy || '')}</p><small>${escapeHtml(file.note || '暂无备注')}${processing ? ` · 正在转换 ${Math.round(Number(file.compatibility.progress) || 0)}%` : ''}</small></div><div class="actions"><button data-video-manage="${processing ? 'processing-progress' : 'play'}" type="button">${processing ? '查看处理进度' : isTimedFile(file) ? '播放' : '查看'}</button><button data-video-manage="preview" type="button" ${processing || !isTimedFile(file) ? 'disabled' : ''}>预览</button><button data-video-manage="rename" type="button" ${processing ? 'disabled' : ''}>重命名</button><button data-video-manage="category" type="button" ${processing ? 'disabled' : ''}>分类</button><button data-video-manage="note" type="button" ${processing ? 'disabled' : ''}>备注</button><button data-video-manage="favorite" type="button" ${processing ? 'disabled' : ''}>收藏</button><button data-video-manage="delete" class="danger-text-button" type="button" ${processing ? 'disabled' : ''}>删除</button></div></article>`;
   }).join('') : '<p class="muted">没有符合条件的上传影片</p>';
   if (elements.videoManagementSelectAll) elements.videoManagementSelectAll.checked = Boolean(files.length) && files.every((file) => state.selectedManagementFiles.has(file.id));
 }
@@ -6655,6 +6669,23 @@ async function batchNoteManagedVideos() {
   if (!state.selectedManagementFiles.size) return toast('请先选择影片', 'error');
   const note = await showAppInput({ title: '批量设置备注', description: `将为 ${state.selectedManagementFiles.size} 个影片设置相同备注`, label: '备注内容', maxLength: 500, confirmText: '保存备注' });
   if (note !== null) await patchManagedVideos({ note });
+}
+
+async function batchRandomizeManagedCovers() {
+  const files = selectedManagedVideos().filter((file) => file.category === 'video' && file.sourceType !== 'remote');
+  if (!files.length) return toast('请先选择本地视频（云端视频不支持服务器截图）', 'error');
+  if (!await showAppConfirm(`将为所选 ${files.length} 个视频从中间片段随机截取新封面，继续吗？`, { title: '批量随机封面', confirmText: '生成封面' })) return;
+  const button = elements.videoManagementModal?.querySelector('#videoManagementBatchCoverBtn');
+  if (button) { button.disabled = true; button.textContent = '正在生成…'; }
+  try {
+    const response = await fetchWithTimeout('/api/files/cover/batch', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ fileIds: files.map((file) => file.id) }) }, 10 * 60 * 1000);
+    const result = await response.json();
+    if (!response.ok || !result.success) return toast(result.error || '批量封面生成失败', 'error');
+    for (const file of result.files || []) upsertFile(file);
+    renderFiles(); renderVideoManagementList();
+    toast(result.message || '视频封面已更新', 'success');
+  } catch (error) { toast(`批量封面生成失败：${localizedError(error, '请稍后重试')}`, 'error'); }
+  finally { if (button) { button.disabled = !canManageVideoSystem(); button.textContent = '批量随机封面'; } }
 }
 
 async function batchDeleteManagedVideos() {
@@ -7125,7 +7156,27 @@ async function selectFile(fileId) {
     }
     const preparing = ['MEDIA_ANALYSIS_PREPARING', 'MEDIA_COMPATIBILITY_PREPARING'].includes(result.code);
     toast(result.error, preparing ? '' : 'error', preparing ? 9000 : 5000);
+  } else {
+    void maybeResumeWatchPosition(file);
   }
+}
+
+async function maybeResumeWatchPosition(file) {
+  if (!file || !isTimedFile(file) || !state.authenticated) return;
+  const key = `${state.room?.id || ''}:${file.id}`;
+  if (state.resumePromptedFiles.has(key)) return;
+  const source = Array.isArray(state.resumeHistory) && state.resumeHistory.length ? state.resumeHistory : (state.profile?.history || []);
+  const entry = [...source].reverse().find((item) => item?.fileId === file.id && (!item.roomId || item.roomId === state.room?.id));
+  const progress = Math.max(0, Number(entry?.progress) || 0);
+  const duration = Math.max(0, Number(entry?.duration) || Number(file.metadata?.duration) || 0);
+  if (progress < 5 || (duration > 0 && progress >= duration - 5)) return;
+  state.resumePromptedFiles.add(key);
+  const confirmed = await showAppConfirm(`上次观看《${file.originalName}》停在 ${formatTime(progress)}${duration ? ` / ${formatTime(duration)}` : ''}，是否从上次进度继续？`, {
+    title: '继续上次观看', confirmText: '继续播放', cancelText: '从头开始'
+  });
+  if (!confirmed || state.currentFile?.id !== file.id || state.room?.playback?.fileId !== file.id) return;
+  const result = await sendPlayback('seek', progress);
+  if (!result?.success) toast(result?.error || '恢复上次进度失败', 'error');
 }
 async function queueAction(action, fileId, index) {
   const file = state.files.get(fileId);
@@ -14161,14 +14212,15 @@ function renderAdminAccounts(accounts) {
     const passwordStatusLine = !passwordMeta.configured
       ? '\u767b\u5f55\u5bc6\u7801\uff1a\u672a\u8bbe\u7f6e'
       : `\u767b\u5f55\u5bc6\u7801\uff1a\u5df2\u5b89\u5168\u8bbe\u7f6e${passwordMeta.mustChange ? ' \u00b7 \u5f85\u4fee\u6539' : ''}${passwordMeta.expired ? ' \u00b7 \u5df2\u8fc7\u671f' : ''}${passwordMeta.changedAt ? ` \u00b7 \u66f4\u65b0\u4e8e ${formatDate(passwordMeta.changedAt)}` : ''}\uff08\u4e0d\u53ef\u6062\u590d\u660e\u6587\uff0c\u53ef\u8bbe\u7f6e\u65b0\u5bc6\u7801\uff09`;
+    const isSuperAdminAccount = account.username === 'admin' || account.superAdmin === true;
     const actions = canManageAccounts
-      ? `<button data-admin-account="rename">强制改名</button><button data-admin-account="remark">备注</button><button data-admin-account="reset">重置为默认密码</button><button data-admin-account="set-password">设置新密码</button><button data-admin-account="location-request" ${account.username === state.user?.username ? 'disabled' : ''}>重新申请位置</button><div class="account-admin-email-actions"><button data-admin-account="email-change">强制修改邮箱</button><button data-admin-account="email-clear" ${account.email ? '' : 'disabled'}>清除邮箱绑定</button></div>${canManageSuperAdmins ? `<button data-admin-account="super">${account.superAdmin ? '撤销超管' : '设为超管'}</button>` : ''}<button data-admin-account="room-block">${account.roomCreationBlocked ? '允许建房' : '禁止建房'}</button>${account.username === 'admin' ? '' : '<button data-admin-account="delete">删除账号</button>'}`
+      ? `<button data-admin-account="rename">强制改名</button><button data-admin-account="remark">备注</button><button data-admin-account="reset">重置为默认密码</button><button data-admin-account="set-password">设置新密码</button><button data-admin-account="location-request" ${account.username === state.user?.username ? 'disabled' : ''}>重新申请位置</button><div class="account-admin-email-actions"><button data-admin-account="email-change">强制修改邮箱</button><button data-admin-account="email-clear" ${account.email ? '' : 'disabled'}>清除邮箱绑定</button></div>${canManageSuperAdmins ? `<button data-admin-account="super" ${account.username === 'admin' ? 'disabled title="内置 admin 不可撤销"' : ''}>${isSuperAdminAccount ? '撤销超管' : '设为超管'}</button>` : ''}<button data-admin-account="room-block">${account.roomCreationBlocked ? '允许建房' : '禁止建房'}</button>${account.username === 'admin' ? '' : '<button data-admin-account="delete">删除账号</button>'}`
       : '<span class="admin-action-note">输入服务器管理员密码并重新加载后可改名或管理账号</span>';
     const renameEditor = canManageAccounts ? `<div class="admin-inline-editor is-hidden" data-admin-rename-editor><label>新名字<input data-admin-rename-input maxlength="24" autocomplete="off" value="${escapeHtml(displayName)}"></label><button data-admin-account="rename-save" type="button">保存改名</button><button data-admin-account="rename-cancel" type="button">取消</button></div>` : '';
     const levelEditor = canManageAccounts ? `<div class="account-level-editor account-profile-editor"><label>经验值<input data-account-experience type="number" min="0" max="10000000" value="${Math.max(0, Number(account.experience) || 0)}"></label><label>固定等级<select data-account-level><option value="0" ${account.levelOverride ? '' : 'selected'}>按经验自动升级</option>${(state.adminSettings?.watchLevels || []).map((level) => `<option value="${level.level}" ${Number(account.levelOverride) === level.level ? 'selected' : ''}>Lv.${level.level} ${escapeHtml(level.name)}</option>`).join('')}</select></label><label>注册天数<input data-account-registration-days type="number" min="0" max="36500" value="${Math.max(0, Number(account.registrationDays) || 0)}"></label><label>累计在线秒数<input data-account-online-seconds type="number" min="0" max="3153600000" value="${Math.max(0, Number(account.onlineSeconds) || 0)}"></label><label class="wide">个性签名<input data-account-signature maxlength="160" value="${escapeHtml(account.signature || '')}"></label><button data-admin-account="level-save" type="button">保存资料与等级</button></div>` : '';
     const quotaEditor = canManageAccounts ? `<div class="account-level-editor"><label>建房额度<input data-account-room-quota type="number" min="1" max="9999" value="${Math.max(1, Number(account.roomQuota) || 1)}" ${account.username === 'admin' ? 'disabled' : ''}></label><button data-admin-account="quota-save" type="button" ${account.username === 'admin' ? 'disabled' : ''}>保存额度</button></div>` : '';
     const tiers = Object.values(state.adminSettings?.accountTiers || {});
-    const tierEditor = canManageAccounts && tiers.length ? `<div class="account-level-editor"><label>权限等级<select data-account-tier ${account.superAdmin ? 'disabled' : ''}>${tiers.map((tier) => `<option value="${escapeHtml(tier.id)}" ${account.tierId === tier.id ? 'selected' : ''}>${escapeHtml(tier.name)}${Number(tier.uploadLimitBytes) ? ` · ${formatSize(tier.uploadLimitBytes)}` : ' · 不限'}</option>`).join('')}</select></label><button data-admin-account="tier-save" type="button" ${account.superAdmin ? 'disabled' : ''}>应用等级</button></div>` : '';
+    const tierEditor = canManageAccounts && tiers.length ? `<div class="account-level-editor"><label>权限等级<select data-account-tier ${isSuperAdminAccount ? 'disabled' : ''}>${tiers.map((tier) => `<option value="${escapeHtml(tier.id)}" ${account.tierId === tier.id ? 'selected' : ''}>${escapeHtml(tier.name)}${Number(tier.uploadLimitBytes) ? ` · ${formatSize(tier.uploadLimitBytes)}` : ' · 不限'}</option>`).join('')}</select></label><button data-admin-account="tier-save" type="button" ${isSuperAdminAccount ? 'disabled' : ''}>应用等级</button></div>` : '';
     const ownedRooms = (account.rooms || []).map((room) => `${room.name || '私人影院'}（${room.id}）`).join('、') || '无';
     const onlineSessions = (account.onlineSessions || []).map((session) => `<li><strong>${escapeHtml(session.deviceName || '未知设备')}</strong><span>房间 ${escapeHtml(session.roomId || '未知')} · ${escapeHtml(session.ipAddress || '未知 IP')} · ${escapeHtml(session.platform || '')} ${escapeHtml(session.browser || '')} · ${session.latency ?? '--'} 毫秒 · ${escapeHtml(session.connectionState || 'online')}</span></li>`).join('') || '<li><span>当前无在线会话</span></li>';
     const devices = (account.devices || []).slice(0, 8).map((device) => `<li><strong>${escapeHtml(device.name || '未知设备')}</strong><span>${escapeHtml(device.platform || '')} ${escapeHtml(device.browser || '')} · ${formatDate(device.lastSeen)}</span></li>`).join('') || '<li><span>没有设备记录</span></li>';
