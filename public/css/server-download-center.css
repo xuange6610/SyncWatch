@@ -147,6 +147,35 @@
 .download-center-table td:first-child { width: 38%; overflow-wrap: anywhere; }
 .download-center-table a { color: var(--accent-bright, #e7c978); text-underline-offset: .2em; }
 
+.download-role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.2rem;
+  margin: 0 .48rem .28rem 0;
+  padding: .2rem .48rem;
+  border: 1px solid currentColor;
+  border-radius: .35rem;
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: .02em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.download-role-client {
+  color: #8fd7ff;
+  background: rgb(55 156 226 / 18%);
+  box-shadow: 0 0 .55rem rgb(55 156 226 / 18%);
+}
+
+.download-role-server {
+  color: #f2ce77;
+  background: rgb(205 163 70 / 18%);
+  box-shadow: 0 0 .55rem rgb(205 163 70 / 18%);
+}
+
 .download-asset-upload-list {
   display: grid;
   gap: .55rem;

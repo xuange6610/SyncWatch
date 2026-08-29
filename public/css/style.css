@@ -93,6 +93,9 @@ main { height: calc(100% - 58px); }
 #myRoomsLoginBtn { margin: 0; }
 .device-ip-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 9px 10px; background: #52c7b808; border: 1px solid #52c7b824; border-radius: 7px; }.device-ip-row > span { min-width: 0; display: grid; gap: 2px; }.device-ip-row small { color: var(--muted); font-size: 9px; }.device-ip-row strong { overflow-wrap: anywhere; font-size: 12px; font-variant-numeric: tabular-nums; }.device-ip-row button { flex: 0 0 auto; min-height: 32px; padding: 5px 11px; }
 .online-room-picker-row { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: end; gap: 8px; margin-top: 4px; }
+.online-room-search { grid-column: 1 / -1; margin: 0; }
+.online-room-search input, .room-discovery-search input { margin-top: 4px; }
+.room-discovery-search { display: grid; gap: 2px; margin: 12px 0; }
 .online-room-picker { min-width: 0; margin: 0; }.online-room-picker select { min-width: 0; }
 .online-room-refresh-button { width: 40px; height: 40px; min-width: 40px; min-height: 40px; display: grid; place-items: center; padding: 0; font-size: 18px; }
 .online-room-refresh-button.is-loading span { animation: refresh-online-rooms .7s linear infinite; }
@@ -425,7 +428,8 @@ body.ambient-light-on .topbar, body.ambient-light-on .side-panel { background-co
 @media (max-width: 924px) {
   body { overflow: auto; overflow-x: hidden; }.topbar { position: sticky; top: 0; min-width: 0; }.brand { flex: 0 1 auto; min-width: 0; }.brand small, .link-button:not(.share-link-button), .status-badge span { display: none; }.share-link-button { flex: 0 0 auto; padding: 7px; font-size: 10px; }.account-button span:nth-child(2) { display: none; }
   .topbar-actions { min-width: 0; max-width: calc(100vw - 95px); overflow-x: auto; scrollbar-width: none; }.topbar-actions::-webkit-scrollbar { display: none; }.header-feature-button { flex: 0 0 auto; min-width: 34px; padding: 6px; justify-content: center; }.header-feature-button .button-label { display: none; }
-  main { width: 100%; height: calc(100dvh - 58px); overflow-x: hidden; }.login-page { display: block; overflow-y: auto; }.auth-card { margin: 32px auto; }
+  /* Keep mobile login scrolling on the document instead of a nested fixed-height scroller. */
+  main { width: 100%; height: auto; min-height: calc(100dvh - 58px); overflow: visible; }.login-page { display: block; min-height: calc(100dvh - 58px); height: auto; overflow: visible; touch-action: pan-y; -webkit-overflow-scrolling: touch; }.auth-card { margin: 32px auto; }
   .workspace { display: block; position: relative; }.theater { height: 100%; grid-template-rows: auto auto auto auto auto minmax(260px, 48vh) minmax(220px, 1fr); }
   .side-panel { position: fixed; z-index: 120; top: 58px; bottom: 0; width: min(92vw, 380px); box-shadow: var(--shadow); transition: transform .22s ease; }.file-panel { left: 0; transform: translateX(-110%); }.user-panel { right: 0; transform: translateX(110%); }.side-panel.mobile-open { transform: translateX(0); }
   .mobile-only { display: inline-block; }.mobile-panel-close { position: sticky; z-index: 10; top: 0; width: 100%; margin: -15px 0 12px; padding: 12px; border: 0; color: var(--pink-2); background: #24182df5; }.user-panel .mobile-panel-close { margin: 0; }
@@ -448,15 +452,15 @@ body.ambient-light-on .topbar, body.ambient-light-on .side-panel { background-co
 }
 
 /* Android WebView uses a distinct, touch-first composition instead of a compressed desktop canvas. */
-body.android-client { background: #0b1113; }
+body.android-client { background: #0b1113; overflow-x: hidden; overflow-y: auto; }
 body.android-client .topbar { height: 64px; padding: 0 12px; background: #10191cf7; }
-body.android-client main { height: calc(100dvh - 64px); }
+body.android-client main { height: auto; min-height: calc(100dvh - 64px); overflow: visible; }
 body.android-client .brand { flex: 1 1 auto; min-width: 0; }
 body.android-client .brand small, body.android-client .room-header { display: none; }
 body.android-client .topbar-actions { gap: 4px; }
 body.android-client .header-feature-button .button-label, body.android-client .share-link-button { display: none; }
 body.android-client .header-feature-button { width: 38px; min-width: 38px; min-height: 38px; padding: 0; place-content: center; }
-body.android-client .login-page { background: linear-gradient(180deg, #071417, #0d1114 46%, #10181b); }
+body.android-client .login-page { min-height: calc(100dvh - 64px); height: auto; align-content: start; overflow: visible; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 body.android-client .auth-card { width: min(100% - 22px, 440px); margin: 16px auto 28px; padding: 24px 18px; border-radius: 18px; box-shadow: 0 20px 48px #0008; }
 body.android-client .primary-button, body.android-client .secondary-button { min-height: 44px; }
 body.android-client .theater { grid-template-rows: auto auto auto minmax(230px, 43vh) minmax(200px, 1fr); }
@@ -812,6 +816,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .profile-room-toolbar label { margin: 0; }
 .profile-room-item { align-items: flex-start; border: 1px solid transparent; }
 .profile-room-item.pinned { border-color: #e9bd685c; background: #e9bd680b; }
+.profile-room-item.is-owned { border-color: color-mix(in srgb, var(--theme-accent, var(--pink)) 72%, var(--line)); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); animation: owned-room-pulse 2.2s ease-in-out infinite; }
+@keyframes owned-room-pulse {
+  0%, 100% { border-color: color-mix(in srgb, var(--theme-accent, var(--pink)) 54%, var(--line)); box-shadow: 0 0 0 0 color-mix(in srgb, var(--theme-accent, var(--pink)) 0%, transparent); }
+  50% { border-color: var(--theme-accent, var(--pink)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent, var(--pink)) 27%, transparent), 0 8px 24px color-mix(in srgb, var(--theme-accent, var(--pink)) 12%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-room-item.is-owned { animation: none; border-color: var(--theme-accent, var(--pink)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, transparent); }
+}
 .profile-room-select { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; margin: 2px 0 0; font-size: 10px; }
 .profile-room-select input { width: auto; }
 .profile-room-actions { flex: 0 0 auto !important; display: grid; gap: 6px; }
@@ -2002,11 +2014,26 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
 .link-button:hover, .ghost-button:hover, .text-button:hover, .account-dropdown button:hover, .panel-tabs button:hover, .queue-list button:hover, .file-actions button:hover, .user-actions button:hover, .chat-mode:hover, .reaction-bar button:hover { color: var(--pink-2); background: color-mix(in srgb, var(--pink) 9%, transparent); }
 @media (max-width: 540px) { body:not(.android-client) .topbar-actions, body.android-client .topbar-actions { overflow-x: hidden; } }
 
-.login-host-shortcuts { display: flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; max-width: min(52vw, 760px); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; overflow-x: auto; overflow-y: visible; scrollbar-width: thin; scrollbar-color: var(--theme-accent, #c7a763) transparent; }
-.login-host-shortcuts::-webkit-scrollbar { height: 5px; }
-.login-host-shortcuts::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--theme-accent, #c7a763) 70%, transparent); border-radius: 8px; }
-.login-host-shortcuts button { flex: 0 0 auto; min-width: max-content; height: 30px; min-height: 30px; margin: 0; padding: 4px 8px; font-size: .72rem; line-height: 1.15; white-space: nowrap; }
-.login-host-shortcuts button.primary-button { width: auto; }
+.login-host-shortcuts { width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0 0; padding: 7px; border: 1px solid color-mix(in srgb, var(--theme-accent, #c7a763) 36%, var(--line)); border-radius: 7px; background: color-mix(in srgb, var(--theme-accent, #c7a763) 5%, transparent); }
+.login-host-shortcuts button { width: 100%; min-width: 0; height: 30px; min-height: 30px; margin: 0; padding: 3px 8px; font-size: 11px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+.login-host-shortcuts button:first-child { grid-column: 1 / -1; }
+.login-host-shortcuts button.primary-button { width: 100%; }
+body.android-client .login-host-shortcuts { display: none !important; }
+@media (max-width: 540px) { .login-host-shortcuts { grid-template-columns: 1fr; } .login-host-shortcuts button:first-child { grid-column: auto; } }
+body.middle-scroll-dragging, body.middle-scroll-dragging * { cursor: grabbing !important; user-select: none !important; }
+.onboarding-settings-link { float: right; margin-top: -2px; }
+.onboarding-guide-card { width: min(92vw, 680px); }
+.onboarding-guide-progress { display: flex; align-items: center; gap: 8px; margin: 18px 0; }
+.onboarding-guide-progress span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); font-size: 12px; }
+.onboarding-guide-progress span.active { border-color: var(--theme-accent, var(--pink)); background: var(--theme-accent, var(--pink)); color: var(--ink, #111); box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent, var(--pink)) 18%, transparent); }
+.onboarding-guide-progress span.done { border-color: var(--theme-accent, var(--pink)); color: var(--theme-accent, var(--pink)); }
+.onboarding-guide-step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; min-height: 150px; padding: 20px; border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 32%, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--theme-accent, var(--pink)) 6%, var(--panel)); }
+.onboarding-guide-step-number { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--theme-accent, var(--pink)); color: var(--ink, #111); font-size: 20px; font-weight: 800; }
+.onboarding-guide-step h3 { margin: 0 0 8px; font-size: 20px; }
+.onboarding-guide-step p { margin: 0; line-height: 1.8; color: var(--text-muted, #b9c2c9); }
+.onboarding-guide-actions { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px; margin-top: 18px; }
+@media (max-width: 540px) { .onboarding-guide-actions { grid-template-columns: 1fr 1fr; } .onboarding-guide-actions span { display: none; } .onboarding-guide-actions button:first-child { grid-column: 1 / -1; } .onboarding-guide-progress { overflow-x: auto; } }
+@media (prefers-reduced-motion: reduce) { .onboarding-guide-progress span.active { box-shadow: none; } }
 #defaultAdminLoginHint { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
 #defaultAdminLoginHint .text-button { width: auto; min-height: 34px; margin-left: auto; padding: 5px 9px; color: var(--pink-2); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 38%, var(--line)); }
 .login-more-actions, .external-login-providers { margin-top: 8px; }
@@ -2025,7 +2052,7 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
 }
 
 @media (max-width: 760px), (max-width: 924px) and (max-height: 520px) {
-  .login-page { overflow-y: auto; padding: max(10px, env(safe-area-inset-top)) 9px max(20px, env(safe-area-inset-bottom)); }
+  .login-page { overflow: visible; padding: max(10px, env(safe-area-inset-top)) 9px max(20px, env(safe-area-inset-bottom)); }
   .login-visual { display: none !important; }
   .auth-card { max-height: none; overflow: visible; margin: 8px auto; padding: 20px 15px 18px; }
   .auth-card h1 { font-size: 25px; }
@@ -2457,29 +2484,20 @@ body.electron-server .auth-card {
   overflow: visible;
   margin-block: 18px 48px;
 }
-/* Server-only shortcuts stay in the desktop Electron topbar.  They are not
-   duplicated into the touch action sheet, where they would consume the
-   compact menu's height and push account controls below the fold. */
+/* Server-only shortcuts stay inside the login card and are not duplicated
+   into the touch action sheet. */
 body.android-client .login-host-shortcuts { display: none !important; }
 /* Electron server shortcuts are desktop utility controls.  A coarse-pointer
    media rule also matches some Electron windows, so keep these controls
    compact instead of letting the general touch target size stretch them. */
 body.electron-server .login-host-shortcuts button {
-  width: auto !important;
+  width: 100% !important;
   min-width: 0;
   height: 30px !important;
   min-height: 30px !important;
   padding: 3px 8px;
   font-size: 11px;
   line-height: 1.1;
-}
-@media (max-width: 1180px) {
-  body.electron-server .login-host-shortcuts { max-width: min(44vw, 560px); }
-}
-@media (max-width: 924px) {
-  body.electron-server .topbar-actions { align-items: flex-start; }
-  body.electron-server .login-host-shortcuts { flex: 1 1 100%; max-width: none; order: 3; padding-top: 4px; }
-  body.electron-server .login-host-shortcuts button { height: 30px; min-height: 30px; }
 }
 
 @media (max-width: 1100px) and (min-width: 761px) {
@@ -2904,7 +2922,7 @@ body.ui-copy-editable [data-ui-copy-attribute-keys]:hover { --copy-edit-outline:
   .ui-copy-editor-row { grid-template-columns: 1fr; gap: 5px; }
 }
 
-/* v2.2.7: keep the complete login card reachable in short or zoomed windows. */
+/* v2.2.8: keep the complete login card reachable in short or zoomed windows. */
 .login-page {
   height: auto;
   min-height: calc(100dvh - var(--mobile-web-appbar, 58px));
@@ -3017,7 +3035,7 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .fullscreen-chat-card { font-size: .78rem; }
   .fullscreen-chat-history { font-size: .74rem; }
 }
-/* v2.2.7 usability refinements */
+/* v2.2.8 usability refinements */
 .management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }
 .management-hub-card.management-loading .management-content { content-visibility: auto; contain: layout paint; }
 .management-content .management-filtered { content-visibility: auto; contain-intrinsic-size: 220px; }

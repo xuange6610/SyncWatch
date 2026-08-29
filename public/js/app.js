@@ -82,10 +82,19 @@ try {
   else windowHostToken = sessionStorage.getItem(HOST_TOKEN_SESSION_KEY) || '';
 } catch (_) {}
 
+const ONBOARDING_GUIDE_KEY = 'syncwatchOnboardingGuideV228';
+const ONBOARDING_GUIDE_STEPS = [
+  { title: '登录与连接', body: '输入账号和密码登录；成员也可以用游客模式加入。登录后从“我的房间”或房间号进入目标房间。' },
+  { title: '房间与房主', body: '房主可以创建房间、设置密码和人数。房间卡片会显示房主、在线人数和连接记录，自己的房间会持续高亮。' },
+  { title: '影片与字幕', body: '在左侧影片库上传视频、字幕或安全文本；选择影片后可播放、加入队列、收藏和管理封面。' },
+  { title: '同步播放', body: '播放、暂停、拖动进度和倍速由服务器同步给房间成员。需要权限的操作会显示申请或授权状态。' },
+  { title: '聊天与共享', body: '右侧可以聊天、发送弹幕和语音；需要所有人看到同一画面时，请使用浏览器标签页或窗口共享。' },
+  { title: '临时公网链接', body: '服务器管理员打开“服务器设置 → 公网访问”，选择“临时公网地址”后点击“开启公网访问”。复制生成的 HTTPS 地址分享给成员；结束后点击“关闭”。' }
+];
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.7', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.8', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -135,7 +144,7 @@ const state = {
   operationHistoryQuery: '', operationHistoryScope: '', selectedOperations: new Set(), returnToManagementAfterChild: false,
   managementOnlyAuth: false,
   managementSection: 'server', managementScope: 'full', managementHomeParent: null, managementHomeNextSibling: null, adminRefreshTimer: null, adminRefreshInFlight: false,
-  controlRequest: null, controlSuppressions: {}, lanRooms: [], selectedLanRooms: new Set(), onlineRooms: [], lanScanResolver: null,
+  controlRequest: null, controlSuppressions: {}, lanRooms: [], selectedLanRooms: new Set(), onlineRooms: [], onlineRoomSearch: '', lanRoomSearch: '', lanScanResolver: null,
   screenPeers: new Map(), remoteScreenPeer: null, remoteScreenStream: null, screenSignalQueues: new Map(),
   screenAudioContext: null, screenAudioNextTime: 0, screenAudioSequence: 0, screenAudioQueue: [], screenAudioLastSequence: 0, screenAudioLastSequenceAt: 0, screenAudioProcessor: null, screenAudioSource: null,
   screenAudioSink: null, screenPlaybackAudioContext: null,
@@ -316,9 +325,9 @@ const deviceId = localStorage.getItem('syncwatchDeviceId') || createDeviceId();
 localStorage.setItem('syncwatchDeviceId', deviceId);
 
 const elements = {};
-const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn
+const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn openOnboardingGuideBtn onboardingGuideModal closeOnboardingGuideBtn onboardingGuideDescription onboardingGuideProgress onboardingGuideStep onboardingGuideSkipBtn onboardingGuideBackBtn onboardingGuideNextBtn
   loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
- loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
+ loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSearch onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountRoomSettingsBtn accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
   fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText openRoomManagementBtn
@@ -338,7 +347,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn downloadMacServerMainBtn downloadMacClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
-   managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
+   managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
   fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn macDownloadModal closeMacDownloadBtn macDownloadTitle macDownloadHint macDownloadArch macDownloadFormat macDownloadAvailability macDownloadStatus confirmMacDownloadBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
@@ -410,6 +419,8 @@ async function initialize() {
   applyLibraryCollapsed();
   applyMobileChatCollapsed();
   setChatMode(state.chatMode);
+  initializeMiddleMouseScroll();
+  initializeOnboardingGuide();
   connectSocket();
   await loadPublicConfig();
   void loadRoomInfo();
@@ -1743,6 +1754,104 @@ function initializeLoginCube() {
   startLoginCubeMotion();
 }
 
+// Desktop browsers expose middle-button autoscroll inconsistently.  Keep a
+// predictable vertical drag gesture while leaving form controls, media and
+// the interactive login cube to their native handlers.
+function initializeMiddleMouseScroll() {
+  if (document.documentElement.dataset.middleScrollReady === '1') return;
+  document.documentElement.dataset.middleScrollReady = '1';
+  let drag = null;
+  const excludedSelector = 'input, textarea, select, button, a, [contenteditable="true"], video, audio, .player-container, #loginCubeScene, [data-no-middle-scroll]';
+  const isExcluded = (target) => {
+    const element = target instanceof Element ? target : target?.parentElement;
+    return Boolean(element?.closest(excludedSelector));
+  };
+  const findScrollable = (target) => {
+    const root = document.scrollingElement || document.documentElement;
+    let element = target instanceof Element ? target : target?.parentElement;
+    while (element && element !== document.body && element !== document.documentElement) {
+      const style = window.getComputedStyle(element);
+      if (/(auto|scroll|overlay)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1) return element;
+      element = element.parentElement;
+    }
+    return root;
+  };
+  const stop = () => {
+    if (!drag) return;
+    drag = null;
+    document.body.classList.remove('middle-scroll-dragging');
+  };
+  document.addEventListener('mousedown', (event) => {
+    if (event.button !== 1 || isExcluded(event.target)) return;
+    const container = findScrollable(event.target);
+    if (!container) return;
+    drag = { container, startY: event.clientY, startTop: container.scrollTop };
+    document.body.classList.add('middle-scroll-dragging');
+    try { window.getSelection?.()?.removeAllRanges(); } catch (_) {}
+    event.preventDefault();
+  }, true);
+  document.addEventListener('mousemove', (event) => {
+    if (!drag) return;
+    if ((event.buttons & 4) !== 4) return stop();
+    drag.container.scrollTop = drag.startTop - (event.clientY - drag.startY);
+    event.preventDefault();
+  }, true);
+  document.addEventListener('mouseup', (event) => {
+    if (event.button === 1) stop();
+  }, true);
+  window.addEventListener('blur', stop);
+  document.addEventListener('mouseleave', stop);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') stop();
+  });
+}
+
+function readOnboardingGuideState() {
+  try { return JSON.parse(localStorage.getItem(ONBOARDING_GUIDE_KEY) || '{}') || {}; } catch (_) { return {}; }
+}
+
+function writeOnboardingGuideState(value) {
+  try { localStorage.setItem(ONBOARDING_GUIDE_KEY, JSON.stringify(value)); } catch (_) {}
+}
+
+function renderOnboardingGuideStep(index) {
+  const step = ONBOARDING_GUIDE_STEPS[index];
+  if (!step || !elements.onboardingGuideStep) return;
+  elements.onboardingGuideStep.innerHTML = `<span class="onboarding-guide-step-number">${index + 1}</span><div><h3>${escapeHtml(step.title)}</h3><p>${escapeHtml(step.body)}</p></div>`;
+  if (elements.onboardingGuideDescription) elements.onboardingGuideDescription.textContent = `第 ${index + 1} 步，共 ${ONBOARDING_GUIDE_STEPS.length} 步`;
+  if (elements.onboardingGuideProgress) elements.onboardingGuideProgress.innerHTML = ONBOARDING_GUIDE_STEPS.map((item, itemIndex) => `<span class="${itemIndex === index ? 'active' : itemIndex < index ? 'done' : ''}" role="listitem" aria-label="${escapeHtml(item.title)}">${itemIndex + 1}</span>`).join('');
+  if (elements.onboardingGuideBackBtn) elements.onboardingGuideBackBtn.disabled = index === 0;
+  if (elements.onboardingGuideNextBtn) elements.onboardingGuideNextBtn.textContent = index === ONBOARDING_GUIDE_STEPS.length - 1 ? '完成教程' : '下一步';
+  if (elements.onboardingGuideModal) elements.onboardingGuideModal.dataset.step = String(index);
+}
+
+function openOnboardingGuide({ firstRun = false } = {}) {
+  if (!elements.onboardingGuideModal) return;
+  elements.onboardingGuideModal.classList.remove('is-hidden');
+  bringModalToFront(elements.onboardingGuideModal, 700);
+  renderOnboardingGuideStep(0);
+  elements.onboardingGuideModal.dataset.firstRun = firstRun ? '1' : '0';
+}
+
+function closeOnboardingGuide(completed = false) {
+  if (completed || elements.onboardingGuideModal?.dataset.firstRun === '1') writeOnboardingGuideState({ completed: true, version: 1 });
+  elements.onboardingGuideModal?.classList.add('is-hidden');
+}
+
+function initializeOnboardingGuide() {
+  elements.openOnboardingGuideBtn?.addEventListener('click', () => openOnboardingGuide());
+  elements.closeOnboardingGuideBtn?.addEventListener('click', () => closeOnboardingGuide());
+  elements.onboardingGuideSkipBtn?.addEventListener('click', () => closeOnboardingGuide(true));
+  elements.onboardingGuideBackBtn?.addEventListener('click', () => renderOnboardingGuideStep(Math.max(0, Number(elements.onboardingGuideModal?.dataset.step || 0) - 1)));
+  elements.onboardingGuideNextBtn?.addEventListener('click', () => {
+    const current = Number(elements.onboardingGuideModal?.dataset.step || 0);
+    if (current >= ONBOARDING_GUIDE_STEPS.length - 1) return closeOnboardingGuide(true);
+    renderOnboardingGuideStep(current + 1);
+  });
+  const guideState = readOnboardingGuideState();
+  if (!guideState.completed) setTimeout(() => openOnboardingGuide({ firstRun: true }), 900);
+}
+
 function bindUiEvents() {
   document.addEventListener('play', (event) => {
     if (state.masterMuted && event.target instanceof HTMLMediaElement) muteMediaElement(event.target);
@@ -1770,6 +1879,10 @@ function bindUiEvents() {
     setLoginStatus('已填入首次登录账号和密码，请选择房间或直接进入管理中心', true);
   });
   elements.onlineRoomSelect?.addEventListener('change', selectOnlineRoom);
+  elements.onlineRoomSearch?.addEventListener('input', () => {
+    state.onlineRoomSearch = elements.onlineRoomSearch.value;
+    renderOnlineRoomOptions();
+  });
   elements.refreshOnlineRoomsBtn?.addEventListener('click', refreshOnlineRooms);
   elements.myRoomsLoginBtn?.addEventListener('click', loadMyRoomsBeforeLogin);
   elements.serverAdminLoginBtn?.addEventListener('click', () => loginAsServerAdmin('management'));
@@ -2305,6 +2418,10 @@ function bindUiEvents() {
   elements.lanScanBtn?.addEventListener('click', openLanScan);
   elements.closeLanScanBtn?.addEventListener('click', () => elements.lanScanModal.classList.add('is-hidden'));
   elements.refreshLanScanBtn?.addEventListener('click', scanLanRooms);
+  elements.lanRoomSearch?.addEventListener('input', () => {
+    state.lanRoomSearch = elements.lanRoomSearch.value;
+    renderLanRooms();
+  });
   elements.lanRoomList?.addEventListener('click', handleLanRoomAction);
   elements.lanRoomList?.addEventListener('change', handleLanRoomSelection);
   elements.lanScanSelectAll?.addEventListener('change', toggleAllLanRooms);
@@ -3318,6 +3435,28 @@ function selectOnlineRoom() {
   void loadRoomInfo();
 }
 
+function roomSearchMatches(room, query = '') {
+  const normalized = String(query || '').trim().toLocaleLowerCase();
+  if (!normalized) return true;
+  return [room?.id, room?.name, room?.ownerName, room?.ownerUsername]
+    .some((value) => String(value || '').toLocaleLowerCase().includes(normalized));
+}
+
+function renderOnlineRoomOptions() {
+  if (!elements.onlineRoomSelect) return;
+  const query = state.onlineRoomSearch;
+  const rooms = state.onlineRooms.filter((room) => roomSearchMatches(room, query));
+  const current = String(elements.roomIdInput?.value || '').trim().toUpperCase();
+  const options = rooms.map((room) => {
+    const owner = room.ownerName || room.ownerUsername || '未知';
+    return `<option value="${escapeHtml(room.id)}">[${room.temporary ? '临时房间' : '正式房间'}] ${escapeHtml(room.name)} · 房主 ${escapeHtml(owner)} · ${escapeHtml(room.id)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需密码' : ''}</option>`;
+  }).join('');
+  const emptyText = query && !rooms.length ? `没有匹配“${escapeHtml(query)}”的在线房间` : '当前服务器在线房间';
+  elements.onlineRoomSelect.innerHTML = `<option value="">${emptyText}</option>${options}`;
+  if (rooms.some((room) => room.id === current)) elements.onlineRoomSelect.value = current;
+  syncEnhancedSelect(elements.onlineRoomSelect);
+}
+
 async function loadOnlineRooms() {
   if (!elements.onlineRoomSelect) return false;
   try {
@@ -3325,10 +3464,7 @@ async function loadOnlineRooms() {
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || '读取在线房间失败');
     state.onlineRooms = Array.isArray(result.rooms) ? result.rooms : [];
-    const current = String(elements.roomIdInput?.value || '').trim().toUpperCase();
-    elements.onlineRoomSelect.innerHTML = '<option value="">当前服务器在线房间</option>' + state.onlineRooms.map((room) => `<option value="${escapeHtml(room.id)}">[${room.temporary ? '临时房间' : '正式房间'}] ${escapeHtml(room.name)} · ${escapeHtml(room.id)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需密码' : ''}</option>`).join('');
-    if (state.onlineRooms.some((room) => room.id === current)) elements.onlineRoomSelect.value = current;
-    syncEnhancedSelect(elements.onlineRoomSelect);
+    renderOnlineRoomOptions();
     return true;
   } catch (error) {
     elements.onlineRoomSelect.innerHTML = '<option value="">在线房间读取失败，可手动输入房间号</option>';
@@ -3405,7 +3541,9 @@ function handleRoomDirectoryUpdate(update = {}) {
 
 function renderLoginRoomList() {
   if (!elements.myRoomsList) return;
-  const rooms = state.loginRoomSnapshot;
+  const rooms = [...state.loginRoomSnapshot].sort((left, right) => Number(right.visitCount || 0) - Number(left.visitCount || 0)
+    || Number(Boolean(right.owned)) - Number(Boolean(left.owned))
+    || String(left.name || left.id).localeCompare(String(right.name || right.id), 'zh-CN'));
   state.selectedLoginRooms = new Set([...state.selectedLoginRooms].filter((id) => rooms.some((room) => room.id === id)));
   const quotaText = state.loginRoomQuota >= 9999 ? '不限' : state.loginRoomQuota;
   if (!rooms.length) {
@@ -3416,7 +3554,7 @@ function renderLoginRoomList() {
     const selected = state.selectedLoginRooms.has(room.id) ? 'checked' : '';
     const passwordText = room.passwordRequired ? room.accessRemembered ? '密码已记住' : '首次进入需密码' : '无需密码';
     const ownerText = room.owned ? '我的房间' : `房主：${escapeHtml(room.ownerName || room.ownerUsername || '未设置')}`;
-    return `<article class="room-directory-card room-history-choice"><header><label class="global-room-select"><input data-login-room-select type="checkbox" value="${escapeHtml(room.id)}" ${selected}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room))} · 在线 ${room.online}/${room.maxUsers} 人 · ${passwordText}</small></div></header>${renderRoomDirectoryDetails(room)}<div class="actions"><button data-my-room="${escapeHtml(room.id)}" class="primary-button" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button><button data-login-room-action="delete" data-room-id="${escapeHtml(room.id)}" class="danger-button" type="button">${room.owned ? '永久删除' : '移除记录'}</button></div></article>`;
+    return `<article class="room-directory-card room-history-choice ${room.owned ? 'is-owned' : ''}" ${room.owned ? 'data-owned-room="true"' : ''}><header><label class="global-room-select"><input data-login-room-select type="checkbox" value="${escapeHtml(room.id)}" ${selected}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room))} · 在线 ${room.online}/${room.maxUsers} 人 · 连接 ${Number(room.visitCount) || 0} 次 · ${passwordText}</small></div></header>${renderRoomDirectoryDetails(room)}<div class="actions"><button data-my-room="${escapeHtml(room.id)}" class="primary-button" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button><button data-login-room-action="delete" data-room-id="${escapeHtml(room.id)}" class="danger-button" type="button">${room.owned ? '永久删除' : '移除记录'}</button></div></article>`;
   }).join('')}`;
 }
 
@@ -4740,6 +4878,8 @@ async function dissolveCurrentRoom() {
 }
 
 async function openLanScan() {
+  state.lanRoomSearch = '';
+  if (elements.lanRoomSearch) elements.lanRoomSearch.value = '';
   elements.lanScanModal.classList.remove('is-hidden');
   await scanLanRooms();
 }
@@ -4797,8 +4937,10 @@ function normalizeLanDiscoveries(discoveries) {
 function renderLanRooms() {
   const canDelete = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
   elements.lanScanSelectAll?.closest('.lan-scan-toolbar')?.classList.toggle('is-hidden', !canDelete);
+  const rooms = state.lanRooms.filter((room) => roomSearchMatches(room, state.lanRoomSearch));
   if (!state.lanRooms.length) { elements.lanRoomList.innerHTML = '<p class="muted">没有发现公开房间。服务器离线或房间已被封禁时不会出现在扫描结果中。</p>'; updateLanRoomSelection(); return; }
-  elements.lanRoomList.innerHTML = state.lanRooms.map((room) => `<div class="history-row lan-room-row ${canDelete && room.localServer ? 'is-selectable' : ''}" data-lan-room="${escapeHtml(room.id)}" data-lan-address="${escapeHtml(room.address)}">${canDelete && room.localServer ? `<label class="check-line"><input data-lan-room-select type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedLanRooms.has(room.id) ? 'checked' : ''}><span class="visually-hidden">选择房间 ${escapeHtml(room.id)}</span></label>` : ''}<div><strong><span class="room-type-badge ${room.temporary ? 'temporary' : 'formal'}">${room.temporary ? '临时房间' : '正式房间'}</span> ${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><p>${escapeHtml(room.server || room.address)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需要密码' : ''}</p></div><button data-lan-action="join" type="button">加入</button></div>`).join('');
+  if (!rooms.length) { elements.lanRoomList.innerHTML = `<p class="muted">没有匹配“${escapeHtml(state.lanRoomSearch)}”的房间</p>`; updateLanRoomSelection(); return; }
+  elements.lanRoomList.innerHTML = rooms.map((room) => `<div class="history-row lan-room-row ${canDelete && room.localServer ? 'is-selectable' : ''}" data-lan-room="${escapeHtml(room.id)}" data-lan-address="${escapeHtml(room.address)}">${canDelete && room.localServer ? `<label class="check-line"><input data-lan-room-select type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedLanRooms.has(room.id) ? 'checked' : ''}><span class="visually-hidden">选择房间 ${escapeHtml(room.id)}</span></label>` : ''}<div><strong><span class="room-type-badge ${room.temporary ? 'temporary' : 'formal'}">${room.temporary ? '临时房间' : '正式房间'}</span> ${escapeHtml(room.name || '私人影院')} · ${escapeHtml(room.id)}</strong><p>房主：${escapeHtml(room.ownerName || room.ownerUsername || '未知')} · ${escapeHtml(room.server || room.address)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需要密码' : ''}</p></div><button data-lan-action="join" type="button">加入</button></div>`).join('');
   updateLanRoomSelection();
 }
 
@@ -5333,10 +5475,10 @@ async function loadPublicConfig(silent = false) {
 
 function applyPublicConfig() {
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.2.7';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.2.8';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.7'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.8'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -5528,7 +5670,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.7';
+    const current = state.publicConfig.version || 'v2.2.8';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -5997,7 +6139,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.7.apk';
+    link.download = 'SyncWatch同步观影-v2.2.8.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -6014,7 +6156,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch-Android-v2.2.7-universal.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.2.8-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -12644,6 +12786,12 @@ function updateAdministrativeAccess() {
   elements.managementHubBtn?.classList.toggle('is-hidden', !state.authenticated || !allowed);
   elements.lanScanBtn?.classList.remove('is-hidden');
   elements.serverSettingsLoginBtn?.classList.toggle('is-hidden', !state.authenticated || !(state.capabilities.serverHost || state.capabilities.superAdmin));
+  const canManageRoomSettings = Boolean(state.authenticated && (state.capabilities.owner || state.capabilities.superAdmin || state.permissions.manageRoom));
+  const ownerOnlyControls = Boolean(state.authenticated && (state.capabilities.owner || state.capabilities.superAdmin));
+  elements.accountRoomSettingsBtn?.classList.toggle('is-hidden', !canManageRoomSettings);
+  elements.openRoomManagementBtn?.classList.toggle('is-hidden', !canManageRoomSettings);
+  elements.ownerControls?.classList.toggle('is-hidden', !canManageRoomSettings);
+  [elements.controlLockBtn, elements.forceSyncBtn, elements.volumeSyncToggle?.closest('label')].forEach((item) => item?.classList.toggle('is-hidden', !ownerOnlyControls));
   elements.changeCurrentRoomIdBtn?.classList.toggle('is-hidden', !state.authenticated || !(state.capabilities.owner || state.capabilities.superAdmin));
   elements.convertTemporaryRoomBtn?.classList.toggle('is-hidden', !state.authenticated || !state.room?.temporary || !(state.capabilities.owner || state.capabilities.superAdmin || state.permissions.manageRoom));
   elements.viewLocationAuthorizationsBtn?.classList.toggle('is-hidden', !state.authenticated || !canViewMemberLocations());
@@ -13719,7 +13867,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.7-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.8-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
@@ -15476,12 +15624,15 @@ function profileCategories(kind) {
 
 function renderProfileRooms() {
   const p = state.profile; const query = String(state.profileQueries.room || '').toLocaleLowerCase();
-  const rooms = (p.recentRooms || []).filter((room) => (!state.profileCategoryFilters.room || (room.category || '未分类') === state.profileCategoryFilters.room) && (!query || [room.id, room.name, room.note, room.category, room.ownerUsername].join(' ').toLocaleLowerCase().includes(query)));
+  const rooms = (p.recentRooms || []).filter((room) => (!state.profileCategoryFilters.room || (room.category || '未分类') === state.profileCategoryFilters.room) && (!query || [room.id, room.name, room.note, room.category, room.ownerUsername, room.ownerName].join(' ').toLocaleLowerCase().includes(query)))
+    .sort((left, right) => Number(right.visitCount || 0) - Number(left.visitCount || 0)
+      || Number(Boolean(right.pinned)) - Number(Boolean(left.pinned))
+      || String(left.name || left.id).localeCompare(String(right.name || right.id), 'zh-CN'));
   state.selectedProfileRooms = new Set([...state.selectedProfileRooms].filter((id) => (p.recentRooms || []).some((room) => room.id === id)));
   const roomCards = rooms.map((room) => {
     const passwordText = room.passwordRequired ? room.accessRemembered ? '密码已记住' : '首次进入需密码' : '无需密码';
     const ownerText = room.owned ? '我的房间' : `房主：${escapeHtml(room.ownerName || room.ownerUsername || '未知')}`;
-    return `<article class="profile-item profile-room-item room-directory-card ${room.pinned ? 'pinned' : ''}" data-profile-room-id="${escapeHtml(room.id)}"><header><label class="profile-room-select"><input data-profile-item-select="room" type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedProfileRooms.has(room.id) ? 'checked' : ''}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span><span>${escapeHtml(room.category || '未分类')}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room, state.room?.id))} · 在线 ${room.online}/${room.maxUsers} 人 · ${passwordText}</small>${room.note ? `<small class="room-card-note">备注：${escapeHtml(room.note)}</small>` : ''}</div></header>${renderRoomDirectoryDetails(room)}<div class="profile-room-actions actions"><button data-profile-action="pin-room" data-room-id="${escapeHtml(room.id)}" data-pinned="${room.pinned ? '1' : '0'}" type="button">${room.pinned ? '取消置顶' : '置顶'}</button>${room.owned ? `<button data-profile-action="rename-room" data-room-id="${escapeHtml(room.id)}" type="button">重命名</button><button data-profile-action="room-settings" data-room-id="${escapeHtml(room.id)}" type="button">房间设置</button>` : ''}<button data-profile-action="enter-room" data-room-id="${escapeHtml(room.id)}" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button></div></article>`;
+    return `<article class="profile-item profile-room-item room-directory-card ${room.pinned ? 'pinned' : ''} ${room.owned ? 'is-owned' : ''}" data-profile-room-id="${escapeHtml(room.id)}" ${room.owned ? 'data-owned-room="true"' : ''}><header><label class="profile-room-select"><input data-profile-item-select="room" type="checkbox" value="${escapeHtml(room.id)}" ${state.selectedProfileRooms.has(room.id) ? 'checked' : ''}><span>选择</span></label><div class="room-card-main"><div class="room-card-title"><strong>${room.pinned ? '置顶 · ' : ''}${escapeHtml(room.name || '私人影院')}</strong><code>${escapeHtml(room.id)}</code></div><div class="room-card-badges"><span>${room.temporary ? '临时房间' : '正式房间'}</span><span>${ownerText}</span><span>${room.passwordRequired ? '需密码' : '公开'}</span><span>${escapeHtml(room.category || '未分类')}</span></div><small class="room-card-meta">${escapeHtml(roomDirectoryStateText(room, state.room?.id))} · 在线 ${room.online}/${room.maxUsers} 人 · 连接 ${Number(room.visitCount) || 0} 次 · ${passwordText}</small>${room.note ? `<small class="room-card-note">备注：${escapeHtml(room.note)}</small>` : ''}</div></header>${renderRoomDirectoryDetails(room)}<div class="profile-room-actions actions"><button data-profile-action="pin-room" data-room-id="${escapeHtml(room.id)}" data-pinned="${room.pinned ? '1' : '0'}" type="button">${room.pinned ? '取消置顶' : '置顶'}</button>${room.owned ? `<button data-profile-action="rename-room" data-room-id="${escapeHtml(room.id)}" type="button">重命名</button><button data-profile-action="room-settings" data-room-id="${escapeHtml(room.id)}" type="button">房间设置</button>` : ''}<button data-profile-action="enter-room" data-room-id="${escapeHtml(room.id)}" type="button" ${room.banned ? 'disabled' : ''}>加入房间</button></div></article>`;
   }).join('');
   elements.accountContent.innerHTML = `<div class="settings-title"><div><h2>我的房间</h2><p>已拥有 ${Number(p.ownedRoomCount) || 0}/${p.superAdmin ? '99999' : Number(p.roomQuota) >= 9999 ? '不限' : Number(p.roomQuota) || 1} 个房间</p></div><button data-profile-action="request-room-quota" class="secondary-button" type="button">申请更多房间</button></div>${profileToolbar('room', rooms.length, state.selectedProfileRooms)}<div class="profile-list">${roomCards || '<div class="room-directory-empty"><p class="muted">暂无符合条件的房间</p><button data-profile-action="create-room" class="primary-button" type="button">创建正式房间</button></div>'}</div>`;
 }

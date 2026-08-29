@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { expectedFiles, prepareBundle } = require('../scripts/prepare-full-offline-bundle');
 
-const version = '2.2.7';
+const version = '2.2.8';
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-full-offline-'));
 const inputRoot = path.join(temporaryRoot, 'inputs');
 const outputRoot = path.join(temporaryRoot, 'bundle');

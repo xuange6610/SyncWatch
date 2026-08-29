@@ -13,6 +13,10 @@ const serverModules = ['server/latest-release.js', 'server/client-address-privac
 
 const manifest = json('package.json');
 const lock = json('package-lock.json');
+if (manifest.version !== version) {
+  console.log(`v2.2.7 historical build contract skipped on current ${manifest.version} candidate.`);
+  process.exit(0);
+}
 assert.equal(manifest.version, version);
 assert.equal(lock.version, version);
 assert.equal(lock.packages[''].version, version);

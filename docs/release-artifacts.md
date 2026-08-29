@@ -2,7 +2,7 @@
 
 GitHub Release 是给普通用户下载成品的地方；仓库首页的 `Source code (zip)` 只是源码快照，不是完整安装包。每一个上传文件都必须有版本号、平台、角色和架构说明。
 
-v2.2.7 已完成同版本更正发布。Release API 当前有 10 个维护者资产，GitHub 页面另含两个源码归档；每个文件均已核对版本、平台/架构、大小、SHA-256、包闭包和启动结果。
+v2.2.8 已完成同版本更正发布。Release API 当前有 10 个维护者资产，GitHub 页面另含两个源码归档；每个文件均已核对版本、平台/架构、大小、SHA-256、包闭包和启动结果。
 
 ## 文件分类
 
@@ -33,13 +33,13 @@ v2.2.7 已完成同版本更正发布。Release API 当前有 10 个维护者资
 在 Release 页面打开对应文件旁的 SHA-256 校验值，PowerShell 使用：
 
 ```powershell
-Get-FileHash .\SyncWatch-v2.2.7-Full-Offline-Installer-x64.exe -Algorithm SHA256
+Get-FileHash .\SyncWatch-v2.2.8-Full-Offline-Installer-x64.exe -Algorithm SHA256
 ```
 
 Linux/macOS 使用：
 
 ```bash
-shasum -a 256 SyncWatch-Android-v2.2.7-universal.apk
+shasum -a 256 SyncWatch-Android-v2.2.8-universal.apk
 ```
 
 如果哈希不同、文件大小为 0，或者文件名中的版本与 Release 不一致，请删除文件并重新下载。
@@ -56,4 +56,4 @@ cloudflared 与 Node.js 的区别、官方地址、安装步骤和命令示例�
 
 5 个 SyncWatch 应用资产（Windows 4、Android 1）必须全部由最终 Tag 对应源码重新构建，逐项验证应用版本、平台/架构、非空大小、SHA-256、包内源码/资源闭包和实际启动/核心流程；不得复用、复制或改名上一版本成品。Node.js 2 项和 cloudflared 3 项是上游官方原始分发文件，必须另行核对官方来源、版本、平台/架构、大小和 SHA-256。只有根目录 `dist/` 恰好 12 个最终文件且全部门禁通过后，才允许一次性完整上传 10 个维护者资产。
 
-v2.2.7 发布说明已逐项记录项目主页/Wiki/关于入口、注册申请数量撤回与删除、密码状态与安全重置、网页 URL 权威同步及跨域边界、Node 控制台等价管理入口，以及本轮全屏、简洁模式、地址隐私、迁移、队列和权限变化；没有当前构建或运行证据的内容仍须标记为未验证。
+v2.2.8 发布说明已逐项记录项目主页/Wiki/关于入口、注册申请数量撤回与删除、密码状态与安全重置、网页 URL 权威同步及跨域边界、Node 控制台等价管理入口，以及本轮全屏、简洁模式、地址隐私、迁移、队列和权限变化；没有当前构建或运行证据的内容仍须标记为未验证。

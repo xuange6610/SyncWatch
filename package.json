@@ -1,6 +1,6 @@
 {
   "name": "sync-watch-lan",
-  "version": "2.2.7",
+  "version": "2.2.8",
   "description": "SyncWatch同步观影",
   "main": "electron-pink.js",
   "author": "xuan",
@@ -164,7 +164,7 @@
       "signExecutable": false
     },
     "portable": {
-      "artifactName": "SyncWatch-Standard-Server-Portable-v2.2.7-${arch}.exe"
+      "artifactName": "SyncWatch-Standard-Server-Portable-v2.2.8-${arch}.exe"
     }
   }
 }
