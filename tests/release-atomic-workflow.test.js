@@ -96,6 +96,11 @@ assert.match(workflows.atomic, /phase:\s*android/);
 assert.match(workflows.atomic, /phase:\s*base/);
 assert.match(workflows.atomic, /phase:\s*full/);
 assert.match(workflows.atomic, /official_assets:/);
+assert.match(
+  workflows.atomic,
+  /windows_base:\s*[\s\S]*?needs:\s*\[prepare, source_tests, official_assets\]/,
+  'Windows base must wait for and consume same-run official assets'
+);
 assert.match(workflows.atomic, /needs:\s*\[prepare, source_tests, android, windows_base, official_assets, windows_full\]/);
 assert.match(workflows.atomic, /--output dist/);
 assert.match(workflows.atomic, /--selection bundle/);
@@ -167,6 +172,11 @@ assert.match(
   'Windows release runner must execute the real broken-pipe shutdown smoke'
 );
 assert.match(workflows.windows, /android_startup:/);
+assert.match(
+  workflows.windows,
+  /name:\s*Restore verified third-party release cache[\s\S]*?name:\s*Download same-run verified official assets[\s\S]*?actions\/download-artifact@v4[\s\S]*?inputs\.artifact_prefix \}\}-official[\s\S]*?path:\s*\.cache\/release-third-party/,
+  'Windows base must stage same-run official assets before preparing cloudflared'
+);
 assert.match(workflows.windows, /node_mobile_build:/);
 assert.match(
   workflows.windows,

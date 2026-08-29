@@ -165,7 +165,7 @@ jobs:
 
   windows_base:
     name: Build and verify Windows base packages
-    needs: [prepare, source_tests]
+    needs: [prepare, source_tests, official_assets]
     uses: ./.github/workflows/release-windows.yml
     with:
       phase: base

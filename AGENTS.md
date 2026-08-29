@@ -126,6 +126,7 @@
 - v2.2.7 原子运行 `33188078161` 取消前已确认复用运行时下载成功，但 combine 门禁仍硬编码旧 ABI SHA-256，导致历史已核验运行时的三个 `libnode.so` 被拒绝。修复：仅固定 Node.js 头文件哈希，改为校验运行时清单自带 SHA-256、三 ABI 数量和 16KB ELF 对齐，并在 Android 打包 job 允许已验证生成运行时；后续复用历史运行时前必须检查此门禁。
 - 同一运行的源码契约测试还检查旧的三个 ABI 固定哈希，和新的“运行时清单 + ELF 对齐”策略冲突；已同步测试断言，避免代码门禁在发布前误报失败。
 - v2.2.7 原子运行 `33183457621` 已取消，原因是旧版工作流仍包含 macOS base jobs，macOS Server arm64 检查失败且 Windows/Android 构建被依赖链阻断；复用仓库已有的 Windows+Android 发布收敛提交（停用 macOS job、切换 10+2 文件契约、复用第三方缓存和成品门禁修复）后，下一次才允许重新触发一次原子发布。
+- v2.2.8 原子运行 `33248083944` 的源码门禁、官方资产、Android 签名构建和模拟器启动均成功；Windows base 在缓存未命中时未接收同轮 `official_assets` artifact，回退下载 cloudflared 被 GitHub API 403 拒绝。修复：`release/v2.2.8` 的 `windows_base` 显式依赖 `official_assets`，Windows reusable workflow 在准备 cloudflared 前下载同轮官方资产到 `.cache/release-third-party`，并由 `tests/release-atomic-workflow.test.js` 固化契约；必须从修复后的最终 Tag 重新执行一次原子发布。
 
 ### 2026-08-29 本轮新增功能与验证要求
 
