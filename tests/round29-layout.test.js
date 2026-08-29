@@ -17,7 +17,8 @@ function hasId(id) {
 }
 
 for (const id of [
-  'loginMusicNowPlaying', 'loginMusicProgressShell', 'loginMusicProgress', 'loginMusicTime',
+  'loginMusicNowPlaying', 'loginMusicPlayPauseBtn', 'loginMusicMuteBtn', 'loginMusicProgressShell',
+  'loginMusicProgress', 'loginMusicTime', 'loginMusicClientVolume', 'loginMusicClientVolumeText',
   'loginVideoSettingsCard', 'loginVideoEnabled', 'loginVideoFile', 'loginVideoPreview',
   'loginVideoUploadProgress', 'saveLoginVideoBtn', 'removeLoginVideoBtn', 'loginVideoStatus',
   'saveNoticePreferenceSettingsBtn', 'clearAllToastsBtn', 'roomAllowGuests',
@@ -82,6 +83,15 @@ assert.match(css, /login-cube-scene\[data-display-mode=["']hidden["']\]/);
 assert.match(css, /\.clear-all-toasts-button\s*\{[^}]*position:\s*fixed;[^}]*pointer-events:\s*auto;/s);
 assert.match(css, /\.login-music-progress-popover\s*\{[^}]*opacity:\s*0;[^}]*pointer-events:\s*none;/s);
 assert.match(css, /\.login-now-playing\.is-expanded\s+\.login-music-progress-popover/);
+assert.match(css, /\.login-host-shortcuts button\s*\{[^}]*height:\s*30px;[^}]*min-height:\s*30px;/s,
+  '服务器登录快捷入口必须保持 30px 紧凑高度');
+assert.match(css, /body\.electron-server \.login-host-shortcuts button\s*\{[^}]*height:\s*30px\s*!important;[^}]*min-height:\s*30px\s*!important;[^}]*font-size:\s*11px;/s,
+  'Electron 粗指针环境也必须保持服务器快捷入口紧凑');
+assert.match(app, /function readLoginMusicPreference\(\)/);
+assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stringify\(state\.loginMusicPreference\)\)/,
+  '登录音乐播放、静音与音量偏好必须在本机持久化');
+assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated \|\| state\.managementOnlyAuth\)/,
+  '进入普通观影房间后必须隐藏服务器登录快捷入口');
 assert.match(css, /\.player-container:fullscreen\s+\.fullscreen-show-button[\s\S]{0,500}pointer-events:\s*auto/);
 assert.doesNotMatch(css, /@import\s+(?:url\()?['"]?https?:\/\//i, '不得引用远程字体或样式');
 assert.match(css, /data-mobile-module-active=["']chat["'][\s\S]{0,900}\.chat-panel/);

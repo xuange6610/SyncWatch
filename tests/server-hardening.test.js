@@ -220,7 +220,7 @@ async function testStateConfigFailsClosed() {
     fs.rmSync(writeDataDir, { recursive: true, force: true });
   }
 
-  assert.equal(standaloneSettings.normalizeSettings({}).port, 5000);
+  assert.equal(standaloneSettings.normalizeSettings({}).port, 20311);
   assert.equal(standaloneSettings.normalizeSettings({ publicUrl: 'https://Example.com/' }).publicUrl, 'https://example.com');
   for (const port of [0, 'abc', 70000, undefined]) {
     assert.throws(() => standaloneSettings.normalizeSettings({ port }), /port 必须是 1-65535/);

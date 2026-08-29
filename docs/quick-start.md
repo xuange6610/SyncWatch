@@ -22,7 +22,7 @@ npm ci
 npm start
 ```
 
-看到服务器地址后，在浏览器打开 `http://127.0.0.1:5000`。如果页面正常出现登录界面，说明源码服务器已经启动。
+看到服务器地址后，在浏览器打开 `http://127.0.0.1:20311`。如果页面正常出现登录界面，说明源码服务器已经启动。
 
 项目源码默认位于你执行 `git clone` 时所在目录下的 `SyncWatch` 文件夹。按上面的推荐步骤操作时，通常是 `C:\Users\你的用户名\Desktop\SyncWatch`。在资源管理器地址栏粘贴路径即可查看。
 
@@ -31,7 +31,7 @@ npm start
 1. 打开“访达 → 应用程序 → 实用工具 → 终端”。
 2. 输入 `cd ~/Desktop`，让项目下载到桌面。
 3. 依次执行 `git clone`、`cd SyncWatch`、`npm ci` 和 `npm start`。
-4. 在 Safari 或 Chrome 打开 `http://127.0.0.1:5000`。
+4. 在 Safari 或 Chrome 打开 `http://127.0.0.1:20311`。
 
 若 `node --version` 或 `npm --version` 提示找不到命令，先按照运行环境教程安装 Node.js，再关闭并重新打开终端。
 

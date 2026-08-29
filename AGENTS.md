@@ -255,6 +255,12 @@
 - 修复方式：`body.android-client .login-host-shortcuts { display:none !important; }`。快捷入口只在桌面/Electron 服务端顶栏显示，不重复进入 Android 触控操作面板；重新运行 `node tests/browser-ui-smoke.js` 已返回 `success:true`，并生成桌面、移动和 Android 账号菜单截图。
 - 失败运行未进入任何构建或 Release 上传，不得把其候选产物当成发布文件。当前最新提交为 `01aed20`，必须将唯一 `v2.2.7` 注释标签移动到该提交后再触发一次原子工作流；不得并行或创建额外分支。
 
+### 15. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
+
+- 用户截图复现 Electron 服务端登录页快捷按钮过大的问题：普通 `.login-host-shortcuts button` 已设为 30px，但 Electron 粗指针媒体规则会把按钮触控高度再次拉伸。
+- 修复在 `public/css/style.css` 增加 `body.electron-server .login-host-shortcuts button` 专用覆盖，固定 `height/min-height: 30px`、11px 字号和紧凑内边距；五个服务器快捷入口仍全部保留，并仅在未登录或管理专用会话显示。
+- `tests/round29-layout.test.js` 已加入覆盖断言；实际 Electron 浏览器测量为高度 30px、内边距 `3px 8px`、字号 11px，截图保存于 `output/playwright/login-shortcuts-compact.png`。`node tests/default-port-contract.test.js`、`node tests/round29-layout.test.js`、`npm run test:ui-close` 和单独 `npm run test:tunnel` 均通过；`npm run test:all` 仅有一次公网 Polling 瞬态断开，随后单独 Tunnel 冒烟重跑通过。
+
 ### 13. v2.2.7 登录页与账号总览修复（2026-08-29）
 
 - 用户反馈服务器 Electron 登录窗口中快捷按钮挤压登录卡片、立体方块被推到视口外且滚轮无法完整浏览。修复为将 `#loginHostShortcuts` 固定放在顶栏中间操作区，使用单行横向滚动按钮；Electron 服务端加 `body.electron-server` 专用布局，登录页外层滚动、登录卡片不再内部裁切、立体方块保持可见。

@@ -121,3 +121,9 @@
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
 - v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6 的历史 Release 保持不变；v2.2.7 当前为 Latest。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。
+
+### 15. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
+
+- Electron 服务端登录页的五个服务器快捷入口必须保留，但按钮必须保持紧凑：`public/css/style.css` 中普通规则和 `body.electron-server` 粗指针覆盖均固定 30px 高；Electron 实测高度 30px、内边距 `3px 8px`、字号 11px。
+- 新增/维护 `tests/round29-layout.test.js` 中的 CSS 回归断言，防止通用触控目标样式再次覆盖桌面快捷入口。入口在普通观影房间隐藏，Android 客户端不复制到触控操作面板。
+- 本轮验证：默认端口契约、Round 29 布局契约、`npm run test:ui-close`、`npm run test:tunnel` 通过；完整 `npm run test:all` 的唯一失败是公网 Polling 瞬态断开，随后独立 Tunnel 冒烟重跑通过。

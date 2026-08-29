@@ -10,7 +10,7 @@
 
 ### 端口已被占用 / EADDRINUSE
 
-关闭旧的 SyncWatch 进程，或在服务器设置改成未使用端口。Windows 可运行 `netstat -ano | findstr :5000`，再用任务管理器确认 PID。修改端口后必须重新生成并分享新的局域网地址。
+关闭旧的 SyncWatch 进程，或在服务器设置改成未使用端口。Windows 可运行 `netstat -ano | findstr :20311`，再用任务管理器确认 PID。修改端口后必须重新生成并分享新的局域网地址。
 
 ### Node.js、npm 或依赖错误
 

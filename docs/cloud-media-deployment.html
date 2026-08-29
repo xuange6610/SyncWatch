@@ -27,7 +27,7 @@
     proxy_send_timeout 3600s;
 
     location /socket.io/ {
-        proxy_pass http://syncwatch:5000;
+        proxy_pass http://syncwatch:20311;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection &quot;upgrade&quot;;
@@ -37,10 +37,10 @@
     }
 
     location / {
-        proxy_pass http://syncwatch:5000;
+        proxy_pass http://syncwatch:20311;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
-}</code></pre><p>生产环境应设置 <code>SYNCWATCH_PUBLIC_URL=https://movie.example.com</code>，只开放 80/443，把 5000 端口限制在 Docker 网络或安全组内。数据库、Redis 和对象存储密钥使用云密钥管理服务或 Docker Secret，不进入镜像和 Git。</p></section><section class="doc-section" id="chapter-6"><h2>故障检查</h2><p>云端视频无法播放时依次检查：</p><ul><li>在浏览器开发者工具中确认视频 URL 返回 200/206，而不是 302 登录页、403、404 或 416。</li><li>对 <code>Range: bytes=0-1</code> 的请求确认返回 <code>Content-Range: bytes 0-1/总大小</code>。</li><li>检查签名 URL 是否过期，所有用户所在网络是否都能访问 COS/OSS/CDN 域名。</li><li>检查文件编码是否为浏览器可播放的 H.264/AAC MP4。</li><li>检查 Bucket CORS 是否包含实际网站域名、<code>GET</code>、<code>HEAD</code> 和 <code>Range</code>。</li></ul></section><div class="doc-evidence"><figure data-doc-tilt><img src="screenshots/media-library.png" alt="云端媒体与商业部署相关真实界面截图 1" loading="lazy"><figcaption>云端媒体与商业部署真实界面证据 1</figcaption></figure><figure data-doc-tilt><img src="screenshots/public-access-settings.png" alt="云端媒体与商业部署相关真实界面截图 2" loading="lazy"><figcaption>云端媒体与商业部署真实界面证据 2</figcaption></figure></div><div class="doc-callout">操作完成后请回到真实应用验证结果。不要在公开 Issue、截图或日志中提交密码、令牌、真实 IP、邮箱或私人媒体信息。</div></article></div></main><footer class="doc-footer"><div class="doc-shell">SyncWatch同步观影 · Apache-2.0 · 作者：xuan<nav><a href="cloud-media-deployment.html">可视化阅读</a><a href="cloud-media-deployment.md" download>下载 Markdown 源文档</a><a href="index.html">在线展示</a><a href="https://github.com/xuange6610/SyncWatch">GitHub主页</a></nav></div></footer><script src="assets/document-guide.js"></script></body></html>
+}</code></pre><p>生产环境应设置 <code>SYNCWATCH_PUBLIC_URL=https://movie.example.com</code>，只开放 80/443，把 20311 端口限制在 Docker 网络或安全组内。数据库、Redis 和对象存储密钥使用云密钥管理服务或 Docker Secret，不进入镜像和 Git。</p></section><section class="doc-section" id="chapter-6"><h2>故障检查</h2><p>云端视频无法播放时依次检查：</p><ul><li>在浏览器开发者工具中确认视频 URL 返回 200/206，而不是 302 登录页、403、404 或 416。</li><li>对 <code>Range: bytes=0-1</code> 的请求确认返回 <code>Content-Range: bytes 0-1/总大小</code>。</li><li>检查签名 URL 是否过期，所有用户所在网络是否都能访问 COS/OSS/CDN 域名。</li><li>检查文件编码是否为浏览器可播放的 H.264/AAC MP4。</li><li>检查 Bucket CORS 是否包含实际网站域名、<code>GET</code>、<code>HEAD</code> 和 <code>Range</code>。</li></ul></section><div class="doc-evidence"><figure data-doc-tilt><img src="screenshots/media-library.png" alt="云端媒体与商业部署相关真实界面截图 1" loading="lazy"><figcaption>云端媒体与商业部署真实界面证据 1</figcaption></figure><figure data-doc-tilt><img src="screenshots/public-access-settings.png" alt="云端媒体与商业部署相关真实界面截图 2" loading="lazy"><figcaption>云端媒体与商业部署真实界面证据 2</figcaption></figure></div><div class="doc-callout">操作完成后请回到真实应用验证结果。不要在公开 Issue、截图或日志中提交密码、令牌、真实 IP、邮箱或私人媒体信息。</div></article></div></main><footer class="doc-footer"><div class="doc-shell">SyncWatch同步观影 · Apache-2.0 · 作者：xuan<nav><a href="cloud-media-deployment.html">可视化阅读</a><a href="cloud-media-deployment.md" download>下载 Markdown 源文档</a><a href="index.html">在线展示</a><a href="https://github.com/xuange6610/SyncWatch">GitHub主页</a></nav></div></footer><script src="assets/document-guide.js"></script></body></html>

@@ -76,7 +76,7 @@ server {
     proxy_send_timeout 3600s;
 
     location /socket.io/ {
-        proxy_pass http://syncwatch:5000;
+        proxy_pass http://syncwatch:20311;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -86,7 +86,7 @@ server {
     }
 
     location / {
-        proxy_pass http://syncwatch:5000;
+        proxy_pass http://syncwatch:20311;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -95,7 +95,7 @@ server {
 }
 ```
 
-生产环境应设置 `SYNCWATCH_PUBLIC_URL=https://movie.example.com`，只开放 80/443，把 5000 端口限制在 Docker 网络或安全组内。数据库、Redis 和对象存储密钥使用云密钥管理服务或 Docker Secret，不进入镜像和 Git。
+生产环境应设置 `SYNCWATCH_PUBLIC_URL=https://movie.example.com`，只开放 80/443，把 20311 端口限制在 Docker 网络或安全组内。数据库、Redis 和对象存储密钥使用云密钥管理服务或 Docker Secret，不进入镜像和 Git。
 
 ## 故障检查
 

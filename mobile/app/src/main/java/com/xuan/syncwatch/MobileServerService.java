@@ -80,7 +80,7 @@ public final class MobileServerService extends Service {
     public static final String STATUS_STOPPING = "stopping";
     public static final String STATUS_ERROR = "error";
 
-    public static final int SERVER_PORT = 5000;
+    public static final int SERVER_PORT = 20311;
 
     private static final String TAG = "SyncWatchMobileServer";
     private static final String CHANNEL_ID = "syncwatch_mobile_server";

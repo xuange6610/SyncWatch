@@ -38,7 +38,7 @@ flowchart TD
     E --> F[挂载 REST API 与静态 public]
     F --> G[创建 HTTP Server]
     G --> H[挂载 Socket.IO]
-    H --> I[监听 0.0.0.0:5000]
+    H --> I[监听 0.0.0.0:20311]
     I --> J[浏览器 / Electron / Android WebView 连接]
     J --> K[登录、协议确认、房间密码校验]
     K --> L[进入 Socket.IO 房间并收到 room-state]
@@ -111,7 +111,7 @@ sequenceDiagram
 
     A->>E: POST /api/host/tunnel/start
     E->>E: 检查房间密码、网络和代理策略
-    E->>C: tunnel --url http://127.0.0.1:5000
+    E->>C: tunnel --url http://127.0.0.1:20311
     C->>CF: HTTPS / QUIC 或 HTTP/2 出站连接
     CF-->>C: trycloudflare.com 公网地址
     C-->>E: 输出 URL 与连接状态
@@ -300,7 +300,7 @@ Android APK 内嵌与桌面端相同的 `server/index.js`、`public/**` 和生�
 | 桌面容器 | Electron 41、electron-builder 26 | Windows x64；macOS 构建需 macOS runner | `ipcMain/ipcRenderer`、`desktopCapturer`、托盘、窗口和系统权限 |
 | Android 容器 | Java、C++ JNI、Android WebView、Node.js Mobile | Android 6.0+，arm64-v8a/armeabi-v7a/x86_64 | `MediaProjection`、前台服务、SAF 文件选择、JNI `nativeStartNode` |
 | 媒体能力 | FFprobe、FFmpeg | 桌面完整包；轻量 Android 可能只提供原片 | `spawn` 子进程读取媒体元数据、转码、缩略图和字幕 |
-| 公网入口 | Cloudflare `cloudflared` | Windows/Linux/macOS 对应二进制 | 本机 `127.0.0.1:5000` 到 Cloudflare Edge 的 HTTPS/QUIC/HTTP2 隧道 |
+| 公网入口 | Cloudflare `cloudflared` | Windows/Linux/macOS 对应二进制 | 本机 `127.0.0.1:20311` 到 Cloudflare Edge 的 HTTPS/QUIC/HTTP2 隧道 |
 | 开发与交付 | npm/pnpm、PowerShell、Bash、Gradle、GitHub Actions | Windows 开发机与 GitHub-hosted runner | `npm ci`、构建脚本、发布契约测试、Pages 部署 |
 
 项目没有调用第三方 CDN 来加载核心页面资源；生产网页、Socket.IO 客户端和播放器代码都由自己的服务端同源提供。可选 AI 工作台只在用户填写兼容的 HTTPS API 地址和密钥后由 `server/ai-relay.js` 代理，并阻止内网地址、重定向绕过和超大响应。

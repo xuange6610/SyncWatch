@@ -43,7 +43,7 @@
     </div></div></section>
     <section id="errors" class="section"><div class="shell"><h2>常见错误的处理顺序</h2><p class="section-lead">先记录完整报错、平台、版本和操作时间，再按下表处理；不要把含密码、令牌或真实 IP 的日志直接公开。</p><div class="error-grid">
       <article class="error"><h3>“运行异常：未找到内置 cloudflared”</h3><p>确认使用完整服务器包，检查 <code>vendor/cloudflared.exe</code>；源码启动可在服务器设置中点击修复，让程序从 Cloudflare 官方 Release 下载并校验。仍失败时检查 TCP/UDP 443、7844 和 VPN/TUN 分流。</p></article>
-      <article class="error"><h3>“端口已被占用 / EADDRINUSE”</h3><p>关闭占用程序或在服务器设置换端口，重新启动后让成员使用新地址。Windows 可运行 <code>netstat -ano | findstr :5000</code> 查看 PID。</p></article>
+      <article class="error"><h3>“端口已被占用 / EADDRINUSE”</h3><p>关闭占用程序或在服务器设置换端口，重新启动后让成员使用新地址。Windows 可运行 <code>netstat -ano | findstr :20311</code> 查看 PID。</p></article>
       <article class="error"><h3>成员能打开页面但无法加入房间</h3><p>先确认房主服务仍在运行，再检查地址、房间密码、Origin/Host 和防火墙。管理员在日志中心确认是否为权限拒绝、房间不存在或令牌过期。</p></article>
       <article class="error"><h3>播放不同步或不断跳回</h3><p>检查成员网络延迟、浏览器缓冲和媒体格式；房主先暂停，等待所有成员连接稳定，再从队列重新开始。HEVC/特殊音轨可等待 FFmpeg 生成兼容版本。</p></article>
       <article class="error"><h3>上传卡住、审核后看不到</h3><p>检查磁盘剩余空间、文件大小策略和上传者权限。日志应同时出现 upload、media-processing 和 approval 事件；不要只复制 config.json，迁移必须带 uploads。</p></article>

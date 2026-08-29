@@ -1,4 +1,4 @@
-﻿# SyncWatch同步观影 Standalone Server
+# SyncWatch同步观影 Standalone Server
 
 The package contains runtime files only. Build caches, tests, Android signing keys, Electron output, and unrelated source artifacts are excluded.
 
@@ -20,7 +20,7 @@ The archive is built on Windows. On Linux x64, `start-server.sh` detects the pla
 Docker:
 
 ```bash
-SYNCWATCH_PORT=5000 docker compose up -d --build
+SYNCWATCH_PORT=20311 docker compose up -d --build
 ```
 
 Open the selected TCP port in the cloud firewall/security group. The private owner URL is written to `SyncWatch同步观影-Data/服务器运行信息.txt`; never share a URL containing `#host=` with normal users.

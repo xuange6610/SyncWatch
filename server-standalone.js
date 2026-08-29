@@ -151,7 +151,7 @@ function normalizeAllowedHosts(value) {
 
 function normalizeSettings(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('server-config.json 顶层必须是 JSON 对象');
-  const port = Object.prototype.hasOwnProperty.call(input, 'port') ? validPort(input.port) : 5000;
+  const port = Object.prototype.hasOwnProperty.call(input, 'port') ? validPort(input.port) : 20311;
   if (port === null) throw new Error('server-config.json 的 port 必须是 1-65535 之间的整数');
   return {
     port,
