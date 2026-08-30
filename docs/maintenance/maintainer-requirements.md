@@ -124,6 +124,10 @@
 - v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7 的历史 Release 保持不变；v2.2.8 当前为 Latest。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。
 
+### 14. v2.2.9 原子发布模拟器复盘（2026-08-30）
+
+- 原子运行 `33285110772` 的源码门禁、官方资产、Android 签名构建和 Windows base 构建均成功；失败仅发生在 Android 模拟器准备阶段，Ubuntu 22.04 的 API 35 SDK 镜像没有 `pixel_7` 硬件 profile，`avdmanager create avd` 返回 `No device found matching --device pixel_7`。修复：移除 `release-windows.yml` 中过时的 `profile: pixel_7`，让 `reactivecircus/android-emulator-runner` 使用当前 runner 可用的默认 profile，并在 `tests/release-atomic-workflow.test.js` 固化不得重新 pin 该 profile；应用包仍须从修复后的最终 Tag 重新执行一次完整原子发布。
+
 ### 15. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
 
 - Electron 服务端登录页的五个服务器快捷入口必须保留，但按钮必须保持紧凑：`public/css/style.css` 中普通规则和 `body.electron-server` 粗指针覆盖均固定 30px 高；Electron 实测高度 30px、内边距 `3px 8px`、字号 11px。
