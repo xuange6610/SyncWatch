@@ -1507,7 +1507,11 @@ function scheduleAccountDropdownClose() {
 }
 
 function bindTopbarAutoCollapse() {
-  const hoverCapable = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches && !usesMobileActionMenu();
+  // Electron and Windows touch laptops can report `hover: none` even while a
+  // real mouse is moving over the window. Use the event's pointer type for
+  // desktop hover behavior, while keeping the mobile accordion click-only.
+  const isDesktopPointer = (event) => !usesMobileActionMenu()
+    && (!event?.pointerType || event.pointerType === 'mouse' || event.pointerType === 'pen');
   const menus = [...document.querySelectorAll('[data-topbar-menu]')];
   const closeUnpinnedMenus = (except = null) => menus.forEach((menu) => {
     if (menu !== except && menu.dataset.menuPinned !== 'true') menu.open = false;
@@ -1523,14 +1527,19 @@ function bindTopbarAutoCollapse() {
       menu.open = !pinned;
       menu.dataset.menuPinned = String(!pinned);
     });
-    menu.addEventListener('pointerenter', () => {
-      if (!hoverCapable()) return;
+    menu.addEventListener('pointerenter', (event) => {
+      if (!isDesktopPointer(event)) return;
+      clearTimeout(menu._menuCloseTimer);
+      if (elements.accountMenuBtn?.dataset.menuPinned !== 'true') setAccountDropdownOpen(false);
       closeUnpinnedMenus(menu);
       menu.open = true;
     });
-    menu.addEventListener('pointerleave', () => {
-      if (!hoverCapable() || menu.dataset.menuPinned === 'true') return;
-      setTimeout(() => { if (!menu.matches(':hover') && menu.dataset.menuPinned !== 'true') menu.open = false; }, 120);
+    menu.addEventListener('pointerleave', (event) => {
+      if (!isDesktopPointer(event) || menu.dataset.menuPinned === 'true') return;
+      clearTimeout(menu._menuCloseTimer);
+      menu._menuCloseTimer = setTimeout(() => {
+        if (!menu.matches(':hover') && !menu.querySelector(':focus') && menu.dataset.menuPinned !== 'true') menu.open = false;
+      }, 120);
     });
     menu.addEventListener('focusout', (event) => {
       if (menu.dataset.menuPinned !== 'true' && !menu.contains(event.relatedTarget)) menu.open = false;
@@ -1542,8 +1551,15 @@ function bindTopbarAutoCollapse() {
     });
   });
   document.addEventListener('pointerdown', (event) => {
-    if (event.target.closest('[data-topbar-menu]')) return;
+    if (event.target.closest('[data-topbar-menu]') || event.target.closest('#accountMenuBtn, #accountDropdown')) return;
     menus.forEach((menu) => { menu.open = false; menu.dataset.menuPinned = 'false'; });
+    if (elements.accountMenuBtn?.dataset.menuPinned !== 'true') setAccountDropdownOpen(false);
+  });
+  document.addEventListener('pointermove', (event) => {
+    if (!isDesktopPointer(event)) return;
+    if (event.target.closest('[data-topbar-menu], #accountMenuBtn, #accountDropdown')) return;
+    closeUnpinnedMenus();
+    if (elements.accountMenuBtn?.dataset.menuPinned !== 'true') setAccountDropdownOpen(false);
   });
 }
 
@@ -2274,9 +2290,12 @@ function bindUiEvents() {
     elements.accountMenuBtn.dataset.menuPinned = String(!pinned);
     if (!pinned) positionAccountDropdown();
   });
-  elements.accountMenuBtn.addEventListener('pointerenter', () => {
-    if (usesMobileActionMenu() || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  elements.accountMenuBtn.addEventListener('pointerenter', (event) => {
+    if (usesMobileActionMenu() || (event.pointerType && !['mouse', 'pen'].includes(event.pointerType))) return;
     clearTimeout(accountMenuCloseTimer);
+    document.querySelectorAll('[data-topbar-menu]').forEach((menu) => {
+      if (menu.dataset.menuPinned !== 'true') menu.open = false;
+    });
     setAccountDropdownOpen(true);
     positionAccountDropdown();
   });
