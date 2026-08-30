@@ -274,25 +274,40 @@ async function main() {
     assert.equal(desktopMenuInteraction.labelText, '全部静音', JSON.stringify(desktopMenuInteraction));
     assert.equal(desktopMenuInteraction.panelWithinViewport, true, JSON.stringify(desktopMenuInteraction));
     const desktopAutoCollapse = await evaluate(cdp, `(async () => {
-      const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');
-      const trigger = menu.querySelector(':scope > summary');
+      const menus = [...document.querySelectorAll('.topbar-scroll-actions .topbar-menu, .topbar-fixed-actions .topbar-menu')];
       const nativeMatchMedia = window.matchMedia;
       window.matchMedia = (query) => query === '(hover: hover) and (pointer: fine)'
-        ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+        ? { matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
         : nativeMatchMedia.call(window, query);
-      menu.open = false; menu.dataset.menuPinned = 'false';
-      trigger.click();
-      const clickPinned = menu.open && menu.dataset.menuPinned === 'true';
-      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      const outsideClosed = !menu.open;
-      menu.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false, pointerType: 'mouse' }));
-      const hoverOpened = menu.open;
-      menu.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false, pointerType: 'mouse' }));
-      await new Promise((resolve) => setTimeout(resolve, 180));
+      const results = [];
+      for (const menu of menus) {
+        const trigger = menu.querySelector(':scope > summary');
+        menu.open = false; menu.dataset.menuPinned = 'false';
+        trigger.click();
+        const clickPinned = menu.open && menu.dataset.menuPinned === 'true';
+        document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        const outsideClosed = !menu.open;
+        menu.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false, pointerType: 'mouse' }));
+        const hoverOpened = menu.open;
+        menu.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false, pointerType: 'mouse' }));
+        await new Promise((resolve) => setTimeout(resolve, 180));
+        results.push({ clickPinned, outsideClosed, hoverOpened, hoverClosed: !menu.open });
+      }
+      const accountButton = document.getElementById('accountMenuBtn');
+      const account = document.getElementById('accountDropdown');
+      accountButton.dataset.menuPinned = 'false';
+      account.classList.add('is-hidden');
+      accountButton.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false, pointerType: 'mouse' }));
+      const accountHoverOpened = !account.classList.contains('is-hidden');
+      accountButton.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false, pointerType: 'mouse' }));
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const accountHoverClosed = account.classList.contains('is-hidden');
       window.matchMedia = nativeMatchMedia;
-      return { clickPinned, outsideClosed, hoverOpened, hoverClosed: !menu.open };
+      return { menuCount: menus.length, results, accountHoverOpened, accountHoverClosed };
     })()`);
-    assert.deepEqual(desktopAutoCollapse, { clickPinned: true, outsideClosed: true, hoverOpened: true, hoverClosed: true }, JSON.stringify(desktopAutoCollapse));
+    assert.equal(desktopAutoCollapse.menuCount, 3, JSON.stringify(desktopAutoCollapse));
+    assert.ok(desktopAutoCollapse.results.every((result) => result.clickPinned && result.outsideClosed && result.hoverOpened && result.hoverClosed), JSON.stringify(desktopAutoCollapse));
+    assert.deepEqual({ accountHoverOpened: desktopAutoCollapse.accountHoverOpened, accountHoverClosed: desktopAutoCollapse.accountHoverClosed }, { accountHoverOpened: true, accountHoverClosed: true }, JSON.stringify(desktopAutoCollapse));
 
     const memberPanelCollapse = await evaluate(cdp, `(() => {
       state.membersPanelCollapsed = false; applyMembersPanelCollapsed();
