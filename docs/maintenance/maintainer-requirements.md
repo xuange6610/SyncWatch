@@ -140,3 +140,9 @@
 - Electron 服务端登录页的五个服务器快捷入口必须保留，但按钮必须保持紧凑：`public/css/style.css` 中普通规则和 `body.electron-server` 粗指针覆盖均固定 30px 高；Electron 实测高度 30px、内边距 `3px 8px`、字号 11px。
 - 新增/维护 `tests/round29-layout.test.js` 中的 CSS 回归断言，防止通用触控目标样式再次覆盖桌面快捷入口。入口在普通观影房间隐藏，Android 客户端不复制到触控操作面板。
 - 本轮验证：默认端口契约、Round 29 布局契约、`npm run test:ui-close`、`npm run test:tunnel` 通过；完整 `npm run test:all` 的唯一失败是公网 Polling 瞬态断开，随后独立 Tunnel 冒烟重跑通过。
+
+### 17. v2.2.9 原子发布无头浏览器悬停能力复盘（2026-08-31）
+
+- 原子运行 `33323029225` 已通过源码身份锁定，但源码门禁中的 `tests/browser-ui-smoke.js` 失败。Linux 无头 Chromium 报告不具备 `(hover: hover) and (pointer: fine)`，产品端因而正确忽略合成的悬停事件，旧测试却要求菜单必须展开。
+- 冒烟测试应只在该用例内部临时模拟精细指针悬停媒体能力，保留点击固定、点击外部关闭、悬停展开和移出关闭四项断言，并在用例结束后恢复原生 `matchMedia`；产品端设备能力判断不放宽。
+- 本次失败未进入 Windows/Android 构建，也未替换当前 Release 的 8 个维护者资产。修复必须先通过本地和 PR 检查，再移动唯一注释 Tag，并且只重新触发一次完整原子发布。
