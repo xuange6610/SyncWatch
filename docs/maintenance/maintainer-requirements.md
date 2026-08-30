@@ -128,7 +128,13 @@
 
 - 原子运行 `33285110772` 的源码门禁、官方资产、Android 签名构建和 Windows base 构建均成功；失败仅发生在 Android 模拟器准备阶段，Ubuntu 22.04 的 API 35 SDK 镜像没有 `pixel_7` 硬件 profile，`avdmanager create avd` 返回 `No device found matching --device pixel_7`。修复：移除 `release-windows.yml` 中过时的 `profile: pixel_7`，让 `reactivecircus/android-emulator-runner` 使用当前 runner 可用的默认 profile，并在 `tests/release-atomic-workflow.test.js` 固化不得重新 pin 该 profile；应用包仍须从修复后的最终 Tag 重新执行一次完整原子发布。
 
-### 15. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
+### 15. v2.2.9 原子发布 Cloudflare API 限流复盘（2026-08-30）
+
+- 原子运行 `33291265772` 的源码门禁、官方资产、Android 签名/模拟器启动和 Windows base 构建均成功；Windows Full Offline job `99206165386` 在准备 pinned cloudflared 时失败，`release-third-party-assets.js` 访问 cloudflared GitHub API 返回 HTTP 403。
+- 根因是 Full Offline job 虽已下载同轮 `official` artifact 到 `.cache/release-third-party`，但脚本仍会先校验上游 manifest；该 job 没有显式注入 `GH_TOKEN`，匿名 API 请求在托管 runner 上触发限流。修复：Windows base/full 两个 pinned Cloudflare 校验步骤均传入 `GH_TOKEN: ${{ github.token }}`，并在 `tests/release-atomic-workflow.test.js` 固化认证契约。
+- 失败运行未进入 Full Offline 打包、10 文件汇总或 Release 上传；不得使用候选 artifact。修复提交后必须将唯一 `v2.2.9` Tag 指向修复提交，再只触发一次完整原子发布。
+
+### 16. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
 
 - Electron 服务端登录页的五个服务器快捷入口必须保留，但按钮必须保持紧凑：`public/css/style.css` 中普通规则和 `body.electron-server` 粗指针覆盖均固定 30px 高；Electron 实测高度 30px、内边距 `3px 8px`、字号 11px。
 - 新增/维护 `tests/round29-layout.test.js` 中的 CSS 回归断言，防止通用触控目标样式再次覆盖桌面快捷入口。入口在普通观影房间隐藏，Android 客户端不复制到触控操作面板。

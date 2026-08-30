@@ -285,3 +285,9 @@
 - 根因：前端保存时把旧 `url/title` 与新上传曲目合并，服务端又把旧列表再次拼接，导致更换文件后当前地址或名称仍指向旧曲目。
 - 修复：登录音乐配置以完整 `tracks` 列表和 `currentTrackId` 为权威状态；当前名称、地址均从选中曲目派生。选择新文件会立即清除旧 HTTPS 输入并以文件名填入名称；单独 HTTPS 地址会创建列表曲目；显式空列表会清空旧地址、名称和本地文件。
 - 验证：`node tests/login-music-upload-validation.test.js`、`node tests/latest26-backend.test.js`、`node tests/round29-backend.test.js`、`npm run test:repo`、`npm test`、`npm run test:privacy`、`node tests/browser-ui-smoke.js` 均通过。
+
+### 18. v2.2.9 原子发布 Cloudflare API 限流复盘（2026-08-30）
+
+- 原子运行 `33291265772` 的源码门禁、官方资产、Android 签名/模拟器启动和 Windows base 构建均成功；Windows Full Offline job `99206165386` 在准备 pinned cloudflared 时失败，`release-third-party-assets.js` 访问 cloudflared GitHub API 返回 HTTP 403。
+- 根因是 Full Offline job 虽已下载同轮 `official` artifact 到 `.cache/release-third-party`，但脚本仍会先校验上游 manifest；该 job 没有显式注入 `GH_TOKEN`，匿名 API 请求在托管 runner 上触发限流。修复：Windows base/full 两个 pinned Cloudflare 校验步骤均传入 `GH_TOKEN: ${{ github.token }}`，并在 `tests/release-atomic-workflow.test.js` 固化认证契约。
+- 失败运行未进入 Full Offline 打包、10 文件汇总或 Release 上传；不得使用候选 artifact。修复提交后必须将唯一 `v2.2.9` Tag 指向修复提交，再只触发一次完整原子发布。
