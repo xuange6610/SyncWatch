@@ -37,5 +37,6 @@
 - 注册名额申请支持按数量提交、部分/全部撤回和内置 `admin` 删除；账户管理只显示密码状态，安全重置不展示明文或哈希。
 - “同步网址”保存房间权威 URL/revision，但各端在沙箱 iframe 中独立加载；跨域、Cookie、登录态、地域和禁止嵌入不由 SyncWatch 绕过，需要同画面时使用实时屏幕/标签页共享。
 - 服务器登录页的本机管理快捷入口位于顶栏中间操作区；Electron 服务端窗口采用外层滚动，立体方块不会被登录卡片推离视口。管理中心账号总览使用独立 action 加载，失败时显示明确错误而非无限等待。
+- 顶栏“选项 / 房间操作 / 设置”展开后始终显示按钮名称；手机端菜单跨列静态展开，避免精简模式只剩图标或面板被内容裁剪。
 
 维护文档前请先读根目录 [AGENTS.md](../AGENTS.md)、[维护者长期要求](maintenance/maintainer-requirements.md)、[PRODUCT.md](../PRODUCT.md)、[DESIGN.md](../DESIGN.md) 和 [README.md](../README.md)。

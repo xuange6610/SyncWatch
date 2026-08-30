@@ -245,6 +245,64 @@ async function main() {
     assert.equal(desktopPlaybackQuality.select, 'original', JSON.stringify(desktopPlaybackQuality));
     assert.equal(desktopPlaybackQuality.saved, null, JSON.stringify(desktopPlaybackQuality));
     assert.equal(desktopPlaybackQuality.publicDefault, 'original', JSON.stringify(desktopPlaybackQuality));
+    const desktopMenuInteraction = await evaluate(cdp, `(() => {
+      document.body.classList.add('topbar-compact');
+      const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');
+      menu.open = true;
+      const panel = menu.querySelector('.topbar-menu-panel');
+      const button = panel?.querySelector('#masterMuteBtn');
+      const label = button?.querySelector('.button-label');
+      const rect = panel?.getBoundingClientRect();
+      return {
+        open: menu?.open === true,
+        label: label ? getComputedStyle(label).display : '',
+        labelText: label?.textContent || '',
+        panelWithinViewport: Boolean(rect && rect.left >= 0 && rect.right <= innerWidth + 1)
+      };
+    })()`);
+    assert.equal(desktopMenuInteraction.open, true, JSON.stringify(desktopMenuInteraction));
+    assert.notEqual(desktopMenuInteraction.label, 'none', JSON.stringify(desktopMenuInteraction));
+    assert.equal(desktopMenuInteraction.labelText, '全部静音', JSON.stringify(desktopMenuInteraction));
+    assert.equal(desktopMenuInteraction.panelWithinViewport, true, JSON.stringify(desktopMenuInteraction));
+
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const mobileMenuInteraction = await evaluate(cdp, `(() => {
+      document.body.classList.add('android-client', 'mobile-actions-open');
+      const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');
+      menu.open = true;
+      const panel = menu.querySelector('.topbar-menu-panel');
+      const button = panel?.querySelector('#masterMuteBtn');
+      const label = button?.querySelector('.button-label');
+      const panelRect = panel?.getBoundingClientRect();
+      const actionsRect = document.getElementById('topbarActions')?.getBoundingClientRect();
+      return {
+        position: panel ? getComputedStyle(panel).position : '',
+        label: label ? getComputedStyle(label).display : '',
+        panelWidth: panelRect?.width || 0,
+        actionsWidth: actionsRect?.width || 0,
+        panelWithinActions: Boolean(panelRect && actionsRect && panelRect.left >= actionsRect.left - 1 && panelRect.right <= actionsRect.right + 1)
+      };
+    })()`);
+    assert.equal(mobileMenuInteraction.position, 'static', JSON.stringify(mobileMenuInteraction));
+    assert.notEqual(mobileMenuInteraction.label, 'none', JSON.stringify(mobileMenuInteraction));
+    assert.ok(mobileMenuInteraction.panelWidth > 0 && mobileMenuInteraction.panelWidth <= mobileMenuInteraction.actionsWidth + 1, JSON.stringify(mobileMenuInteraction));
+    assert.equal(mobileMenuInteraction.panelWithinActions, true, JSON.stringify(mobileMenuInteraction));
+    const endpointInteraction = await evaluate(cdp, `(() => {
+      window.SyncWatchPlatform = { serverApp: true };
+      state.hostToken = 'browser-ui-host';
+      state.authenticated = true;
+      state.capabilities.serverHost = true;
+      state.publicConfigKnown = true;
+      state.publicConfig.addresses = ['http://127.0.0.1:${server.port}'];
+      renderServerEndpointStatus();
+      const badge = elements.serverEndpointBadge;
+      badge.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      return { visible: !elements.serverEndpointDetailsModal.classList.contains('is-hidden'), address: elements.serverEndpointDetailsAddress.textContent };
+    })()`);
+    assert.equal(endpointInteraction.visible, true, JSON.stringify(endpointInteraction));
+    assert.match(endpointInteraction.address, /127\.0\.0\.1/);
+    await evaluate(cdp, `document.body.classList.remove('topbar-compact', 'android-client', 'mobile-actions-open'); document.querySelectorAll('.topbar-menu').forEach((menu) => { menu.open = false; }); elements.serverEndpointDetailsModal.classList.add('is-hidden'); true`);
+    await cdp.send('Emulation.clearDeviceMetricsOverride');
     const defaultPlaybackSource = await evaluate(cdp, `mediaSourceFor({
       url: '/media/compatible-example.mp4',
       originalUrl: '/media/original-example.mp4',
