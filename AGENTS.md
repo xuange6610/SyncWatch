@@ -313,4 +313,4 @@
 ### 22. v2.2.9 Android 模拟器 ADB Broken pipe 复盘（2026-08-31）
 
 - 原子运行 `33327086419` 的源码门禁、官方文件、Android 签名 APK 和 Windows 基础包均通过；失败发生在 `reactivecircus/android-emulator-runner` 启动后的内部 `adb shell input keyevent 82` / `settings put system screen_off_timeout` 初始化，runner 报 `Failure calling service input: Broken pipe (32)`，仓库 smoke 尚未执行，未替换线上 Release 资产。
-- 修复：runner 步骤仅负责准备模拟器并允许其已知的 post-boot 瞬态失败；下一步始终执行 `scripts/android-emulator-smoke.sh`，由仓库脚本重新等待 ADB 和 `sys.boot_completed`，再严格安装、启动、检查崩溃日志和截图。不得因此放宽 APK 版本、启动或崩溃门禁；修复后只允许从最终注释 Tag 触发一次完整原子发布。
+- 失败后尝试把 smoke 拆到 runner 后续步骤，但 runner 会在每次 `script` 返回后无条件执行 `emu kill`，导致后置步骤无法连接设备；该方案已撤回。最终保留同一步 `scripts/android-emulator-smoke.sh`，仅由脚本重新等待 ADB 和 `sys.boot_completed`，再严格安装、启动、检查崩溃日志和截图；不得放宽 APK 版本、启动或崩溃门禁。
