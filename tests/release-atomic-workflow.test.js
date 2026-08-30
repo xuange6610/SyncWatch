@@ -246,12 +246,19 @@ assert.doesNotMatch(
 );
 assert.match(
   workflows.windows,
-  /script:\s*bash scripts\/android-emulator-smoke\.sh/,
-  'the emulator runner must invoke one script because it executes inline lines in separate shells'
+  /script:\s*true/,
+  'the emulator runner must only prepare the device so repository smoke can run after transient action setup errors'
 );
+assert.match(
+  workflows.windows,
+  /name:\s*Install, launch, and verify Android release APK[\s\S]*if:\s*always\(\)[\s\S]*run:\s*bash scripts\/android-emulator-smoke\.sh/,
+  'the repository smoke must run after emulator setup even when the action reports a post-boot error'
+);
+assert.match(workflows.windows, /continue-on-error:\s*true[\s\S]*uses:\s*reactivecircus\/android-emulator-runner/);
 assert.doesNotMatch(workflows.windows, /script:\s*\|[\s\S]{0,300}apk=/);
 assert.ok(fs.statSync(androidEmulatorSmokePath).isFile(), 'Android emulator smoke script must exist');
 assert.match(androidEmulatorSmoke, /GITHUB_WORKSPACE:\?GITHUB_WORKSPACE is required/);
+assert.match(androidEmulatorSmoke, /adb wait-for-device/);
 assert.match(androidEmulatorSmoke, /SyncWatch-Android-v\$\{version\}-universal\.apk/);
 assert.match(androidEmulatorSmoke, /adb install --no-streaming/);
 assert.match(workflows.windows, /& \.\\mobile\\build-apk\.ps1/);

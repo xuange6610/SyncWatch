@@ -331,14 +331,22 @@ jobs:
         with:
           name: ${{ inputs.artifact_prefix }}-android
           path: .build/android-smoke
-      - name: Install, launch, and keep the release APK alive
+      - name: Prepare Android emulator for release smoke
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           emulator-boot-timeout: 900
-          script: bash scripts/android-emulator-smoke.sh
+          # The action's post-boot input/settings calls are runner-version
+          # dependent. The repository smoke runs in the next step so a
+          # transient Broken pipe there cannot skip the real APK checks.
+          script: true
+      - name: Install, launch, and verify Android release APK
+        if: always()
+        shell: bash
+        run: bash scripts/android-emulator-smoke.sh
       - name: Preserve Android startup evidence
         if: always()
         uses: actions/upload-artifact@v4

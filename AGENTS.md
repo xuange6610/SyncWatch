@@ -309,3 +309,8 @@
 - 用户再次反馈截图中的“选项 / 房间操作 / 设置 / 账号”菜单未按要求自动收起。根因是旧实现完全依赖 `(hover: hover) and (pointer: fine)` 媒体查询；Electron 或 Windows 触控笔记本即使有真实鼠标，也可能返回 `false`，导致悬停路径被跳过。
 - 修复按真实 `pointerType` 判断桌面鼠标/触控笔，补充文档级 `pointermove` 关闭兜底，并让三组顶栏菜单与账号下拉互相关闭；未点击固定的菜单离开后自动收起，手机端仍只通过点击展开。
 - 本地真实浏览器冒烟在强制媒体查询为 `false` 时验证三组菜单和账号入口的点击固定、点击外部关闭、鼠标移入展开和移出收起；核心集成、隐私、发布工作流契约和布局契约均通过。当前 v2.2.9 线上资产尚未替换，修复需从最终 Tag 重新构建后一次性重传完整 8 项资产。
+
+### 22. v2.2.9 Android 模拟器 ADB Broken pipe 复盘（2026-08-31）
+
+- 原子运行 `33327086419` 的源码门禁、官方文件、Android 签名 APK 和 Windows 基础包均通过；失败发生在 `reactivecircus/android-emulator-runner` 启动后的内部 `adb shell input keyevent 82` / `settings put system screen_off_timeout` 初始化，runner 报 `Failure calling service input: Broken pipe (32)`，仓库 smoke 尚未执行，未替换线上 Release 资产。
+- 修复：runner 步骤仅负责准备模拟器并允许其已知的 post-boot 瞬态失败；下一步始终执行 `scripts/android-emulator-smoke.sh`，由仓库脚本重新等待 ADB 和 `sys.boot_completed`，再严格安装、启动、检查崩溃日志和截图。不得因此放宽 APK 版本、启动或崩溃门禁；修复后只允许从最终注释 Tag 触发一次完整原子发布。

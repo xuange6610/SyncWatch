@@ -8,6 +8,17 @@ smoke_dir="$workspace/.build/android-smoke"
 apk="$smoke_dir/SyncWatch-Android-v${version}-universal.apk"
 
 test -s "$apk"
+# The emulator action may report a transient post-boot ADB Broken pipe while
+# leaving the device alive. Re-establish the connection before strict checks.
+adb start-server >/dev/null
+timeout 60s adb wait-for-device
+for _ in {1..20}; do
+  if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+    break
+  fi
+  sleep 2
+done
+test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
 install_output="$(adb install --no-streaming "$apk" 2>&1)" || {
   printf '%s\n' "$install_output" >&2
   if grep -q 'INSTALL_FAILED_VERIFICATION_FAILURE: Integrity verification timed out' <<< "$install_output"; then
