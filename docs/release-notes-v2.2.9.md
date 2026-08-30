@@ -1,8 +1,8 @@
 # SyncWatch同步观影 v2.2.9 发布说明
 
-和朋友、家人、情侣远程一起看电影。v2.2.9 是当前候选版本，正在等待最终构建、哈希和 GitHub Release 核验。
+和朋友、家人、情侣远程一起看电影。v2.2.9 已完成最终构建、启动验收、哈希核对并公开为 Latest。
 
-> 第一次使用服务器请用默认账号 `admin`、默认密码 `admin888` 登录，并立即修改默认密码。候选版本完成核验后才会设为 Latest。
+> 第一次使用服务器请用默认账号 `admin`、默认密码 `admin888` 登录，并立即修改默认密码。
 
 | 下载文件 | 运行角色 | 版本标识 | 最适合谁 | 一句话说明 |
 | --- | --- | --- | --- | --- |
@@ -29,9 +29,35 @@
 
 房间创建与加入、同步播放、字幕、聊天、弹幕、语音、网页/屏幕共享、账号权限、备份恢复、临时公网链接和 Node.js 独立服务器功能继续保留。默认端口仍为 `20311`。
 
+## 普通用户怎么选
+
+- 只加入朋友房间：下载 Windows 体验版、Android APK，或直接使用浏览器。
+- 自己在 Windows 上开房：下载完整离线便携版，解压后双击即可运行。
+- 需要公网入口：在 Windows 上使用内置或独立的 cloudflared；手机端连接已开启 HTTPS/Tunnel 的服务器。
+
+## Windows + Android 套装
+
+房主使用 Windows 完整离线便携版，成员使用 Windows 体验版或 Android APK。完整包内置经过验证的 Android APK 和运行环境，普通用户无需另装 Node.js 或 cloudflared。
+
+## 一键运行包含什么
+
+完整离线便携版包含 SyncWatch 服务端、Windows 客户端、Android APK 离线资源、Node.js Mobile 运行时和 cloudflared；它是可启动的应用包，Release 中的 Source code 归档仍仅用于阅读和自行构建。
+
+## 架构支持边界
+
+v2.2.9 新构建支持 Windows x64、Windows on ARM 的官方 Node.js 环境、Android 通用 APK 和浏览器；macOS 仅保留历史 Release，不再提供新包。小米 14/HyperOS 真机未在本轮验证。
+
+## cloudflared 独立工具
+
+Release 中的 Windows x64 EXE、x64 MSI 和 x86 MSI 均为 Cloudflare 官方原始分发文件，用于公网 Tunnel，不是 SyncWatch 启动程序。请按 [公网访问教程](wiki/04-公网访问与Cloudflare-Tunnel.md) 配置并核对官方 SHA-256。
+
+## Node.js 官方环境包
+
+Release 中的 `node-v24.19.0-x64.msi` 和 `node-v24.19.0-arm64.msi` 仅用于源码或独立 Node.js 服务端。Windows 完整离线包已经内置运行环境，普通用户无需重复安装。
+
 ## 测试与限制
 
-候选发布前运行仓库规范、核心集成、平台契约、完整离线包和隐私检查。Windows/Android 真正构建、启动流程、文件大小与 SHA-256 会在最终 Tag 对应的 Actions 中再次核验；未完成这些证据前，v2.2.9 保持 pending，不宣称已发布。
+发布前已运行仓库规范、核心集成、平台契约、完整离线包和隐私检查；最终 Tag 对应的 Actions 已完成 Windows/Android 构建、启动流程、文件大小与 SHA-256 核验，并完成 8 个维护者资产加 2 个源码归档的 10 文件审计。
 
 所有 SyncWatch 应用资产必须由最终 Tag 对应源码真实重建，不能用旧包改名或占位文件替代。
 
