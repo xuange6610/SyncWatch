@@ -10,6 +10,10 @@
 }
 
 .server-endpoint-badge {
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: .5rem;
@@ -65,6 +69,7 @@
 .server-endpoint-badge.is-local > b { background: rgb(211 173 98 / 12%); color: #e5c780; }
 .server-endpoint-badge.is-offline > i { background: #e37c7c; box-shadow: 0 0 0 .24rem rgb(227 124 124 / 13%); }
 .server-endpoint-badge.is-offline > b { background: rgb(227 124 124 / 12%); color: #f2a1a1; }
+.server-endpoint-badge:hover, .server-endpoint-badge:focus-visible { border-color: var(--theme-accent, var(--pink)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent, var(--pink)) 18%, transparent); }
 
 .login-host-shortcuts {
   display: flex;
@@ -86,6 +91,19 @@
 
 .login-host-shortcuts > .primary-button { flex-basis: 13rem; }
 .login-host-shortcuts > .danger-button { flex-basis: 9rem; }
+
+.server-endpoint-details-card { width: min(520px, 100%); }
+.server-endpoint-details-list { display: grid; gap: 9px; margin: 18px 0; }
+.server-endpoint-details-list > div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 11px; background: #ffffff08; border: 1px solid var(--line); border-radius: 7px; }
+.server-endpoint-details-list dt { color: var(--muted); }
+.server-endpoint-details-list dd { margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.server-endpoint-details-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.server-endpoint-details-actions > button { flex: 1 1 10rem; }
+
+.shortcut-list { display: grid; gap: 7px; margin: 16px 0; padding: 0; list-style: none; }
+.shortcut-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 9px 10px; background: #ffffff08; border: 1px solid var(--line); border-radius: 7px; }
+.shortcut-list li span { margin-left: auto; color: var(--muted); text-align: right; }
+.shortcut-list kbd { min-width: 2.2rem; padding: 3px 6px; color: var(--text); background: #0c1114; border: 1px solid #ffffff2b; border-bottom-width: 2px; border-radius: 5px; font: 700 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; text-align: center; }
 
 .management-nav #managementSessionLogoutBtn {
   margin-top: auto;

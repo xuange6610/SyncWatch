@@ -11,6 +11,7 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
 const {
   normalizeReleaseTag,
   compareReleaseTags,
+  extractAtomReleaseTag,
   createLatestReleaseChecker
 } = require('../server/latest-release');
 const {
@@ -24,6 +25,8 @@ async function verifyLatestReleaseChecker() {
   assert.equal(normalizeReleaseTag('2.2.4'), '');
   assert.equal(normalizeReleaseTag('v2.2'), '');
   assert.equal(normalizeReleaseTag('v2.2.4-01'), '', 'SemVer 数字预发布标识不能含前导零');
+  assert.equal(extractAtomReleaseTag(`<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><id>tag:github.com,2008:https://github.com/xuange6610/SyncWatch/releases</id><title>Release notes from SyncWatch</title><entry><id>tag:github.com,2008:Repository/1338151032/v2.2.9</id><link rel="alternate" href="https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9"/><title>SyncWatch同步观影 v2.2.9</title></entry></feed>`), 'v2.2.9');
+  assert.equal(extractAtomReleaseTag('<feed><entry><title>没有版本</title></entry></feed>'), '');
   assert.equal(compareReleaseTags('v2.2.3', 'v2.2.4'), -1);
   assert.equal(compareReleaseTags('v2.2.4', 'v2.2.4'), 0);
   assert.equal(compareReleaseTags('v2.10.0', 'v2.9.9'), 1);
@@ -100,6 +103,21 @@ async function verifyLatestReleaseChecker() {
   assert.equal(invalid.success, false);
   assert.equal(invalid.code, 'GITHUB_INVALID_RELEASE');
   assert.equal(invalid.networkFailure, false);
+
+  const fallbackRequests = [];
+  const fallbackChecker = createLatestReleaseChecker({
+    cacheTtlMs: 1,
+    fetchImpl: async (url) => {
+      fallbackRequests.push(String(url));
+      if (String(url).includes('/releases/latest')) return new Response('rate limited', { status: 403 });
+      return new Response('<feed><entry><id>tag:github.com,2008:Repository/1/v2.2.9</id><title>v2.2.9</title></entry></feed>', { status: 200 });
+    }
+  });
+  const fallback = await fallbackChecker.check({ forceRefresh: true });
+  assert.equal(fallback.success, true);
+  assert.equal(fallback.tag_name, 'v2.2.9');
+  assert.equal(fallback.source, 'atom-fallback');
+  assert.equal(fallbackRequests.length, 2);
 }
 
 function verifyAddressPrivacy() {

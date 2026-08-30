@@ -349,7 +349,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  managementChatManageBtn managementOperationHistoryBtn
    managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
- fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn
+  fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown serverEndpointDetailsModal closeServerEndpointDetailsBtn serverEndpointDetailsAddress serverEndpointDetailsState serverEndpointDetailsHint copyServerEndpointDetailsBtn openServerEndpointDetailsBtn roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
   operationHistoryModal closeOperationHistoryBtn operationHistoryList refreshOperationHistoryBtn operationHistoryQuery operationHistoryScope operationHistorySelectAll deleteSelectedOperationsBtn chatContextMenu chatContextDeleteBtn roomMediaPreviewModal closeRoomMediaPreviewBtn roomMediaPreviewTitle roomMediaPreviewSelectAll roomMediaPreviewBatchDeleteBtn roomMediaPreviewBanUploadBtn roomMediaPreviewActionStatus roomMediaPreviewList roomMediaPreviewPlayer globalRoomStorageLimitMb applyGlobalRoomStorageLimitBtn audioSourceModal closeAudioSourceBtn audioSourcePlatform audioSourceVolume audioSourceVolumeText audioSourceStatus refreshAudioSourcesBtn startAudioSourceBtn stopAudioSourceBtn
 dataBackupCard dataBackupScope exportDataBtn importDataBtn importDataInput dataBackupStatus dataBackupProgress dataBackupProgressLabel dataBackupProgressPercent dataBackupProgressBar dataBackupProgressDetail
@@ -1998,6 +1998,16 @@ function bindUiEvents() {
   elements.openGithubProjectBtn?.addEventListener('click', () => openExternalUrl('https://github.com/xuange6610/SyncWatch'));
   elements.openGithubLatestBtn?.addEventListener('click', () => openExternalUrl('https://github.com/xuange6610/SyncWatch/releases/latest'));
   elements.downloadAssetSettingsCard?.addEventListener('click', handleDownloadAssetUploadClick);
+  elements.serverEndpointBadge?.addEventListener('dblclick', openServerEndpointDetails);
+  elements.closeServerEndpointDetailsBtn?.addEventListener('click', closeServerEndpointDetails);
+  elements.serverEndpointDetailsModal?.addEventListener('click', (event) => {
+    if (event.target === elements.serverEndpointDetailsModal) closeServerEndpointDetails();
+  });
+  elements.copyServerEndpointDetailsBtn?.addEventListener('click', copyServerEndpointDetails);
+  elements.openServerEndpointDetailsBtn?.addEventListener('click', () => {
+    const address = elements.serverEndpointDetailsAddress?.dataset.url || '';
+    if (address) openExternalUrl(address);
+  });
   elements.mobileMenuBtn?.addEventListener('click', () => toggleMobileActionMenu());
   elements.mobileMenuBackdrop?.addEventListener('click', () => toggleMobileActionMenu(false));
   document.querySelector('.topbar-actions')?.addEventListener('click', (event) => {
@@ -2740,6 +2750,7 @@ function bindUiEvents() {
       return;
     }
     if (event.key !== 'Escape') return;
+    if (!elements.serverEndpointDetailsModal?.classList.contains('is-hidden')) { closeServerEndpointDetails(); return; }
     if (!elements.permissionGroupEditor?.classList.contains('is-hidden')) closePermissionGroupEditor();
     else if (!elements.accountTierEditor?.classList.contains('is-hidden')) closeAccountTierEditor();
     else if (!elements.accountDropdown?.classList.contains('is-hidden')) {
@@ -5600,6 +5611,33 @@ function renderServerEndpointStatus() {
   elements.serverEndpointBadge.title = known
     ? enabled ? `局域网服务已开放：${address}` : `局域网访问已关闭；本机仍可使用 ${location.origin}`
     : '正在读取服务器开放状态';
+  elements.serverEndpointBadge.dataset.url = address;
+}
+
+function openServerEndpointDetails() {
+  if (!elements.serverEndpointDetailsModal || elements.serverEndpointBadge?.classList.contains('is-hidden')) return;
+  const address = elements.serverEndpointBadge?.dataset.url || '';
+  if (elements.serverEndpointDetailsAddress) {
+    elements.serverEndpointDetailsAddress.textContent = address || '--';
+    elements.serverEndpointDetailsAddress.dataset.url = address;
+  }
+  if (elements.serverEndpointDetailsState) elements.serverEndpointDetailsState.textContent = elements.serverEndpointState?.textContent || '检测中';
+  if (elements.serverEndpointDetailsHint) elements.serverEndpointDetailsHint.textContent = state.publicConfig.lanAccessEnabled === false
+    ? '局域网访问已关闭；只有服务器本机可以使用当前地址。'
+    : '同一 Wi-Fi 下的成员可用此地址打开登录页。双击顶栏状态可再次打开详情。';
+  elements.serverEndpointDetailsModal.classList.remove('is-hidden');
+  queueMicrotask(() => elements.closeServerEndpointDetailsBtn?.focus());
+}
+
+function closeServerEndpointDetails() {
+  elements.serverEndpointDetailsModal?.classList.add('is-hidden');
+}
+
+async function copyServerEndpointDetails() {
+  const address = elements.serverEndpointDetailsAddress?.dataset.url || '';
+  if (!address) return toast('当前没有可复制的局域网地址', 'error');
+  try { await navigator.clipboard.writeText(address); toast('局域网地址已复制', 'success'); }
+  catch (_) { toast('复制失败，请手动选择地址', 'error'); }
 }
 
 function downloadAssetSummary(value) {

@@ -41,8 +41,8 @@
       <div class="hero__body shell">
         <div class="hero__copy">
           <h1 id="hero-title">SyncWatch同步观影</h1>
-          <p class="hero__lead">把服务器、房间和媒体掌握在自己手里，让 Windows、Android 和浏览器中的成员同步看到同一刻。</p>
-          <p class="hero__detail">局域网可直接连接，跨网络可按需启用 Cloudflare Tunnel 或自己的 HTTPS 反向代理。</p>
+          <p class="hero__lead">和朋友、家人一起看电影。每个人都能看到同一进度。</p>
+          <p class="hero__detail">你自己保存账号和影片。电脑、手机、浏览器都可以加入。</p>
           <div class="hero__actions">
             <a class="button button--primary" href="https://github.com/xuange6610/SyncWatch/releases/latest">前往下载</a>
             <a class="button button--quiet" href="#quick-start">新手快速开始</a>
@@ -54,35 +54,35 @@
 
     <section class="capability-band" aria-label="核心能力">
       <div class="shell capability-band__inner">
-        <p><strong>自己部署</strong><span>账号、设置和媒体保存在你的服务器</span></p>
-        <p><strong>多端加入</strong><span>桌面、手机和现代浏览器共享房间状态</span></p>
-        <p><strong>同步协作</strong><span>播放、进度、聊天、语音和屏幕共享集中完成</span></p>
-        <p><strong>局域网 / 公网</strong><span>先在本地使用，需要时再开放安全访问</span></p>
+        <p><strong>自己保存</strong><span>账号和影片放在你的设备上</span></p>
+        <p><strong>电脑手机都能用</strong><span>Windows、Android、浏览器均可加入</span></p>
+        <p><strong>一起互动</strong><span>播放、聊天、语音和共享都能用</span></p>
+        <p><strong>先局域网再公网</strong><span>先在家里试用，需要时再分享给远方朋友</span></p>
       </div>
     </section>
 
     <section id="how-it-works" class="section section--light">
       <div class="shell">
         <div class="section-heading">
-          <h2>从启动服务器到一起播放</h2>
-          <p>不需要先理解全部技术名词。房主完成前三步，其他成员只需要一个地址。</p>
+          <h2>四步开始一起看</h2>
+          <p>房主照着做，朋友拿到地址后就能加入。</p>
         </div>
         <ol class="connection-track">
           <li>
             <span class="connection-track__marker">1</span>
-            <div><h3>房主启动</h3><p>运行服务器 EXE，或在源码目录执行 <code>npm start</code>。</p></div>
+            <div><h3>打开软件</h3><p>双击 Windows 完整版；开发者也可以运行 <code>npm start</code>。</p></div>
           </li>
           <li>
             <span class="connection-track__marker">2</span>
-            <div><h3>完成安全设置</h3><p>登录默认管理员账号后立即改密码，再创建房间和房间密码。</p></div>
+            <div><h3>先改密码</h3><p>首次登录后马上设置新管理员密码，再创建房间。</p></div>
           </li>
           <li>
             <span class="connection-track__marker">3</span>
-            <div><h3>分享访问地址</h3><p>同一网络分享局域网地址；跨网络时启动临时公网访问或配置 HTTPS。</p></div>
+            <div><h3>复制地址</h3><p>同一 Wi-Fi 直接分享局域网地址；远程使用时再开启公网访问。</p></div>
           </li>
           <li>
             <span class="connection-track__marker">4</span>
-            <div><h3>成员加入</h3><p>成员用客户端或浏览器打开地址，进入房间后由房主统一开始播放。</p></div>
+            <div><h3>朋友加入</h3><p>朋友打开地址、登录并输入房间号，房主点击播放即可同步。</p></div>
           </li>
         </ol>
       </div>
@@ -92,8 +92,8 @@
       <div class="shell">
         <div class="architecture-heading">
           <div class="section-heading section-heading--dark">
-            <h2 id="architecture-title">一次操作，怎样变成所有人的同一画面</h2>
-            <p>服务器保存权威房间状态。客户端提交播放意图，服务端完成认证、更新、持久化与广播；成员端再按服务器时间和网络延迟校正播放器。</p>
+            <h2 id="architecture-title">为什么大家能同步</h2>
+            <p>服务器记住房间状态。有人播放、暂停或拖动时，服务器会告诉房间里的其他人。</p>
           </div>
           <a class="architecture-doc-link" href="architecture.html">阅读完整技术架构</a>
         </div>
@@ -107,64 +107,64 @@
           <ol class="architecture-flow" aria-label="SyncWatch同步观影实现流程">
             <li data-architecture-step>
               <span class="architecture-flow__index">01</span>
-              <strong>启动核心</strong>
-              <small>Electron、独立 Node 或 Android Service 启动 Express 与 Socket.IO</small>
+              <strong>打开服务器</strong>
+              <small>软件启动一个供大家连接的房间服务</small>
               <code>server/index.js</code>
             </li>
             <li data-architecture-step>
               <span class="architecture-flow__index">02</span>
-              <strong>客户端连接</strong>
-              <small>浏览器、桌面端和 WebView 加载同源界面并建立实时连接</small>
+              <strong>成员连接</strong>
+              <small>浏览器、电脑和手机打开同一个地址</small>
               <code>HTTP + WebSocket</code>
             </li>
             <li data-architecture-step>
               <span class="architecture-flow__index">03</span>
-              <strong>认证与入房</strong>
-              <small>校验密码哈希、会话、设备策略、协议、房间密码和权限</small>
+              <strong>登录入房</strong>
+              <small>输入账号和房间密码，确认你有权进入</small>
               <code>session / room</code>
             </li>
             <li data-architecture-step>
               <span class="architecture-flow__index">04</span>
-              <strong>处理操作</strong>
-              <small>更新播放状态；上传时使用 FFprobe 分析、FFmpeg 转换</small>
+              <strong>同步操作</strong>
+              <small>播放、暂停、进度和倍速发送给所有成员</small>
               <code>state / media</code>
             </li>
             <li data-architecture-step>
               <span class="architecture-flow__index">05</span>
-              <strong>安全写盘</strong>
-              <small>配置原子替换，媒体与 secrets 分目录保存，单实例写入</small>
+              <strong>保存数据</strong>
+              <small>账号、房间和影片信息保存在服务器数据目录</small>
               <code>SyncWatch同步观影-Data</code>
             </li>
             <li data-architecture-step>
               <span class="architecture-flow__index">06</span>
-              <strong>广播结果</strong>
-              <small>向房间发送版本化状态，客户端按时间与延迟修正画面</small>
+              <strong>看到同一刻</strong>
+              <small>每个人的播放器根据服务器时间自动校正</small>
               <code>room-state / playback-sync</code>
             </li>
           </ol>
           <div class="architecture-result" aria-live="polite">
             <div class="architecture-result__signal" aria-hidden="true"><span></span><span></span><span></span></div>
-            <div><strong>结果：所有成员收到同一份房间状态</strong><p>播放、暂停、进度、倍速、聊天、通知和共享信令保持一致；媒体文件仍由房主自己的服务器提供。</p></div>
+            <div><strong>结果：大家看到同一进度</strong><p>播放、暂停、进度、倍速和聊天会同步；影片仍保存在房主自己的服务器。</p></div>
           </div>
           <p class="architecture-console__hint">拖动控制台旋转 360°，滚轮调整深度，方向键微调。动画只展示当前调用关系，不影响阅读。</p>
         </div>
 
         <div class="architecture-details">
           <article>
-            <h3>用什么写的</h3>
-            <p>网页使用原生 HTML、CSS、JavaScript；服务端使用 Node.js、Express、Socket.IO；桌面端使用 Electron；Android 使用 Java、C++ JNI、WebView 与 Node.js Mobile。</p>
+            <h3>需要什么</h3>
+            <p>普通用户下载 Windows 或 Android 文件即可。开发者从源码运行时需要 Node.js。</p>
           </article>
           <article>
-            <h3>调用了什么</h3>
-            <p><code>fetch</code> 访问 REST API，Socket.IO 传递实时事件，WebRTC 协商语音和屏幕共享；FFprobe/FFmpeg 由服务端子进程调用，cloudflared 只在开启公网访问时运行。</p>
+            <h3>可以做什么</h3>
+            <p>一起播放影片、聊天、发弹幕、语音通话，也可以共享浏览器标签页或窗口。</p>
           </article>
           <article>
-            <h3>数据怎样流动</h3>
-            <p>文件和备份走 HTTP 流式传输，房间状态走 Socket.IO，媒体播放走 HTTP Range。账号、房间、媒体索引、记录和密钥分别写入本机数据目录。</p>
+            <h3>数据放在哪里</h3>
+            <p>账号、房间、影片和聊天记录保存在你自己的服务器数据目录。</p>
           </article>
           <article>
-            <h3>运行在什么环境</h3>
-            <p>源码服务器需要 Node.js 22+；Windows 完整 EXE 自带 Electron/Node/FFmpeg；Android 完整 APK 内置 Node.js Mobile；Docker 使用 Node.js 24 Linux 镜像。</p>
+            <h3>支持哪些设备</h3>
+            <p>支持 Windows、Android 和现代浏览器。跨网络使用时可以配置 HTTPS 或临时公网地址。</p>
           </article>
         </div>
       </div>
@@ -173,8 +173,8 @@
     <section id="screenshots" class="section section--dark">
       <div class="shell">
         <div class="section-heading section-heading--dark">
-          <h2>先看真实界面，再决定是否下载</h2>
-          <p>点击任意截图可放大查看。这里展示的是实际软件界面，不是重新绘制的概念图。</p>
+          <h2>先看看软件长什么样</h2>
+          <p>下面都是实际界面截图，点击图片可以放大。</p>
         </div>
         <div class="gallery">
           <button class="gallery-item gallery-item--wide" type="button" aria-label="查看 SyncWatch同步观影项目封面" data-gallery-item data-image="screenshots/project-cover.png" data-caption="项目封面：开源、自托管、跨平台同步观影">
@@ -241,8 +241,8 @@
     <section id="management-center" class="section section--light management-section" aria-labelledby="management-title">
       <div class="shell">
         <div class="section-heading">
-          <h2 id="management-title">管理中心：每个模块都能找到下一步</h2>
-          <p>下面按真实管理任务拆开说明。先看模块用途，再按“打开入口 → 修改字段 → 保存 → 验证结果”的顺序操作；需要完整按钮清单时打开管理中心详细教程。</p>
+          <h2 id="management-title">管理中心</h2>
+          <p>房主可以在这里管理房间、成员、影片、账号和服务器设置。每个模块都有单独教程。</p>
         </div>
         <div class="management-grid">
           <article class="management-module" data-reveal>
@@ -300,8 +300,8 @@
     <section class="section section--data" aria-labelledby="data-title">
       <div class="shell">
         <div class="section-heading section-heading--dark">
-          <h2 id="data-title">数据目录到底保存什么</h2>
-          <p><code>SyncWatch同步观影-Data/</code> 是这台服务器的运行数据，不是源码。迁移时应停止服务器并完整复制。</p>
+          <h2 id="data-title">数据会保存在哪里</h2>
+          <p><code>SyncWatch同步观影-Data/</code> 保存账号、房间、影片和设置。换设备前先停止服务器并备份整个文件夹。</p>
         </div>
         <div class="table-wrap" tabindex="0" aria-label="数据目录说明，可横向滚动">
           <table>
@@ -322,8 +322,8 @@
     <section id="quick-start" class="section section--light">
       <div class="shell quick-start">
         <div class="section-heading">
-          <h2>从源码启动：先打开终端，再逐条输入</h2>
-          <p>Windows 在开始菜单搜索“PowerShell”或“终端”。普通使用者应优先下载已经构建的文件。</p>
+          <h2>开发者如何启动</h2>
+          <p>普通用户直接下载 Windows 完整版。开发者安装 Node.js 后，在项目文件夹打开终端运行命令。</p>
         </div>
         <div class="command-panel">
           <div class="command-panel__bar"><span>PowerShell / Terminal</span><button type="button" data-copy-command>复制命令</button></div>
@@ -350,8 +350,8 @@ npm start</code></pre>
     <section id="downloads" class="section section--download">
       <div class="shell download-layout">
         <div class="section-heading section-heading--dark">
-          <h2>下载时先看清楚用途</h2>
-          <p>v2.2.9 只提供 Windows 和 Android 的新文件。普通用户直接下载下面的文件即可；源码压缩包只适合开发者。</p>
+          <h2>下载哪个文件</h2>
+          <p>想自己开房就下载 Windows 完整版；只想加入别人的房间就下载体验版或 Android APK。</p>
         </div>
         <div class="download-actions">
           <a class="button button--primary" href="https://github.com/xuange6610/SyncWatch/releases/latest/download/SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe">直接下载 Windows 完整便携版</a>
@@ -363,7 +363,7 @@ npm start</code></pre>
           <li><strong><span class="download-role-label download-role-client">客户端</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Android-v2.2.9-universal.apk">Android APK</a></strong><span>通用 ABI，加入房间或在受支持设备运行手机服务器。</span></li>
           <li><strong><span class="download-role-label download-role-server">服务器环境</span>源码与独立服务端</strong><span><a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.zip">源码 ZIP</a> · <a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.tar.gz">源码 TAR.GZ</a>；需要 Node.js，适合开发、审查或长期部署。</span></li>
           <li><strong><span class="download-role-label download-role-server">服务器工具</span>Node.js / cloudflared</strong><span>需要自己搭建服务器时再下载这些工具，文件都在 <a href="https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9">v2.2.9 下载页</a>。</span></li>
-          <li><strong>登录页与账号总览</strong><span>服务器快捷入口位于顶栏；Electron 服务端登录页支持滚轮；账号总览失败时显示明确错误，不会无限加载。</span></li>
+          <li><strong>小提示</strong><span>第一次登录后先改管理员密码；遇到问题先在局域网测试。</span></li>
         </ul>
       </div>
     </section>

@@ -1,6 +1,7 @@
 'use strict';
 
 const DEFAULT_RELEASE_API = 'https://api.github.com/repos/xuange6610/SyncWatch/releases/latest';
+const DEFAULT_RELEASE_ATOM = 'https://github.com/xuange6610/SyncWatch/releases.atom';
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_RELEASE_RESPONSE_BYTES = 512 * 1024;
@@ -55,6 +56,25 @@ function cleanText(value, limit) {
   return String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit);
 }
 
+function extractAtomReleaseTag(feedText) {
+  const entries = String(feedText || '').match(/<entry\b[^>]*>[\s\S]*?<\/entry>/gi) || [];
+  for (const entry of entries) {
+    const fields = [
+      entry.match(/<id\b[^>]*>([\s\S]*?)<\/id>/i)?.[1],
+      entry.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1],
+      entry.match(/<link\b[^>]*\bhref=["']([^"']+)["']/i)?.[1]
+    ];
+    for (const field of fields) {
+      const candidate = String(field || '').replace(/&amp;/gi, '&').trim();
+      const match = candidate.match(/(?:^|\/)(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:$|[?#\s<])/i)
+        || candidate.match(/\b(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/i);
+      const tagName = normalizeReleaseTag(match?.[1]);
+      if (tagName) return tagName;
+    }
+  }
+  return '';
+}
+
 function releaseValue(payload, checkedAt) {
   const tagName = normalizeReleaseTag(payload?.tag_name);
   if (!tagName || payload?.draft === true) {
@@ -104,6 +124,7 @@ function normalizeInitialCache(initialCache) {
 function createLatestReleaseChecker({
   fetchImpl = globalThis.fetch,
   apiUrl = DEFAULT_RELEASE_API,
+  fallbackUrl = DEFAULT_RELEASE_ATOM,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   cacheTtlMs = DEFAULT_CACHE_TTL_MS,
   now = Date.now,
@@ -138,6 +159,32 @@ function createLatestReleaseChecker({
       return { ...cache.value, source: 'revalidated-cache', cached: true, stale: false };
     }
     if (!response.ok) {
+      // GitHub's unauthenticated REST API is frequently rate limited (403).
+      // The public Atom feed is served separately and still exposes the latest
+      // tag, so use it as a read-only fallback without hiding other failures.
+      if (response.status === 403 && fallbackUrl) {
+        const fallbackResponse = await fetchImpl(fallbackUrl, {
+          method: 'GET',
+          headers: { Accept: 'application/atom+xml, application/xml;q=0.9, text/xml;q=0.8', 'User-Agent': userAgent },
+          redirect: 'follow',
+          signal
+        });
+        if (fallbackResponse.ok) {
+          const feedText = await fallbackResponse.text();
+          if (Buffer.byteLength(feedText) <= MAX_RELEASE_RESPONSE_BYTES) {
+            const tagName = extractAtomReleaseTag(feedText);
+            if (tagName) {
+              const value = releaseValue({
+                tag_name: tagName,
+                name: `SyncWatch同步观影 ${tagName}`,
+                html_url: `https://github.com/xuange6610/SyncWatch/releases/tag/${tagName}`
+              }, checkedAt);
+              cache = { value, etag: '', fetchedAt: checkedAt, expiresAt: checkedAt + cacheTtlMs };
+              return { ...value, source: 'atom-fallback', cached: false, stale: false };
+            }
+          }
+        }
+      }
       throw asFailure({ code: 'GITHUB_HTTP_ERROR', httpStatus: response.status, networkFailure: true, error: `GitHub 返回 ${response.status}` });
     }
     const declaredLength = Number(response.headers.get('content-length')) || 0;
@@ -190,6 +237,8 @@ function createLatestReleaseChecker({
 
 module.exports = {
   DEFAULT_RELEASE_API,
+  DEFAULT_RELEASE_ATOM,
+  extractAtomReleaseTag,
   normalizeReleaseTag,
   compareReleaseTags,
   createLatestReleaseChecker
