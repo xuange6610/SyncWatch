@@ -24,6 +24,8 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 > 当前状态：v2.2.9 已完成最终构建、启动验收、哈希核对并公开为 Latest。本版本只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
+当前正式发布：[v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9)，已发布并设为 Latest。
+
 本版本的交付清单是 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；完成核验后才会标记为 Latest。
 
 ## 在线参观
