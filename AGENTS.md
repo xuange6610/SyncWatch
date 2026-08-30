@@ -291,3 +291,9 @@
 - 原子运行 `33291265772` 的源码门禁、官方资产、Android 签名/模拟器启动和 Windows base 构建均成功；Windows Full Offline job `99206165386` 在准备 pinned cloudflared 时失败，`release-third-party-assets.js` 访问 cloudflared GitHub API 返回 HTTP 403。
 - 根因是 Full Offline job 虽已下载同轮 `official` artifact 到 `.cache/release-third-party`，但脚本仍会先校验上游 manifest；该 job 没有显式注入 `GH_TOKEN`，匿名 API 请求在托管 runner 上触发限流。修复：Windows base/full 两个 pinned Cloudflare 校验步骤均传入 `GH_TOKEN: ${{ github.token }}`，并在 `tests/release-atomic-workflow.test.js` 固化认证契约。
 - 失败运行未进入 Full Offline 打包、10 文件汇总或 Release 上传；不得使用候选 artifact。修复提交后必须将唯一 `v2.2.9` Tag 指向修复提交，再只触发一次完整原子发布。
+
+### 19. v2.2.9 原子发布无头浏览器悬停能力复盘（2026-08-31）
+
+- 原子运行 `33323029225` 的源码身份锁定成功，但源码门禁中的 `tests/browser-ui-smoke.js` 失败；Linux 无头 Chromium 报告 `(hover: hover) and (pointer: fine)` 为不匹配，因此产品代码按设计忽略合成的 `pointerenter`，测试却误判桌面悬停菜单没有展开。
+- 修复仅在该浏览器冒烟用例内部临时模拟精细指针悬停媒体能力，并继续验证点击固定、点击外部关闭、悬停展开和移出关闭四条行为，结束后恢复原生 `matchMedia`；不得删除产品端的真实设备能力门禁。
+- 该失败发生在任何应用构建和 Release 资产替换之前，线上 8 个维护者资产保持不变；修复经本地与 PR 门禁通过后，必须从新的最终注释 Tag 只触发一次完整原子发布。

@@ -276,6 +276,10 @@ async function main() {
     const desktopAutoCollapse = await evaluate(cdp, `(async () => {
       const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');
       const trigger = menu.querySelector(':scope > summary');
+      const nativeMatchMedia = window.matchMedia;
+      window.matchMedia = (query) => query === '(hover: hover) and (pointer: fine)'
+        ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+        : nativeMatchMedia.call(window, query);
       menu.open = false; menu.dataset.menuPinned = 'false';
       trigger.click();
       const clickPinned = menu.open && menu.dataset.menuPinned === 'true';
@@ -285,6 +289,7 @@ async function main() {
       const hoverOpened = menu.open;
       menu.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false, pointerType: 'mouse' }));
       await new Promise((resolve) => setTimeout(resolve, 180));
+      window.matchMedia = nativeMatchMedia;
       return { clickPinned, outsideClosed, hoverOpened, hoverClosed: !menu.open };
     })()`);
     assert.deepEqual(desktopAutoCollapse, { clickPinned: true, outsideClosed: true, hoverOpened: true, hoverClosed: true }, JSON.stringify(desktopAutoCollapse));
