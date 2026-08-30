@@ -1,6 +1,6 @@
 # SyncWatch 长期维护与交付要求
 
-当前 `release/v2.2.9` 为候选分支；Release 仍保持 pending，必须完成真实构建、哈希和 8+2 文件核验后才能更新线上 Latest。
+当前 `release/v2.2.9` 已完成真实构建、启动验收、哈希和 8+2 文件核验；Release `v2.2.9` 已公开并标记为 Latest。
 
 本文记录用户已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口，具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
 
@@ -117,11 +117,11 @@
 
 ## 13. 当前发布基线
 
-- 当前线上正式版本：`v2.2.8`；Release API 有 10 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
+- 当前线上正式版本：`v2.2.9`；Release API 有 8 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
-- 当前源码与发布状态：`v2.2.8` 的最终 Tag、Actions run `33249244151`、10 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成。
+- 当前源码与发布状态：`v2.2.9` 的最终 Tag `fa577838c4ec50d28e61e66765c9ab4260ad8322`、Actions run `33294235283`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
-- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7 的历史 Release 保持不变；v2.2.8 当前为 Latest。
+- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7、v2.2.8 的历史 Release 保持不变；v2.2.9 当前为 Latest。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。
 
 ### 14. v2.2.9 原子发布模拟器复盘（2026-08-30）
