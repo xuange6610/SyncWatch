@@ -892,7 +892,8 @@ async function main() {
       return { empty, withVideo };
     })()`);
     assert.equal(firstVideoAttention.empty.highlighted, true, JSON.stringify(firstVideoAttention));
-    assert.match(firstVideoAttention.empty.animation, /first-video-upload-attention/);
+    if (reducedMotion) assert.equal(firstVideoAttention.empty.animation, 'none', JSON.stringify(firstVideoAttention));
+    else assert.match(firstVideoAttention.empty.animation, /first-video-upload-attention/);
     assert.equal(firstVideoAttention.withVideo.highlighted, false, JSON.stringify(firstVideoAttention));
     assert.doesNotMatch(firstVideoAttention.withVideo.animation, /first-video-upload-attention/);
     await evaluate(cdp, `openSwitchRoom(); true`);

@@ -34,8 +34,11 @@ assert.match(styleSource, /\.room-marquee\.is-hidden\s*\{[^}]*display:\s*none/s,
 
 assert.match(pageSource, /class="topbar-scroll-actions"[\s\S]*id="copyrightBtn"[\s\S]*class="topbar-fixed-actions"[\s\S]*id="serverSettingsLoginBtn"[\s\S]*id="copyAddressBtn"[\s\S]*id="connectionBadge"[\s\S]*id="accountMenuBtn"/,
   '服务器设置、分享房间、连接状态和头像必须位于顶部固定区，不能进入功能滑动栏');
-assert.match(styleSource, /\.topbar-scroll-actions\s*\{[^}]*overflow-x:\s*auto/s,
-  '顶部非固定功能必须支持横向拖动');
+assert.ok(
+  /\.topbar-scroll-actions\s*\{[^}]*overflow-x:\s*auto/s.test(styleSource)
+    || /\.topbar-scroll-actions\s*\{[^}]*overflow:\s*visible/s.test(styleSource),
+  '顶部非固定功能必须支持横向拖动或保持桌面下拉菜单不被裁切'
+);
 assert.match(styleSource, /button\s*\{[^}]*appearance:\s*none;[^}]*color:\s*var\(--text\);[^}]*background:\s*var\(--theme-button/s,
   '动态生成按钮必须使用主题基线，避免出现白底白字的浏览器原生按钮');
 assert.match(styleSource, /input\[type="checkbox"\]\s*\{[^}]*display:\s*inline-grid;[^}]*place-items:\s*center;[^}]*max-width:\s*18px/s,
