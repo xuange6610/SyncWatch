@@ -234,6 +234,11 @@ assert.ok(
 );
 assert.match(workflows.windows, /Download official Node\.js Mobile 16 KB runtime/);
 assert.match(workflows.windows, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/);
+assert.doesNotMatch(
+  workflows.windows,
+  /profile:\s*pixel_7\b/,
+  'Android emulator smoke must not pin a device profile that is absent from current runner SDK images'
+);
 assert.match(
   workflows.windows,
   /script:\s*bash scripts\/android-emulator-smoke\.sh/,

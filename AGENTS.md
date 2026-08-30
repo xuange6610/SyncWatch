@@ -128,6 +128,8 @@
 - v2.2.7 原子运行 `33183457621` 已取消，原因是旧版工作流仍包含 macOS base jobs，macOS Server arm64 检查失败且 Windows/Android 构建被依赖链阻断；复用仓库已有的 Windows+Android 发布收敛提交（停用 macOS job、切换 10+2 文件契约、复用第三方缓存和成品门禁修复）后，下一次才允许重新触发一次原子发布。
 - v2.2.8 原子运行 `33248083944` 的源码门禁、官方资产、Android 签名构建和模拟器启动均成功；Windows base 在缓存未命中时未接收同轮 `official_assets` artifact，回退下载 cloudflared 被 GitHub API 403 拒绝。修复：`release/v2.2.8` 的 `windows_base` 显式依赖 `official_assets`，Windows reusable workflow 在准备 cloudflared 前下载同轮官方资产到 `.cache/release-third-party`，并由 `tests/release-atomic-workflow.test.js` 固化契约；必须从修复后的最终 Tag 重新执行一次原子发布。
 
+- v2.2.9 原子运行 `33285110772` 的源码门禁、官方资产、Android 签名构建和 Windows base 构建均成功；失败仅发生在 Android 模拟器准备阶段，Ubuntu 22.04 的 API 35 SDK 镜像没有 `pixel_7` 硬件 profile，`avdmanager create avd` 返回 `No device found matching --device pixel_7`。修复：移除 `release-windows.yml` 中过时的 `profile: pixel_7`，让 `reactivecircus/android-emulator-runner` 使用当前 runner 可用的默认 profile，并在 `tests/release-atomic-workflow.test.js` 固化不得重新 pin 该 profile；应用包仍须从修复后的最终 Tag 重新执行一次完整原子发布。
+
 ### 2026-08-29 本轮新增功能与验证要求
 
 - 网页浏览与共享分为两条真实路径：同步网址仅同步 URL、各端独立加载；启用前必须清空房间原视频/音频播放状态。要求一致实时画面时使用标签页或窗口共享，文案不得暗示 iframe 能同步画面。
