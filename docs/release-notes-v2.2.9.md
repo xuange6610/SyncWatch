@@ -6,11 +6,11 @@
 
 | 下载文件 | 运行角色 | 版本标识 | 最适合谁 | 一句话说明 |
 | --- | --- | --- | --- | --- |
-| `SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe` | 客户端 | Windows 体验版 | 普通成员 | 填服务器地址，加入已有房间 |
-| `SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe` | 服务器 | Windows 完整便携版 | 房主 | 解压后双击，直接开房 |
-| `SyncWatch-Android-v2.2.9-universal.apk` | 客户端 | Android | 手机用户 | 连接房间，也可在支持的设备上运行手机服务器 |
-| `node-v24.19.0-x64.msi` / `node-v24.19.0-arm64.msi` | 服务器环境 | Node.js 24.19.0 | 源码或独立服务器用户 | 官方 Node.js 安装包，桌面完整包不用另装 |
-| `cloudflared-windows-x64.exe` / 两个 Windows MSI | 服务器工具 | Cloudflare Tunnel | 需要公网访问的用户 | 官方公网连接工具，不是 SyncWatch 启动程序 |
+| [`SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe) | 客户端 | Windows 体验版 | 普通成员 | 填服务器地址，加入已有房间 |
+| [`SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe) | 服务器 | Windows 完整便携版 | 房主 | 解压后双击，直接开房 |
+| [`SyncWatch-Android-v2.2.9-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Android-v2.2.9-universal.apk) | 客户端 | Android | 手机用户 | 连接房间，也可在支持的设备上运行手机服务器 |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/node-v24.19.0-arm64.msi) | 服务器环境 | Node.js 24.19.0 | 源码或独立服务器用户 | 官方 Node.js 安装包，桌面完整包不用另装 |
+| [`cloudflared-windows-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/cloudflared-windows-x64.exe) / [`x64 MSI`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/cloudflared-windows-x64-installer.msi) / [`x86 MSI`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/cloudflared-windows-x86-installer.msi) | 服务器工具 | Cloudflare Tunnel | 需要公网访问的用户 | 官方公网连接工具，不是 SyncWatch 启动程序 |
 
 ## 从 v2.2.8 到 v2.2.9 的更新
 
@@ -62,7 +62,7 @@ Release 中的 `node-v24.19.0-x64.msi` 和 `node-v24.19.0-arm64.msi` 仅用于�
 
 ## 测试与限制
 
-发布前已运行仓库规范、核心集成、平台契约、完整离线包和隐私检查；最终 Tag 对应的 Actions 已完成 Windows/Android 构建、启动流程、文件大小与 SHA-256 核验，并完成 8 个维护者资产加 2 个源码归档的 10 文件审计。
+发布前已运行仓库规范、核心集成、平台契约、完整离线包和隐私检查；最终 Tag `ba18ae482ae3604a2bca92246eeb365b8236735f` 对应的 Actions run `33323728228` 已完成 Windows/Android 构建、启动流程、Microsoft Defender 扫描、文件大小与 SHA-256 核验，并完成 8 个维护者资产加 2 个源码归档的 10 文件审计。
 
 所有 SyncWatch 应用资产必须由最终 Tag 对应源码真实重建，不能用旧包改名或占位文件替代。
 
