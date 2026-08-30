@@ -953,7 +953,7 @@ async function main() {
       const targets = [...actions.querySelectorAll('button:not(.is-hidden)')]
         .filter((target) => target.getBoundingClientRect().width > 0 && target.getBoundingClientRect().height > 0);
       const accountLabels = [...elements.accountDropdown.querySelectorAll('button')].map((button) => button.textContent.trim());
-      const clientDownloadIndex = accountLabels.indexOf('下载服务器客户端');
+      const clientDownloadIndex = accountLabels.indexOf('下载 Windows 客户端');
       const androidDownloadIndex = accountLabels.indexOf('下载安卓客户端');
       return {
         android: document.body.classList.contains('android-client'), open: document.body.classList.contains('mobile-actions-open'),
@@ -1063,6 +1063,14 @@ async function main() {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
       const f2Focused = document.activeElement === elements.fullscreenChatInput;
       const hintHidden = elements.fullscreenShortcutHint.classList.contains('is-hidden');
+      elements.videoPlayer.focus();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      const enterFocused = document.activeElement === elements.fullscreenChatInput;
+      elements.videoPlayer.focus();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', bubbles: true, cancelable: true }));
+      const keyboardLocked = state.fullscreenInteractionLocked && elements.playerContainer.classList.contains('fullscreen-interaction-locked');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'L', bubbles: true, cancelable: true }));
+      const keyboardUnlocked = !state.fullscreenInteractionLocked && !elements.playerContainer.classList.contains('fullscreen-interaction-locked');
       elements.fullscreenLockBtn.click();
       const locked = state.fullscreenInteractionLocked && elements.playerContainer.classList.contains('fullscreen-interaction-locked') && elements.playerSeekSlider.disabled && !elements.videoPlayer.controls;
       elements.fullscreenLockBtn.click();
@@ -1071,9 +1079,9 @@ async function main() {
       updateFullscreenAdjustmentGesture({ pointerId: 77, clientX: 100, clientY: 120, preventDefault() {} });
       const brightnessRaised = state.fullscreenBrightness > 1 && /brightness/.test(elements.videoPlayer.style.filter);
       endFullscreenAdjustmentGesture({ pointerId: 77 });
-      return { f2Focused, hintHidden, locked, unlocked, brightnessRaised };
+      return { f2Focused, enterFocused, hintHidden, keyboardLocked, keyboardUnlocked, locked, unlocked, brightnessRaised };
     })()`);
-    assert.deepEqual(fullscreenV226Controls, { f2Focused: true, hintHidden: true, locked: true, unlocked: true, brightnessRaised: true }, JSON.stringify(fullscreenV226Controls));
+    assert.deepEqual(fullscreenV226Controls, { f2Focused: true, enterFocused: true, hintHidden: true, keyboardLocked: true, keyboardUnlocked: true, locked: true, unlocked: true, brightnessRaised: true }, JSON.stringify(fullscreenV226Controls));
     const fullscreenLandscapePath = path.join(outputDir, 'fullscreen-812x375.png'); await capture(cdp, fullscreenLandscapePath); images.push(fullscreenLandscapePath);
     await evaluate(cdp, `state.pseudoFullscreen = false; handleFullscreenChange(); true`);
     const fullscreenCleanup = await evaluate(cdp, `(() => {
@@ -1343,6 +1351,36 @@ async function main() {
     await waitFor(() => evaluate(cdp, `!elements.ownerExitModal.classList.contains('is-hidden') && document.activeElement?.dataset?.ownerExit === 'leave'`), '再次打开保留凭据退出选择');
     await evaluate(cdp, `elements.ownerExitModal.querySelector('[data-owner-exit="leave"]').click(); true`);
     await waitFor(() => evaluate(cdp, `Boolean(typeof state !== 'undefined' && state.socket?.connected && !state.authenticated && !elements.loginPage.classList.contains('is-hidden'))`), '保留凭据退出并返回登录页');
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await evaluate(cdp, `document.body.classList.remove('android-client'); window.scrollTo(0, 0); true`);
+    await delay(180);
+    const plainMobileLoginScroll = await evaluate(cdp, `(() => {
+      const main = document.querySelector('main');
+      const page = elements.loginPage;
+      const before = window.scrollY;
+      const metrics = {
+        bodyHeight: document.body.scrollHeight,
+        viewportHeight: innerHeight,
+        bodyOverflowY: getComputedStyle(document.body).overflowY,
+        mainHeight: main?.getBoundingClientRect().height || 0,
+        mainOverflowY: main ? getComputedStyle(main).overflowY : '',
+        pageHeight: page?.getBoundingClientRect().height || 0,
+        pageOverflowY: page ? getComputedStyle(page).overflowY : '',
+        pageTouchAction: page ? getComputedStyle(page).touchAction : ''
+      };
+      return { before, metrics };
+    })()`);
+    assert.ok(plainMobileLoginScroll.metrics.bodyHeight > plainMobileLoginScroll.metrics.viewportHeight, JSON.stringify(plainMobileLoginScroll));
+    assert.equal(plainMobileLoginScroll.metrics.bodyOverflowY, 'auto', JSON.stringify(plainMobileLoginScroll));
+    assert.equal(plainMobileLoginScroll.metrics.mainOverflowY, 'visible', JSON.stringify(plainMobileLoginScroll));
+    assert.equal(plainMobileLoginScroll.metrics.pageOverflowY, 'visible', JSON.stringify(plainMobileLoginScroll));
+    assert.equal(plainMobileLoginScroll.metrics.pageTouchAction, 'pan-y', JSON.stringify(plainMobileLoginScroll));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 720, radiusX: 8, radiusY: 8, force: 1 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: 250, radiusX: 8, radiusY: 8, force: 1 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await delay(120);
+    const plainMobileLoginAfterSwipe = await evaluate(cdp, `window.scrollY`);
+    assert.ok(plainMobileLoginAfterSwipe > 8, JSON.stringify({ plainMobileLoginScroll, plainMobileLoginAfterSwipe }));
     const retainedLogout = await evaluate(cdp, `({
       username: elements.username.value,
       password: elements.password.value,
@@ -1373,80 +1411,12 @@ async function main() {
       retainedStorage: sessionStorage.getItem('syncwatchRetainedLogin')
     })`);
     assert.deepEqual(plainLogout, { username: '', password: '', token: null, retainedStorage: null });
-    const macDownloads = await evaluate(cdp, `(() => {
-      const ids = ['downloadMacServerBtn', 'downloadMacClientBtn'];
-      const buttons = ids.map((id) => document.getElementById(id));
-      const container = buttons[0]?.closest('.login-download-actions');
-      buttons[0]?.click();
-      const result = {
-        allPresent: buttons.every(Boolean),
-        noHorizontalOverflow: Boolean(container && container.scrollWidth <= container.clientWidth + 1),
-        modalVisible: Boolean(elements.macDownloadModal && !elements.macDownloadModal.classList.contains('is-hidden')),
-        unavailableExplained: Boolean(elements.confirmMacDownloadBtn?.disabled && /尚未上传/.test(elements.macDownloadStatus?.textContent || '')),
-        availableReady: Boolean(
-          !elements.confirmMacDownloadBtn?.disabled
-          && elements.macDownloadArch?.value
-          && elements.macDownloadFormat?.value
-          && elements.macDownloadAvailability?.querySelector('.mac-download-availability-row')
-        )
-      };
-      elements.closeMacDownloadBtn?.click();
-      return result;
-    })()`);
-    assert.equal(macDownloads.allPresent, true, JSON.stringify(macDownloads));
-    assert.equal(macDownloads.noHorizontalOverflow, true, JSON.stringify(macDownloads));
-    assert.equal(macDownloads.modalVisible, true, JSON.stringify(macDownloads));
-    assert.equal(macDownloads.unavailableExplained || macDownloads.availableReady, true, JSON.stringify(macDownloads));
-    const availableMacDownloads = await evaluate(cdp, `(() => {
-      const previousDownloads = state.publicConfig.macServerDownloads;
-      const previousArchitectures = state.publicConfig.macServerDownloadArchitectures;
-      const originalAnchorClick = HTMLAnchorElement.prototype.click;
-      let requestedHref = '';
-      try {
-        state.publicConfig.macServerDownloads = [
-          { architecture: 'arm64', formats: ['dmg', 'zip'], preferredFormat: 'dmg', sources: ['local', 'remote'] },
-          { architecture: 'x64', formats: ['zip'], preferredFormat: 'zip', sources: ['remote'] }
-        ];
-        state.publicConfig.macServerDownloadArchitectures = ['arm64', 'x64'];
-        elements.macDownloadFormat.replaceChildren();
-        HTMLAnchorElement.prototype.click = function () { requestedHref = this.getAttribute('href') || ''; };
-        openMacDownload('server');
-        const initial = {
-          architecture: elements.macDownloadArch.value,
-          formats: Array.from(elements.macDownloadFormat.options, (option) => option.value),
-          availabilityRows: elements.macDownloadAvailability.querySelectorAll('.mac-download-availability-row').length,
-          sourceLabels: elements.macDownloadAvailability.textContent,
-          buttonText: elements.confirmMacDownloadBtn.textContent
-        };
-        elements.macDownloadArch.value = 'x64';
-        elements.macDownloadArch.dispatchEvent(new Event('change', { bubbles: true }));
-        const intel = {
-          format: elements.macDownloadFormat.value,
-          formats: Array.from(elements.macDownloadFormat.options, (option) => option.value),
-          buttonText: elements.confirmMacDownloadBtn.textContent,
-          status: elements.macDownloadStatus.textContent
-        };
-        confirmMacDownload();
-        return { initial, intel, requestedHref, modalClosed: elements.macDownloadModal.classList.contains('is-hidden') };
-      } finally {
-        HTMLAnchorElement.prototype.click = originalAnchorClick;
-        state.publicConfig.macServerDownloads = previousDownloads;
-        state.publicConfig.macServerDownloadArchitectures = previousArchitectures;
-        closeMacDownload();
-      }
-    })()`);
-    assert.deepEqual(availableMacDownloads.initial.architecture, 'arm64');
-    assert.deepEqual(availableMacDownloads.initial.formats, ['dmg', 'zip']);
-    assert.equal(availableMacDownloads.initial.availabilityRows, 2);
-    assert.match(availableMacDownloads.initial.sourceLabels, /服务器本地文件/);
-    assert.match(availableMacDownloads.initial.sourceLabels, /远程 HTTPS/);
-    assert.equal(availableMacDownloads.initial.buttonText, '下载 DMG');
-    assert.deepEqual(availableMacDownloads.intel.formats, ['zip']);
-    assert.equal(availableMacDownloads.intel.format, 'zip');
-    assert.equal(availableMacDownloads.intel.buttonText, '下载 ZIP');
-    assert.match(availableMacDownloads.intel.status, /Intel x64.*ZIP.*远程 HTTPS/);
-    assert.equal(availableMacDownloads.requestedHref, '/api/macos-server-download?arch=x64&format=zip');
-    assert.equal(availableMacDownloads.modalClosed, true);
+    const retiredPlatformUi = await evaluate(cdp, `({
+      macServerButton: Boolean(document.getElementById('downloadMacServerBtn')),
+      macClientButton: Boolean(document.getElementById('downloadMacClientBtn')),
+      macDownloadModal: Boolean(document.getElementById('macDownloadModal'))
+    })`);
+    assert.deepEqual(retiredPlatformUi, { macServerButton: false, macClientButton: false, macDownloadModal: false });
     await evaluate(cdp, `elements.serverSettingsLoginBtn.click(); elements.adminUsername.value = 'admin'; elements.adminPassword.value = 'admin888'; elements.loadAdminBtn.click(); true`);
     await waitFor(() => evaluate(cdp, `Boolean(!elements.agreementModal.classList.contains('is-hidden') || state.authenticated)`), '超级管理员登录协议');
     if (await evaluate(cdp, `Boolean(!elements.agreementModal.classList.contains('is-hidden'))`)) {

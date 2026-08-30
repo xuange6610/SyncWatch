@@ -1,6 +1,6 @@
 # SyncWatch 长期维护与交付要求
 
-当前 `release/v2.2.8` 为候选分支；Release 仍保持 pending，必须完成真实构建、哈希和 10+2 文件核验后才能更新线上 Latest。
+当前 `release/v2.2.9` 已完成真实构建、启动验收、哈希和 8+2 文件核验；Release `v2.2.9` 已公开并标记为 Latest。
 
 本文记录用户已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口，具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
 
@@ -60,22 +60,22 @@
 
 ## 7. GitHub Release 固定标准
 
-- 每个正式版本严格遵守 [Release 资产清单](../release/release-manifest.md)：10 个维护者真实资产，加 GitHub 自动生成的 2 个源码归档，页面共 12 个可见文件。
-- 固定分组为 Windows 4、Android 1、macOS 客户端 4、macOS 服务器 4、macOS 完整离线版 4、Node.js 4、cloudflared 5。任何缺失、重复、空文件或额外旧式资产都不算完整发布。
-- Windows 必须同时提供体验版、标准版、完整离线安装 EXE 和完整离线便携 EXE；安装版和独立 EXE 不能互相替代。
-- 完整离线包必须包含其承诺的服务器运行环境、cloudflared、Windows 客户端、Android APK、macOS Intel/Apple Silicon 客户端和服务器离线资源，并通过文件闭包与体积门禁。
-- macOS x64/arm64 的 DMG/ZIP 必须由真实 macOS runner 构建；不能在 Windows 上伪造。Android APK 必须使用项目发布签名并包含声明的 ABI。
+- 每个正式版本严格遵守 [Release 资产清单](../release/release-manifest.md)：8 个维护者真实资产，加 GitHub 自动生成的 2 个源码归档，页面共 10 个可见文件。
+- 固定分组为 Windows 体验版与完整便携版 2、Android 1、Node.js Windows 2、cloudflared Windows 3。任何缺失、重复、空文件或额外旧式资产都不算完整发布。
+- Windows 当前只提供体验版和完整离线便携版；标准版和完整安装版不进入 v2.2.9 新发布集合。
+- 完整离线便携版必须包含其承诺的服务器运行环境、cloudflared、Windows 客户端和 Android APK 离线资源，并通过文件闭包与体积门禁。
+- v2.2.9 起不再构建或上传 macOS 新包；Android APK 必须使用项目发布签名并包含声明的 ABI，历史 macOS Release 资产不得删除。
 - 每个资产发布前核对名称、版本、平台、架构、非空字节大小、SHA-256、包内文件和实际启动/功能结果。
-- 任何历史 Release、历史 tag 和旧版本资产都必须保留。发现当前版本资产有问题时，只能处理当前版本维护者资产；修复验证后必须一次恢复完整 26 项，再对外宣称完成。
+- 任何历史 Release、历史 tag 和旧版本资产都必须保留。发现当前版本资产有问题时，只能处理当前版本维护者资产；修复验证后必须一次恢复完整 8 项，再对外宣称完成。
 - GitHub API 资产数不足 26、网页总数不足 28 或 Actions/验收失败时，版本状态必须标记未完成。
 
 ## 8. Release 正文与更新公告
 
 - Release 第一屏必须包含：产品简短介绍、首次修改默认管理员密码提示，以及“下载文件 / 版本标识 / 最适合谁 / 一句话说明”表格。
-- 每个下载名称必须是可点击的当前版本真实资产链接，并说明体验版、标准版、完整版、平台/架构、用途、安装方式和必要环境。
+- 每个下载名称必须是可点击的当前版本真实资产链接，并说明体验版、完整便携版、平台/架构、用途、运行方式和必要环境。
 - 永久说明必须保留上一正式版本已有的完整结构，包括“普通用户怎么选”“Windows + Android 套装”“一键运行包含什么”“架构支持边界”“cloudflared 独立工具”“Node.js 官方环境包”“首次启动”“安全与许可”。
 - “从上一版本到当前版本的更新公告”只列实际变化；未变化的功能放在“保持不变”中，不能把旧功能重新包装成新增。
-- 公告必须逐项检查并写全：版本字段、缺陷修复、Android、Windows/macOS、UI/颜色/排版/交互、文档与链接、构建脚本、测试、Actions、Release 资产和已知限制。任何实际提交中的用户可见变化都不能遗漏。
+- 公告必须逐项检查并写全：版本字段、缺陷修复、Android、Windows、UI/颜色/排版/交互、文档与链接、构建脚本、测试、Actions、Release 资产和已知限制。任何实际提交中的用户可见变化都不能遗漏。
 - 公告中的能力、测试数量、设备、哈希、文件大小和在线状态必须有代码、日志、Actions 或 Release API 证据。
 
 ## 9. Android 验收要求
@@ -84,7 +84,7 @@
 - 与登录或手机服务器有关的修复至少验证：APK 安装、内嵌 Node.js 服务启动、管理员登录、普通成员或游客登录、进入同一房间、断开与重新连接，并检查 Logcat 无对应 FATAL、Node 退出或服务端事件异常。
 - 保留 Node.js Mobile 18 对缺少 `crypto.randomUUID` 和全局 `Intl` 的兼容回归测试；修改相关服务端逻辑时运行 `npm run test:android-node-compat`。
 - 用户报告特定真机问题时，应尽量在该设备或等价系统环境复现；没有设备控制权时必须明确写“该真机未验证”，不能声称已经在该机型测试通过。
-- Android 本机服务器可用于本机、同一 Wi-Fi 或热点局域网。APK 不内嵌桌面系统的 cloudflared；手机跨网连接应使用已开启 Tunnel/HTTPS 的 Windows、macOS、Linux 或云服务器，不能虚假宣传手机本机一键 Tunnel 已实现。
+- Android 本机服务器可用于本机、同一 Wi-Fi 或热点局域网。APK 不内嵌桌面系统的 cloudflared；手机跨网连接应使用已开启 Tunnel/HTTPS 的 Windows、Linux 或云服务器，不能虚假宣传手机本机一键 Tunnel 已实现。
 
 ## 10. 文档、Wiki 与贡献流程
 
@@ -110,21 +110,31 @@
 2. 运行与风险相称的测试；常规门禁至少考虑 `npm run test:repo` 和 `npm test`，发布任务还要运行平台与成品契约。
 3. 运行必要 build 或真实运行验证；缺少平台环境时明确列出未运行项。
 4. 按实际变化同步 `PRODUCT.md`、`DESIGN.md`、`README.md`、`docs/`、Wiki 与 Release notes，避免无意义全量重写。
-5. 涉及发布时核对 26 个 API 资产、28 个页面文件、哈希、大小、下载链接、Release 正文、latest 标记和 Actions 状态。
+5. 涉及发布时核对 8 个 API 资产、10 个页面可见文件、哈希、大小、下载链接、Release 正文、latest 标记和 Actions 状态。
 6. 涉及线上页面时验证 canonical URL，而不只检查本地文件或缓存规避链接。
 7. 最终汇报必须说明改了什么、提交/分支、测试与构建证据、线上状态、未验证项和剩余风险。
 8. 未经最终确认不删除用户备份或无法恢复的材料；不得为了“看起来干净”隐藏残留和警告。
 
 ## 13. 当前发布基线
 
-- 当前线上正式版本：`v2.2.8`；Release API 有 10 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
+- 当前线上正式版本：`v2.2.9`；Release API 有 8 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
-- 当前源码与发布状态：`v2.2.8` 的最终 Tag、Actions run `33249244151`、10 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成。
+- 当前源码与发布状态：`v2.2.9` 的最终 Tag `fa577838c4ec50d28e61e66765c9ab4260ad8322`、Actions run `33294235283`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
-- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7 的历史 Release 保持不变；v2.2.8 当前为 Latest。
+- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7、v2.2.8 的历史 Release 保持不变；v2.2.9 当前为 Latest。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。
 
-### 15. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
+### 14. v2.2.9 原子发布模拟器复盘（2026-08-30）
+
+- 原子运行 `33285110772` 的源码门禁、官方资产、Android 签名构建和 Windows base 构建均成功；失败仅发生在 Android 模拟器准备阶段，Ubuntu 22.04 的 API 35 SDK 镜像没有 `pixel_7` 硬件 profile，`avdmanager create avd` 返回 `No device found matching --device pixel_7`。修复：移除 `release-windows.yml` 中过时的 `profile: pixel_7`，让 `reactivecircus/android-emulator-runner` 使用当前 runner 可用的默认 profile，并在 `tests/release-atomic-workflow.test.js` 固化不得重新 pin 该 profile；应用包仍须从修复后的最终 Tag 重新执行一次完整原子发布。
+
+### 15. v2.2.9 原子发布 Cloudflare API 限流复盘（2026-08-30）
+
+- 原子运行 `33291265772` 的源码门禁、官方资产、Android 签名/模拟器启动和 Windows base 构建均成功；Windows Full Offline job `99206165386` 在准备 pinned cloudflared 时失败，`release-third-party-assets.js` 访问 cloudflared GitHub API 返回 HTTP 403。
+- 根因是 Full Offline job 虽已下载同轮 `official` artifact 到 `.cache/release-third-party`，但脚本仍会先校验上游 manifest；该 job 没有显式注入 `GH_TOKEN`，匿名 API 请求在托管 runner 上触发限流。修复：Windows base/full 两个 pinned Cloudflare 校验步骤均传入 `GH_TOKEN: ${{ github.token }}`，并在 `tests/release-atomic-workflow.test.js` 固化认证契约。
+- 失败运行未进入 Full Offline 打包、10 文件汇总或 Release 上传；不得使用候选 artifact。修复提交后必须将唯一 `v2.2.9` Tag 指向修复提交，再只触发一次完整原子发布。
+
+### 16. v2.2.7 登录快捷按钮尺寸回归（2026-08-29）
 
 - Electron 服务端登录页的五个服务器快捷入口必须保留，但按钮必须保持紧凑：`public/css/style.css` 中普通规则和 `body.electron-server` 粗指针覆盖均固定 30px 高；Electron 实测高度 30px、内边距 `3px 8px`、字号 11px。
 - 新增/维护 `tests/round29-layout.test.js` 中的 CSS 回归断言，防止通用触控目标样式再次覆盖桌面快捷入口。入口在普通观影房间隐藏，Android 客户端不复制到触控操作面板。

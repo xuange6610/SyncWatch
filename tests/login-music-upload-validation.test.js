@@ -86,6 +86,37 @@ async function main() {
     assert.match(validResult.tracks[0].storedName, /^[a-f0-9-]+\.wav$/i);
     assert.equal(fs.readFileSync(path.join(loginMusicDir, validResult.tracks[0].storedName)).compare(validBytes), 0);
 
+    const replacementTrack = { ...validResult.tracks[0], title: 'replacement-theme' };
+    const replacement = await emitAck(socket, 'admin-action', {
+      action: 'set-login-music', enabled: true, title: replacementTrack.title,
+      url: 'https://old.example.com/stale-theme.mp3', currentTrackId: replacementTrack.id,
+      tracks: [replacementTrack]
+    });
+    assert.equal(replacement.success, true, replacement.error);
+    assert.equal(replacement.loginMusic.currentTrackId, replacementTrack.id);
+    assert.equal(replacement.loginMusic.url, replacementTrack.url,
+      'the active URL must follow the uploaded track, not a stale form URL');
+    assert.equal(replacement.loginMusic.title, replacementTrack.title,
+      'the active title must follow the selected uploaded track');
+
+    const external = await emitAck(socket, 'admin-action', {
+      action: 'set-login-music', enabled: true, title: 'external-theme',
+      url: 'https://media.example.com/external-theme.mp3'
+    });
+    assert.equal(external.success, true, external.error);
+    assert.equal(external.loginMusic.url, 'https://media.example.com/external-theme.mp3');
+    assert.ok(external.loginMusic.tracks.some((track) => track.url === external.loginMusic.url),
+      'an HTTPS-only music address must be represented in the playlist');
+
+    const cleared = await emitAck(socket, 'admin-action', {
+      action: 'delete-login-music', ids: external.loginMusic.tracks.map((track) => track.id)
+    });
+    assert.equal(cleared.success, true, cleared.error);
+    assert.equal(cleared.loginMusic.url, '');
+    assert.equal(cleared.loginMusic.title, '');
+    assert.equal(cleared.loginMusic.currentTrackId, '');
+    assert.equal(cleared.loginMusic.tracks.length, 0);
+
     const filesAfterValidUpload = fs.readdirSync(loginMusicDir).sort();
     const damagedResponse = await fetch(`${baseUrl}/api/login-music-upload`, {
       method: 'POST', headers: { Authorization: `Bearer ${login.token}` },

@@ -8,7 +8,6 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const zlib = require('zlib');
 
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), `syncwatch-tunnel-runtime-${process.pid}-`));
 process.env.SYNCWATCH_SMOKE_MODE = '1';
@@ -27,13 +26,7 @@ assert.deepEqual(_test.cloudflaredRuntime('win32', 'ia32'), {
 });
 assert.equal(_test.cloudflaredRuntime('win32', 'arm64').assetName, 'cloudflared-windows-amd64.exe');
 assert.equal(_test.cloudflaredRuntime('win32', 'arm64').emulated, true);
-assert.deepEqual(_test.cloudflaredRuntime('darwin', 'x64'), {
-  platform: 'darwin', arch: 'x64', binaryName: 'cloudflared',
-  assetName: 'cloudflared-darwin-amd64.tgz', archive: 'tgz'
-});
-assert.equal(_test.cloudflaredRuntime('darwin', 'arm64').assetName, 'cloudflared-darwin-arm64.tgz');
 assert.throws(() => _test.cloudflaredRuntime('linux', 'x64'), /不支持自动安装/);
-assert.throws(() => _test.cloudflaredRuntime('darwin', 'ia32'), /不支持自动安装/);
 
 assert.deepEqual(
   [0, 1, 2, 3, 4, 5, 12].map((attempt) => _test.tunnelRestartDelayMs(attempt)),
@@ -69,33 +62,6 @@ const hashFixture = path.join(temporaryRoot, 'hash.txt');
 fs.writeFileSync(hashFixture, 'abc');
 assert.equal(_test.fileSha256(hashFixture), crypto.createHash('sha256').update('abc').digest('hex'));
 
-function tarGzWithFile(name, contents) {
-  const header = Buffer.alloc(512);
-  header.write(name, 0, 100, 'utf8');
-  header.write('0000755\0', 100, 8, 'ascii');
-  header.write('0000000\0', 108, 8, 'ascii');
-  header.write('0000000\0', 116, 8, 'ascii');
-  header.write(`${contents.length.toString(8).padStart(11, '0')}\0`, 124, 12, 'ascii');
-  header.write('00000000000\0', 136, 12, 'ascii');
-  header.fill(0x20, 148, 156);
-  header[156] = '0'.charCodeAt(0);
-  header.write('ustar\0', 257, 6, 'ascii');
-  header.write('00', 263, 2, 'ascii');
-  const checksum = header.reduce((sum, byte) => sum + byte, 0);
-  header.write(`${checksum.toString(8).padStart(6, '0')}\0 `, 148, 8, 'ascii');
-  const padding = Buffer.alloc((512 - (contents.length % 512)) % 512);
-  return zlib.gzipSync(Buffer.concat([header, contents, padding, Buffer.alloc(1024)]));
-}
-
-const payload = Buffer.alloc(1_000_321, 0x5a);
-const archive = path.join(temporaryRoot, 'cloudflared.tgz');
-const extracted = path.join(temporaryRoot, 'cloudflared');
-fs.writeFileSync(archive, tarGzWithFile('release/cloudflared', payload));
-const extraction = _test.extractCloudflaredTarGz(archive, extracted);
-assert.equal(extraction.entryName, 'release/cloudflared');
-assert.equal(fs.statSync(extracted).size, payload.length);
-assert.equal(_test.fileSha256(extracted), crypto.createHash('sha256').update(payload).digest('hex'));
-
 const source = fs.readFileSync(path.join(__dirname, '..', 'electron-pink.js'), 'utf8');
 const rendererSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
 const stopSource = source.match(/async function stop\(\)[\s\S]*?return \{ \.\.\.current \};\s*\}/)?.[0] || '';
@@ -103,7 +69,7 @@ const statusSource = source.match(/status:\s*async\s*\(\)\s*=>\s*\{[\s\S]*?retur
 assert.match(source, /restartEligibleProcess === tunnelProcess[\s\S]*?scheduleAutoRestart\(failure\)/);
 assert.match(source, /function scheduleAutoRestart[\s\S]*?tunnelRestartDelayMs\(autoRestartAttempts\)/);
 assert.match(source, /const lastPublicUrl = automaticRecovery \? String\(current\.lastPublicUrl \|\| ''\) : ''/);
-assert.match(source, /runtime\.platform === 'darwin' \? \[`cloudflared-darwin-\$\{runtime\.arch\}`\] : \[\]/);
+assert.doesNotMatch(source, /darwin|macOS|macos/);
 assert.match(stopSource, /cancelAutoRestart\(\)/);
 assert.match(stopSource, /desiredTunnel = null/);
 assert.doesNotMatch(statusSource, /await\s+start\s*\(/);
@@ -272,7 +238,7 @@ async function settleWithin(promise, timeoutMs = 1000) {
   } finally {
     await new Promise((resolve) => proxyServer.close(resolve));
   }
-  console.log('Tunnel runtime, platform selection, archive verification, adapter filtering, and recovery contracts passed.');
+console.log('Windows tunnel runtime, signature path, adapter filtering, and recovery contracts passed.');
 })().catch((error) => {
   console.error(error.stack || error.message);
   process.exitCode = 1;

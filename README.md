@@ -22,9 +22,11 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前正式发布：[v2.2.8](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.8)，已完成最终 Tag 构建、原子发布、10 个维护者资产、两个 GitHub 源码归档，已正式发布并设为 Latest。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.2.9 已完成最终构建、启动验收、哈希核对并公开为 Latest。本版本只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-本项目正式 Release 的固定交付契约是 10 个维护者资产，加两个 GitHub 源码归档，共 12 个文件；v2.2.8 已按此清单发布。
+当前正式发布：[v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9)，已发布并设为 Latest。
+
+本版本的交付清单是 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；完成核验后才会标记为 Latest。
 
 ## 在线参观
 
@@ -45,22 +47,19 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 | 下载文件 | 运行角色 | 适合谁 | 作用 |
 | --- | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
-| [`SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe) | **服务器** | 标准版；房主 | 绿色便携服务器，内置运行环境和 cloudflared，双击即用 |
-| [`SyncWatch-v2.2.8-Full-Offline-Installer-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-v2.2.8-Full-Offline-Installer-x64.exe) | **服务器** | 完整版；房主 | 安装向导和完整服务器运行时；离线内嵌 Windows 客户端与 Android APK |
-| [`SyncWatch-v2.2.8-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-v2.2.8-Full-Offline-Portable-x64.exe) | **服务器** | 完整版；Windows 房主 | 无需安装的独立 EXE；功能和内嵌文件与安装完整版一致 |
-| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
-| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
-| [`SyncWatch-Android-v2.2.8-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Android-v2.2.8-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
-| macOS 新包 | 本版本不构建或上传；历史 Release 资产保留 | macOS 用户请使用历史版本或浏览器连接 Windows/自托管服务器 |
+| [`SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
+| [`SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
+| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
+| [`SyncWatch-Android-v2.2.9-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Android-v2.2.9-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
 | [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 10 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
-| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.8.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.8.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
+| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
 ## 第一次启动服务器
 
 ### 使用服务器 EXE
 
-1. 从 Releases 下载 `Full-Offline-Installer` 安装完整版、`Full-Offline-Portable` 独立 EXE 完整版，或下载 `Standard-Server-Portable` 绿色标准版。
+1. 从 Releases 下载 `SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe`，双击即可开房。
 2. 安装版按向导选择目录并启动；独立完整版和标准版放进普通文件夹后双击。Windows 防火墙询问时，只按你的实际网络环境允许访问。
 3. 浏览器会打开 `http://127.0.0.1:20311`；如果端口被占用，以软件显示的地址为准。
 4. 使用默认管理员账号 `admin`、密码 `admin888` 登录。
@@ -104,7 +103,7 @@ pnpm start
 ### 同一个 Wi-Fi / 局域网
 
 1. 房主保持服务器运行，不要关闭服务器窗口。
-2. 在软件中复制显示的局域网地址，例如 `http://192.0.2.10:20311`。
+2. 在软件中分享显示的内网地址，例如 `http://192.0.2.10:20311`。
 3. 成员在客户端中填写地址，或直接用浏览器打开。
 4. 成员登录或按服务器规则注册，再选择房间。
 5. 房主选择影片并开始播放，成员端会跟随共同播放状态。
@@ -119,7 +118,7 @@ pnpm start
 4. 只把成员链接发给可信成员，不公开带房主权限的链接、令牌或管理密码。
 5. 临时地址可能在重启后变化；需要固定域名时请阅读服务器部署教程。
 
-如果出现“Cloudflare 临时地址接口连接超时”，新版会在物理直连不可用或新地址无法验证时自动切换连接策略；仍失败时取消“绕过系统代理”并运行“网络诊断与修复”。Clash/FlClash/VPN/TUN Fake-IP 用户应让 `cloudflared.exe` 与 `*.trycloudflare.com`、`*.argotunnel.com` 使用同一条可用网络规则。独立安装、官方地址、Windows/macOS 命令和 Node.js 教程见 [cloudflared 与 Node.js 安装使用教程](docs/runtime-installation.md)。
+如果出现“Cloudflare 临时地址接口连接超时”，新版会在物理直连不可用或新地址无法验证时自动切换连接策略；仍失败时取消“绕过系统代理”并运行“网络诊断与修复”。Clash/FlClash/VPN/TUN Fake-IP 用户应让 `cloudflared.exe` 与 `*.trycloudflare.com`、`*.argotunnel.com` 使用同一条可用网络规则。独立安装、官方地址和 Node.js 教程见 [cloudflared 与 Node.js 安装使用教程](docs/runtime-installation.md)。
 
 Cloudflare Tunnel 从本机回源时，服务器会信任回环地址和服务器自身网卡地址，并从 `X-Forwarded-For` 右侧开始剥离可信代理节点，因此不同公网客户端会保留各自的真实来源 IP，游客限额不会再全部落到同一个穿透 IP。Docker、Nginx 或 frp 运行在其他主机/容器网段时，须显式设置 `SYNCWATCH_TRUSTED_PROXIES`，或在 Node/Electron/独立包启动时传入 `--trusted-proxies=172.18.0.0/16,10.0.0.5`；命令行值优先于环境变量。只填实际受控的代理地址；`0.0.0.0/0` 和 `::/0` 会被当作无效配置 fail-closed 忽略。
 
@@ -137,7 +136,7 @@ Cloudflare Tunnel 从本机回源时，服务器会信任回环地址和服务�
 - **同步阅读**：TXT、Markdown、日志、CSV/TSV、JSON/XML/YAML 和常见配置文本可连续滚动或按页阅读；有控制权限的成员同步 `fileId`、精确 UTF-16 `characterOffset`、归一化位置、页码和 revision。桌面与手机可以因宽度不同显示不同视觉行首，但不会再把本地换行回写成房间锚点；晚加入或重连成员恢复同一逻辑字符和段落。管理员可在“房间与上传 → 上传限制”关闭文本上传。
 - **登录与游客**：账号密码正确但房间号留空时，先列出该账号可用房间，也可选择临时房间；提醒可暂停或在安全设置中关闭。游客只获得普通成员权限，需注册后才能建立正式房间。手机顶栏账号入口会在覆盖式功能菜单内展开“退出登录，保留账号密码”和普通“退出登录”；前者退出后只把本次账号密码恢复到登录表单，二者都会清除登录会话。
 - **注册申请与密码安全**：注册受限时可按所需账号数量提交申请，并按数量部分撤回或全部撤回；内置 `admin` 可在用户申请中心批量删除记录。管理端只显示密码是否已设置、待修改/过期状态和最近更新时间，不返回密码或哈希；“重置为默认密码”会撤销现有会话并要求用户按安全流程更换。
-- **实时交流**：公聊、私聊、弹幕、表情、图片、语音消息和全麦语音；可按账号启用仅聊天、设置弹幕颜色/字号或切换简洁模式。全屏只保留弹幕和用户主动打开的边看边聊，不弹普通通知。
+- **实时交流**：公聊、私聊、弹幕、表情、图片、语音消息和全麦语音；可按账号启用仅聊天、设置弹幕颜色/字号或切换简洁模式。全屏只保留弹幕和用户主动打开的边看边聊，不弹普通通知；按 `F2` 或回车可以直接打开聊天并输入，按 `L` 锁定或解锁画面操作。
 - **共享能力**：浏览器、Electron 和 Android 屏幕共享；受支持的桌面端可共享电脑音源。
 - **网页协作**：房主同步一个经过服务端校验的 HTTPS/HTTP URL，服务器保存 revision 并作为恢复依据；各客户端在沙箱 iframe 中独立加载，因此登录态、广告、地域、跨域策略或页面禁止嵌入可能造成显示差异。需要所有人看到完全相同且可互动的画面时，应使用“实时共享网页画面”，不要把“同步网址”描述成远程控制。
 - **账号与管理**：好友、通知、在线状态、设备信息、权限组、封禁、注册审批和操作记录；登录限流可申请管理员清除，敏感设备定位状态只给内置 `admin`。成员头像单击打开资料，桌面双击或触摸端快速双击查看大图。
@@ -160,7 +159,7 @@ SyncWatch同步观影采用“一个自托管服务器，多种客户端共用�
 
 ```mermaid
 flowchart LR
-    A[Windows / macOS / 浏览器 / Android] -->|HTTP REST| B[Node.js + Express]
+    A[Windows / 浏览器 / Android] -->|HTTP REST| B[Node.js + Express]
     A -->|Socket.IO 实时事件| C[房间状态与同步引擎]
     B --> D[账号、文件、备份、AI 中转]
     C --> E[播放、聊天、通知、共享信令]
@@ -220,7 +219,6 @@ flowchart LR
 .github/                  Issue、PR 模板和 GitHub Actions
 assets/                   应用图标等品牌资源
 docs/                     展示站、截图和中文使用/部署文档
-mac/                      macOS 发布清单说明
 mobile/                   Android 客户端、手机服务器和构建脚本
 public/                   实际 Web 界面、样式与客户端逻辑
 scripts/                  跨平台构建和发布辅助脚本
@@ -253,7 +251,7 @@ Git 没有要求所有文件都必须使用英文名称。仓库采用的规则�
 | 通知/通告设置 | 发布登录提示、房间公告和全屏通告 | 编辑内容、设置停留时间、选择发送范围、撤回公告 |
 | 邮件设置 | 配置验证邮件和密码找回邮件 | 填写 SMTP、保存加密配置、发送测试邮件、恢复模板 |
 | 日志中心管理 | 查看安全、登录、媒体和管理员操作日志 | 按时间/类型筛选、导出、脱敏后提交 Issue |
-| 服务器设置 | 管理端口、局域网、公网隧道、备份、统一界面文案和网络诊断 | 启停公网访问、复制地址、编辑/导入/导出文案、检查连接 |
+| 服务器设置 | 管理端口、局域网、公网隧道、备份、统一界面文案和网络诊断 | 启停公网访问、分享地址、编辑/导入/导出文案、检查连接 |
 
 逐按钮说明、常见错误和操作示例见：[管理中心详细教程](docs/management-center.md)。
 
@@ -265,7 +263,6 @@ Git 没有要求所有文件都必须使用英文名称。仓库采用的规则�
 - [普通用户使用说明](docs/user-guide.md)
 - [服务器部署与使用教程](docs/server-deployment-guide.md)
 - [技术架构与依赖说明](docs/architecture.md)
-- [macOS 构建说明](docs/macos-build.md)
 - [Android 构建说明](mobile/README.md)
 - [云端媒体与商业部署说明](docs/cloud-media-deployment.md)
 - [管理中心详细教程](docs/management-center.md)
@@ -273,7 +270,7 @@ Git 没有要求所有文件都必须使用英文名称。仓库采用的规则�
 - [常见错误与报错处理](docs/troubleshooting.md)
 - [使用技巧与优势](docs/tips-and-advantages.md)
 - [发布文件与下载说明](docs/release-artifacts.html)
-- [v2.2.8 发布说明](docs/release-notes-v2.2.8.md) · [v2.2.3 发布说明](docs/release-notes-v2.2.3.md)
+- [v2.2.9 发布说明](docs/release-notes-v2.2.9.md) · [v2.2.3 发布说明](docs/release-notes-v2.2.3.md)
 - [仓库文件地图](docs/repository-map.html)
 - [新手快速开始 HTML](docs/quick-start.html)
 - [Wiki 完整教程目录](docs/wiki-guide.md) · [仓库内 Wiki 镜像](docs/wiki/)
@@ -365,16 +362,18 @@ QQ: 2590813506<br>
 
 本项目将持续开源，欢迎大家学习、交流和共同改进。如果你在使用过程中发现问题、有新的功能想法，或者希望一起优化代码，都可以联系我沟通。也欢迎提交建议、反馈问题和分享改进方案，希望通过大家共同参与，让项目不断完善，变得更加稳定、实用和好用。
 
-### v2.2.8 维护说明
+### v2.2.9 维护说明
 
 - Windows 服务器启动设置窗口已适配短屏滚动，底部保存/取消按钮不会再被裁切；“申请多设备登录”提示支持自动换行。
 - 房主可在账户菜单“房间设置”或“我的房间”自有房间卡片中打开当前房间设置；该入口只显示“房间与上传”“成员与权限组”“聊天与记录”三个模块，并在切换房间后加载对应配置。
 - 登录页在短窗口、浏览器缩放、高 DPI 和手机触摸场景下改为顶部起始并由文档统一滚动，底部客户端下载、其他登录方式和版本信息均可继续向下查看；移动端不会再被固定高度或嵌套滚动拦截手指上下滑动。
+- 修复普通手机浏览器在 540px 以下断点被后置固定高度规则覆盖的问题：网页登录现在由文档统一承接触摸滚动；登录音乐静音区域也收敛为一个可操作按钮，不会再同时显示两枚图标。
+- 登录页背景音乐管理现在按曲目列表保存：上传或更换文件会同步更新音乐名称、当前地址和曲目 ID，旧 HTTPS 地址不会继续作为当前曲目；单独填写 HTTPS 地址时会自动加入列表。
 - 服务器设备的本机管理快捷入口已移动到顶栏中间操作区，登录卡片只保留账号认证字段；窄屏可横向滚动查看全部快捷按钮。
 - 管理中心“账号总览”改为独立请求和错误处理，账号状态加载失败会显示明确提示并允许重试，不会一直停留在“正在同步账号状态”。
 - Electron 服务端窗口使用专用登录布局，立体方块保持在可视区域，鼠标滚轮可滚动访问完整登录内容。
 - 管理中心标题会显示当前客户端主题。账号密码只保存不可逆哈希，管理员不能读取历史明文；如需协助用户，进入账号管理后使用“设置新密码”，旧会话会立即失效。
-- v2.2.8 新构建仅提供 Windows 与 Android；macOS 新包停用，历史版本资产继续保留。
+- v2.2.9 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包，历史版本 Release 保持不变。
 
 #### 网页共享与继续观看
 

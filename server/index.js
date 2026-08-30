@@ -37,13 +37,6 @@ const networkQualityPolicy = require('../public/js/network-quality-policy');
 const { extractAiModelIds, extractAiText, modelEndpointCandidates, normalizeEndpointPath, proxyAiJson } = require('./ai-relay');
 const { createLatestReleaseChecker } = require('./latest-release');
 const { clientFacingAddressState } = require('./client-address-privacy');
-const {
-  createMacDistribution,
-  macDownloadSummary,
-  selectMacArtifact,
-  availableMacArchitectures: distributionMacArchitectures,
-  preferredMacArchitecture: distributionPreferredMacArchitecture,
-} = require('./macos-distribution');
 
 function resolveDefaultDataDir(root = process.cwd()) {
   const preferred = path.resolve(root, 'SyncWatch同步观影-Data');
@@ -53,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.2.8';
+const APP_VERSION = 'v2.2.9';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -612,7 +605,10 @@ function normalizeViewPreferences(value = {}) {
     conciseMode: source.conciseMode === true,
     chatOnly: source.chatOnly === true,
     danmakuColor: color,
-    danmakuFontSize: Math.max(12, Math.min(72, Number.isFinite(requestedFontSize) ? Math.round(requestedFontSize) : 24))
+    danmakuFontSize: Math.max(12, Math.min(72, Number.isFinite(requestedFontSize) ? Math.round(requestedFontSize) : 24)),
+    libraryCollapsed: source.libraryCollapsed === true,
+    membersPanelCollapsed: source.membersPanelCollapsed === true,
+    memberDetailsCollapsed: source.memberDetailsCollapsed === true
   };
 }
 
@@ -774,21 +770,40 @@ function normalizeVerificationCodePolicy(value = {}) {
 
 function normalizeLoginMusic(value = {}) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-  const tracks = (Array.isArray(source.tracks) ? source.tracks : []).map((track) => ({
+  const isValidUrl = (url) => url.startsWith('/login-music/') || /^https:\/\//i.test(url);
+  let tracks = (Array.isArray(source.tracks) ? source.tracks : []).map((track) => ({
     id: cleanText(track?.id, 80), title: cleanText(track?.title || track?.originalName || '登录音乐', 100),
     originalName: cleanText(track?.originalName, 180), storedName: path.basename(String(track?.storedName || '')),
     url: cleanText(track?.url, 2048), mimeType: cleanText(track?.mimeType || 'audio/mpeg', 120),
     size: Math.max(0, Math.floor(Number(track?.size) || 0)), createdAt: cleanText(track?.createdAt, 60)
-  })).filter((track) => track.id && track.url && (track.url.startsWith('/login-music/') || /^https:\/\//i.test(track.url))).slice(-LOGIN_MUSIC_TRACK_LIMIT);
+  })).filter((track) => track.id && track.url && isValidUrl(track.url)).slice(-LOGIN_MUSIC_TRACK_LIMIT);
   const legacyUrl = cleanText(source.url, 2048);
+  // Older settings stored only url/title. Promote that value to a real track so
+  // the current address and visible name can never drift apart after a save.
+  if (!Array.isArray(source.tracks) && isValidUrl(legacyUrl) && !tracks.some((track) => track.url === legacyUrl)) {
+    tracks = [{
+      id: cleanText(source.currentTrackId, 80) || `legacy-${Buffer.from(legacyUrl).toString('base64url').slice(0, 64)}`,
+      title: cleanText(source.title || '登录音乐', 100), originalName: '', storedName: '', url: legacyUrl,
+      mimeType: 'audio/mpeg', size: 0, createdAt: cleanText(source.updatedAt || new Date().toISOString(), 60)
+    }, ...tracks].slice(-LOGIN_MUSIC_TRACK_LIMIT);
+  }
+  const requestedId = cleanText(source.currentTrackId, 80);
+  const selected = tracks.find((track) => track.id === requestedId)
+    || tracks.find((track) => track.url === legacyUrl)
+    || tracks[0] || null;
+  const requestedMode = cleanText(source.playbackMode, 24);
+  const playbackMode = ['single', 'list-loop', 'shuffle', 'single-loop'].includes(requestedMode)
+    ? requestedMode : (source.shuffle === true ? 'shuffle' : (source.loop === false ? 'single' : 'list-loop'));
   return {
     enabled: source.enabled === true,
     showTitle: source.showTitle !== false,
-    title: cleanText(source.title || tracks[0]?.title || '', 100),
-    url: legacyUrl && (legacyUrl.startsWith('/login-music/') || /^https:\/\//i.test(legacyUrl)) ? legacyUrl : (tracks[0]?.url || ''),
+    title: cleanText(source.title || selected?.title || '', 100),
+    url: selected?.url || '',
+    currentTrackId: selected?.id || '',
     volume: Math.max(0, Math.min(1, Number.isFinite(Number(source.volume)) ? Number(source.volume) : 0.3)),
     loop: source.loop !== false,
     shuffle: source.shuffle === true,
+    playbackMode,
     tracks
   };
 }
@@ -2162,31 +2177,6 @@ crash-dumps/
   fs.writeFileSync(path.join(dataDir, '数据目录说明.txt'), guide.replace(/\n/g, os.EOL), 'utf8');
 }
 
-function normalizeMacDownloadPaths(value = {}) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return { x64: '', arm64: '' };
-  const resolveExisting = (candidate) => {
-    if (!candidate) return '';
-    const absolute = path.resolve(String(candidate));
-    try {
-      const stats = fs.statSync(absolute);
-      return stats.isFile() && stats.size > 0 ? absolute : '';
-    } catch (_) { return ''; }
-  };
-  const normalizeArchitecture = (candidate) => {
-    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return resolveExisting(candidate);
-    return { dmg: resolveExisting(candidate.dmg), zip: resolveExisting(candidate.zip) };
-  };
-  return { x64: normalizeArchitecture(value.x64), arm64: normalizeArchitecture(value.arm64) };
-}
-
-function availableMacArchitectures(paths = {}) {
-  return distributionMacArchitectures(paths);
-}
-
-function preferredMacArchitecture(req, paths = {}) {
-  return distributionPreferredMacArchitecture(req, paths);
-}
-
 async function startSyncWatchServer(options = {}) {
   const host = options.host || '0.0.0.0';
   const requestedPort = Number(options.port ?? process.env.PORT ?? DEFAULT_PORT);
@@ -2220,34 +2210,12 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.8.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.2.9.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.8-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.2.9-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
-  const macServerDownloadPaths = normalizeMacDownloadPaths(options.macServerDownloadPaths);
-  const macClientDownloadPaths = normalizeMacDownloadPaths(options.macClientDownloadPaths);
-  // Keep the legacy path options for existing callers, while discovering
-  // sibling mac/ artifacts and optional HTTPS release URLs in one place. This
-  // allows a Windows-hosted server to serve a real ZIP/DMG uploaded later,
-  // without ever manufacturing a macOS installer.
-  const macDistributionRoots = [downloadAssetsDir, ...(options.macDistributionRoots || [])];
-  const includeDefaultMacDistributionRoots = options.discoverDefaultMacArtifacts !== false;
-  const createDownloadDistribution = (kind) => createMacDistribution({
-    kind, version: APP_VERSION, legacyPaths: kind === 'server' ? macServerDownloadPaths : macClientDownloadPaths,
-    configured: kind === 'server'
-      ? options.macServerDownloadUrls || options.macServerDownloads || {}
-      : options.macClientDownloadUrls || options.macClientDownloads || {},
-    roots: macDistributionRoots, manifestPaths: options.macDistributionManifestPaths || [],
-    env: options.macDistributionEnv || process.env, includeDefaultRoots: includeDefaultMacDistributionRoots
-  });
-  let macServerDistribution = createDownloadDistribution('server');
-  let macClientDistribution = createDownloadDistribution('client');
-  const refreshMacDownloadDistributions = () => {
-    macServerDistribution = createDownloadDistribution('server');
-    macClientDistribution = createDownloadDistribution('client');
-  };
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
   const restartHandler = typeof options.onRestartRequested === 'function' ? options.onRestartRequested : null;
   const allowedSocketHosts = new Set((options.allowedHosts || []).map((entry) => String(entry).trim().toLowerCase()).filter(Boolean));
@@ -6502,10 +6470,8 @@ async function startSyncWatchServer(options = {}) {
       } catch (_) { return { available: false }; }
     };
     return {
-      windowsServer: describe(activeClientDownloadPath()),
-      androidClient: describe(activeAndroidApkPath()),
-      macServer: macDownloadSummary(macServerDistribution),
-      macClient: macDownloadSummary(macClientDistribution)
+      windowsClient: describe(activeClientDownloadPath()),
+      androidClient: describe(activeAndroidApkPath())
     };
   }
 
@@ -6513,11 +6479,7 @@ async function startSyncWatchServer(options = {}) {
     const details = downloadAssetDetails();
     return {
       androidApkAvailable: details.androidClient.available,
-      clientDownloadAvailable: details.windowsServer.available,
-      macServerDownloadArchitectures: availableMacArchitectures(macServerDistribution),
-      macClientDownloadArchitectures: availableMacArchitectures(macClientDistribution),
-      macServerDownloads: details.macServer,
-      macClientDownloads: details.macClient,
+      clientDownloadAvailable: details.windowsClient.available,
       downloadAssetDetails: details
     };
   }
@@ -6530,15 +6492,6 @@ async function startSyncWatchServer(options = {}) {
     }
     if (kind === 'android-client' && extension === '.apk') {
       return { kind, extension, target: managedAndroidApkPath, label: 'Android 客户端' };
-    }
-    if (['macos-server', 'macos-client'].includes(kind) && ['.dmg', '.zip'].includes(extension)) {
-      const architecture = cleanText(req.query?.arch, 12).toLowerCase();
-      if (!['x64', 'arm64'].includes(architecture)) return null;
-      const label = kind === 'macos-server' ? '服务器' : '客户端';
-      return {
-        kind, extension, architecture, label: `macOS ${label}`,
-        target: path.join(downloadAssetsDir, `SyncWatch同步观影-${label}-v2.2.8-${architecture}${extension}`)
-      };
     }
     return null;
   }
@@ -6587,7 +6540,7 @@ async function startSyncWatchServer(options = {}) {
     fileFilter(req, file, callback) {
       const spec = downloadAssetUploadSpec(req, file);
       if (spec) return callback(null, true);
-      const error = new Error('文件类型不受支持：Windows 仅允许 EXE，Android 仅允许 APK，macOS 仅允许 DMG/ZIP 并必须选择 x64 或 arm64');
+      const error = new Error('文件类型不受支持：Windows 仅允许 EXE，Android 仅允许 APK');
       error.statusCode = 415;
       return callback(error);
     }
@@ -6599,7 +6552,6 @@ async function startSyncWatchServer(options = {}) {
     try {
       const stats = validateDownloadAssetFile(req.file.path, spec);
       replaceDownloadAsset(req.file.path, spec.target);
-      if (spec.kind.startsWith('macos-')) refreshMacDownloadDistributions();
       const downloads = downloadAssetPublicState();
       io.emit('download-assets-updated', downloads);
       recordOperation({ actor: req.syncWatchSession.username, action: 'download-asset-upload', summary: `更新${spec.label}下载文件：${path.basename(spec.target)}`, scope: 'server' });
@@ -6717,37 +6669,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe');
-  });
-
-  app.get('/api/macos-server-download', httpRateLimit('macos-server-download', 12, 60 * 60 * 1000), (req, res) => {
-    const selected = selectMacArtifact(req, macServerDistribution);
-    if (!selected?.artifact) return res.status(404).json({
-      success: false, code: 'MACOS_ARTIFACT_UNAVAILABLE',
-      availableArchitectures: availableMacArchitectures(macServerDistribution),
-      error: '苹果服务器安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
-    });
-    const filename = `SyncWatch同步观影-服务器-v2.2.8-${selected.architecture}.${selected.artifact.format}`;
-    if (selected.artifact.source === 'remote') {
-      res.setHeader('Referrer-Policy', 'no-referrer');
-      return res.redirect(302, selected.artifact.url);
-    }
-    return serveFileDownload(req, res, selected.artifact.path, filename);
-  });
-
-  app.get('/api/macos-client-download', httpRateLimit('macos-client-download', 12, 60 * 60 * 1000), (req, res) => {
-    const selected = selectMacArtifact(req, macClientDistribution);
-    if (!selected?.artifact) return res.status(404).json({
-      success: false, code: 'MACOS_ARTIFACT_UNAVAILABLE',
-      availableArchitectures: availableMacArchitectures(macClientDistribution),
-      error: '苹果客户端安装包尚未提供。请在 macOS 构建机或 CI 生成 DMG/ZIP，或在 mac/mac-distribution.json 配置 HTTPS 发布地址。'
-    });
-    const filename = `SyncWatch同步观影-客户端-v2.2.8-${selected.architecture}.${selected.artifact.format}`;
-    if (selected.artifact.source === 'remote') {
-      res.setHeader('Referrer-Policy', 'no-referrer');
-      return res.redirect(302, selected.artifact.url);
-    }
-    return serveFileDownload(req, res, selected.artifact.path, filename);
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6834,7 +6756,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.8-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.2.9-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -8401,7 +8323,7 @@ async function startSyncWatchServer(options = {}) {
 
   async function streamBackupArchive(res, metadata, entries) {
     res.type('application/vnd.syncwatch.backup');
-    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.8-${metadata.scope}.swbackup`));
+    res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-${APP_VERSION}-${metadata.scope}.swbackup`));
     const metadataBuffer = Buffer.from(JSON.stringify(metadata), 'utf8');
     const entryBuffers = entries.map((entry) => ({
       entry,
@@ -8656,7 +8578,7 @@ async function startSyncWatchServer(options = {}) {
         const entries = fullSnapshot ? backupDataEntries(scopes) : (scopes.includes('media-index') ? backupArtifactEntries(state.files) : []);
         return await streamBackupArchive(res, output, entries);
       }
-      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-v2.2.8-${output.scope}.json`));
+      res.setHeader('Content-Disposition', attachmentContentDisposition(`SyncWatch同步观影-${APP_VERSION}-${output.scope}.json`));
       return res.json(output);
     } catch (error) { return next(error); }
   });
@@ -14570,15 +14492,36 @@ async function startSyncWatchServer(options = {}) {
           storedName: path.basename(String(track?.storedName || '')), url: cleanText(track?.url, 2048), mimeType: cleanText(track?.mimeType || 'audio/mpeg', 120), size: Math.max(0, Math.floor(Number(track?.size) || 0)), createdAt: new Date().toISOString()
         })).filter((track) => track.url && (track.url.startsWith('/login-music/') || /^https:\/\//i.test(track.url)));
         const requestedUrl = cleanText(payload.url, 2048);
-        if (requestedUrl.startsWith('/login-music/') && ![...current.tracks, ...added].some((track) => track.url === requestedUrl)) {
-          const storedName = path.basename(decodeURIComponent(requestedUrl.slice('/login-music/'.length)));
-          const target = path.join(loginMusicDir, storedName);
-          if (/^[a-f0-9-]+\.[a-z0-9]{2,8}$/i.test(storedName) && fs.existsSync(target)) {
-            added.push({ id: crypto.randomUUID(), title: storedName.replace(/\.[^.]+$/, ''), originalName: storedName, storedName, url: `/login-music/${encodeURIComponent(storedName)}`, mimeType: 'audio/mpeg', size: fs.statSync(target).size, createdAt: new Date().toISOString() });
+        if (requestedUrl && !added.some((track) => track.url === requestedUrl)) {
+          if (requestedUrl.startsWith('/login-music/')) {
+            const storedName = path.basename(decodeURIComponent(requestedUrl.slice('/login-music/'.length)));
+            const target = path.join(loginMusicDir, storedName);
+            if (/^[a-f0-9-]+\.[a-z0-9]{2,8}$/i.test(storedName) && fs.existsSync(target)) {
+              added.push({ id: crypto.randomUUID(), title: cleanText(payload.title || storedName.replace(/\.[^.]+$/, ''), 100), originalName: storedName, storedName, url: `/login-music/${encodeURIComponent(storedName)}`, mimeType: 'audio/mpeg', size: fs.statSync(target).size, createdAt: new Date().toISOString() });
+            }
+          } else if (/^https:\/\//i.test(requestedUrl)) {
+            const fallbackTitle = path.basename(requestedUrl.split('?')[0]) || '登录音乐';
+            added.push({ id: crypto.randomUUID(), title: cleanText(payload.title || fallbackTitle, 100), originalName: '', storedName: '', url: requestedUrl, mimeType: 'audio/mpeg', size: 0, createdAt: new Date().toISOString() });
           }
         }
-        const tracks = [...current.tracks, ...added].slice(-LOGIN_MUSIC_TRACK_LIMIT);
-        const next = normalizeLoginMusic({ ...current, ...payload, tracks, url: payload.url || tracks[0]?.url || '' });
+        // An explicit tracks array is the complete desired playlist. Do not
+        // merge it with the previous state: doing so leaves stale file URLs
+        // after an administrator replaces the uploaded music.
+        const tracks = Array.isArray(payload.tracks)
+          ? added.slice(-LOGIN_MUSIC_TRACK_LIMIT)
+          : [...current.tracks, ...added].slice(-LOGIN_MUSIC_TRACK_LIMIT);
+        const requestedId = cleanText(payload.currentTrackId, 80);
+        const selected = tracks.find((track) => track.id === requestedId)
+          || tracks.find((track) => track.url === requestedUrl)
+          || tracks[0] || null;
+        const next = normalizeLoginMusic({ ...current, ...payload, tracks, currentTrackId: selected?.id || '', url: selected?.url || '' });
+        const retainedFiles = new Set(next.tracks.map((track) => path.basename(track.storedName || '')).filter(Boolean));
+        if (Array.isArray(payload.tracks)) {
+          for (const track of current.tracks) {
+            const stored = path.basename(track.storedName || '');
+            if (stored && !retainedFiles.has(stored)) fs.rmSync(path.join(loginMusicDir, stored), { force: true });
+          }
+        }
         state.admin.loginMusic = next;
         let loginVideo = normalizeLoginVideo(state.admin.loginVideo);
         if (next.enabled) {
@@ -14598,7 +14541,8 @@ async function startSyncWatchServer(options = {}) {
           const stored = path.basename(track.storedName || path.basename(track.url));
           if (stored) fs.rmSync(path.join(loginMusicDir, stored), { force: true });
         }
-        const next = normalizeLoginMusic({ ...current, tracks: current.tracks.filter((track) => !ids.has(track.id)) });
+        const remainingTracks = current.tracks.filter((track) => !ids.has(track.id));
+        const next = normalizeLoginMusic({ ...current, tracks: remainingTracks, url: remainingTracks[0]?.url || '', title: remainingTracks[0]?.title || '', currentTrackId: remainingTracks[0]?.id || '' });
         state.admin.loginMusic = next; persist(); io.emit('login-music-updated', next);
         return acknowledgement?.({ success: true, loginMusic: next, deleted: removed.length, message: `已删除 ${removed.length} 首登录音乐` });
       }
@@ -15215,7 +15159,7 @@ async function startSyncWatchServer(options = {}) {
       discoverySocket.on('message', (message, remote) => {
         if (!privateOrLoopbackAddress(remote.address) || String(message).trim() !== 'SYNCWATCH_DISCOVER_V1') return;
         const payload = Buffer.from(JSON.stringify({
-          protocol: 'SYNCWATCH_DISCOVER_V1', name: 'SyncWatch同步观影-v2.2.8', server: os.hostname(), version: APP_VERSION,
+          protocol: 'SYNCWATCH_DISCOVER_V1', name: `SyncWatch同步观影-${APP_VERSION}`, server: os.hostname(), version: APP_VERSION,
           port: actualPort, addresses: advertisedNetworkAddresses(),
           rooms: Object.values(state.rooms).filter((room) => visibleRoom(room) && !room.archived).map((room) => ({
             id: room.id, name: room.name, ownerUsername: room.ownerUsername,
@@ -15409,10 +15353,9 @@ module.exports = {
     captureProcess, requestHostHeader, requestUsesForwardedHttps, requestUsesPublicProxy, socketOriginAllowed, pipeMediaFileResponse,
     createTrustedProxyMatcher, normalizeTrustedProxyEntries, resolveClientIp,
     attachmentContentDisposition, downloadMimeType,
-    clampMediaRangeEnd, requestSkipsCompression, normalizeMacDownloadPaths, availableMacArchitectures, preferredMacArchitecture,
+    clampMediaRangeEnd, requestSkipsCompression,
     OPEN_ENDED_MEDIA_RANGE_CHUNK_THRESHOLD_BYTES, MAX_OPEN_ENDED_MEDIA_RANGE_BYTES,
     resolveFileType, HLS_EXTENSIONS,
-    createMacDistribution, macDownloadSummary, selectMacArtifact,
     applyNetworkQualitySample
   }
 };

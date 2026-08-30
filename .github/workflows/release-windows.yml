@@ -308,7 +308,7 @@ jobs:
     name: Install and launch Android artifact in an emulator
     if: ${{ always() && inputs.phase == 'android' && needs.validate.result == 'success' && needs.android.result == 'success' }}
     needs: [validate, android]
-    runs-on: macos-15-intel
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
       RELEASE_VERSION: ${{ inputs.version }}
@@ -337,7 +337,6 @@ jobs:
           api-level: 35
           target: google_apis
           arch: x86_64
-          profile: pixel_7
           emulator-boot-timeout: 900
           script: bash scripts/android-emulator-smoke.sh
       - name: Preserve Android startup evidence
@@ -397,6 +396,8 @@ jobs:
           path: .cache/release-third-party
       - name: Prepare pinned Cloudflare Tunnel binary
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --cache-directory .\.cache\release-third-party --only cloudflared-windows-x64.exe
           if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
@@ -427,17 +428,12 @@ jobs:
       - name: Build Windows base artifacts
         shell: pwsh
         run: |
-          npx electron-builder --win portable --x64 --publish never
-          if ($LASTEXITCODE -ne 0) { throw 'Windows Standard build failed.' }
           npm run build:client -- --publish never
           if ($LASTEXITCODE -ne 0) { throw 'Windows Experience build failed.' }
       - name: Launch and verify Windows base artifacts
         shell: pwsh
         run: |
-          $standard = ".\dist\SyncWatch-Standard-Server-Portable-v$env:RELEASE_VERSION-x64.exe"
           $client = ".\dist\SyncWatch-Experience-Client-Portable-v$env:RELEASE_VERSION-x64.exe"
-          node tests/split-desktop-artifact-smoke.js $standard
-          if ($LASTEXITCODE -ne 0) { throw 'Windows Standard startup/core smoke failed.' }
           $profile = Join-Path $env:RUNNER_TEMP 'syncwatch-client-smoke'
           $process = Start-Process -FilePath $client -ArgumentList "--user-data-dir=$profile" -PassThru -WindowStyle Hidden
           Start-Sleep -Seconds 12
@@ -452,7 +448,6 @@ jobs:
         with:
           name: ${{ inputs.artifact_prefix }}-windows-base
           path: |
-            dist/SyncWatch-Standard-Server-Portable-v${{ inputs.version }}-x64.exe
             dist/SyncWatch-Experience-Client-Portable-v${{ inputs.version }}-x64.exe
           compression-level: 0
           if-no-files-found: error
@@ -509,6 +504,8 @@ jobs:
           path: .cache/release-third-party
       - name: Prepare pinned Cloudflare Tunnel binary
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --cache-directory .\.cache\release-third-party --only cloudflared-windows-x64.exe
           if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
@@ -538,8 +535,6 @@ jobs:
       - name: Build Windows Full Offline artifacts
         shell: pwsh
         run: |
-          npx electron-builder --config electron-builder-windows-installer.json --win nsis --x64 --publish never
-          if ($LASTEXITCODE -ne 0) { throw 'Windows Full Offline installer build failed.' }
           npx electron-builder --config electron-builder-windows-full-portable.json --win portable --x64 --publish never
           if ($LASTEXITCODE -ne 0) { throw 'Windows Full Offline portable build failed.' }
       - name: Install, launch, and verify Windows Full Offline artifacts
@@ -573,14 +568,7 @@ jobs:
               Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
             }
           }
-          $installer = ".\dist\SyncWatch-v$env:RELEASE_VERSION-Full-Offline-Installer-x64.exe"
           $portable = ".\dist\SyncWatch-v$env:RELEASE_VERSION-Full-Offline-Portable-x64.exe"
-          $installRoot = Join-Path $env:RUNNER_TEMP 'SyncWatchFullInstall'
-          $install = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$installRoot" -PassThru -Wait -WindowStyle Hidden
-          if ($install.ExitCode -ne 0) { throw "Full Offline installer failed ($($install.ExitCode))." }
-          $installed = Get-ChildItem -LiteralPath $installRoot -Recurse -File -Filter 'SyncWatch同步观影.exe' | Select-Object -First 1
-          if (-not $installed) { throw 'Full Offline installer did not install its startup program.' }
-          Test-ServerExecutable $installed.FullName 'Installed Full Offline server'
           Test-ServerExecutable $portable 'Portable Full Offline server'
           npm run test:privacy:release
           Remove-Item -Path .\dist\*.blockmap, .\dist\latest*.yml, .\dist\builder-debug.yml -Force -ErrorAction SilentlyContinue
@@ -591,7 +579,6 @@ jobs:
         with:
           name: ${{ inputs.artifact_prefix }}-windows-full
           path: |
-            dist/SyncWatch-v${{ inputs.version }}-Full-Offline-Installer-x64.exe
             dist/SyncWatch-v${{ inputs.version }}-Full-Offline-Portable-x64.exe
           compression-level: 0
           if-no-files-found: error

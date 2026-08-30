@@ -2,18 +2,18 @@
 
 ## 数量规则
 
-按当前维护者范围，每个新正式版本只发布 Windows 与 Android，页面应显示 12 个文件：
+按当前维护者范围，每个新正式版本只发布 Windows 与 Android，页面应显示 10 个文件：
 
 - 2 个 GitHub 自动生成的源码归档：`Source code (zip)`、`Source code (tar.gz)`。
-- 10 个维护者上传的真实构建资产，按下表分组。
+- 8 个维护者上传的真实构建资产，按下表分组。
 
-Release API 的 `assets` 数量必须为 10；页面把两个源码归档也算进去后就是用户看到的 12 个文件。源码归档不需要手工上传，也不计入 10 个构建资产的 SHA-256 清单。
+Release API 的 `assets` 数量必须为 8；页面把两个源码归档也算进去后就是用户看到的 10 个文件。源码归档不需要手工上传，也不计入 8 个构建资产的 SHA-256 清单。
 
-## 10 个维护者资产（Windows + Android）
+## 8 个维护者资产（Windows + Android）
 
 | 数量 | 分组 | 文件模式 |
 | ---: | --- | --- |
-| 4 | Windows 桌面 | `SyncWatch-Experience-Client-Portable-vX.Y.Z-x64.exe`、`SyncWatch-Standard-Server-Portable-vX.Y.Z-x64.exe`、`SyncWatch-vX.Y.Z-Full-Offline-Installer-x64.exe`、`SyncWatch-vX.Y.Z-Full-Offline-Portable-x64.exe` |
+| 2 | Windows 桌面 | `SyncWatch-Experience-Client-Portable-vX.Y.Z-x64.exe`、`SyncWatch-vX.Y.Z-Full-Offline-Portable-x64.exe` |
 | 1 | Android | `SyncWatch-Android-vX.Y.Z-universal.apk` |
 | 2 | Node.js Windows 运行时 | `node-v24.19.0-x64.msi`、`node-v24.19.0-arm64.msi` |
 | 3 | cloudflared Windows 工具 | `cloudflared-windows-x64.exe`、Windows x64/x86 installer MSI |
@@ -21,21 +21,21 @@ Release API 的 `assets` 数量必须为 10；页面把两个源码归档也算�
 ## 发布前检查
 
 1. 将 `X.Y.Z` 替换为当前 `package.json`、Android `versionName` 和 Git tag 的同一版本。
-2. 确认 Windows 体验/标准/完整版与 Android 各有对应的真实文件，平台用途不混淆。
+2. 确认 Windows 体验版、完整便携版与 Android 各有对应的真实文件，平台用途不混淆。
 3. 对每个资产记录字节大小和 SHA-256；禁止空文件、改名旧版本、重复内容或个人数据进入 Release。
 4. 执行 `npm run test:repo`、`node tests/desktop-release-contract.test.js`、`node tests/android-package.test.js --source-only`、`node tests/cloudflared-bundle.test.js` 和对应平台的实际构建/验收。
-5. 用 `gh release view <tag> --json assets` 确认 API 资产数为 10；再在网页上确认包含两个 GitHub 源码归档后总数为 12。
+5. 用 `gh release view <tag> --json assets` 确认 API 资产数为 8；再在网页上确认包含两个 GitHub 源码归档后总数为 10。
 
 ## 同版本替换规则
 
-发现已发布资产有缺陷时，只清理当前版本 Release API 中的维护者资产，不删除历史 Release、历史 tag 或其他版本文件。修复必须先通过 Windows/Android 运行验证；随后一次性恢复本清单的 10 个真实资产，最后再更新 Release 正文并核对页面 12 个可见文件。重传中间状态不是完整发布，不能对外宣称完成。
+发现已发布资产有缺陷时，只清理当前版本 Release API 中的维护者资产，不删除历史 Release、历史 tag 或其他版本文件。修复必须先通过 Windows/Android 运行验证；随后一次性恢复本清单的 8 个真实资产，最后再更新 Release 正文并核对页面 10 个可见文件。重传中间状态不是完整发布，不能对外宣称完成。
 
 ## 当前记录
 
-v2.2.8 目标发布必须完成最终 Tag 构建、哈希回读和 10+2 文件核对后才能标记为 Latest；当前仍为 pending。
+v2.2.9 已完成最终 Tag 构建、哈希回读和 8+2 文件核对，并已标记为 Latest。Release API 当前维护者资产数为 8，页面可见文件总数为 10。
 
 v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4 和 v2.2.5 的历史 Release 保持原有 26 个维护者资产与两个 GitHub 源码归档。v2.2.6 的旧 26 项曾被用户确认未包含本轮源码修正，因此旧 Actions、旧 Tag SHA 和旧远端哈希只作为线上基线，不能作为同版本更正版完成证据。
 
 v2.2.4 的 17 个 SyncWatch 应用资产（Windows 4、Android 1、macOS 12）已从最终 Tag 重新构建并验证；Node.js 4 项和 cloudflared 5 项已按官方原始分发另行核对来源、版本、平台/架构、字节数和 SHA-256。v2.2.6 同版本更正版必须重新完成同样的证据链。
 
-同版本替换使用安全切换：旧 10 项保持在线到新 10 项全部构建；最终短暂转草稿，新文件以临时名上传并完成远端哈希回读，再把旧文件改为备份名、新文件切换正式名。新集合完整验证前失败必须恢复旧名称和公开状态；新集合验证后才删除旧资产并发布，最终 API 必须恰有 10 项。
+同版本替换使用安全切换：旧 8 项保持在线到新 8 项全部构建；最终短暂转草稿，新文件以临时名上传并完成远端哈希回读，再把旧文件改为备份名、新文件切换正式名。新集合完整验证前失败必须恢复旧名称和公开状态；新集合验证后才删除旧资产并发布，最终 API 必须恰有 8 项。

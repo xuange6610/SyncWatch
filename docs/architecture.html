@@ -33,7 +33,7 @@
 
     <section id="stack" class="guide-section"><div class="shell"><div class="section-heading"><h2>用了什么语言、环境和组件</h2><p>运行时和平台能力分层组合。GitHub Pages 只承载这套静态文档，不运行服务器、WebSocket、上传或 Tunnel。</p></div><div class="architecture-stack">
       <article data-tilt><h3>网页与实时通信</h3><p>界面使用原生 HTML、CSS 和 JavaScript；Express 提供页面与 REST API；Socket.IO 负责房间事件、聊天、在线状态、权限变化和同步播放广播。</p></article>
-      <article data-tilt><h3>桌面与移动端</h3><p>Windows/macOS 使用 Electron 连接网页界面与桌面能力；Android 使用 Java、C++ JNI、WebView 与 Node.js Mobile，前台服务维持手机服务器。</p></article>
+      <article data-tilt><h3>桌面与移动端</h3><p>Windows 使用 Electron 连接网页界面与桌面能力；Android 使用 Java、C++ JNI、WebView 与 Node.js Mobile，前台服务维持手机服务器。</p></article>
       <article data-tilt><h3>媒体与网络</h3><p>FFprobe 识别媒体格式和轨道；FFmpeg 生成浏览器兼容版本与缩略图；大文件使用 8 MiB 有界 Range。控制通道忽略后台节流样本，媒体离线等待不消耗 5 次渐进恢复预算；cloudflared 只在用户开启公网访问时建立 HTTPS Tunnel。</p></article>
       <article data-tilt><h3>构建与验证</h3><p>npm/pnpm 管理依赖，Electron Builder 生成桌面成品，Gradle 构建 APK，GitHub Actions 执行 CI、Pages 和平台发布流程。</p></article>
     </div></div></section>
@@ -43,7 +43,7 @@
       <tr><td>服务端</td><td><code>server/index.js</code><br><code>server-standalone.js</code></td><td>Express、Socket.IO、认证、房间、媒体、Tunnel、数据和日志</td><td>鉴权、输入校验、并发和持久化</td></tr>
       <tr><td>浏览器界面</td><td><code>public/index.html</code><br><code>public/js/app.js</code></td><td>登录、播放器、管理中心、聊天、共享和客户端状态</td><td>权限呈现、后台探测隔离、媒体恢复、响应式布局</td></tr>
       <tr><td>Android</td><td><code>mobile/app/src/main</code></td><td>原生壳、WebView、前台服务、Node.js Mobile 与 ABI 资源</td><td>权限、省电、端口和包内运行时</td></tr>
-      <tr><td>发布与测试</td><td><code>.github/workflows/</code><br><code>tests/</code></td><td>CI、Pages、Windows/macOS 构建、隐私和发布契约</td><td>实际产物、架构声明和敏感信息</td></tr>
+      <tr><td>发布与测试</td><td><code>.github/workflows/</code><br><code>tests/</code></td><td>CI、Pages、Windows/Android 构建、隐私和发布契约</td><td>实际产物、架构声明和敏感信息</td></tr>
     </tbody></table></div></section>
 
     <section class="guide-section"><div class="shell"><div class="section-heading"><h2>数据怎样落盘</h2><p><code>SyncWatch同步观影-Data/</code> 是运行数据根目录。它不是源码，也不应提交到 GitHub。</p></div><div class="flow-lanes">
@@ -53,7 +53,7 @@
       <div class="flow-lane"><strong>兼容媒体与日志</strong><p>兼容文件可由原片重建；日志和崩溃信息用于诊断，但分享前必须删除 IP、令牌、邮箱、姓名和媒体名称。</p></div>
     </div><div class="validation"><strong>备份原则：</strong>停止服务后复制整个数据目录，或在软件里导出“全部数据与配置”。只保存 <code>config.json</code> 不是完整备份。</div></div></section>
 
-    <section class="guide-section paper"><div class="shell"><div class="section-heading"><h2>不同部署环境分别需要什么</h2><p>支持平台以 Release 中实际存在的构建为准。macOS 不支持现代 32 位应用，不能把 Windows x86 声明套到所有系统。</p></div><table class="button-table"><thead><tr><th>场景</th><th>需要的环境</th><th>启动入口</th><th>网络边界</th></tr></thead><tbody>
+    <section class="guide-section paper"><div class="shell"><div class="section-heading"><h2>不同部署环境分别需要什么</h2><p>当前新版本提供 Windows、Android 和浏览器入口；具体架构以 Release 中实际存在的构建为准。</p></div><table class="button-table"><thead><tr><th>场景</th><th>需要的环境</th><th>启动入口</th><th>网络边界</th></tr></thead><tbody>
       <tr><td>Windows 完整版</td><td>成品内置 Electron/Node/FFmpeg/cloudflared</td><td>安装快捷方式或独立 EXE</td><td>局域网；可选 Tunnel</td></tr>
       <tr><td>源码开发</td><td>Node.js 22+，推荐 24 LTS；npm 依赖</td><td><code>npm ci</code> 后 <code>npm start</code></td><td>开发机端口与防火墙</td></tr>
       <tr><td>独立服务端</td><td>Node.js 或 Release 服务端包</td><td><code>npm run start:server</code></td><td>反向代理、HTTPS、WebSocket、Range</td></tr>

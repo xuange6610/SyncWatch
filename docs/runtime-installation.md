@@ -1,8 +1,8 @@
 # cloudflared 与 Node.js 安装使用教程
 
-这两个工具用途不同。普通用户安装 `SyncWatch-v2.2.6-Full-Offline-Installer-x64.exe` 或运行 `SyncWatch-Standard-Server-Portable-v2.2.6-x64.exe` 时，不需要另外安装 Node.js，也不需要另外下载 cloudflared；服务器包已经包含所需运行时。只有手工诊断、公网部署、源码开发或独立服务器才需要本教程。
+这两个工具用途不同。普通用户安装 `SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe` 时，不需要另外安装 Node.js，也不需要另外下载 cloudflared；服务器包已经包含所需运行时。只有手工诊断、公网部署、源码开发或独立服务器才需要本教程。
 
-当前最新正式 Release 是 v2.2.6，已设为 Latest。随正式版本提供的 Node.js 4 项和 cloudflared 5 项已核对官方来源、版本、平台/架构、非空大小与 SHA-256；它们是第三方官方原始分发文件，不由 SyncWatch 源码构建，也不能描述成 SyncWatch 启动程序。
+当前 v2.2.9 已完成核验并公开发布。Release 提供的 Node.js 2 项和 cloudflared 3 项已核对官方来源、版本、平台/架构、非空大小与 SHA-256；它们是第三方官方原始分发文件，不由 SyncWatch 源码构建，也不能描述成 SyncWatch 启动程序。
 
 ![服务器设置中的公网访问和网络诊断](screenshots/public-access-settings.png)
 
@@ -34,24 +34,6 @@ cloudflared tunnel --url http://127.0.0.1:20311 --protocol auto
 7. 按 `Ctrl+C` 停止 Tunnel。终端关闭后临时地址会失效，下次地址可能不同。
 
 需要绿色免安装方式时，才下载 `cloudflared-windows-x64.exe`，放入单独文件夹并在该文件夹打开终端，以 `.\cloudflared-windows-x64.exe --version` 方式运行，不要直接双击。
-
-## macOS 安装 cloudflared
-
-最简单的官方安装方式是 Homebrew：
-
-```bash
-brew install cloudflared
-cloudflared --version
-cloudflared tunnel --url http://127.0.0.1:20311 --protocol auto
-```
-
-使用 Release 中的独立文件时，Intel Mac 下载 `cloudflared-macos-x64`，Apple Silicon 下载 `cloudflared-macos-arm64`：
-
-```bash
-chmod +x ./cloudflared-macos-arm64
-./cloudflared-macos-arm64 --version
-./cloudflared-macos-arm64 tunnel --url http://127.0.0.1:20311 --protocol auto
-```
 
 ## Cloudflare 临时地址超时怎么处理
 
@@ -93,18 +75,6 @@ npm start
 ```powershell
 npm run start:server
 ```
-
-## macOS 安装 Node.js
-
-Intel Mac 可运行 Release 中的 `node-v24.19.0-macos-x64.pkg` 安装向导。Apple Silicon 建议从 [Node.js 官网](https://nodejs.org/en/download) 选择 macOS arm64 安装包，或使用 Homebrew：
-
-```bash
-brew install node@24
-node --version
-npm --version
-```
-
-Release 中的 `node-v24.19.0-darwin-arm64.tar.gz` 是便携运行时，不是图形安装器；新手优先使用官网安装包或 Homebrew。
 
 ## 安全与卸载
 

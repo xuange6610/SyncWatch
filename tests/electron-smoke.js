@@ -137,7 +137,7 @@ async function run() {
   }, {
     visible: true, nearJoinTitle: true, closed: true,
     serverDownloadVisible: true, androidDownloadVisible: true,
-    serverDownloadLabel: '下载服务器客户端'
+    serverDownloadLabel: '下载 Windows 客户端'
   });
   assert.deepEqual(loginSurface.topbarContextOrder, [...loginSurface.topbarContextOrder].sort((a, b) => a - b));
   assert.equal(loginSurface.androidDownloadInAccountMenu, true);

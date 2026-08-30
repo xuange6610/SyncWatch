@@ -75,8 +75,8 @@ jobs:
             if(matches.length>1)throw new Error(`Multiple Releases target ${process.env.RELEASE_TAG}.`);
             if(matches.length===1) {
               const release=matches[0];
-              if(!Array.isArray(release.assets) || ![0,6,10,11,26].includes(release.assets.length)) {
-                throw new Error(`The existing Release must contain zero, partial legacy 6, legacy 11 (10 current plus one removable legacy asset), legacy 26, or current 10 assets.`);
+              if(!Array.isArray(release.assets) || ![0,6,8,10,11,26].includes(release.assets.length)) {
+                throw new Error(`The existing Release must contain zero, partial legacy, or current 8 assets.`);
               }
               if(release.assets.length===0 && release.draft!==true) {
                 throw new Error(`An empty existing Release must remain a draft.`);
@@ -258,7 +258,7 @@ jobs:
       artifact_prefix: ${{ needs.prepare.outputs.artifact_prefix }}
 
   final:
-    name: Verify exact 12 files and publish atomically
+    name: Verify exact 10 files and publish atomically
     needs: [prepare, source_tests, android, windows_base, official_assets, windows_full]
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -312,7 +312,7 @@ jobs:
           pattern: ${{ needs.prepare.outputs.artifact_prefix }}-evidence-*
           path: .build/evidence
           merge-multiple: true
-      - name: Generate source archives directly in dist and verify exact 12
+      - name: Generate source archives directly in dist and verify exact 10
         shell: bash
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
@@ -334,26 +334,26 @@ jobs:
             --selection bundle \
             --version "$RELEASE_VERSION" \
             --directory dist \
-            --manifest .build/SHA256SUMS-all-12.txt \
-            --upload-manifest .build/SHA256SUMS-release-10.txt \
-            --release-list .build/release-files-10.txt \
+            --manifest .build/SHA256SUMS-all-10.txt \
+            --upload-manifest .build/SHA256SUMS-release-8.txt \
+            --release-list .build/release-files-8.txt \
             --evidence-directory .build/evidence \
             --source-commit "$RELEASE_COMMIT" \
             --source-tree "$RELEASE_TREE" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
-          test "$(find dist -maxdepth 1 -type f | wc -l | tr -d ' ')" = "12"
-          test "$(wc -l < .build/SHA256SUMS-all-12.txt | tr -d ' ')" = "12"
-          test "$(wc -l < .build/SHA256SUMS-release-10.txt | tr -d ' ')" = "10"
-          test "$(wc -l < .build/release-files-10.txt | tr -d ' ')" = "10"
+          test "$(find dist -maxdepth 1 -type f | wc -l | tr -d ' ')" = "10"
+          test "$(wc -l < .build/SHA256SUMS-all-10.txt | tr -d ' ')" = "10"
+          test "$(wc -l < .build/SHA256SUMS-release-8.txt | tr -d ' ')" = "8"
+          test "$(wc -l < .build/release-files-8.txt | tr -d ' ')" = "8"
       - name: Preserve final hashes and provenance as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.prepare.outputs.artifact_prefix }}-final-audit
           path: |
-            .build/SHA256SUMS-all-12.txt
-            .build/SHA256SUMS-release-10.txt
-            .build/release-files-10.txt
+            .build/SHA256SUMS-all-10.txt
+            .build/SHA256SUMS-release-8.txt
+            .build/release-files-8.txt
             .build/evidence/*.json
             dist/SyncWatch-Source-v${{ needs.prepare.outputs.version }}.zip
             dist/SyncWatch-Source-v${{ needs.prepare.outputs.version }}.tar.gz
@@ -370,10 +370,10 @@ jobs:
           NOTES_FILE: docs/release-notes-v${{ needs.prepare.outputs.version }}.md
         run: |
           set -euo pipefail
-          mapfile -t files < .build/release-files-10.txt
-          mapfile -t asset_names < <(sed 's#^dist/##' .build/release-files-10.txt)
-          test "${#files[@]}" -eq 10
-          test "${#asset_names[@]}" -eq 10
+          mapfile -t files < .build/release-files-8.txt
+          mapfile -t asset_names < <(sed 's#^dist/##' .build/release-files-8.txt)
+          test "${#files[@]}" -eq 8
+          test "${#asset_names[@]}" -eq 8
           for file in "${files[@]}"; do test -s "$file"; done
 
           assert_remote_tag() {
@@ -412,7 +412,7 @@ jobs:
                 gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
                   -f tag_name="$RELEASE_TAG" -f name="SyncWatch同步观影 $RELEASE_TAG" \
                   -F "body=@${NOTES_FILE}" -F draft=false -F prerelease=false -f make_latest=true >/dev/null 2>&1
-                echo "The replacement set passed readback; recovery published the verified new 10-asset set." >&2
+                echo "The replacement set passed readback; recovery published the verified new 8-asset set." >&2
               else
                 old_name="$(node -p "require('./.build/pre-upload-release.json').name || 'SyncWatch同步观影 ' + process.env.RELEASE_TAG")"
                 node -e 'require(`fs`).writeFileSync(`.build/previous-release-body.md`,require(`./.build/pre-upload-release.json`).body||``)'
@@ -421,7 +421,7 @@ jobs:
                 gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
                   -f tag_name="$RELEASE_TAG" -f name="$old_name" -F "body=@.build/previous-release-body.md" \
                   -F draft="$old_draft" -F prerelease="$old_prerelease" $([[ "$old_draft" = false ]] && printf '%s' '-f make_latest=true') >/dev/null 2>&1
-                echo "Atomic replacement failed before cutover; the previous 10 assets and public Release state were restored." >&2
+                echo "Atomic replacement failed before cutover; the previous assets and public Release state were restored." >&2
               fi
             fi
             exit "$status"
@@ -439,8 +439,8 @@ jobs:
             gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/pre-upload-release.json
             RELEASE_JSON=.build/pre-upload-release.json node -e '
               const r=require(`./${process.env.RELEASE_JSON}`);
-              if(!Array.isArray(r.assets) || ![0,6,10,11,26].includes(r.assets.length)) {
-                throw new Error(`Release target changed after preparation; expected zero, partial legacy 6, legacy 11, legacy 26, or current 10 assets.`);
+              if(!Array.isArray(r.assets) || ![0,6,8,10,11,26].includes(r.assets.length)) {
+                throw new Error(`Release target changed after preparation; expected zero, partial legacy, or current 8 assets.`);
               }
             '
             old_asset_count="$(node -p "require('./.build/pre-upload-release.json').assets.length")"
@@ -476,13 +476,13 @@ jobs:
           RELEASE_JSON=.build/uploaded-release.json node -e '
             const fs=require(`fs`);
             const release=JSON.parse(fs.readFileSync(process.env.RELEASE_JSON,`utf8`));
-            const sums=new Map(fs.readFileSync(`.build/SHA256SUMS-release-10.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>{
+            const sums=new Map(fs.readFileSync(`.build/SHA256SUMS-release-8.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>{
               const match=/^([a-f0-9]{64})  (.+)$/.exec(line);
               if(!match)throw new Error(`Invalid local checksum row: ${line}`);
               return [match[2],match[1]];
             }));
             const mappings=fs.readFileSync(`.build/replacement-map.tsv`,`utf8`).trim().split(/\r?\n/).map((line)=>line.split(`\t`));
-            if(mappings.length!==10 || sums.size!==10)throw new Error(`Replacement readback requires exactly 10 mapped assets.`);
+            if(mappings.length!==8 || sums.size!==8)throw new Error(`Replacement readback requires exactly 8 mapped assets.`);
             const rows=mappings.map(([official,temporary])=>{
               const asset=release.assets.find((entry)=>entry.name===temporary);
               const expected=sums.get(official);
@@ -491,7 +491,7 @@ jobs:
             });
             fs.writeFileSync(`.build/download-verification.tsv`,rows.join(`\n`)+`\n`);
           '
-          test "$(wc -l < .build/download-verification.tsv | tr -d ' ')" = "10"
+          test "$(wc -l < .build/download-verification.tsv | tr -d ' ')" = "8"
           while IFS=$'\t' read -r expected name asset_id; do
             actual=""
             for attempt in 1 2 3; do
@@ -530,15 +530,15 @@ jobs:
           RELEASE_JSON=.build/replacement-ready-release.json node -e '
             const fs=require(`fs`);
             const release=require(`./${process.env.RELEASE_JSON}`);
-            const expected=new Set(fs.readFileSync(`.build/release-files-10.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>line.replace(/^dist\//,``)));
+            const expected=new Set(fs.readFileSync(`.build/release-files-8.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>line.replace(/^dist\//,``)));
             const filtered={...release,assets:release.assets.filter((asset)=>expected.has(asset.name))};
-            if(filtered.assets.length!==10)throw new Error(`Cutover verification requires 10 official replacement names.`);
+            if(filtered.assets.length!==8)throw new Error(`Cutover verification requires 8 official replacement names.`);
             fs.writeFileSync(`.build/replacement-official-release.json`,JSON.stringify(filtered));
           '
           node scripts/release-candidate-gate.js \
             --selection release --version "$RELEASE_VERSION" \
             --metadata .build/replacement-official-release.json \
-            --expected-manifest .build/SHA256SUMS-release-10.txt
+            --expected-manifest .build/SHA256SUMS-release-8.txt
           replacement_ready=1
           while IFS=$'\t' read -r official old_id new_id old_backup temporary; do
             [[ "$old_id" = "0" ]] || gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${old_id}"
@@ -549,12 +549,11 @@ jobs:
           # harmless-but-failing DELETE requests against already removed assets.
           gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" > .build/replacement-ready-release.json
 
-          # Remove legacy macOS/unused assets from the same v2.2.6 Release
-          # only after the replacement set has passed remote hash validation.
+          # Remove old or unselected assets only after the replacement set has passed remote hash validation.
           RELEASE_JSON=.build/replacement-ready-release.json node -e '
             const fs=require(`fs`);
             const release=require(`./${process.env.RELEASE_JSON}`);
-            const expected=new Set(fs.readFileSync(`.build/release-files-10.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>line.replace(/^dist\//,``)));
+            const expected=new Set(fs.readFileSync(`.build/release-files-8.txt`,`utf8`).trim().split(/\r?\n/).map((line)=>line.replace(/^dist\//,``)));
             for(const asset of release.assets) if(!expected.has(asset.name)) process.stdout.write(`${asset.id}\n`);
           ' > .build/legacy-asset-ids.txt
           while IFS= read -r legacy_id; do
@@ -578,7 +577,7 @@ jobs:
             --selection release \
             --version "$RELEASE_VERSION" \
             --metadata .build/published-release.json \
-            --expected-manifest .build/SHA256SUMS-release-10.txt
+            --expected-manifest .build/SHA256SUMS-release-8.txt
 
           assert_remote_tag
 
@@ -592,10 +591,10 @@ jobs:
           node -e '
             const fs=require(`fs`);
             const release=JSON.parse(fs.readFileSync(`.build/published-release.json`,`utf8`));
-            if(release.assets.length!==10)throw new Error(`Published Release requires exactly 10 assets.`);
+            if(release.assets.length!==8)throw new Error(`Published Release requires exactly 8 assets.`);
             fs.writeFileSync(`.build/download-urls.txt`,release.assets.map((a)=>a.browser_download_url).join(`\n`)+`\n`);
           '
-          test "$(wc -l < .build/download-urls.txt | tr -d ' ')" = "10"
+          test "$(wc -l < .build/download-urls.txt | tr -d ' ')" = "8"
           while IFS= read -r url; do
             curl --retry 3 --retry-all-errors -fsSIL --max-time 120 "$url" -o /dev/null
           done < .build/download-urls.txt

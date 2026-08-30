@@ -45,9 +45,6 @@ assert.doesNotMatch(summary, /顶部菜单可用/);
 assert.deepEqual(systemBrowserCommand('https://watch.example.com', 'win32'), {
   command: 'rundll32.exe', args: ['url.dll,FileProtocolHandler', 'https://watch.example.com/']
 });
-assert.deepEqual(systemBrowserCommand('https://watch.example.com', 'darwin'), {
-  command: 'open', args: ['https://watch.example.com/']
-});
 assert.deepEqual(systemBrowserCommand('https://watch.example.com', 'linux'), {
   command: 'xdg-open', args: ['https://watch.example.com/']
 });

@@ -97,7 +97,7 @@ function verifySources() {
   assert.match(buildScript, /real release keystore is required/i);
   assert.match(buildScript, /was not signed by the configured release keystore/i);
   assert.match(buildScript, /Assert-ApkPayload/);
-  assert.match(buildScript, new RegExp(`\\.\\.\\\\dist[\\s\\S]{0,160}SyncWatch-Android-v${packageVersion.replaceAll('.', '\\.')}\\-universal\\.apk`),
+  assert.match(buildScript, /\.\.\\dist[\s\S]{0,160}SyncWatch-Android-v\$version-universal\.apk/,
     'the signed APK must publish directly to the root dist directory');
   assert.doesNotMatch(buildScript, new RegExp(`SyncWatch同步观影-v${packageVersion.replaceAll('.', '\\.')}\\.apk`),
     'the Android build must not keep a duplicate delivery APK under mobile');

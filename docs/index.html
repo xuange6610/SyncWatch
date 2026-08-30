@@ -41,7 +41,7 @@
       <div class="hero__body shell">
         <div class="hero__copy">
           <h1 id="hero-title">SyncWatch同步观影</h1>
-          <p class="hero__lead">把服务器、房间和媒体掌握在自己手里，让 Windows、Android、macOS 与浏览器中的成员同步看到同一刻。</p>
+          <p class="hero__lead">把服务器、房间和媒体掌握在自己手里，让 Windows、Android 和浏览器中的成员同步看到同一刻。</p>
           <p class="hero__detail">局域网可直接连接，跨网络可按需启用 Cloudflare Tunnel 或自己的 HTTPS 反向代理。</p>
           <div class="hero__actions">
             <a class="button button--primary" href="https://github.com/xuange6610/SyncWatch/releases/latest">前往下载</a>
@@ -323,7 +323,7 @@
       <div class="shell quick-start">
         <div class="section-heading">
           <h2>从源码启动：先打开终端，再逐条输入</h2>
-          <p>Windows 在开始菜单搜索“PowerShell”或“终端”；macOS 打开“访达 → 应用程序 → 实用工具 → 终端”。普通使用者应优先下载已经构建的文件。</p>
+          <p>Windows 在开始菜单搜索“PowerShell”或“终端”。普通使用者应优先下载已经构建的文件。</p>
         </div>
         <div class="command-panel">
           <div class="command-panel__bar"><span>PowerShell / Terminal</span><button type="button" data-copy-command>复制命令</button></div>
@@ -350,21 +350,19 @@ npm start</code></pre>
     <section id="downloads" class="section section--download">
       <div class="shell download-layout">
         <div class="section-heading section-heading--dark">
-          <h2>下载时先认清文件用途</h2>
-          <p>v2.2.8 同版本更正版已完成最终 Tag 构建、哈希回读与线上核对。仓库自动生成的 Source code ZIP 是源码，不等于完整安装包；可直接使用的文件以 Releases 中真实存在且已核验的资产为准。v2.2.8 新构建仅提供 Windows 与 Android，macOS 新包停用，历史资产继续保留。</p>
+          <h2>下载时先看清楚用途</h2>
+          <p>v2.2.9 只提供 Windows 和 Android 的新文件。普通用户直接下载下面的文件即可；源码压缩包只适合开发者。</p>
         </div>
         <div class="download-actions">
-          <a class="button button--primary" href="https://github.com/xuange6610/SyncWatch/releases/latest">打开最新 Release</a>
+          <a class="button button--primary" href="https://github.com/xuange6610/SyncWatch/releases/latest/download/SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe">直接下载 Windows 完整便携版</a>
           <a class="button button--quiet" href="user-guide.html">阅读完整使用说明</a>
         </div>
         <ul class="download-notes">
-          <li><strong><span class="download-role-label download-role-client">客户端</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe">Experience 体验版</a></strong><span>Windows 成员客户端，只连接已有服务器。</span></li>
-          <li><strong><span class="download-role-label download-role-server">服务器</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe">Standard 标准版</a></strong><span>Windows 绿色便携服务器，内置运行环境与 cloudflared。</span></li>
-          <li><strong><span class="download-role-label download-role-server">服务器</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-v2.2.8-Full-Offline-Installer-x64.exe">Full Installer 完整安装版</a></strong> · <a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-v2.2.8-Full-Offline-Portable-x64.exe">完整便携版</a><span>Windows 完整服务器与离线下载中心。</span></li>
-          <li><strong><span class="download-role-label download-role-client">客户端</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.8/SyncWatch-Android-v2.2.8-universal.apk">Android APK</a></strong><span>通用 ABI，加入房间或在受支持设备运行手机服务器。</span></li>
-          <li><strong>macOS</strong><span>v2.2.8 起不再构建或上传新包；需要 macOS 安装包请在历史 Release 中按原版本选择，历史资产不会删除。</span></li>
-          <li><strong><span class="download-role-label download-role-server">服务器环境</span>源码与独立服务端</strong><span><a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.8.zip">源码 ZIP</a> · <a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.8.tar.gz">源码 TAR.GZ</a>；需要 Node.js，适合开发、审查或长期部署。</span></li>
-          <li><strong><span class="download-role-label download-role-server">服务器工具</span>Node.js / cloudflared</strong><span>官方工具和 26 项完整资产请在<a href="https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.8">v2.2.8 Release</a>中按平台选择并校验 SHA-256。</span></li>
+          <li><strong><span class="download-role-label download-role-client">客户端</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe">Experience 体验版</a></strong><span>Windows 成员客户端，只连接已有服务器。</span></li>
+          <li><strong><span class="download-role-label download-role-server">服务器</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe">Windows 完整便携版</a></strong><span>下载后直接双击，适合自己开房。</span></li>
+          <li><strong><span class="download-role-label download-role-client">客户端</span><a href="https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Android-v2.2.9-universal.apk">Android APK</a></strong><span>通用 ABI，加入房间或在受支持设备运行手机服务器。</span></li>
+          <li><strong><span class="download-role-label download-role-server">服务器环境</span>源码与独立服务端</strong><span><a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.zip">源码 ZIP</a> · <a href="https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.tar.gz">源码 TAR.GZ</a>；需要 Node.js，适合开发、审查或长期部署。</span></li>
+          <li><strong><span class="download-role-label download-role-server">服务器工具</span>Node.js / cloudflared</strong><span>需要自己搭建服务器时再下载这些工具，文件都在 <a href="https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9">v2.2.9 下载页</a>。</span></li>
           <li><strong>登录页与账号总览</strong><span>服务器快捷入口位于顶栏；Electron 服务端登录页支持滚轮；账号总览失败时显示明确错误，不会无限加载。</span></li>
         </ul>
       </div>
@@ -388,12 +386,11 @@ npm start</code></pre>
           <a href="user-guide.html"><strong>普通用户使用说明</strong><span>下载、启动、登录、建房、连接和常用功能</span></a>
           <a href="server-deployment-guide.html"><strong>服务器部署教程</strong><span>Windows、Linux、Docker、HTTPS、隧道、备份和升级</span></a>
           <a href="architecture.html"><strong>技术架构与依赖</strong><span>模块边界、数据、构建入口和测试方式</span></a>
-          <a href="macos-build.html"><strong>macOS 构建</strong><span>Intel 与 Apple Silicon 构建和发布说明</span></a>
           <a href="cloud-media-deployment.html"><strong>云端媒体与商业部署</strong><span>对象存储、反向代理和容量边界</span></a>
           <a href="management-center.html"><strong>管理中心 3D 教程</strong><span>3D 动画控制舱、11 个管理模块、按钮说明和操作示例</span></a>
           <a href="troubleshooting.html"><strong>常见错误与报错处理</strong><span>启动、端口、登录、媒体、Android、Tunnel、邮件和备份问题</span></a>
           <a href="tips-and-advantages.html"><strong>使用技巧与优势</strong><span>部署顺序、权限策略、备份技巧和自托管优势</span></a>
-          <a href="release-artifacts.html"><strong>发布文件与下载说明</strong><span>服务器、客户端、APK、macOS、ZIP 和校验方式</span></a>
+          <a href="release-artifacts.html"><strong>发布文件与下载说明</strong><span>服务器、客户端、APK、ZIP 和校验方式</span></a>
           <a href="runtime-installation.html"><strong>cloudflared 与 Node.js</strong><span>官方地址、安装步骤、命令示例与 Tunnel 超时修复</span></a>
           <a href="repository-map.html"><strong>仓库文件地图</strong><span>截图中每个文件夹、规范文件和构建入口的职责</span></a>
           <a href="quick-start.html"><strong>新手快速开始</strong><span>双击启动、首次登录、建房、邀请成员和备份</span></a>

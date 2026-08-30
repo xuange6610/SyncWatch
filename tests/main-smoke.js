@@ -31,10 +31,6 @@ const driveERoot = electronSettings.resolveApplicationRoot({ portableExecutableF
 assert.equal(driveDRoot, portableRootCases[0].expected);
 assert.equal(driveERoot, portableRootCases[1].expected);
 assert.notEqual(driveDRoot, driveERoot);
-assert.equal(electronSettings.resolveApplicationRoot({
-  isPackaged: true, platform: 'darwin', execPath: '/Applications/SyncWatch同步观影.app/Contents/MacOS/SyncWatch同步观影',
-  userDataPath: '/Users/example/Library/Application Support/SyncWatch同步观影-服务器'
-}), path.resolve('/Users/example/Library/Application Support/SyncWatch同步观影-服务器'));
 fs.mkdirSync(dataDir, { recursive: true });
 const packagedServerPath = path.join(dataDir, `SyncWatch同步观影-v${APP_VERSION}.exe`);
 const packagedClientPath = path.join(dataDir, `SyncWatch同步观影-Client-v${APP_VERSION}.exe`);
@@ -46,29 +42,6 @@ fs.mkdirSync(path.dirname(embeddedClientPath), { recursive: true });
 fs.writeFileSync(embeddedClientPath, 'embedded-client');
 assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, resourcesPath: dataDir }), embeddedClientPath);
 assert.equal(electronSettings.resolveClientDownloadPath({ isPackaged: true, portableExecutableFile: path.join(dataDir, 'missing', `SyncWatch同步观影-v${APP_VERSION}.exe`) }), '');
-const macArtifacts = path.join(dataDir, 'mac');
-fs.mkdirSync(macArtifacts);
-const macServerArm64 = path.join(macArtifacts, `SyncWatch同步观影-服务器-v${APP_VERSION}-arm64.dmg`);
-const macServerX64Zip = path.join(macArtifacts, `SyncWatch同步观影-服务器-v${APP_VERSION}-x64.zip`);
-const macClientX64 = path.join(macArtifacts, `SyncWatch同步观影-客户端-v${APP_VERSION}-x64.dmg`);
-const macClientX64Zip = path.join(macArtifacts, `SyncWatch同步观影-客户端-v${APP_VERSION}-x64.zip`);
-fs.writeFileSync(macServerArm64, 'server-arm64');
-fs.writeFileSync(macServerX64Zip, 'server-x64-zip');
-fs.writeFileSync(macClientX64, 'client-x64');
-fs.writeFileSync(macClientX64Zip, 'client-x64-zip');
-assert.deepEqual(electronSettings.resolveMacDownloadPaths('server', { isPackaged: true, portableExecutableFile: packagedServerPath }), {
-  x64: { dmg: '', zip: '' }, arm64: { dmg: '', zip: '' }
-});
-assert.deepEqual(electronSettings.resolveMacDownloadPaths('client', { isPackaged: true, portableExecutableFile: packagedServerPath }), {
-  x64: { dmg: '', zip: '' }, arm64: { dmg: '', zip: '' }
-});
-assert.deepEqual(electronSettings.resolveMacDownloadPaths('server', { developmentDirectory: dataDir }), {
-  x64: { dmg: '', zip: macServerX64Zip }, arm64: { dmg: macServerArm64, zip: '' }
-});
-assert.deepEqual(electronSettings.resolveMacDownloadPaths('client', { developmentDirectory: dataDir }), {
-  x64: { dmg: macClientX64, zip: macClientX64Zip }, arm64: { dmg: '', zip: '' }
-});
-
 const electronSource = fs.readFileSync(path.resolve(__dirname, '..', 'electron-pink.js'), 'utf8');
 assert.doesNotMatch(electronSource, /首次加载需要生成数据库/);
 const portableStorageCall = electronSource.indexOf('configurePortableStorage();');
