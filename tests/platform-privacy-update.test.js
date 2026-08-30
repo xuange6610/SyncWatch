@@ -190,6 +190,8 @@ function verifyRuntimeMarkers() {
   assert.deepEqual(JSON.parse(JSON.stringify(clientBridge.SyncWatchPlatform)), {
     version: 1, runtime: 'electron', role: 'client', serverApp: false, clientApp: true
   });
+  assert.equal(typeof serverBridge.SyncWatchDesktop.writeClipboardText, 'function');
+  assert.equal(typeof clientBridge.SyncWatchClient.writeClipboardText, 'function');
   assert.equal(Object.isFrozen(serverBridge.SyncWatchPlatform), true);
   assert.equal(Object.isFrozen(clientBridge.SyncWatchPlatform), true);
   assert.match(android, /runtime:\\\"android\\\",role:\\\"client\\\",serverApp:false,clientApp:true/);

@@ -1091,6 +1091,10 @@ async function main() {
 
     const roomGuest = await makeClient();
     assert.equal((await roomGuest.emit('user-register', { username: 'RoomGuest', password: 'guest-pass' })).success, true);
+    const missingRoomPassword = await roomGuest.emit('user-login', {
+      username: 'RoomGuest', password: 'guest-pass', roomId: createdRoomId, roomPassword: '', deviceId: 'room-guest-device'
+    });
+    assert.equal(missingRoomPassword.success, false); assert.equal(missingRoomPassword.error, '请输入房间密码');
     const wrongRoomPassword = await roomGuest.emit('user-login', {
       username: 'RoomGuest', password: 'guest-pass', roomId: createdRoomId, roomPassword: 'wrong-pass', deviceId: 'room-guest-device'
     });
@@ -1100,7 +1104,7 @@ async function main() {
     });
     assert.equal(joinedRoom.success, true); assert.equal(joinedRoom.room.id, createdRoomId); assert.equal(joinedRoom.room.maxUsers, 3);
     const roomGuestToken = joinedRoom.token;
-    check('普通账号可异步创建带密码和人数限制的房间，错误密码拒绝、正确密码允许加入');
+    check('普通账号可异步创建带密码和人数限制的房间，空密码明确提示输入、错误密码拒绝、正确密码允许加入');
 
     const rememberedRoomClient = await makeClient();
     assert.equal((await rememberedRoomClient.emit('user-register', { username: 'RoomMemory', password: 'memory-pass' })).success, true);

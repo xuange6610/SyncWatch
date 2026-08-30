@@ -266,6 +266,8 @@ assert.match(androidEmulatorSmoke, /screencap -p/);
 assert.match(workflows.windows, /\.build\/android-smoke\/launch\.txt/);
 assert.match(workflows.windows, /Start-Process -FilePath \$client/);
 assert.match(workflows.windows, /Test-ServerExecutable \$portable/);
+assert.match(workflows.windows, /Scan Windows Full Offline portable with Microsoft Defender[\s\S]*Get-MpComputerStatus[\s\S]*Start-MpScan[\s\S]*Get-MpThreatDetection/,
+  'Full Offline portable must pass a real Microsoft Defender scan before launch verification and upload');
 assert.match(workflows.windows, /dist\\builder-debug\.yml/);
 for (const source of [workflows.windows]) {
   assert.match(source, /path:\s*\.build\/full-inputs\/windows/);

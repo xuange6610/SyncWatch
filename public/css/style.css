@@ -99,6 +99,18 @@ main { height: calc(100% - 58px); }
 .guest-login-button { margin-top: 6px; border-style: dashed; color: var(--theme-accent, var(--pink-2)); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); }
 .room-join-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .room-join-fields label { min-width: 0; }
+.field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.room-password-state { flex: 0 0 auto; padding: 2px 6px; color: var(--muted); background: #ffffff08; border: 1px solid var(--line); border-radius: 5px; font-size: 10px; font-weight: 700; }
+.room-password-state.required { color: var(--yellow); border-color: color-mix(in srgb, var(--yellow) 58%, var(--line)); background: color-mix(in srgb, var(--yellow) 9%, transparent); }
+.room-password-state.open { color: var(--green); border-color: color-mix(in srgb, var(--green) 54%, var(--line)); background: color-mix(in srgb, var(--green) 8%, transparent); }
+.login-attention-field > input,
+.login-attention-field > .password-field { border-radius: 8px; animation: login-field-attention 1.65s ease-in-out infinite; }
+.login-attention-field > .password-field input { border-color: transparent; }
+@keyframes login-field-attention {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-accent, var(--pink)) 44%, transparent), 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, var(--pink)) 92%, transparent), 0 0 16px color-mix(in srgb, var(--theme-accent, var(--pink)) 34%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .login-attention-field > input, .login-attention-field > .password-field { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, var(--pink)) 72%, transparent); } }
 .auth-create-room { margin-top: 8px; }
 #myRoomsLoginBtn { margin: 0; }
 .device-ip-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 9px 10px; background: #52c7b808; border: 1px solid #52c7b824; border-radius: 7px; }.device-ip-row > span { min-width: 0; display: grid; gap: 2px; }.device-ip-row small { color: var(--muted); font-size: 9px; }.device-ip-row strong { overflow-wrap: anywhere; font-size: 12px; font-variant-numeric: tabular-nums; }.device-ip-row button { flex: 0 0 auto; min-height: 32px; padding: 5px 11px; }
@@ -128,7 +140,7 @@ main { height: calc(100% - 58px); }
 .workspace { display: grid; grid-template-columns: 285px minmax(480px, 1fr) 286px; transition: grid-template-columns .2s ease; }
 .side-panel { min-width: 0; background: var(--panel); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--theme-accent, var(--pink)) transparent; }
 .file-panel { border-right: 1px solid var(--line); padding: 15px; }.user-panel { position: relative; border-left: 1px solid var(--line); }
-.user-panel-collapse-button { position: absolute; z-index: 3; top: 10px; left: -15px; }
+.user-panel-collapse-button { position: relative; z-index: 3; flex: 0 0 28px; }
 .panel-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }.panel-heading h2, .tab-content > h2 { margin: 0; font-size: 17px; }
 .panel-heading-actions { display: flex; align-items: center; gap: 6px; }
 .panel-collapse-button { display: grid; width: 28px; height: 28px; place-items: center; padding: 0; color: var(--pink-2); background: #ffffff0a; border: 1px solid var(--line); border-radius: 8px; font-size: 22px; line-height: 1; transition: transform .2s ease, background .2s ease; }
@@ -396,8 +408,11 @@ body.ambient-light-on .topbar, body.ambient-light-on .side-panel { background-co
   .workspace.files-collapsed .file-panel::after { content: "影片库"; position: absolute; left: 50%; top: 62px; color: var(--muted); font-size: 10px; writing-mode: vertical-rl; letter-spacing: 0; transform: translateX(-50%); }
   .workspace.members-panel-collapsed .user-panel { position: relative; padding: 10px 5px; overflow: hidden; background: #11171b; }
   .workspace.members-panel-collapsed .user-panel > :not(#usersTab) { display: none; }
-  .workspace.members-panel-collapsed .user-panel #usersTab > :not(.user-panel-collapse-button) { display: none; }
-  .workspace.members-panel-collapsed .user-panel-collapse-button { position: relative; top: 0; left: 0; display: grid; margin: 0 auto; }
+  .workspace.members-panel-collapsed .user-panel #usersTab > :not(.panel-heading) { display: none; }
+  .workspace.members-panel-collapsed .user-panel .panel-heading { justify-content: center; margin: 0; }
+  .workspace.members-panel-collapsed .user-panel .panel-heading > div:first-child,
+  .workspace.members-panel-collapsed .user-panel .member-heading-actions > :not(.user-panel-collapse-button) { display: none; }
+  .workspace.members-panel-collapsed .user-panel-collapse-button { display: grid; margin: 0 auto; }
   .workspace.members-panel-collapsed .user-panel::after { content: "成员"; position: absolute; left: 50%; top: 62px; color: var(--muted); font-size: 10px; writing-mode: vertical-rl; letter-spacing: 0; transform: translateX(-50%); }
 }
 @media (min-width: 925px) and (max-width: 1450px) {
@@ -2036,6 +2051,33 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
 .link-button, .ghost-button, .text-button, .account-dropdown button, .panel-tabs button, .queue-list button, .file-actions button, .user-actions button, .chat-mode, .reaction-bar button, .notice-close-button, .modal-close { color: var(--muted); background: transparent; border-color: transparent; }
 .link-button:hover, .ghost-button:hover, .text-button:hover, .account-dropdown button:hover, .panel-tabs button:hover, .queue-list button:hover, .file-actions button:hover, .user-actions button:hover, .chat-mode:hover, .reaction-bar button:hover { color: var(--pink-2); background: color-mix(in srgb, var(--pink) 9%, transparent); }
 @media (max-width: 540px) { body:not(.android-client) .topbar-actions, body.android-client .topbar-actions { overflow-x: hidden; } }
+
+/* Phone actions stay as one readable accordion instead of splitting an open
+   details panel across unrelated grid columns. */
+@media (max-width: 540px) {
+  body:not(.android-client) .topbar-actions,
+  body.android-client .topbar-actions { grid-template-columns: minmax(0, 1fr); align-content: start; }
+  body:not(.android-client) .topbar-scroll-actions,
+  body:not(.android-client) .topbar-fixed-actions,
+  body.android-client .topbar-scroll-actions,
+  body.android-client .topbar-fixed-actions { display: grid; grid-template-columns: minmax(0, 1fr); grid-column: 1 / -1; gap: 8px; width: 100%; }
+  body:not(.android-client) .topbar-actions .topbar-menu,
+  body.android-client .topbar-actions .topbar-menu { display: block; grid-column: 1 / -1; width: 100%; }
+  body:not(.android-client) .topbar-actions .topbar-menu-trigger,
+  body.android-client .topbar-actions .topbar-menu-trigger { width: 100%; min-height: 48px; }
+  body:not(.android-client) .topbar-actions .topbar-menu-panel,
+  body.android-client .topbar-actions .topbar-menu-panel { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; max-height: min(52dvh, 440px); overflow-y: auto; }
+  body:not(.android-client) .topbar-actions .topbar-menu:not([open]) > .topbar-menu-panel,
+  body.android-client .topbar-actions .topbar-menu:not([open]) > .topbar-menu-panel { display: none; }
+  body:not(.android-client) .topbar-actions .header-feature-button .button-label,
+  body:not(.android-client) .topbar-actions .share-link-button .button-label,
+  body.android-client .topbar-actions .header-feature-button .button-label,
+  body.android-client .topbar-actions .share-link-button .button-label { display: inline !important; }
+  body:not(.android-client) .topbar-actions > :is(.share-link-button, .status-badge, .account-button),
+  body.android-client .topbar-actions > :is(.share-link-button, .status-badge, .account-button) { grid-column: 1 / -1; width: 100%; }
+  body:not(.android-client) .topbar-actions > .account-dropdown,
+  body.android-client .topbar-actions > .account-dropdown { grid-template-columns: minmax(0, 1fr); }
+}
 
 .login-host-shortcuts { width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0 0; padding: 7px; border: 1px solid color-mix(in srgb, var(--theme-accent, #c7a763) 36%, var(--line)); border-radius: 7px; background: color-mix(in srgb, var(--theme-accent, #c7a763) 5%, transparent); }
 .login-host-shortcuts button { width: 100%; min-width: 0; height: 30px; min-height: 30px; margin: 0; padding: 3px 8px; font-size: 11px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }

@@ -247,6 +247,11 @@ ipcMain.handle('syncwatch-client:read-clipboard-text', async (event) => {
   try { return { success: true, text: clipboard.readText() }; }
   catch (error) { return { success: false, error: error?.message || '无法读取系统剪贴板', text: '' }; }
 });
+ipcMain.handle('syncwatch-client:write-clipboard-text', (event, value) => {
+  if (!isTrustedServerSender(event)) return { success: false, error: '当前页面无权写入系统剪贴板' };
+  try { clipboard.writeText(String(value || '')); return { success: true }; }
+  catch (error) { return { success: false, error: error?.message || '无法写入系统剪贴板' }; }
+});
 ipcMain.handle('syncwatch-client:list-audio-sources', async (event) => {
   if (!isTrustedServerSender(event)) return { success: false, error: '当前页面无权扫描电脑音源', sources: [] };
   try {

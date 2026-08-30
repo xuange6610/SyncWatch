@@ -537,6 +537,27 @@ jobs:
         run: |
           npx electron-builder --config electron-builder-windows-full-portable.json --win portable --x64 --publish never
           if ($LASTEXITCODE -ne 0) { throw 'Windows Full Offline portable build failed.' }
+      - name: Scan Windows Full Offline portable with Microsoft Defender
+        shell: pwsh
+        run: |
+          $portable = (Resolve-Path ".\dist\SyncWatch-v$env:RELEASE_VERSION-Full-Offline-Portable-x64.exe").Path
+          $status = Get-MpComputerStatus -ErrorAction Stop
+          if (-not $status.AMServiceEnabled -or -not $status.AntivirusEnabled) {
+            throw 'Microsoft Defender antivirus service is unavailable; refusing to publish an unscanned portable.'
+          }
+          Start-MpScan -ScanType CustomScan -ScanPath $portable -ErrorAction Stop
+          if (-not (Test-Path -LiteralPath $portable -PathType Leaf)) {
+            throw 'Microsoft Defender removed or quarantined the Full Offline portable.'
+          }
+          $detections = @(Get-MpThreatDetection -ErrorAction SilentlyContinue | Where-Object {
+            ($_.Resources -join "`n") -match [Regex]::Escape($portable)
+          })
+          if ($detections.Count -gt 0) {
+            $names = ($detections | ForEach-Object ThreatName | Where-Object { $_ } | Sort-Object -Unique) -join ', '
+            throw "Microsoft Defender detected the Full Offline portable: $names"
+          }
+          $hash = (Get-FileHash -LiteralPath $portable -Algorithm SHA256).Hash
+          "Microsoft Defender scan passed: $portable`nSHA-256: $hash"
       - name: Install, launch, and verify Windows Full Offline artifacts
         shell: pwsh
         run: |

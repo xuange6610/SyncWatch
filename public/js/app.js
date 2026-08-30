@@ -155,7 +155,7 @@ const state = {
   memberProfileLastFetchAt: 0, memberProfileHighlightUntil: 0,
   liveVoiceStream: null, liveVoiceMode: '', liveVoiceMuted: false, liveVoicePeers: new Map(), liveVoiceSignalQueues: new Map(), pendingVoiceCallId: '',
   liveVoiceCollapsed: localStorage.getItem('syncwatchLiveVoiceCollapsed') !== '0', liveVoiceFloatingCollapsed: localStorage.getItem('syncwatchVoiceFloatingCollapsed') !== '0', liveVoicePushRestoreMuted: null,
-  roomIdTouched: false, agreementResolver: null, screenNoticeTimer: null, viewRotation: 0, viewZoom: 1,
+  roomIdTouched: false, loginRoomPasswordRequired: null, loginRoomPasswordRoomId: '', agreementResolver: null, screenNoticeTimer: null, viewRotation: 0, viewZoom: 1,
   webShare: { active: false, url: '', title: '', updatedAt: 0 }, floatingPlayerActive: false, documentPipWindow: null, pipDanmakuLayer: null, ownerExitResolver: null, recentNoticeKeys: new Map(),
   desktopClosePending: false,
   pendingJoinRoomId: '', mediaCategoryFilter: '', mediaCategories: [], roomMarquee: null,
@@ -327,7 +327,7 @@ localStorage.setItem('syncwatchDeviceId', deviceId);
 const elements = {};
 const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn openOnboardingGuideBtn onboardingGuideModal closeOnboardingGuideBtn onboardingGuideDescription onboardingGuideProgress onboardingGuideStep onboardingGuideSkipBtn onboardingGuideBackBtn onboardingGuideNextBtn
  loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn guestLoginBtn authCard
- loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSearch onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
+ loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword loginRoomPasswordState onlineRoomSearch onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountRoomSettingsBtn accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn collapseMembersPanelBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
   fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText openRoomManagementBtn
@@ -1496,6 +1496,55 @@ function mountAccountDropdownForViewport() {
 function setAccountDropdownOpen(open) {
   elements.accountDropdown?.classList.toggle('is-hidden', !open);
   elements.accountMenuBtn?.setAttribute('aria-expanded', String(Boolean(open)));
+  if (!open && elements.accountMenuBtn) elements.accountMenuBtn.dataset.menuPinned = 'false';
+}
+
+let accountMenuCloseTimer = 0;
+function scheduleAccountDropdownClose() {
+  clearTimeout(accountMenuCloseTimer);
+  if (usesMobileActionMenu() || elements.accountMenuBtn?.dataset.menuPinned === 'true') return;
+  accountMenuCloseTimer = setTimeout(() => setAccountDropdownOpen(false), 140);
+}
+
+function bindTopbarAutoCollapse() {
+  const hoverCapable = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches && !usesMobileActionMenu();
+  const menus = [...document.querySelectorAll('[data-topbar-menu]')];
+  const closeUnpinnedMenus = (except = null) => menus.forEach((menu) => {
+    if (menu !== except && menu.dataset.menuPinned !== 'true') menu.open = false;
+  });
+  menus.forEach((menu) => {
+    const trigger = menu.querySelector(':scope > summary');
+    menu.dataset.menuPinned = 'false';
+    trigger?.addEventListener('click', (event) => {
+      if (usesMobileActionMenu()) return;
+      event.preventDefault();
+      const pinned = menu.open && menu.dataset.menuPinned === 'true';
+      menus.forEach((other) => { other.open = false; other.dataset.menuPinned = 'false'; });
+      menu.open = !pinned;
+      menu.dataset.menuPinned = String(!pinned);
+    });
+    menu.addEventListener('pointerenter', () => {
+      if (!hoverCapable()) return;
+      closeUnpinnedMenus(menu);
+      menu.open = true;
+    });
+    menu.addEventListener('pointerleave', () => {
+      if (!hoverCapable() || menu.dataset.menuPinned === 'true') return;
+      setTimeout(() => { if (!menu.matches(':hover') && menu.dataset.menuPinned !== 'true') menu.open = false; }, 120);
+    });
+    menu.addEventListener('focusout', (event) => {
+      if (menu.dataset.menuPinned !== 'true' && !menu.contains(event.relatedTarget)) menu.open = false;
+    });
+    menu.querySelector('.topbar-menu-panel')?.addEventListener('click', (event) => {
+      if (!event.target.closest('button')) return;
+      menu.open = false;
+      menu.dataset.menuPinned = 'false';
+    });
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('[data-topbar-menu]')) return;
+    menus.forEach((menu) => { menu.open = false; menu.dataset.menuPinned = 'false'; });
+  });
 }
 
 function toggleMobileActionMenu(force) {
@@ -2010,6 +2059,7 @@ function bindUiEvents() {
   });
   elements.mobileMenuBtn?.addEventListener('click', () => toggleMobileActionMenu());
   elements.mobileMenuBackdrop?.addEventListener('click', () => toggleMobileActionMenu(false));
+  bindTopbarAutoCollapse();
   document.querySelector('.topbar-actions')?.addEventListener('click', (event) => {
     if (!usesMobileActionMenu() || !event.target.closest('button') || event.target.closest('#accountMenuBtn')) return;
     toggleMobileActionMenu(false);
@@ -2219,10 +2269,20 @@ function bindUiEvents() {
       if (opening) requestAnimationFrame(() => elements.accountDropdown.scrollIntoView({ block: 'nearest' }));
       return;
     }
-    const opening = elements.accountDropdown.classList.contains('is-hidden');
-    setAccountDropdownOpen(opening);
-    if (opening) positionAccountDropdown();
+    const pinned = !elements.accountDropdown.classList.contains('is-hidden') && elements.accountMenuBtn.dataset.menuPinned === 'true';
+    setAccountDropdownOpen(!pinned);
+    elements.accountMenuBtn.dataset.menuPinned = String(!pinned);
+    if (!pinned) positionAccountDropdown();
   });
+  elements.accountMenuBtn.addEventListener('pointerenter', () => {
+    if (usesMobileActionMenu() || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    clearTimeout(accountMenuCloseTimer);
+    setAccountDropdownOpen(true);
+    positionAccountDropdown();
+  });
+  elements.accountMenuBtn.addEventListener('pointerleave', scheduleAccountDropdownClose);
+  elements.accountDropdown.addEventListener('pointerenter', () => clearTimeout(accountMenuCloseTimer));
+  elements.accountDropdown.addEventListener('pointerleave', scheduleAccountDropdownClose);
   elements.accountDropdown.addEventListener('click', handleAccountMenu);
   document.addEventListener('click', (event) => {
     if (!elements.accountDropdown.contains(event.target) && event.target !== elements.accountMenuBtn) setAccountDropdownOpen(false);
@@ -2505,7 +2565,12 @@ function bindUiEvents() {
   elements.playerContainer.addEventListener('pointerup', handlePlayerDoubleTap);
   elements.playerContainer.addEventListener('pointerup', endFullscreenAdjustmentGesture);
   elements.playerContainer.addEventListener('pointercancel', endFullscreenAdjustmentGesture);
-  elements.roomIdInput?.addEventListener('input', () => { state.roomIdTouched = true; scheduleRoomInfoLookup(); });
+  elements.roomIdInput?.addEventListener('input', () => {
+    state.roomIdTouched = true;
+    setLoginRoomPasswordState(null, String(elements.roomIdInput.value || '').trim() ? '检测中' : '未选择房间');
+    scheduleRoomInfoLookup();
+  });
+  elements.loginRoomPassword?.addEventListener('input', () => elements.loginRoomPassword.removeAttribute('aria-invalid'));
   elements.username?.addEventListener('input', handleLoginUsernameInput);
   elements.createRoomBtn?.addEventListener('click', openCreateRoom);
   elements.newRoomBtn?.addEventListener('click', openCreateRoom);
@@ -3534,6 +3599,7 @@ function handleLoginUsernameInput() {
   if (admin && !state.roomIdTouched) {
     elements.roomIdInput.value = '';
     elements.loginRoomPassword.value = '';
+    setLoginRoomPasswordState(null, '未选择房间');
     elements.roomLookupStatus.textContent = '超级管理员可留空进入临时房间，也可手动输入现有房间号';
     setLoginStatus('admin 登录不会自动填写房间号；服务器设备也可使用超级管理员入口。', true);
   } else if (!admin && !elements.roomIdInput.value) {
@@ -3547,6 +3613,7 @@ function selectOnlineRoom() {
   state.roomIdTouched = true;
   elements.roomIdInput.value = id;
   elements.loginRoomPassword.value = '';
+  setLoginRoomPasswordState(null, '检测中');
   void loadRoomInfo();
 }
 
@@ -4278,6 +4345,7 @@ async function login(event) {
   if (roomId && !/^[A-Z0-9]{4,32}$/.test(roomId)) return setLoginStatus('请输入正确的房间号（4-32 位大写字母或数字）');
   try {
     if (!roomId && await maybeShowLoginRoomReminder()) return;
+    if (await promptForMissingLoginRoomPassword(roomId)) return;
     await submitAccountLogin();
   } catch (error) {
     const message = `登录初始化失败：${localizedError(error, '请检查服务器连接')}`;
@@ -4323,6 +4391,7 @@ async function guestLogin() {
   try {
     if (!await ensureSocketConnectedForLogin()) return setLoginStatus('连接服务器失败，请检查服务器地址后重试');
     const roomId = String(elements.roomIdInput?.value || '').trim().toUpperCase();
+    if (await promptForMissingLoginRoomPassword(roomId)) return;
     let result = await emitAck('guest-login', {
       roomId,
       roomPassword: elements.loginRoomPassword?.value || elements.loginAccessPassword?.value || '',
@@ -5636,8 +5705,7 @@ function closeServerEndpointDetails() {
 async function copyServerEndpointDetails() {
   const address = elements.serverEndpointDetailsAddress?.dataset.url || '';
   if (!address) return toast('当前没有可复制的局域网地址', 'error');
-  try { await navigator.clipboard.writeText(address); toast('局域网地址已复制', 'success'); }
-  catch (_) { toast('复制失败，请手动选择地址', 'error'); }
+  await copyText(address, '局域网地址已复制', '复制局域网地址');
 }
 
 function downloadAssetSummary(value) {
@@ -6177,35 +6245,67 @@ function scheduleRoomInfoLookup() {
   state.roomInfoTimer = setTimeout(() => loadRoomInfo(), 300);
 }
 
+function setLoginRoomPasswordState(required, fallbackText = '') {
+  state.loginRoomPasswordRequired = typeof required === 'boolean' ? required : null;
+  if (required === null) state.loginRoomPasswordRoomId = '';
+  const output = elements.loginRoomPasswordState;
+  if (!output) return;
+  output.classList.toggle('required', required === true);
+  output.classList.toggle('open', required === false);
+  output.classList.toggle('unknown', required === null);
+  output.textContent = required === true ? '有密码' : required === false ? '无密码' : (fallbackText || '检测中');
+}
+
+async function promptForMissingLoginRoomPassword(roomId) {
+  if (!roomId) return false;
+  if (state.loginRoomPasswordRoomId !== roomId) await loadRoomInfo();
+  if (state.loginRoomPasswordRoomId !== roomId || state.loginRoomPasswordRequired !== true || elements.loginRoomPassword?.value) return false;
+  setLoginStatus('请输入房间密码');
+  elements.loginRoomPassword?.focus();
+  elements.loginRoomPassword?.setAttribute('aria-invalid', 'true');
+  return true;
+}
+
 async function loadRoomInfo() {
   const id = String(elements.roomIdInput?.value || '').trim().toUpperCase();
   elements.roomLookupStatus?.classList.remove('success');
   if (!id) {
+    setLoginRoomPasswordState(null, '未选择房间');
     if (elements.roomLookupStatus) elements.roomLookupStatus.textContent = elements.username.value.trim().toLowerCase() === 'admin'
       ? '超级管理员留空将进入退出即删除的临时房间' : '房间号可留空；留空会进入退出即删除的临时房间，也可选择在线房间';
-    return;
+    return null;
   }
   if (!/^[A-Z0-9]{4,32}$/.test(id)) {
+    setLoginRoomPasswordState(null, '待确认');
     if (elements.roomLookupStatus) elements.roomLookupStatus.textContent = '房间号需为 4-32 位大写字母或数字';
-    return;
+    return null;
   }
+  setLoginRoomPasswordState(null, '检测中');
   try {
     const response = await fetchWithTimeout(`/api/rooms/${encodeURIComponent(id)}/public`, {}, 6000);
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || '房间不存在');
+    if (String(elements.roomIdInput?.value || '').trim().toUpperCase() !== id) return null;
     const label = elements.loginRoomPassword?.closest('label');
     label?.classList.toggle('password-optional', !result.room.passwordRequired);
+    setLoginRoomPasswordState(Boolean(result.room.passwordRequired));
+    state.loginRoomPasswordRoomId = id;
+    elements.loginRoomPassword?.removeAttribute('aria-invalid');
     if (elements.loginRoomPassword) elements.loginRoomPassword.placeholder = result.room.passwordRequired ? `“${result.room.name}”需要房间密码` : `“${result.room.name}”未设置密码，可留空`;
     if (elements.roomLookupStatus) {
       elements.roomLookupStatus.textContent = `已找到：${result.room.name} · 当前 ${result.room.online}/${result.room.maxUsers} 人${result.room.passwordRequired ? ' · 需要房间密码' : ' · 无需房间密码'}`;
       elements.roomLookupStatus.classList.add('success');
     }
     if (elements.onlineRoomSelect && [...elements.onlineRoomSelect.options].some((option) => option.value === id)) elements.onlineRoomSelect.value = id;
+    return result.room;
   } catch (error) {
+    if (String(elements.roomIdInput?.value || '').trim().toUpperCase() !== id) return null;
+    setLoginRoomPasswordState(null, '检测失败');
     if (elements.roomLookupStatus) {
       elements.roomLookupStatus.textContent = `未找到该房间：${localizedError(error, '请检查房间号或服务器连接')}`;
       elements.roomLookupStatus.classList.remove('success');
     }
+    return null;
   }
 }
 
@@ -12595,6 +12695,13 @@ async function copyText(value, successMessage, fallbackTitle = '分享地址') {
     if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
     await navigator.clipboard.writeText(text); toast(successMessage, 'success'); return true;
   } catch (_) {}
+  for (const bridge of [window.SyncWatchDesktop, window.SyncWatchClient, window.SyncWatchAndroid]) {
+    if (typeof bridge?.writeClipboardText !== 'function') continue;
+    try {
+      const result = await Promise.resolve(bridge.writeClipboardText(text));
+      if (result === true || result?.success !== false) { toast(successMessage, 'success'); return true; }
+    } catch (_) {}
+  }
   let copied = false;
   const textarea = document.createElement('textarea');
   textarea.value = text; textarea.readOnly = true; textarea.setAttribute('aria-hidden', 'true');

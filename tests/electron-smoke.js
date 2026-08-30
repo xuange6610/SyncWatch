@@ -148,6 +148,40 @@ async function run() {
   assert.ok(loginSurface.selectRightPadding >= 36);
   console.log('✓ 登录提示可关闭且位于加入标题区，下载入口、顶部操作组和下拉框样式完整');
 
+  const loginPasswordGuidance = await window.webContents.executeJavaScript(`(async () => {
+    const previousFetch = fetchWithTimeout;
+    const previousRoomId = elements.roomIdInput.value;
+    const previousRoomPassword = elements.loginRoomPassword.value;
+    fetchWithTimeout = async () => ({ ok: true, json: async () => ({ success: true, room: { id: 'LOCK88', name: '密码房间', online: 1, maxUsers: 8, passwordRequired: true } }) });
+    elements.roomIdInput.value = 'LOCK88';
+    elements.loginRoomPassword.value = '';
+    await loadRoomInfo();
+    const required = { text: elements.loginRoomPasswordState.textContent, className: elements.loginRoomPasswordState.className };
+    const blocked = await promptForMissingLoginRoomPassword('LOCK88');
+    const emptyPrompt = elements.loginStatus.textContent;
+    const focused = document.activeElement === elements.loginRoomPassword;
+    elements.loginRoomPassword.value = 'secret';
+    const accepted = !(await promptForMissingLoginRoomPassword('LOCK88'));
+    const highlights = ['username', 'password', 'roomIdInput'].map((id) => {
+      const input = document.getElementById(id);
+      const target = id === 'password' ? input.closest('.password-field') : input;
+      const style = getComputedStyle(target);
+      return { id, animation: style.animationName, shadow: style.boxShadow };
+    });
+    fetchWithTimeout = previousFetch;
+    elements.roomIdInput.value = previousRoomId;
+    elements.loginRoomPassword.value = previousRoomPassword;
+    void loadRoomInfo();
+    return { required, blocked, emptyPrompt, focused, accepted, highlights };
+  })()`, true);
+  assert.equal(loginPasswordGuidance.required.text, '有密码', JSON.stringify(loginPasswordGuidance));
+  assert.match(loginPasswordGuidance.required.className, /required/);
+  assert.equal(loginPasswordGuidance.blocked, true);
+  assert.equal(loginPasswordGuidance.emptyPrompt, '请输入房间密码');
+  assert.equal(loginPasswordGuidance.focused, true);
+  assert.equal(loginPasswordGuidance.accepted, true);
+  assert.ok(loginPasswordGuidance.highlights.every((item) => item.animation.includes('login-field-attention') || item.shadow !== 'none'), JSON.stringify(loginPasswordGuidance));
+
   const onlineRoomRequestsBeforeRefresh = requestedUrls.filter((url) => /\/api\/online-rooms(?:\?|$)/.test(url)).length;
   await window.webContents.executeJavaScript(`document.getElementById('refreshOnlineRoomsBtn').click(); true`, true);
   await waitFor(`!document.getElementById('refreshOnlineRoomsBtn').disabled && document.getElementById('toastRegion').textContent.includes('在线房间已刷新')`, '手动刷新在线房间');

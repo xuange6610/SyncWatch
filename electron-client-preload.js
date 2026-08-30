@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('SyncWatchClient', {
   open: (address) => ipcRenderer.invoke('syncwatch-client:open', address),
   openExternal: (value) => ipcRenderer.invoke('syncwatch-client:open-external', String(value || '')),
   readClipboardText: () => ipcRenderer.invoke('syncwatch-client:read-clipboard-text'),
+  writeClipboardText: (value) => ipcRenderer.invoke('syncwatch-client:write-clipboard-text', String(value || '')),
   setAudioMuted: (muted) => ipcRenderer.invoke('syncwatch-client:audio-muted', Boolean(muted)),
   listAudioSources: () => ipcRenderer.invoke('syncwatch-client:list-audio-sources')
 });

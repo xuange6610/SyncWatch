@@ -138,6 +138,7 @@ async function main() {
   const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-chrome-profile-'));
   const outputDir = path.join(os.tmpdir(), 'syncwatch-ui-review');
   fs.mkdirSync(outputDir, { recursive: true });
+  const images = [];
   let server; let authSocket; let chrome; let cdp;
   const sentMails = [];
   const originalFetch = global.fetch;
@@ -165,6 +166,14 @@ async function main() {
       hostToken: 'browser-ui-host', deviceId: 'browser-ui-device'
     });
     assert.equal(login.success, true, login.error);
+    const lockedRoomSocket = io(baseUrl, { transports: ['websocket'], reconnection: false, forceNew: true });
+    await new Promise((resolve, reject) => { lockedRoomSocket.once('connect', resolve); lockedRoomSocket.once('connect_error', reject); });
+    const lockedRoom = await socketAck(lockedRoomSocket, 'room-create', {
+      username: 'admin', password: 'admin888', customRoomId: 'LOCKED1', roomName: '浏览器密码房间', maxUsers: 8,
+      roomPassword: 'browser-room-pass', deviceId: 'browser-locked-owner-device'
+    });
+    lockedRoomSocket.close();
+    assert.equal(lockedRoom.success, true, lockedRoom.error);
     if (login.capabilities?.agreementRequired) {
       const accepted = await socketAck(authSocket, 'agreement-accept', { accepted: true, version: login.agreement?.version });
       assert.equal(accepted.success, true, accepted.error);
@@ -264,6 +273,51 @@ async function main() {
     assert.notEqual(desktopMenuInteraction.label, 'none', JSON.stringify(desktopMenuInteraction));
     assert.equal(desktopMenuInteraction.labelText, '全部静音', JSON.stringify(desktopMenuInteraction));
     assert.equal(desktopMenuInteraction.panelWithinViewport, true, JSON.stringify(desktopMenuInteraction));
+    const desktopAutoCollapse = await evaluate(cdp, `(async () => {
+      const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');
+      const trigger = menu.querySelector(':scope > summary');
+      menu.open = false; menu.dataset.menuPinned = 'false';
+      trigger.click();
+      const clickPinned = menu.open && menu.dataset.menuPinned === 'true';
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      const outsideClosed = !menu.open;
+      menu.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false, pointerType: 'mouse' }));
+      const hoverOpened = menu.open;
+      menu.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false, pointerType: 'mouse' }));
+      await new Promise((resolve) => setTimeout(resolve, 180));
+      return { clickPinned, outsideClosed, hoverOpened, hoverClosed: !menu.open };
+    })()`);
+    assert.deepEqual(desktopAutoCollapse, { clickPinned: true, outsideClosed: true, hoverOpened: true, hoverClosed: true }, JSON.stringify(desktopAutoCollapse));
+
+    const memberPanelCollapse = await evaluate(cdp, `(() => {
+      state.membersPanelCollapsed = false; applyMembersPanelCollapsed();
+      const button = elements.collapseMembersPanelBtn;
+      const before = button.getBoundingClientRect();
+      button.click();
+      const after = button.getBoundingClientRect();
+      const result = {
+        visibleBefore: before.width > 0 && before.height > 0,
+        collapsed: document.querySelector('.workspace').classList.contains('members-panel-collapsed'),
+        visibleAfter: after.width > 0 && after.height > 0,
+        expandedAria: button.getAttribute('aria-expanded'),
+        label: button.getAttribute('aria-label')
+      };
+      button.click();
+      return result;
+    })()`);
+    assert.equal(memberPanelCollapse.visibleBefore, true, JSON.stringify(memberPanelCollapse));
+    assert.equal(memberPanelCollapse.collapsed, true, JSON.stringify(memberPanelCollapse));
+    assert.equal(memberPanelCollapse.visibleAfter, true, JSON.stringify(memberPanelCollapse));
+    assert.equal(memberPanelCollapse.expandedAria, 'false');
+    assert.match(memberPanelCollapse.label, /展开成员栏/);
+    await evaluate(cdp, `(() => {
+      if (typeof activeAppDialog !== 'undefined' && activeAppDialog) settleAppDialog(false);
+      document.querySelectorAll('.modal:not(.is-hidden)').forEach((modal) => modal.classList.add('is-hidden'));
+      if (typeof clearAllToasts === 'function') clearAllToasts();
+      elements.clearAllToastsBtn?.classList.add('is-hidden');
+      return true;
+    })()`);
+    const memberPanelPath = path.join(outputDir, 'member-panel-collapse-button-desktop.png'); await capture(cdp, memberPanelPath); images.push(memberPanelPath);
 
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
     const wideRoomHeader = await evaluate(cdp, `(() => {
@@ -306,6 +360,35 @@ async function main() {
     assert.notEqual(mobileMenuInteraction.label, 'none', JSON.stringify(mobileMenuInteraction));
     assert.ok(mobileMenuInteraction.panelWidth > 0 && mobileMenuInteraction.panelWidth <= mobileMenuInteraction.actionsWidth + 1, JSON.stringify(mobileMenuInteraction));
     assert.equal(mobileMenuInteraction.panelWithinActions, true, JSON.stringify(mobileMenuInteraction));
+    const mobileAccordionLayout = await evaluate(cdp, `(() => {
+      const actions = document.getElementById('topbarActions');
+      const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');
+      const panel = menu.querySelector('.topbar-menu-panel');
+      const items = [...panel.querySelectorAll(':scope > button')].filter((item) => getComputedStyle(item).display !== 'none');
+      const actionRect = actions.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const columns = items.map((item) => Math.round(item.getBoundingClientRect().left));
+      const fixedLabels = [elements.serverSettingsLoginBtn, elements.copyAddressBtn]
+        .filter((button) => button && getComputedStyle(button).display !== 'none')
+        .map((button) => button.querySelector('.button-label'));
+      return {
+        menuFullWidth: menuRect.width >= actionRect.width - 22,
+        panelFullWidth: panelRect.width >= menuRect.width - 2,
+        singleColumn: new Set(columns).size <= 1,
+        allLabelsVisible: items.every((item) => item.textContent.trim() && item.getBoundingClientRect().height >= 44),
+        fixedLabelsVisible: fixedLabels.length === 2 && fixedLabels.every((label) => label?.textContent.trim() && getComputedStyle(label).display !== 'none')
+      };
+    })()`);
+    assert.deepEqual(mobileAccordionLayout, { menuFullWidth: true, panelFullWidth: true, singleColumn: true, allLabelsVisible: true, fixedLabelsVisible: true }, JSON.stringify(mobileAccordionLayout));
+    await evaluate(cdp, `(() => {
+      if (typeof activeAppDialog !== 'undefined' && activeAppDialog) settleAppDialog(false);
+      document.querySelectorAll('.modal:not(.is-hidden)').forEach((modal) => modal.classList.add('is-hidden'));
+      if (typeof clearAllToasts === 'function') clearAllToasts();
+      elements.clearAllToastsBtn?.classList.add('is-hidden');
+      return true;
+    })()`);
+    const mobileAccordionPath = path.join(outputDir, 'mobile-topbar-accordion.png'); await capture(cdp, mobileAccordionPath); images.push(mobileAccordionPath);
     const endpointInteraction = await evaluate(cdp, `(() => {
       window.SyncWatchPlatform = { serverApp: true };
       state.hostToken = 'browser-ui-host';
@@ -320,6 +403,19 @@ async function main() {
     })()`);
     assert.equal(endpointInteraction.visible, true, JSON.stringify(endpointInteraction));
     assert.match(endpointInteraction.address, /127\.0\.0\.1/);
+    const endpointCopyFallback = await evaluate(cdp, `(async () => {
+      const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+      const desktopDescriptor = Object.getOwnPropertyDescriptor(window, 'SyncWatchDesktop');
+      let copied = '';
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new DOMException('denied', 'NotAllowedError'); } } });
+      Object.defineProperty(window, 'SyncWatchDesktop', { configurable: true, value: { writeClipboardText: async (value) => { copied = value; return { success: true }; } } });
+      await copyServerEndpointDetails();
+      if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor); else delete navigator.clipboard;
+      if (desktopDescriptor) Object.defineProperty(window, 'SyncWatchDesktop', desktopDescriptor); else delete window.SyncWatchDesktop;
+      return { copied, toast: elements.toastRegion.textContent };
+    })()`);
+    assert.match(endpointCopyFallback.copied, /127\.0\.0\.1/);
+    assert.match(endpointCopyFallback.toast, /局域网地址已复制/);
     await evaluate(cdp, `document.body.classList.remove('topbar-compact', 'android-client', 'mobile-actions-open'); document.querySelectorAll('.topbar-menu').forEach((menu) => { menu.open = false; }); elements.serverEndpointDetailsModal.classList.add('is-hidden'); true`);
     await cdp.send('Emulation.clearDeviceMetricsOverride');
     const defaultPlaybackSource = await evaluate(cdp, `mediaSourceFor({
@@ -709,7 +805,6 @@ async function main() {
     assert.deepEqual(themeChoices.map((choice) => choice.code), Array.from({ length: 21 }, (_, index) => `编号 ${String(index).padStart(2, '0')}`));
     assert.equal(`${themeChoices[0].code} ${themeChoices[0].name}`, '编号 00 原版界面');
     assert.ok(themeChoices.slice(1).every((choice) => /^编号 (0[1-9]|1\d|20)$/.test(choice.code) && choice.name));
-    const images = [];
     const originalPath = path.join(outputDir, 'original-desktop.png'); await capture(cdp, originalPath); images.push(originalPath);
     const aiConfigLayout = await evaluate(cdp, `(() => {
       aiOpenWorkbench();
@@ -1269,12 +1364,12 @@ async function main() {
     assert.equal(androidAccountActions.accountControls, 'accountDropdown', JSON.stringify(androidAccountActions));
     assert.equal(androidAccountActions.accountHasPopup, false, JSON.stringify(androidAccountActions));
     assert.equal(androidAccountActions.dropdownRole, 'group', JSON.stringify(androidAccountActions));
-    assert.equal(androidAccountActions.initialColumns, 3, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.initialColumns, 1, JSON.stringify(androidAccountActions));
     assert.ok(androidAccountActions.initialHeight <= 480, JSON.stringify(androidAccountActions));
     assert.ok(androidAccountActions.expandedHeight < 762, JSON.stringify(androidAccountActions));
     assert.ok(androidAccountActions.dropdownScrollWidth <= androidAccountActions.dropdownWidth + 2, JSON.stringify(androidAccountActions));
     assert.ok(androidAccountActions.minDropdownTarget >= 47.5, JSON.stringify(androidAccountActions));
-    assert.equal(androidAccountActions.logoutSameRow, true, JSON.stringify(androidAccountActions));
+    assert.equal(androidAccountActions.logoutSameRow, false, JSON.stringify(androidAccountActions));
     assert.equal(androidAccountActions.logoutBeforeProfile, true, JSON.stringify(androidAccountActions));
     assert.equal(androidAccountActions.noMainResize, true, JSON.stringify(androidAccountActions));
     assert.ok(androidAccountActions.bodyWidth <= androidAccountActions.viewport + 2, JSON.stringify(androidAccountActions));
@@ -1292,7 +1387,7 @@ async function main() {
         viewport: innerWidth
       };
     })()`);
-    assert.equal(androidSmallAccountActions.columns, 2, JSON.stringify(androidSmallAccountActions));
+    assert.equal(androidSmallAccountActions.columns, 1, JSON.stringify(androidSmallAccountActions));
     assert.equal(androidSmallAccountActions.inside, true, JSON.stringify(androidSmallAccountActions));
     assert.ok(androidSmallAccountActions.height <= androidSmallAccountActions.maxHeight + 1, JSON.stringify(androidSmallAccountActions));
     assert.equal(androidSmallAccountActions.scrollable, true, JSON.stringify(androidSmallAccountActions));
@@ -1431,6 +1526,50 @@ async function main() {
     await waitFor(() => evaluate(cdp, `!elements.ownerExitModal.classList.contains('is-hidden') && document.activeElement?.dataset?.ownerExit === 'leave'`), '再次打开保留凭据退出选择');
     await evaluate(cdp, `elements.ownerExitModal.querySelector('[data-owner-exit="leave"]').click(); true`);
     await waitFor(() => evaluate(cdp, `Boolean(typeof state !== 'undefined' && state.socket?.connected && !state.authenticated && !elements.loginPage.classList.contains('is-hidden'))`), '保留凭据退出并返回登录页');
+    const retainedLogout = await evaluate(cdp, `({
+      username: elements.username.value,
+      password: elements.password.value,
+      token: localStorage.getItem('syncwatchToken'),
+      retainedStorage: sessionStorage.getItem('syncwatchRetainedLogin'),
+      notice: elements.loginStatus.textContent
+    })`);
+    assert.deepEqual(retainedLogout, {
+      username: 'BrowserUiOwner', password: '123456', token: null, retainedStorage: null,
+      notice: '已保留上次登录的账号密码，可直接选择房间再登录。'
+    });
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1365, height: 860, deviceScaleFactor: 1, mobile: false });
+    await evaluate(cdp, `document.body.classList.remove('android-client'); window.scrollTo(0, 0); true`);
+    const loginAttentionFields = await evaluate(cdp, `(() => {
+      const ids = ['username', 'password', 'roomIdInput'];
+      return ids.map((id) => {
+        const field = elements[id];
+        const target = field.closest('.password-field') || field;
+        const style = getComputedStyle(target);
+        return { id, highlighted: field.closest('label')?.classList.contains('login-attention-field') === true, animation: style.animationName, boxShadow: style.boxShadow };
+      });
+    })()`);
+    assert.ok(loginAttentionFields.every((field) => field.highlighted && field.animation !== 'none' && field.boxShadow !== 'none'), JSON.stringify(loginAttentionFields));
+    await evaluate(cdp, `(() => { elements.roomIdInput.value = 'BROWSER1'; elements.roomIdInput.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+    await waitFor(() => evaluate(cdp, `state.loginRoomPasswordRoomId === 'BROWSER1' && state.loginRoomPasswordRequired === false`), '登录页实时显示无密码房间状态');
+    assert.equal(await evaluate(cdp, `elements.loginRoomPasswordState.textContent`), '无密码');
+    await evaluate(cdp, `(() => { elements.roomIdInput.value = 'LOCKED1'; elements.roomIdInput.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+    await waitFor(() => evaluate(cdp, `state.loginRoomPasswordRoomId === 'LOCKED1' && state.loginRoomPasswordRequired === true`), '登录页实时显示有密码房间状态');
+    assert.equal(await evaluate(cdp, `elements.loginRoomPasswordState.textContent`), '有密码');
+    await evaluate(cdp, `elements.loginRoomPassword.value = ''; elements.loginForm.requestSubmit(); true`);
+    await waitFor(() => evaluate(cdp, `elements.loginStatus.textContent === '请输入房间密码' && document.activeElement === elements.loginRoomPassword`), '空房间密码显示明确输入提示');
+    assert.equal(await evaluate(cdp, `elements.loginRoomPassword.getAttribute('aria-invalid')`), 'true');
+    await evaluate(cdp, `(() => {
+      if (typeof activeAppDialog !== 'undefined' && activeAppDialog) settleAppDialog(false);
+      document.querySelectorAll('.modal:not(.is-hidden)').forEach((modal) => modal.classList.add('is-hidden'));
+      if (typeof clearAllToasts === 'function') clearAllToasts();
+      elements.clearAllToastsBtn?.classList.add('is-hidden');
+      window.scrollTo(0, 0);
+      return true;
+    })()`);
+    const loginPasswordStatePath = path.join(outputDir, 'login-room-password-state-desktop.png'); await capture(cdp, loginPasswordStatePath); images.push(loginPasswordStatePath);
+    await evaluate(cdp, `elements.loginRoomPassword.value = 'wrong-room-pass'; elements.loginForm.requestSubmit(); true`);
+    await waitFor(() => evaluate(cdp, `/房间密码错误/.test(elements.loginStatus.textContent)`), '非空错误房间密码显示密码错误');
+    assert.equal(await evaluate(cdp, `state.authenticated`), false);
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await evaluate(cdp, `document.body.classList.remove('android-client'); window.scrollTo(0, 0); true`);
     await delay(180);
@@ -1461,19 +1600,17 @@ async function main() {
     await delay(120);
     const plainMobileLoginAfterSwipe = await evaluate(cdp, `window.scrollY`);
     assert.ok(plainMobileLoginAfterSwipe > 8, JSON.stringify({ plainMobileLoginScroll, plainMobileLoginAfterSwipe }));
-    const retainedLogout = await evaluate(cdp, `({
+    const retainedCredentialsAfterRoomPasswordError = await evaluate(cdp, `({
       username: elements.username.value,
       password: elements.password.value,
       token: localStorage.getItem('syncwatchToken'),
-      retainedStorage: sessionStorage.getItem('syncwatchRetainedLogin'),
-      notice: elements.loginStatus.textContent
+      retainedStorage: sessionStorage.getItem('syncwatchRetainedLogin')
     })`);
-    assert.deepEqual(retainedLogout, {
-      username: 'BrowserUiOwner', password: '123456', token: null, retainedStorage: null,
-      notice: '已保留上次登录的账号密码，可直接选择房间再登录。'
+    assert.deepEqual(retainedCredentialsAfterRoomPasswordError, {
+      username: 'BrowserUiOwner', password: '123456', token: null, retainedStorage: null
     });
     await evaluate(cdp, `(() => {
-      elements.roomIdInput.value = 'BROWSER1'; elements.autoLogin.checked = false;
+      elements.roomIdInput.value = 'BROWSER1'; elements.loginRoomPassword.value = ''; elements.autoLogin.checked = false;
       elements.loginForm.requestSubmit(); return true;
     })()`);
     await waitFor(() => evaluate(cdp, `Boolean(state.authenticated && !elements.mainPage.classList.contains('is-hidden'))`), '使用保留凭据重新登录');

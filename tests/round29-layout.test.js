@@ -61,8 +61,12 @@ assert.match(electron, /await createSplash\(\)[\s\S]{0,260}require\(['"]\.\/serv
   'Electron 必须先绘制启动页，再加载体积较大的服务端模块');
 assert.doesNotMatch(electron, /^const \{ APP_VERSION, startSyncWatchServer, resolveDefaultDataDir \} = require\(['"]\.\/server['"]\);/m,
   '服务端模块不得在启动页出现前被同步加载');
-assert.match(electron, /function showRuntimeInformation\([\s\S]{0,1500}new BrowserWindow\([\s\S]{0,700}background:\s*#101318/,
-  '运行信息必须使用与应用一致的深色主题窗口');
+const runtimeInformationSource = electron.match(/async function showRuntimeInformation\(\)\s*\{[\s\S]*?\n\}\n\nfunction copyLanAddress/)?.[0] || '';
+assert.ok(runtimeInformationSource, '缺少完整的运行信息窗口实现');
+assert.match(runtimeInformationSource, /new BrowserWindow\([\s\S]*?backgroundColor:\s*['"]#101318['"]/,
+  '运行信息 BrowserWindow 必须使用与应用一致的深色背景');
+assert.match(runtimeInformationSource, /body\{[^}]*background:\s*#101318/,
+  '运行信息页面必须使用与应用一致的深色主题');
 
 assert.ok(html.lastIndexOf('id="loginHostShortcuts"') > html.indexOf('id="myRoomsLoginBtn"'), '登录卡片中的服务器快捷入口模板必须位于我的房间记录之后');
 assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('class="device-ip-row"'), '服务器快捷入口必须位于设备 IP 信息之前');

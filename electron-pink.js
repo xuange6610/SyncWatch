@@ -631,6 +631,11 @@ ipcMain.handle('syncwatch:read-clipboard-text', (event) => {
   try { return { success: true, text: clipboard.readText() }; }
   catch (error) { return { success: false, error: error?.message || '无法读取系统剪贴板', text: '' }; }
 });
+ipcMain.handle('syncwatch:write-clipboard-text', (event, value) => {
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return { success: false, error: '主窗口已关闭' };
+  try { clipboard.writeText(String(value || '')); return { success: true }; }
+  catch (error) { return { success: false, error: error?.message || '无法写入系统剪贴板' }; }
+});
 ipcMain.handle('syncwatch:list-audio-sources', async (event) => {
   if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return { success: false, error: '主窗口已关闭', sources: [] };
   try {
@@ -2148,7 +2153,7 @@ async function showRuntimeInformation() {
   } catch (_) {}
   const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const infoWindow = new BrowserWindow({
-    parent: mainWindow, modal: true, width: 560, height: 390, show: false, resizable: false,
+    parent: mainWindow, modal: true, width: 680, height: 430, show: false, resizable: false,
     frame: false, backgroundColor: '#101318', icon: iconPath(),
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
   });
@@ -2158,8 +2163,30 @@ async function showRuntimeInformation() {
       infoWindow.close();
     }
   });
+  infoWindow.webContents.on('will-navigate', async (event, target) => {
+    let action = '';
+    try { const url = new URL(target); if (url.hostname === 'syncwatch.local') action = url.pathname.slice(1); } catch (_) {}
+    if (!action) return;
+    event.preventDefault();
+    const lanUrl = primaryLanUrl();
+    const dataDir = serverController?.dataDir || DEFAULT_DATA_DIR;
+    let message = '';
+    try {
+      if (action === 'copy-lan') { clipboard.writeText(lanUrl); message = '局域网地址已复制'; }
+      else if (action === 'open-lan') { await shell.openExternal(lanUrl); message = '已在默认浏览器打开局域网地址'; }
+      else if (action === 'copy-data') { clipboard.writeText(dataDir); message = '数据目录地址已复制'; }
+      else if (action === 'open-data') {
+        const error = await shell.openPath(dataDir);
+        if (error) throw new Error(error);
+        message = '已在文件资源管理器打开数据目录';
+      }
+    } catch (error) { message = error?.message || '操作失败，请稍后重试'; }
+    if (message && !infoWindow.isDestroyed()) {
+      void infoWindow.webContents.executeJavaScript(`document.getElementById('actionStatus').textContent=${JSON.stringify(message)}`).catch(() => {});
+    }
+  });
   const html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><style>
-    *{box-sizing:border-box}body{height:100vh;margin:0;padding:18px;overflow:hidden;background:#101318;color:#f8f7f2;font-family:"Microsoft YaHei",sans-serif}main{height:100%;display:grid;grid-template-rows:auto 1fr auto;border:1px solid #46525b;border-radius:8px;background:#1a2027;box-shadow:0 18px 50px #0008;overflow:hidden}header{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #323b44;background:#151b20}.mark{display:grid;width:44px;height:44px;place-items:center;border-radius:6px;background:#c7a763;color:#111;font-size:23px}h1{margin:0;font-size:20px}header small{display:block;margin-top:3px;color:#b9c2c9}.content{display:grid;gap:12px;padding:22px 24px;align-content:start;min-height:0}.row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px}.row span{color:#b9c2c9}.row strong{overflow-wrap:anywhere}.note{padding:10px 12px;border-left:3px solid #c7a763;background:#c7a76312;color:#dce3e5}footer{display:flex;justify-content:flex-end;padding:14px 20px;border-top:1px solid #323b44}button{min-width:96px;height:38px;border:1px solid #c7a763;border-radius:6px;background:#c7a763;color:#101318;font:700 14px inherit;cursor:pointer}</style><main><header><div class="mark">▶</div><div><h1>SyncWatch同步观影 ${escapeHtml(APP_VERSION)}</h1><small>服务器运行信息</small></div></header><section class="content"><div class="row"><span>局域网地址</span><strong>${escapeHtml(primaryLanUrl())}</strong></div><div class="row"><span>数据目录</span><strong>${escapeHtml(serverController.dataDir)}</strong></div><div class="note">房主可在“服务器设置”中开启公网访问。</div><small>${escapeHtml(copyright)}</small></section><footer><button onclick="window.close()">确定</button></footer></main></html>`;
+    *{box-sizing:border-box}body{height:100vh;margin:0;padding:18px;overflow:hidden;background:#101318;color:#f8f7f2;font-family:"Microsoft YaHei",sans-serif}main{height:100%;display:grid;grid-template-rows:auto 1fr auto;border:1px solid #46525b;border-radius:8px;background:#1a2027;box-shadow:0 18px 50px #0008;overflow:hidden}header{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #323b44;background:#151b20}.mark{display:grid;width:44px;height:44px;place-items:center;border-radius:6px;background:#c7a763;color:#111;font-size:23px}h1{margin:0;font-size:20px}header small{display:block;margin-top:3px;color:#b9c2c9}.content{display:grid;gap:12px;padding:20px 24px;align-content:start;min-height:0}.row{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:12px;align-items:center}.row span{color:#b9c2c9}.row strong{overflow-wrap:anywhere}.row-actions{display:flex;gap:6px}.row-actions a{min-width:64px;padding:7px 9px;text-align:center;color:#f8f7f2;text-decoration:none;border:1px solid #59656e;border-radius:6px;background:#252c31}.row-actions a:hover,.row-actions a:focus{color:#101318;background:#c7a763;border-color:#c7a763;outline:none}.note{padding:10px 12px;border-left:3px solid #c7a763;background:#c7a76312;color:#dce3e5}#actionStatus{min-height:20px;color:#d7bd79;font-size:12px}footer{display:flex;justify-content:flex-end;padding:14px 20px;border-top:1px solid #323b44}button{min-width:96px;height:38px;border:1px solid #c7a763;border-radius:6px;background:#c7a763;color:#101318;font:700 14px inherit;cursor:pointer}</style><main><header><div class="mark">▶</div><div><h1>SyncWatch同步观影 ${escapeHtml(APP_VERSION)}</h1><small>服务器运行信息</small></div></header><section class="content"><div class="row"><span>局域网地址</span><strong>${escapeHtml(primaryLanUrl())}</strong><div class="row-actions"><a href="https://syncwatch.local/copy-lan">复制</a><a href="https://syncwatch.local/open-lan">打开</a></div></div><div class="row"><span>数据目录</span><strong>${escapeHtml(serverController.dataDir)}</strong><div class="row-actions"><a href="https://syncwatch.local/copy-data">复制</a><a href="https://syncwatch.local/open-data">打开</a></div></div><div class="note">房主可在“服务器设置”中开启公网访问。</div><small>${escapeHtml(copyright)}</small><output id="actionStatus" role="status" aria-live="polite"></output></section><footer><button onclick="window.close()">确定</button></footer></main></html>`;
   infoWindow.once('ready-to-show', () => infoWindow.show());
   await infoWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
   return infoWindow;

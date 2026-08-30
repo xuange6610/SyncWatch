@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, clipboard } = require('electron');
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-runtime-info-'));
 const outputDir = path.join(os.tmpdir(), 'syncwatch-ui-review');
@@ -58,6 +58,7 @@ async function run() {
       buttonColor: button.color,
       title: document.querySelector('h1')?.textContent || '',
       hasDataDirectory: document.body.innerText.includes('数据目录'),
+      actionLabels: [...document.querySelectorAll('.row-actions a')].map((link) => link.textContent.trim()),
       noOverflow: document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth
     };
   })()`, true);
@@ -66,13 +67,20 @@ async function run() {
   assert.equal(metrics.buttonBackground, 'rgb(199, 167, 99)');
   assert.match(metrics.title, /SyncWatch同步观影 v2\.2\.9/);
   assert.equal(metrics.hasDataDirectory, true);
+  assert.deepEqual(metrics.actionLabels, ['复制', '打开', '复制', '打开']);
   assert.equal(metrics.noOverflow, true);
+
+  clipboard.clear();
+  await infoWindow.webContents.executeJavaScript("document.querySelector('a[href$=\"/copy-data\"]').click()", true);
+  await waitFor(() => clipboard.readText() === dataDir, '复制数据目录地址');
+  const copyStatus = await infoWindow.webContents.executeJavaScript("document.getElementById('actionStatus').textContent", true);
+  assert.match(copyStatus, /数据目录地址已复制/);
 
   fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(screenshot, (await infoWindow.webContents.capturePage()).toPNG());
   await infoWindow.webContents.executeJavaScript("document.querySelector('button').click()", true);
   await waitFor(() => infoWindow.isDestroyed(), '运行信息窗口关闭');
-  console.log(`✓ 运行信息使用深色金色主题并可正常关闭，截图：${screenshot}`);
+  console.log(`✓ 运行信息支持复制/打开局域网和数据目录并可正常关闭，截图：${screenshot}`);
 }
 
 async function finish(exitCode) {
