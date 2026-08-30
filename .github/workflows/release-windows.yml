@@ -396,6 +396,8 @@ jobs:
           path: .cache/release-third-party
       - name: Prepare pinned Cloudflare Tunnel binary
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --cache-directory .\.cache\release-third-party --only cloudflared-windows-x64.exe
           if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
@@ -502,6 +504,8 @@ jobs:
           path: .cache/release-third-party
       - name: Prepare pinned Cloudflare Tunnel binary
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/release-third-party-assets.js --output .\.build\embedded-cloudflared --cache-directory .\.cache\release-third-party --only cloudflared-windows-x64.exe
           if ($LASTEXITCODE -ne 0) { throw 'Pinned cloudflared verification failed.' }
