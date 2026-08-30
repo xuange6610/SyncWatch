@@ -120,7 +120,7 @@
 
 - 当前线上正式版本：`v2.2.9`；Release API 有 8 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
-- 当前源码与发布状态：`v2.2.9` 的最终 Tag `cee402617b68e7658ab2c2668e50477e7ea7ba07`、Actions run `33317357598`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成。
+- 当前源码与发布状态：`v2.2.9` 的最终 Tag `ba18ae482ae3604a2bca92246eeb365b8236735f`、Actions run `33323728228`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成；Windows 体验版/完整便携版、Android 模拟器和 Microsoft Defender 扫描均通过。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
 - v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7、v2.2.8 的历史 Release 保持不变；v2.2.9 当前为 Latest。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。
@@ -146,3 +146,9 @@
 - 原子运行 `33323029225` 已通过源码身份锁定，但源码门禁中的 `tests/browser-ui-smoke.js` 失败。Linux 无头 Chromium 报告不具备 `(hover: hover) and (pointer: fine)`，产品端因而正确忽略合成的悬停事件，旧测试却要求菜单必须展开。
 - 冒烟测试应只在该用例内部临时模拟精细指针悬停媒体能力，保留点击固定、点击外部关闭、悬停展开和移出关闭四项断言，并在用例结束后恢复原生 `matchMedia`；产品端设备能力判断不放宽。
 - 本次失败未进入 Windows/Android 构建，也未替换当前 Release 的 8 个维护者资产。修复必须先通过本地和 PR 检查，再移动唯一注释 Tag，并且只重新触发一次完整原子发布。
+
+### 18. v2.2.9 最终原子重发完成（2026-08-31）
+
+- PR #66 的必需仓库检查通过后使用管理员权限合并；`main`、`release/v2.2.9` 与最终注释 Tag 对齐到 `ba18ae482ae3604a2bca92246eeb365b8236735f`。
+- 原子运行 `33323728228` 成功完成源码门禁、官方运行时核验、Android 签名构建及模拟器启动、Windows 体验版和 Full Offline 构建启动、Microsoft Defender 扫描、10 文件审计、远端 SHA-256 回读及 Latest 发布。
+- Release API 最终为 8 个维护者资产，页面另有 2 个 GitHub 源码归档；README、Pages、Wiki 和 Release 正文必须继续以本次最终证据为准。

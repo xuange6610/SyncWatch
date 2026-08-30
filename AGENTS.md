@@ -205,7 +205,7 @@
 
 ### 7. 当前发布快照
 
-- 当前最新正式版本为 `v2.2.9`；该版本已完成最终 Tag、Actions run `33317357598`、8 个维护者资产、2 个 GitHub 源码归档、Latest 和远端哈希核对。v2.2.8 及更早版本的历史交付问题仅作复盘记录，不得覆盖当前状态。
+- 当前最新正式版本为 `v2.2.9`；最终 Tag 指向 `ba18ae482ae3604a2bca92246eeb365b8236735f`，Actions run `33323728228` 已完成 8 个维护者资产、2 个 GitHub 源码归档、Windows/Android 启动、Microsoft Defender、Latest 和远端哈希核对。v2.2.8 及更早版本的历史交付问题仅作复盘记录，不得覆盖当前状态。
 - 同版本重传不得先清空公开 Assets。旧 8 项保持可用到新 8 项全部构建与本地门禁完成；最终安全切换时先短暂转草稿，以临时名上传并远端回读新资产，再切换正式名称。新集合完整验证前失败要恢复旧名称和公开状态；只有新集合通过后才能删除旧资产并重新公开为 Latest。
 - 维护文档和 Release 说明中的版本、下载名、链接、哈希、大小和测试数量必须以当前 GitHub API、Actions 和源码为准。新会话开始时重新核对，不得只相信本快照。
 - 目前没有小米 14/HyperOS 真机证据；后续若用户再次报告 Android 登录或服务器请求失败，先复现并增加回归测试，再重新构建 APK 和 Release，不得仅修改文案或重新命名旧 APK。
@@ -252,7 +252,7 @@
 
 - 账户级未完成影片进度已落地：服务端在认证响应返回 `resumeHistory`，客户端通过 `watch-progress` 保存进度，并在页面 `pagehide` 尽量冲刷最新位置；重新选择未完成影片时显示“继续上次观看”确认，确认后以权威 seek 恢复并同步房间。已通过 `tests/v227-room-settings-login-layout.test.js`、核心集成和浏览器文案验收。
 - 原子发布 run `33226003174` 最终成功：源码门禁、Windows 体验/标准/完整安装/完整便携包、Android APK、Android 模拟器安装启动、官方 Node.js/cloudflared 核验、最终 12 文件审计、远端哈希回读和 Release 原子替换全部通过。
-- v2.2.9 Release 当前为公开 Latest，维护者资产严格 8 项；注释 Tag `v2.2.9` 指向最终构建提交 `cee402617b68e7658ab2c2668e50477e7ea7ba07`。Actions run `33317357598` 已完成 10 文件审计、远端哈希回读和 Windows/Android 启动验证。
+- v2.2.9 Release 当前为公开 Latest，维护者资产严格 8 项；注释 Tag `v2.2.9` 指向最终构建提交 `ba18ae482ae3604a2bca92246eeb365b8236735f`。Actions run `33323728228` 已完成 10 文件审计、远端哈希回读、Windows/Android 启动和 Microsoft Defender 验证。
 - 首页 `https://github.com/xuange6610/SyncWatch`、Pages `https://xuange6610.github.io/SyncWatch/`、Wiki `Home.md` 和 v2.2.8 公告均已回读包含当前版本与手机登录滚动修复。
 
 ### 14. v2.2.7 重发门禁复盘（2026-08-29）
@@ -297,3 +297,9 @@
 - 原子运行 `33323029225` 的源码身份锁定成功，但源码门禁中的 `tests/browser-ui-smoke.js` 失败；Linux 无头 Chromium 报告 `(hover: hover) and (pointer: fine)` 为不匹配，因此产品代码按设计忽略合成的 `pointerenter`，测试却误判桌面悬停菜单没有展开。
 - 修复仅在该浏览器冒烟用例内部临时模拟精细指针悬停媒体能力，并继续验证点击固定、点击外部关闭、悬停展开和移出关闭四条行为，结束后恢复原生 `matchMedia`；不得删除产品端的真实设备能力门禁。
 - 该失败发生在任何应用构建和 Release 资产替换之前，线上 8 个维护者资产保持不变；修复经本地与 PR 门禁通过后，必须从新的最终注释 Tag 只触发一次完整原子发布。
+
+### 20. v2.2.9 最终原子重发完成（2026-08-31）
+
+- PR #66 的必需仓库检查通过后使用管理员权限合并；`main`、`release/v2.2.9` 和最终注释 Tag 对齐到 `ba18ae482ae3604a2bca92246eeb365b8236735f`。
+- 原子运行 `33323728228` 成功完成源码门禁、官方运行时核验、Android 签名构建和模拟器启动、Windows 体验版与 Full Offline 构建启动、Microsoft Defender 扫描、10 文件审计、远端 SHA-256 回读和 Latest 发布。
+- Release API 最终严格为 8 个维护者资产，页面另含 2 个 GitHub 源码归档；本轮替换没有删除或修改任何历史 Release、历史 Tag 或历史资产。
