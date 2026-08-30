@@ -39,10 +39,11 @@ label { display: grid; gap: 6px; margin: 10px 0; color: #d8cbdc; }
 .brand div, .account-button span { display: grid; }
 .brand strong { font-size: 15px; letter-spacing: 0; white-space: nowrap; }
 .brand small, .account-button small { color: var(--muted); font-size: 9px; }
-.room-header { display: flex; flex: 0 1 min(540px, 42vw); min-width: 220px; max-width: 540px; justify-content: center; gap: clamp(10px, 1.5vw, 22px); overflow: hidden; }
-.room-header span { display: grid; min-width: 54px; text-align: center; }
+.room-header { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(4, minmax(0, 1fr)); flex: 0 1 min(540px, 42vw); min-width: 220px; max-width: 540px; gap: clamp(8px, 1.2vw, 18px); overflow: visible; }
+.room-header span { display: grid; flex: 1 1 0; min-width: 0; text-align: center; }
+.room-header span:first-child { flex-grow: 1.35; }
 .room-header small { color: var(--muted); font-size: 9px; }
-.room-header strong { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-header strong { display: block; width: 100%; min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room-header b { font-weight: inherit; }
 .healthy { color: var(--green); }
 .topbar-actions { display: flex; flex: 0 1 auto; min-width: 0; min-height: 42px; align-items: center; gap: 8px; margin-left: auto; padding-block: 3px; overflow: visible; scrollbar-width: none; }
@@ -2004,7 +2005,7 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
 .topbar-scroll-actions::-webkit-scrollbar { height: 7px; }
 .topbar-scroll-actions::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--theme-accent, #c7a763) 70%, transparent); border-radius: 8px; }
 .topbar-fixed-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; min-width: max-content; }
-.room-header span:first-child { min-width: 120px; flex: 1 1 140px; }
+.room-header span:first-child { min-width: 0; flex: 1.35 1 0; }
 .room-header span:first-child strong { max-width: none; }
 .account-admin-list .admin-account-detail > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .account-admin-list .admin-account-detail > header > strong { min-width: 0; justify-self: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2015,7 +2016,7 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
 .member-profile-admin-actions button:hover, .profile-management-toolbar button:hover, .video-management-row .actions button:hover, .profile-room-actions button:hover, .profile-file-item > button:hover, .profile-item > button:hover { color: var(--pink-2); border-color: color-mix(in srgb, var(--pink) 58%, var(--line)); background: color-mix(in srgb, var(--pink) 10%, var(--theme-button, #ffffff0c)); }
 .profile-management-toolbar .danger-button, .video-management-row .actions .danger-text-button, .profile-item .danger-text-button { color: var(--red); }
 #memberProfileModal { z-index: 240; }
-@media (min-width: 1121px) { .room-header:not(.is-hidden) { display: flex; flex: 0 0 clamp(300px, 24vw, 460px); } }
+@media (min-width: 1121px) { .room-header:not(.is-hidden) { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(4, minmax(0, 1fr)); flex: 0 1 min(540px, 42vw); min-width: 220px; max-width: 540px; overflow: visible; } }
 @media (min-width: 1451px) {
   body:not(.topbar-compact) .topbar-scroll-actions .header-feature-button, body:not(.topbar-compact) .topbar-fixed-actions .header-feature-button { width: auto; min-width: max-content; justify-content: flex-start; padding-inline: 8px; }
   body:not(.topbar-compact) .topbar-scroll-actions .header-feature-button .button-label, body:not(.topbar-compact) .topbar-fixed-actions .header-feature-button .button-label { display: inline; }
@@ -2190,10 +2191,10 @@ body.android-client .player-container.fullscreen-active > .media-view {
 .room-header > span > strong {
   min-width: 0;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
 }
-.room-header > span > strong { display: block; line-height: 1.25; white-space: normal; }
+.room-header > span > strong { display: block; width: 100%; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-heading > div:first-child,
 .panel-heading h2,
 .member-heading-actions,

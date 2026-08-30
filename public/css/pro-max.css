@@ -118,8 +118,8 @@ body::before {
   gap: 0;
   border-inline: 1px solid var(--pro-app-rule);
 }
-.room-header span { min-width: 116px; padding-inline: 16px; text-align: left; border-right: 1px solid rgba(188, 211, 222, .09); }
-.room-header span:first-child { min-width: 178px; }
+.room-header span { min-width: 0; padding-inline: clamp(6px, .8vw, 16px); text-align: left; border-right: 1px solid rgba(188, 211, 222, .09); }
+.room-header span:first-child { min-width: 0; }
 .room-header small { color: #71848e; font: 9px/1.2 "Cascadia Code", Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
 .room-header strong { color: #e9f2f5; font-size: 12px; }
 .room-header .healthy { color: var(--pro-app-success); }

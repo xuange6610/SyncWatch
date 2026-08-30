@@ -9,6 +9,7 @@ const path = require('path');
 const publicDirectory = path.resolve(__dirname, '..', 'public');
 const pageSource = fs.readFileSync(path.join(publicDirectory, 'index.html'), 'utf8');
 const styleSource = fs.readFileSync(path.join(publicDirectory, 'css', 'style.css'), 'utf8');
+const proMaxSource = fs.readFileSync(path.join(publicDirectory, 'css', 'pro-max.css'), 'utf8');
 const appSource = fs.readFileSync(path.join(publicDirectory, 'js', 'app.js'), 'utf8');
 const noticePreferencesSource = fs.readFileSync(path.join(publicDirectory, 'js', 'notification-preferences.js'), 'utf8');
 const firstPaintThemeSource = fs.readFileSync(path.join(publicDirectory, 'js', 'first-paint-theme.js'), 'utf8');
@@ -39,6 +40,16 @@ assert.ok(
     || /\.topbar-scroll-actions\s*\{[^}]*overflow:\s*visible/s.test(styleSource),
   '顶部非固定功能必须支持横向拖动或保持桌面下拉菜单不被裁切'
 );
+assert.match(styleSource, /\.room-header\s*\{[^}]*overflow:\s*visible/s,
+  '房间状态栏不能用父级 overflow hidden 裁掉状态和主题字段');
+assert.match(styleSource, /\.room-header span\s*\{[^}]*flex:\s*1 1 0[^}]*min-width:\s*0/s,
+  '房间状态栏字段必须允许弹性收缩，适配高 DPI 和不同窗口宽度');
+assert.match(styleSource, /\.room-header\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.35fr\)\s+repeat\(4,\s*minmax\(0,\s*1fr\)\)/s,
+  '房间状态栏必须使用固定五列网格，避免 Chromium/Electron flex 内容宽度溢出');
+assert.match(proMaxSource, /\.room-header span\s*\{[^}]*min-width:\s*0[^}]*padding-inline:\s*clamp\(/s,
+  '高级主题不得重新给房间状态栏字段设置固定最小宽度');
+assert.match(styleSource, /\.room-header strong\s*\{[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*max-width:\s*none/s,
+  '房间名和状态文本必须在窄列中使用省略而不是被列布局裁掉');
 assert.match(styleSource, /button\s*\{[^}]*appearance:\s*none;[^}]*color:\s*var\(--text\);[^}]*background:\s*var\(--theme-button/s,
   '动态生成按钮必须使用主题基线，避免出现白底白字的浏览器原生按钮');
 assert.match(styleSource, /input\[type="checkbox"\]\s*\{[^}]*display:\s*inline-grid;[^}]*place-items:\s*center;[^}]*max-width:\s*18px/s,

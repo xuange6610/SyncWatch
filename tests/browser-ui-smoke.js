@@ -265,6 +265,25 @@ async function main() {
     assert.equal(desktopMenuInteraction.labelText, '全部静音', JSON.stringify(desktopMenuInteraction));
     assert.equal(desktopMenuInteraction.panelWithinViewport, true, JSON.stringify(desktopMenuInteraction));
 
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+    const wideRoomHeader = await evaluate(cdp, `(() => {
+      const header = document.getElementById('roomHeader');
+      const headerRect = header?.getBoundingClientRect();
+      const fields = [...(header?.querySelectorAll(':scope > span') || [])]
+        .filter((field) => getComputedStyle(field).display !== 'none')
+        .map((field) => {
+          const value = field.querySelector('strong');
+          const rect = field.getBoundingClientRect();
+          const style = getComputedStyle(field);
+          return { label: field.querySelector('small')?.textContent || '', text: value?.textContent || '', width: rect.width, right: rect.right, valueWidth: value?.getBoundingClientRect().width || 0, cssWidth: style.width, minWidth: style.minWidth, gridColumn: style.gridColumn };
+        });
+      return { hidden: header?.classList.contains('is-hidden'), width: headerRect?.width || 0, right: headerRect?.right || 0, display: header ? getComputedStyle(header).display : '', grid: header ? getComputedStyle(header).gridTemplateColumns : '', fields };
+    })()`);
+    assert.equal(wideRoomHeader.hidden, false, JSON.stringify(wideRoomHeader));
+    assert.ok(wideRoomHeader.width > 0, JSON.stringify(wideRoomHeader));
+    assert.ok(wideRoomHeader.fields.length >= 3, JSON.stringify(wideRoomHeader));
+    assert.ok(wideRoomHeader.fields.every((field) => field.width > 0 && field.valueWidth > 0 && field.right <= wideRoomHeader.right + 1), JSON.stringify(wideRoomHeader));
+
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const mobileMenuInteraction = await evaluate(cdp, `(() => {
       document.body.classList.add('android-client', 'mobile-actions-open');
