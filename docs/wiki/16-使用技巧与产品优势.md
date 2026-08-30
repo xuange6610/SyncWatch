@@ -26,7 +26,7 @@
 
 ### 一套房间，多端接入
 
-Windows、Android、macOS 和现代浏览器共用同一套网页业务与 Socket.IO 房间状态，成员不必安装相同设备类型的客户端。
+Windows、Android 和现代浏览器共用同一套网页业务与 Socket.IO 房间状态，成员不必安装相同设备类型的客户端。
 
 ### 同步播放不依赖单一播放器
 
@@ -34,7 +34,7 @@ Windows、Android、macOS 和现代浏览器共用同一套网页业务与 Socke
 
 ### 从轻量到完整部署
 
-可以使用 Windows 完整 EXE、Android 手机服务器、独立 Node.js ZIP、Docker 或 macOS 成品。需要长期运行时再接入固定 HTTPS 反向代理。
+可以使用 Windows 完整 EXE、Android 手机服务器、独立 Node.js 服务或 Docker。需要长期运行时再接入固定 HTTPS 反向代理。
 
 ### 管理、审计和备份一体化
 

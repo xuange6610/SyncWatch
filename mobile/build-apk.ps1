@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
+$version = ([System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '..\package.json')) | ConvertFrom-Json).version
 
 $NodeMobileVersion = '18.20.4'
 $NodeMobileSourceRevision = 'ff4e063f1f1911047c067335ad0a3d81336236ca'
@@ -515,7 +516,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Android release build failed.' }
 
 $builtApk = Join-Path $PSScriptRoot 'app\build\outputs\apk\release\app-release.apk'
 $distRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\dist'))
-$deliveryApk = Join-Path $distRoot 'SyncWatch-Android-v2.2.8-universal.apk'
+$deliveryApk = Join-Path $distRoot "SyncWatch-Android-v$version-universal.apk"
 if (-not (Test-Path -LiteralPath $builtApk)) { throw 'Gradle completed without the expected release APK.' }
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
@@ -531,7 +532,7 @@ try {
     $aaptExitCode = $LASTEXITCODE
     $badging = $badgingOutput | Select-Object -First 1
     if ($aaptExitCode -ne 0 -or $badging -notmatch "name='com\.xuan\.syncwatch'" -or
-        $badging -notmatch "versionCode='20208'" -or $badging -notmatch "versionName='2\.2\.8'") {
+        $badging -notmatch "versionCode='20209'" -or $badging -notmatch "versionName='2\.2\.9'") {
         throw "APK package metadata verification failed: $badging"
     }
 

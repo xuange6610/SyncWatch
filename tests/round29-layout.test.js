@@ -19,6 +19,7 @@ function hasId(id) {
 for (const id of [
   'loginMusicNowPlaying', 'loginMusicPlayPauseBtn', 'loginMusicMuteBtn', 'loginMusicProgressShell',
   'loginMusicProgress', 'loginMusicTime', 'loginMusicClientVolume', 'loginMusicClientVolumeText',
+  'loginMusicTrackSelect', 'loginMusicPreviousBtn', 'loginMusicNextBtn', 'loginMusicPlaybackMode',
   'loginVideoSettingsCard', 'loginVideoEnabled', 'loginVideoFile', 'loginVideoPreview',
   'loginVideoUploadProgress', 'saveLoginVideoBtn', 'removeLoginVideoBtn', 'loginVideoStatus',
   'saveNoticePreferenceSettingsBtn', 'clearAllToastsBtn', 'roomAllowGuests',
@@ -32,9 +33,38 @@ for (const id of [
   , 'loginHostShortcuts', 'adminMaxConcurrentSessions', 'lanScanSelectAll', 'deleteSelectedLanRoomsBtn',
   'locationStatusNoticesEnabled', 'locationAuthorizationRequestsEnabled', 'accountTierEditor', 'permissionGroupEditor'
   , 'onboardingGuideModal', 'openOnboardingGuideBtn', 'onboardingGuideStep'
+  , 'collapseMembersPanelBtn'
 ]) hasId(id);
+assert.match(html, /id=["']danmakuSettingsBtn["'][^>]*aria-controls=["']danmakuSettingsPanel["']/);
+assert.match(app, /elements\.danmakuSettingsBtn\?\.addEventListener\('click', toggleDanmakuSettings\)/);
+assert.match(css, /panel-collapse-pulse/);
+assert.match(css, /\.topbar-menu:not\(\[open\]\)\s*>\s*\.topbar-menu-panel\s*\{\s*display:\s*none/,
+  '未展开的顶部菜单不得渲染内部按钮或挤出视口');
+assert.match(html, /id=["']fullscreenLockBtn["'][\s\S]{0,220}快捷键 L/,
+  '全屏锁定按钮必须明确显示 L 快捷键');
+assert.match(html, /按 F2 或回车呼出边看边聊/,
+  '全屏提示必须同时说明 F2 和回车可以呼出边看边聊');
+assert.match(app, /event\.key\.toLowerCase\(\) === ['"]l['"][\s\S]{0,220}toggleFullscreenInteractionLock\(\)/,
+  '全屏按 L 必须切换画面锁定状态');
+assert.match(app, /event\.key === ['"]Enter['"][\s\S]{0,220}openFullscreenChat\(\)/,
+  '全屏按回车必须打开边看边聊并聚焦输入框');
+for (const [id, label] of [
+  ['copyRoomCodeBtn', '分享房间号'],
+  ['copyLanAddressBtn', '分享内网地址'],
+  ['copyPublicAddressBtn', '分享公网地址'],
+  ['copyShareLinkBtn', '分享地址'],
+  ['copyTunnelUrlBtn', '分享公网地址']
+]) {
+  assert.match(html, new RegExp(`id=["']${id}["'][^>]*>\\s*${label}\\s*</button>`), `#${id} 必须显示“${label}”`);
+}
+assert.match(electron, /await createSplash\(\)[\s\S]{0,260}require\(['"]\.\/server['"]\)/,
+  'Electron 必须先绘制启动页，再加载体积较大的服务端模块');
+assert.doesNotMatch(electron, /^const \{ APP_VERSION, startSyncWatchServer, resolveDefaultDataDir \} = require\(['"]\.\/server['"]\);/m,
+  '服务端模块不得在启动页出现前被同步加载');
+assert.match(electron, /function showRuntimeInformation\([\s\S]{0,1500}new BrowserWindow\([\s\S]{0,700}background:\s*#101318/,
+  '运行信息必须使用与应用一致的深色主题窗口');
 
-assert.ok(html.indexOf('id="loginHostShortcuts"') > html.indexOf('id="myRoomsLoginBtn"'), '服务器快捷入口必须位于我的房间记录之后');
+assert.ok(html.lastIndexOf('id="loginHostShortcuts"') > html.indexOf('id="myRoomsLoginBtn"'), '登录卡片中的服务器快捷入口模板必须位于我的房间记录之后');
 assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('class="device-ip-row"'), '服务器快捷入口必须位于设备 IP 信息之前');
 assert.doesNotMatch(html, /id=["']adminUnlimitedDevices["']/, 'admin 登录策略应使用明确的并发数量，而不是不限设备开关');
 assert.match(html, /id=["']adminMaxConcurrentSessions["'][^>]*type=["']number["'][^>]*min=["']1["'][^>]*max=["']20["']/);
@@ -85,6 +115,12 @@ assert.match(css, /\.login-music-progress-popover\s*\{[^}]*opacity:\s*0;[^}]*poi
 assert.match(css, /\.login-now-playing\.is-expanded\s+\.login-music-progress-popover/);
 assert.match(css, /\.login-host-shortcuts button\s*\{[^}]*height:\s*30px;[^}]*min-height:\s*30px;/s,
   '服务器登录快捷入口必须保持 30px 紧凑高度');
+assert.match(app, /function applyMembersPanelCollapsed\(\)/, '右侧成员栏必须支持整体折叠');
+assert.match(app, /ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX/, '左右栏折叠状态必须按账号缓存');
+assert.match(app, /saveAccountViewPreferences\(\{ libraryCollapsed: state\.libraryCollapsed \}\)/, '左侧影片库折叠状态必须保存到账号偏好');
+assert.match(app, /saveAccountViewPreferences\(\{ membersPanelCollapsed: state\.membersPanelCollapsed \}\)/, '右侧成员栏折叠状态必须保存到账号偏好');
+assert.doesNotMatch(app, /syncwatch(?:Files|MembersPanel)Collapsed/, '折叠状态不得继续使用会串账号的全局存储键');
+assert.match(css, /\.workspace\.members-panel-collapsed\.user-panel|\.workspace\.members-panel-collapsed \.user-panel/, '右侧成员栏折叠后必须收窄');
 assert.match(css, /\.login-host-shortcuts\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2/s,
   '服务器登录快捷入口必须在登录卡片内使用紧凑网格');
 assert.match(css, /body\.android-client \.login-host-shortcuts\s*\{[^}]*display:\s*none\s*!important/s,
@@ -92,6 +128,8 @@ assert.match(css, /body\.android-client \.login-host-shortcuts\s*\{[^}]*display:
 assert.match(css, /body\.electron-server \.login-host-shortcuts button\s*\{[^}]*height:\s*30px\s*!important;[^}]*min-height:\s*30px\s*!important;[^}]*font-size:\s*11px;/s,
   'Electron 粗指针环境也必须保持服务器快捷入口紧凑');
 assert.match(app, /function readLoginMusicPreference\(\)/);
+assert.match(app, /function handleLoginMusicEnded\(\)/, '登录音乐结束后必须按播放模式处理下一首');
+assert.match(app, /playbackMode/, '登录音乐配置必须保存播放模式');
 assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stringify\(state\.loginMusicPreference\)\)/,
   '登录音乐播放、静音与音量偏好必须在本机持久化');
 assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated \|\| state\.managementOnlyAuth\)/,
@@ -106,6 +144,11 @@ assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*\.login-page \{[^}]*heigh
 assert.match(css, /body\.android-client main\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,
   'Android WebView 登录页不能嵌套在固定高度 main 滚动容器中');
 assert.match(css, /body\.android-client \.login-page\s*\{[^}]*overflow:\s*visible;[^}]*touch-action:\s*pan-y/s, 'Android 登录页必须支持手指上下滚动');
+assert.match(css, /\.login-music-muted-icon\s*\{[^}]*display:\s*none;/, '登录音乐静音图标默认隐藏，避免同一按钮显示成两个按钮');
+assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*body:not\(\.android-client\) main\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,
+  '普通手机网页登录页必须覆盖 540px 断点留下的固定 main 高度');
+assert.match(css, /body:not\(\.android-client\) \.login-page\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;[^}]*touch-action:\s*pan-y;/s,
+  '普通手机网页登录页必须把滚动交给文档并允许触摸上下滑动');
 assert.match(app, /event\.button\s*!==\s*1[\s\S]{0,180}isExcluded\(event\.target\)/, '中键滚动必须避开表单和交互控件');
 assert.match(app, /drag\.container\.scrollTop\s*=\s*drag\.startTop\s*-\s*\(event\.clientY\s*-\s*drag\.startY\)/, '中键拖动必须按垂直位移滚动当前容器');
 assert.match(app, /profile-room-item room-directory-card \$\{room\.pinned \? 'pinned' : ''\} \$\{room\.owned \? 'is-owned' : ''\}/, '我的房间卡片必须带有房主高亮状态类');
@@ -161,8 +204,8 @@ assert.match(app, /locationAuthorizationRequestsEnabled\s*!==\s*false\) setTimeo
   '关闭服务器位置授权提醒后，进房不能再自动请求浏览器位置');
 assert.match(electron, /nativeTheme\.themeSource\s*=\s*['"]dark['"]/,
   'Electron 原生菜单必须跟随深色主题');
-assert.match(electron, /function copyLanAddress\([\s\S]{0,300}Notification\.isSupported\(\)[\s\S]{0,220}已复制局域网地址/,
-  '系统菜单和托盘复制局域网地址后必须发送桌面通知');
+assert.match(electron, /function copyLanAddress\([\s\S]{0,300}Notification\.isSupported\(\)[\s\S]{0,220}内网地址已复制到剪贴板/,
+  '系统菜单和托盘分享内网地址后必须发送桌面通知');
 assert.match(app, /if \(locallyBuffering\)[\s\S]{0,260}正在缓冲，暂停定位/,
   '本机缓冲时必须暂停强制定位，避免公网 Range 请求被反复重置');
 assert.match(proMaxCss, /input:not\(\[type=["']checkbox["']\]\):not\(\[type=["']radio["']\]\),\s*select,\s*textarea\s*\{/,

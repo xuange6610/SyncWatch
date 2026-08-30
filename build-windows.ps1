@@ -3,7 +3,7 @@ Set-Location -LiteralPath $PSScriptRoot
 Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 
 $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot 'package.json') | ConvertFrom-Json
-if ([string]$manifest.version -ne '2.2.8') { throw 'package.json version must be 2.2.8.' }
+if ([string]$manifest.version -ne '2.2.9') { throw 'package.json version must be 2.2.9.' }
 $expectedProductName = [string]$manifest.build.productName
 if ([string]::IsNullOrWhiteSpace($expectedProductName)) { throw 'package.json build.productName is required.' }
 
@@ -66,31 +66,25 @@ if ($LASTEXITCODE -ne 0) { throw 'Regression suite failed.' }
 Write-Host 'Building the signed Android APK into dist/...' -ForegroundColor Cyan
 & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'mobile\build-apk.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Android build failed.' }
-$android = Assert-Artifact 'SyncWatch-Android-v2.2.8-universal.apk' 50MB
+$android = Assert-Artifact "SyncWatch-Android-v$($manifest.version)-universal.apk" 50MB
 
-Write-Host 'Building Windows Standard and Experience packages into dist/...' -ForegroundColor Cyan
-Invoke-Builder
-$standard = Assert-Artifact 'SyncWatch-Standard-Server-Portable-v2.2.8-x64.exe' 50MB
-& $node 'tests\split-desktop-artifact-smoke.js' $standard
-if ($LASTEXITCODE -ne 0) { throw 'Standard server artifact smoke test failed.' }
+Write-Host 'Building Windows Experience client package into dist/...' -ForegroundColor Cyan
 Invoke-Builder 'electron-builder-client.json'
-$client = Assert-Artifact 'SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe' 50MB
+$client = Assert-Artifact "SyncWatch-Experience-Client-Portable-v$($manifest.version)-x64.exe" 50MB
 
 try {
     Remove-BuildPath $offlineRoot
     foreach ($folder in @('windows', 'android')) {
         New-Item -ItemType Directory -Path (Join-Path $offlineRoot $folder) -Force | Out-Null
     }
-    Copy-Item -LiteralPath $client -Destination (Join-Path $offlineRoot 'windows\SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe')
-    Copy-Item -LiteralPath $android -Destination (Join-Path $offlineRoot 'android\SyncWatch-Android-v2.2.8-universal.apk')
+    Copy-Item -LiteralPath $client -Destination (Join-Path $offlineRoot "windows\SyncWatch-Experience-Client-Portable-v$($manifest.version)-x64.exe")
+    Copy-Item -LiteralPath $android -Destination (Join-Path $offlineRoot "android\SyncWatch-Android-v$($manifest.version)-universal.apk")
     & $node 'scripts\verify-full-offline-bundle.js'
     if ($LASTEXITCODE -ne 0) { throw 'Full Offline payload verification failed.' }
 
     Write-Host 'Building Windows Full Offline packages into dist/...' -ForegroundColor Cyan
-    Invoke-Builder 'electron-builder-windows-installer.json'
-    Assert-Artifact 'SyncWatch-v2.2.8-Full-Offline-Installer-x64.exe' 300MB | Out-Null
     Invoke-Builder 'electron-builder-windows-full-portable.json'
-    Assert-Artifact 'SyncWatch-v2.2.8-Full-Offline-Portable-x64.exe' 300MB | Out-Null
+    Assert-Artifact "SyncWatch-v$($manifest.version)-Full-Offline-Portable-x64.exe" 300MB | Out-Null
 } finally {
     Remove-BuildPath $offlineRoot
 }
@@ -98,4 +92,4 @@ try {
 Get-ChildItem -LiteralPath $distRoot -File | Sort-Object Name | ForEach-Object {
     Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName
 }
-Write-Host 'Windows and Android v2.2.8 build assets are ready in root dist/.' -ForegroundColor Green
+Write-Host 'Windows and Android v2.2.9 build assets are ready in root dist/.' -ForegroundColor Green

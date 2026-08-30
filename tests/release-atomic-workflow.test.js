@@ -72,13 +72,13 @@ assert.match(
   workflows.atomic,
   /artifact_prefix=release-\$\{RELEASE_TAG\}-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/
 );
-assert.match(workflows.atomic, /existing Release must contain zero, partial legacy 6, legacy 11 .* legacy 26, or current 10 assets/);
+assert.match(workflows.atomic, /existing Release must contain zero, partial legacy, or current 8 assets/);
 assert.match(workflows.atomic, /Release target changed after preparation/);
 assert.match(workflows.atomic, /replacement-upload/);
 assert.match(workflows.atomic, /\.replacement-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/);
 assert.match(workflows.atomic, /\.previous-\$\{process\.env\.GITHUB_RUN_ID\}-\$\{process\.env\.GITHUB_RUN_ATTEMPT\}/);
 assert.match(workflows.atomic, /replacement_ready=1/);
-assert.match(workflows.atomic, /previous 10 assets and public Release state were restored/);
+assert.match(workflows.atomic, /previous assets and public Release state were restored/);
 
 for (const source of [workflows.windows]) {
   const uploadBlocks = source.match(/uses:\s*actions\/upload-artifact@v4[\s\S]*?retention-days:\s*3/g) || [];
@@ -104,20 +104,20 @@ assert.match(
 assert.match(workflows.atomic, /needs:\s*\[prepare, source_tests, android, windows_base, official_assets, windows_full\]/);
 assert.match(workflows.atomic, /--output dist/);
 assert.match(workflows.atomic, /--selection bundle/);
-assert.match(workflows.atomic, /SHA256SUMS-all-12\.txt/);
-assert.match(workflows.atomic, /SHA256SUMS-release-10\.txt/);
-assert.match(workflows.atomic, /release-files-10\.txt/);
-assert.match(workflows.atomic, /find dist -maxdepth 1 -type f[\s\S]*= "12"/);
+assert.match(workflows.atomic, /SHA256SUMS-all-10\.txt/);
+assert.match(workflows.atomic, /SHA256SUMS-release-8\.txt/);
+assert.match(workflows.atomic, /release-files-8\.txt/);
+assert.match(workflows.atomic, /find dist -maxdepth 1 -type f[\s\S]*= "10"/);
 assert.match(workflows.atomic, /--evidence-directory \.build\/evidence/);
 
 assert.equal(
   count(workflows.atomic, /gh release upload /g),
   1,
-  'all 10 maintained assets must be uploaded by one command'
+  'all 8 maintained assets must be uploaded by one command'
 );
 assert.match(workflows.atomic, /gh release upload "\$RELEASE_TAG" "\$\{replacement_files\[@\]\}"/);
 assert.doesNotMatch(workflows.atomic, /gh release upload[^\n]*(?:\*|--clobber)/);
-assert.match(workflows.atomic, /test "\$\{#files\[@\]\}" -eq 10/);
+assert.match(workflows.atomic, /test "\$\{#files\[@\]\}" -eq 8/);
 assert.match(workflows.atomic, /releases\?per_page=100/);
 assert.match(workflows.atomic, /release_id="\$\(RELEASES_JSON=/);
 assert.match(workflows.atomic, /releases\/\$\{release_id\}/);
@@ -130,7 +130,7 @@ assert.doesNotMatch(workflows.atomic, /releases\/tags\/\$\{RELEASE_TAG\}" > \.bu
 assert.match(workflows.atomic, /-F draft=true/);
 assert.match(workflows.atomic, /Atomic replacement failed/);
 assert.ok(
-  count(workflows.atomic, /--expected-manifest \.build\/SHA256SUMS-release-10\.txt/g) >= 2,
+  count(workflows.atomic, /--expected-manifest \.build\/SHA256SUMS-release-8\.txt/g) >= 2,
   'remote digests must be checked both before and after publication'
 );
 assert.match(workflows.atomic, /releases\/latest/);
@@ -150,7 +150,6 @@ assert.match(workflows.atomic, /archive\/refs\/tags\/\$\{RELEASE_TAG\}\.tar\.gz/
 assert.match(workflows.atomic, /unzip -t \.build\/github-source\.zip/);
 assert.match(workflows.atomic, /tar -tzf \.build\/github-source\.tar\.gz/);
 
-assert.match(workflows.windows, /split-desktop-artifact-smoke\.js/);
 assert.match(
   workflows.windows,
   /name:\s*Verify Windows desktop audio capture[\s\S]*?npm run test:audio-source:electron/,
@@ -256,8 +255,6 @@ assert.match(androidEmulatorSmoke, /dumpsys activity activities/);
 assert.match(androidEmulatorSmoke, /screencap -p/);
 assert.match(workflows.windows, /\.build\/android-smoke\/launch\.txt/);
 assert.match(workflows.windows, /Start-Process -FilePath \$client/);
-assert.match(workflows.windows, /Start-Process -FilePath \$installer/);
-assert.match(workflows.windows, /Test-ServerExecutable \$installed\.FullName/);
 assert.match(workflows.windows, /Test-ServerExecutable \$portable/);
 assert.match(workflows.windows, /dist\\builder-debug\.yml/);
 for (const source of [workflows.windows]) {

@@ -21,14 +21,24 @@ const path = require('path');
 const { execFile, spawn } = require('child_process');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const zlib = require('zlib');
 const { fetch: undiciFetch, EnvHttpProxyAgent } = require('undici');
 const {
   app, BrowserWindow, Menu, Tray, clipboard, dialog, shell, ipcMain,
   desktopCapturer, session, screen, net, Notification, nativeTheme
 } = require('electron');
 
-const { APP_VERSION, startSyncWatchServer, resolveDefaultDataDir } = require('./server');
+const { version: PACKAGE_VERSION } = require('./package.json');
+
+const APP_VERSION = `v${String(PACKAGE_VERSION || '').replace(/^v/i, '')}`;
+let startSyncWatchServer = null;
+
+function resolveDefaultDataDir(root = process.cwd()) {
+  const preferred = path.resolve(root, 'SyncWatch同步观影-Data');
+  const legacy = path.resolve(root, 'SyncWatch-Data');
+  if (fs.existsSync(preferred) || !fs.existsSync(legacy)) return preferred;
+  try { fs.renameSync(legacy, preferred); return preferred; }
+  catch (_) { return legacy; }
+}
 
 const APP_NAME = 'SyncWatch同步观影';
 app.setName(APP_NAME);
@@ -117,44 +127,14 @@ function resolveApplicationRoot({
   portableExecutableDir = '', portableExecutableFile = '', isPackaged = false,
   execPath = '', moduleDir = '', platform = process.platform, userDataPath = ''
 } = {}) {
-  if (isPackaged && platform === 'darwin' && userDataPath) return path.resolve(userDataPath);
   return path.resolve(portableExecutableDir
     || (portableExecutableFile ? path.dirname(portableExecutableFile) : '')
     || (isPackaged ? path.dirname(execPath) : moduleDir));
 }
 
-function resolveMacDownloadPaths(kind, {
-  isPackaged = false, resourcesPath = '', portableExecutableDir = '', portableExecutableFile = '', developmentDirectory = '',
-  version = APP_VERSION
-} = {}) {
-  const label = kind === 'server' ? '服务器' : '客户端';
-  const releaseVersion = String(version || APP_VERSION).replace(/^v/i, '');
-  const siblingDirectory = portableExecutableDir || (portableExecutableFile ? path.dirname(portableExecutableFile) : '');
-  const roots = [...new Set((isPackaged
-    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'mac') : '', resourcesPath ? path.join(resourcesPath, 'mac') : '']
-    : [siblingDirectory ? path.join(siblingDirectory, 'mac') : '', siblingDirectory, developmentDirectory ? path.join(developmentDirectory, 'mac') : '', developmentDirectory]
-  ).filter(Boolean))];
-  const find = (architecture, format) => {
-    const filenames = [
-      `SyncWatch-${kind === 'server' ? 'Server' : 'Client'}-macOS-v${releaseVersion}-${architecture}.${format}`,
-      `SyncWatch同步观影-${label}-v${releaseVersion}-${architecture}.${format}`
-    ];
-    return roots.flatMap((root) => filenames.map((filename) => path.join(root, filename))).find((candidate) => {
-      try {
-        const stats = fs.statSync(candidate);
-        return stats.isFile() && stats.size > 0;
-      } catch (_) { return false; }
-    }) || '';
-  };
-  return {
-    x64: { dmg: find('x64', 'dmg'), zip: find('x64', 'zip') },
-    arm64: { dmg: find('arm64', 'dmg'), zip: find('arm64', 'zip') }
-  };
-}
-
 function resolveClientDownloadPath({ isPackaged = false, resourcesPath = '', portableExecutableDir = '', portableExecutableFile = '', developmentClientPath = '' } = {}) {
   const candidates = isPackaged
-    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', 'SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe') : '', resourcesPath ? path.join(resourcesPath, 'client', 'SyncWatch同步观影-Client-v2.2.8.exe') : '']
+    ? [resourcesPath ? path.join(resourcesPath, 'offline-downloads', 'windows', `SyncWatch-Experience-Client-Portable-v${String(APP_VERSION).replace(/^v/i, '')}-x64.exe`) : '', resourcesPath ? path.join(resourcesPath, 'client', `SyncWatch同步观影-Client-v${String(APP_VERSION).replace(/^v/i, '')}.exe`) : '']
     : [developmentClientPath];
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
@@ -778,42 +758,11 @@ function cloudflaredRuntime(platform = process.platform, arch = process.arch) {
       };
     }
   }
-  if (platform === 'darwin' && (arch === 'x64' || arch === 'arm64')) {
-    return {
-      platform, arch, binaryName: 'cloudflared',
-      assetName: `cloudflared-darwin-${arch === 'arm64' ? 'arm64' : 'amd64'}.tgz`, archive: 'tgz'
-    };
-  }
   throw new Error(`当前系统不支持自动安装 cloudflared（${platform}/${arch}）`);
 }
 
 function fileSha256(filename) {
   return crypto.createHash('sha256').update(fs.readFileSync(filename)).digest('hex');
-}
-
-function extractCloudflaredTarGz(archive, destination) {
-  const tar = zlib.gunzipSync(fs.readFileSync(archive));
-  for (let offset = 0; offset + 512 <= tar.length;) {
-    const header = tar.subarray(offset, offset + 512);
-    if (header.every((byte) => byte === 0)) break;
-    const readString = (start, end) => header.subarray(start, end).toString('utf8').replace(/\0.*$/s, '').trim();
-    const name = [readString(345, 500), readString(0, 100)].filter(Boolean).join('/');
-    const rawSize = readString(124, 136);
-    if (!/^[0-7]+$/.test(rawSize)) throw new Error('cloudflared 压缩包包含无效的 TAR 文件大小');
-    const size = Number.parseInt(rawSize, 8);
-    const dataOffset = offset + 512;
-    const dataEnd = dataOffset + size;
-    if (!Number.isSafeInteger(size) || size < 0 || dataEnd > tar.length) throw new Error('cloudflared 压缩包内容不完整');
-    const type = String.fromCharCode(header[156] || 0);
-    if ((type === '\0' || type === '0') && path.posix.basename(name.replace(/\\/g, '/')) === 'cloudflared') {
-      if (size < CLOUDFLARED_MIN_BINARY_BYTES) throw new Error('cloudflared 压缩包中的程序文件不完整');
-      fs.writeFileSync(destination, tar.subarray(dataOffset, dataEnd), { flag: 'wx', mode: 0o755 });
-      fs.chmodSync(destination, 0o755);
-      return { entryName: name, size };
-    }
-    offset = dataOffset + Math.ceil(size / 512) * 512;
-  }
-  throw new Error('cloudflared 压缩包中未找到可执行文件');
 }
 
 async function cloudflaredReleaseAsset(assetName) {
@@ -1376,9 +1325,6 @@ function flushDnsCache() {
     const systemRoot = process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows';
     executable = path.join(systemRoot, 'System32', 'ipconfig.exe');
     args = ['/flushdns'];
-  } else if (process.platform === 'darwin') {
-    executable = '/usr/bin/dscacheutil';
-    args = ['-flushcache'];
   } else {
     return Promise.resolve({ success: true, skipped: true });
   }
@@ -1513,7 +1459,6 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
   }
 
   function verifyBinarySignature(filename) {
-    if (runtime.platform !== 'win32') return Promise.resolve();
     const systemRoot = process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows';
     const powershell = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     if (!fs.existsSync(powershell)) return Promise.reject(new Error('系统缺少用于验证 cloudflared 签名的 Windows PowerShell'));
@@ -1558,8 +1503,7 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
       const marker = JSON.parse(fs.readFileSync(verificationMarker, 'utf8'));
       if (stats.size < CLOUDFLARED_MIN_BINARY_BYTES || marker.size !== stats.size
         || marker.platform !== runtime.platform || marker.arch !== runtime.arch) return false;
-      if (runtime.platform === 'win32') return marker.mtimeMs === stats.mtimeMs;
-      return /^[a-f0-9]{64}$/.test(String(marker.sha256 || '')) && marker.sha256 === fileSha256(binary);
+      return marker.mtimeMs === stats.mtimeMs;
     } catch (_) { return false; }
   }
 
@@ -1568,7 +1512,6 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
     fs.writeFileSync(verificationMarker, JSON.stringify({
       platform: runtime.platform, arch: runtime.arch, assetName: runtime.assetName,
       size: stats.size, mtimeMs: stats.mtimeMs,
-      ...(runtime.platform === 'win32' ? {} : { sha256: fileSha256(binary) }),
       ...(metadata.release ? { release: metadata.release } : {}),
       verifiedAt: new Date().toISOString()
     }));
@@ -1577,7 +1520,6 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
   function bundledBinaryCandidates() {
     const bundledNames = [
       runtime.binaryName,
-      ...(runtime.platform === 'darwin' ? [`cloudflared-darwin-${runtime.arch}`] : [])
     ];
     const roots = [process.resourcesPath || '', __dirname];
     return [...new Set(roots.flatMap((root) => bundledNames.map((name) => path.join(root, 'vendor', name))))]
@@ -1587,7 +1529,7 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
   async function ensureBinary() {
     if (verifiedBinaryUnchanged()) return;
     if (fs.existsSync(binary)) {
-      if (runtime.platform === 'win32' && fs.statSync(binary).size >= CLOUDFLARED_MIN_BINARY_BYTES) {
+      if (fs.statSync(binary).size >= CLOUDFLARED_MIN_BINARY_BYTES) {
         try { await verifyBinarySignature(binary); rememberVerifiedBinary(); return; }
         catch (_) {}
       }
@@ -1597,36 +1539,25 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
     if (!binaryPromise) binaryPromise = (async () => {
       fs.mkdirSync(toolsDir, { recursive: true });
       const temporary = `${binary}.download`;
-      const archiveTemporary = `${binary}.archive.download`;
       let releaseAsset = null;
       try {
         fs.rmSync(temporary, { force: true });
-        fs.rmSync(archiveTemporary, { force: true });
         const bundled = bundledBinaryCandidates().find((candidate) => fs.statSync(candidate).size >= CLOUDFLARED_MIN_BINARY_BYTES);
         if (bundled) {
           fs.copyFileSync(bundled, temporary, fs.constants.COPYFILE_EXCL);
         } else {
           releaseAsset = await cloudflaredReleaseAsset(runtime.assetName);
-          if (runtime.archive === 'tgz') {
-            await downloadFile(releaseAsset.url, archiveTemporary);
-            verifyCloudflaredReleaseFile(archiveTemporary, releaseAsset, { requireDigest: true });
-            extractCloudflaredTarGz(archiveTemporary, temporary);
-          } else {
-            await downloadFile(releaseAsset.url, temporary);
-            verifyCloudflaredReleaseFile(temporary, releaseAsset);
-          }
+          await downloadFile(releaseAsset.url, temporary);
+          verifyCloudflaredReleaseFile(temporary, releaseAsset);
         }
         if (!fs.existsSync(temporary) || fs.statSync(temporary).size < CLOUDFLARED_MIN_BINARY_BYTES) throw new Error('cloudflared 下载文件不完整');
         await verifyBinarySignature(temporary);
-        if (runtime.platform !== 'win32') fs.chmodSync(temporary, 0o755);
         fs.renameSync(temporary, binary);
         rememberVerifiedBinary(releaseAsset || {});
       } catch (error) {
         if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
         fs.rmSync(verificationMarker, { force: true });
         throw error;
-      } finally {
-        fs.rmSync(archiveTemporary, { force: true });
       }
     })().finally(() => { binaryPromise = null; });
     await binaryPromise;
@@ -2194,17 +2125,18 @@ function createTunnelManager(dataDir, getPort, { onAutoStartChanged = null } = {
   };
 }
 
-function createSplash() {
+async function createSplash() {
   splashWindow = new BrowserWindow({
     width: 500, height: 300, frame: false, resizable: false, alwaysOnTop: true,
-    center: true, backgroundColor: '#160f22', show: !SMOKE_MODE, icon: iconPath(),
+    center: true, backgroundColor: '#101318', show: false, icon: iconPath(),
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
   });
   const html = `<!doctype html><meta charset="utf-8"><style>
-    *{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 20% 20%,#71365f,#24142f 48%,#120c19);font-family:"Microsoft YaHei",sans-serif;color:#fff}
-    main{text-align:center;padding:32px}.mark{font-size:58px}h1{font-size:25px;margin:10px 0 6px}p{margin:6px;color:#e9cde2}.bar{width:250px;height:5px;margin:30px auto 0;background:#ffffff28;border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;background:#ff75b5;animation:load 1.4s ease-in-out infinite}@keyframes load{0%{width:0}60%{width:80%}100%{width:100%}}small{display:block;margin-top:20px;color:#bca9c6}
+    *{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;background:#101318;font-family:"Microsoft YaHei",sans-serif;color:#f8f7f2}
+    main{width:calc(100% - 36px);text-align:center;padding:32px;border:1px solid #46525b;border-radius:8px;background:#1a2027;box-shadow:0 18px 50px #0008}.mark{display:grid;width:58px;height:58px;margin:0 auto;place-items:center;border-radius:7px;background:#c7a763;color:#101318;font-size:30px}h1{font-size:25px;margin:14px 0 6px}p{margin:6px;color:#dce3e5}.bar{width:250px;height:5px;margin:30px auto 0;background:#ffffff20;border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;background:#c7a763;animation:load 1.4s ease-in-out infinite}@keyframes load{0%{width:0}60%{width:80%}100%{width:100%}}small{display:block;margin-top:20px;color:#b9c2c9}
   </style><main><div class="mark">🎬</div><h1>SyncWatch同步观影</h1><p>正在启动 SyncWatch同步观影 服务器…</p><div class="bar"><i></i></div><small>${COPYRIGHT}</small></main>`;
-  splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  await splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  if (!SMOKE_MODE && !splashWindow.isDestroyed()) splashWindow.show();
 }
 
 async function showRuntimeInformation() {
@@ -2214,23 +2146,35 @@ async function showRuntimeInformation() {
     const config = response.ok ? await response.json() : null;
     copyright = String(config?.branding?.notice || config?.branding?.owner && `版权所有 © ${config.branding.owner}，保留所有权利。` || COPYRIGHT);
   } catch (_) {}
-  return dialog.showMessageBox(mainWindow, {
-    type: 'info', title: '运行信息', message: `SyncWatch同步观影 ${APP_VERSION}`,
-    detail: `局域网地址：${primaryLanUrl()}\n房主在“管理设置”中可开启公网访问。\n数据目录：${serverController.dataDir}\n\n${copyright}`,
-    buttons: ['确定'], icon: iconPath()
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+  const infoWindow = new BrowserWindow({
+    parent: mainWindow, modal: true, width: 560, height: 390, show: false, resizable: false,
+    frame: false, backgroundColor: '#101318', icon: iconPath(),
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
   });
+  infoWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'Escape') {
+      event.preventDefault();
+      infoWindow.close();
+    }
+  });
+  const html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><style>
+    *{box-sizing:border-box}body{height:100vh;margin:0;padding:18px;overflow:hidden;background:#101318;color:#f8f7f2;font-family:"Microsoft YaHei",sans-serif}main{height:100%;display:grid;grid-template-rows:auto 1fr auto;border:1px solid #46525b;border-radius:8px;background:#1a2027;box-shadow:0 18px 50px #0008;overflow:hidden}header{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #323b44;background:#151b20}.mark{display:grid;width:44px;height:44px;place-items:center;border-radius:6px;background:#c7a763;color:#111;font-size:23px}h1{margin:0;font-size:20px}header small{display:block;margin-top:3px;color:#b9c2c9}.content{display:grid;gap:12px;padding:22px 24px;align-content:start;min-height:0}.row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px}.row span{color:#b9c2c9}.row strong{overflow-wrap:anywhere}.note{padding:10px 12px;border-left:3px solid #c7a763;background:#c7a76312;color:#dce3e5}footer{display:flex;justify-content:flex-end;padding:14px 20px;border-top:1px solid #323b44}button{min-width:96px;height:38px;border:1px solid #c7a763;border-radius:6px;background:#c7a763;color:#101318;font:700 14px inherit;cursor:pointer}</style><main><header><div class="mark">▶</div><div><h1>SyncWatch同步观影 ${escapeHtml(APP_VERSION)}</h1><small>服务器运行信息</small></div></header><section class="content"><div class="row"><span>局域网地址</span><strong>${escapeHtml(primaryLanUrl())}</strong></div><div class="row"><span>数据目录</span><strong>${escapeHtml(serverController.dataDir)}</strong></div><div class="note">房主可在“服务器设置”中开启公网访问。</div><small>${escapeHtml(copyright)}</small></section><footer><button onclick="window.close()">确定</button></footer></main></html>`;
+  infoWindow.once('ready-to-show', () => infoWindow.show());
+  await infoWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  return infoWindow;
 }
 
 function copyLanAddress() {
   const url = primaryLanUrl();
   clipboard.writeText(url);
-  if (Notification.isSupported()) new Notification({ title: APP_NAME, body: `已复制局域网地址：${url}`, icon: iconPath() }).show();
+  if (Notification.isSupported()) new Notification({ title: APP_NAME, body: `内网地址已复制到剪贴板：${url}`, icon: iconPath() }).show();
 }
 
 function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: '系统', submenu: [
-      { label: '复制局域网地址', accelerator: 'Ctrl+L', click: copyLanAddress },
+      { label: '分享内网地址', accelerator: 'Ctrl+L', click: copyLanAddress },
       { label: '在默认浏览器中打开', click: () => shell.openExternal(primaryLanUrl()) },
       { label: '打开数据目录', submenu: dataDirectoryMenuItems() },
       { label: `服务器启动设置（当前端口 ${serverController.port}）`, click: openServerSettings },
@@ -2270,7 +2214,7 @@ function createTray() {
   tray.setToolTip(APP_NAME);
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '显示主窗口', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
-    { label: '复制局域网地址', click: copyLanAddress },
+    { label: '分享内网地址', click: copyLanAddress },
     { label: '在浏览器中打开', click: () => shell.openExternal(primaryLanUrl()) },
     { label: `服务器启动设置（当前端口 ${serverController.port}）`, click: openServerSettings },
     { type: 'separator' }, { label: '退出', click: requestApplicationQuit }
@@ -2387,7 +2331,9 @@ function createMainWindow() {
 }
 
 async function startApplication() {
-  createSplash();
+  await createSplash();
+  await new Promise((resolve) => setImmediate(resolve));
+  ({ startSyncWatchServer } = require('./server'));
   if (storageSetupError) throw new Error(userFacingDesktopError(storageSetupError, '无法在程序根目录创建数据文件夹，请检查目录写入权限', '初始化数据目录失败'));
   await migrateLegacyData();
   activeServerSettings = loadServerSettings({ create: !process.env.SYNCWATCH_DATA_DIR && commandLinePort() === '' && process.env.PORT === undefined });
@@ -2399,10 +2345,11 @@ async function startApplication() {
   }
   const lanAddress = resolveLanAddress(activeServerSettings);
   const dataDir = process.env.SYNCWATCH_DATA_DIR || DEFAULT_DATA_DIR;
+  const releaseVersion = String(APP_VERSION).replace(/^v/i, '');
   const androidApkPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'offline-downloads', 'android', 'SyncWatch-Android-v2.2.8-universal.apk')
-    : path.join(__dirname, 'dist', 'SyncWatch-Android-v2.2.8-universal.apk');
-  const developmentClientPath = path.join(__dirname, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe');
+    ? path.join(process.resourcesPath, 'offline-downloads', 'android', `SyncWatch-Android-v${releaseVersion}-universal.apk`)
+    : path.join(__dirname, 'dist', `SyncWatch-Android-v${releaseVersion}-universal.apk`);
+  const developmentClientPath = path.join(__dirname, 'dist', `SyncWatch-Experience-Client-Portable-v${releaseVersion}-x64.exe`);
   const clientDownloadPath = resolveClientDownloadPath({
     isPackaged: app.isPackaged,
     resourcesPath: process.resourcesPath,
@@ -2410,28 +2357,15 @@ async function startApplication() {
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
     developmentClientPath
   });
-  const macServerDownloadPaths = resolveMacDownloadPaths('server', {
-    isPackaged: app.isPackaged, resourcesPath: process.resourcesPath,
-    portableExecutableDir: process.env.PORTABLE_EXECUTABLE_DIR,
-    portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
-    developmentDirectory: path.join(__dirname, 'dist')
-  });
-  const macClientDownloadPaths = resolveMacDownloadPaths('client', {
-    isPackaged: app.isPackaged, resourcesPath: process.resourcesPath,
-    portableExecutableDir: process.env.PORTABLE_EXECUTABLE_DIR,
-    portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
-    developmentDirectory: path.join(__dirname, 'dist')
-  });
   const configuredHosts = [...activeServerSettings.allowedHosts];
   if (activeServerSettings.publicUrl) {
     try { configuredHosts.push(new URL(activeServerSettings.publicUrl).host.toLowerCase()); } catch (_) {}
   }
-  // Linux/macOS source smoke runs only exercise the desktop shell and server
-  // lifecycle.  cloudflared is intentionally unsupported on Linux, so avoid
+  // Non-Windows source smoke runs only exercise the desktop shell and server
+  // lifecycle.  cloudflared is intentionally unsupported outside Windows, so avoid
   // failing the whole smoke process before the Electron window can start.
-  // Production builds still construct the real tunnel manager on supported
-  // Windows/macOS platforms.
-  const smokeTunnelDisabled = SMOKE_MODE && process.platform !== 'win32' && process.platform !== 'darwin';
+  // Production builds construct the real tunnel manager on Windows.
+  const smokeTunnelDisabled = SMOKE_MODE && process.platform !== 'win32';
   tunnelManager = smokeTunnelDisabled ? null : createTunnelManager(dataDir, () => serverController?.port || startPort, {
     onAutoStartChanged: async (enabled) => {
       if (!enabled || activeServerSettings?.autostart) return;
@@ -2445,7 +2379,6 @@ async function startApplication() {
     publicUrl: activeServerSettings.publicUrl, lanAddress,
     ...(trustedProxies !== undefined ? { trustedProxies } : {}),
     publicDir: path.join(__dirname, 'public'), hostControlToken: HOST_CONTROL_TOKEN, tunnelManager, androidApkPath, clientDownloadPath,
-    macServerDownloadPaths, macClientDownloadPaths,
     onFactoryResetRequested: factoryResetAndRestart, onRestartRequested: restartApplication
   });
   configureDisplayCapture();
@@ -2490,11 +2423,11 @@ process.on('unhandledRejection', (error) => {
 module.exports = { _test: {
   validPort, commandLineValue, iconPath, normalizePublicUrl, normalizeAllowedHost, normalizeServerSettings, resolvedStartPort,
   selectableNetworkAdapters, resolveLanAddress,
-  resolveApplicationRoot, resolveClientDownloadPath, resolveMacDownloadPaths, tunnelCommandArgs, tunnelEnvironment,
+  resolveApplicationRoot, resolveClientDownloadPath, tunnelCommandArgs, tunnelEnvironment,
   tunnelConnectionStrategies, classifyTunnelFailure, isTunnelFakeIp, tunnelRepairRecommendations,
   applyTunnelHealthProbe, tunnelProbeNeedsConnectorRestart, sanitizeTunnelLog, extractQuickTunnelPublicUrl, tunnelConnectorRegistered,
   tunnelFakeIpAddresses, DEFAULT_TUNNEL_BYPASS_PROXY,
-  cloudflaredRuntime, fileSha256, extractCloudflaredTarGz, physicalNetworkCandidates,
+  cloudflaredRuntime, fileSha256, physicalNetworkCandidates,
   preferredPhysicalIpv4, tunnelRestartDelayMs, isPublicIpv4Address,
   normalizeTunnelEdgeAddresses, cloudflareEdgeTargetsFromSrv, publicIpv4AddressesFromDnsAnswer,
   queryDnsOverHttps, resolveCloudflareEdgeAddressesViaDoh, tunnelProbeLocalAddress, tunnelSystemProxyConfigured,

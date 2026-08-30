@@ -82,8 +82,9 @@ async function main() {
       assert.match(pageSource, new RegExp(`id="${id}"`));
     }
     const topbarOrder = [
-      'aiWorkbenchBtn', 'masterMuteBtn', 'quickDissolveRoomBtn', 'newRoomBtn', 'switchRoomBtn', 'lanScanBtn',
-      'conversionProgressBtn', 'webShareBtn', 'noticeCenterBtn', 'themeBtn', 'adminContactBtn', 'copyrightBtn', 'serverSettingsLoginBtn'
+      'aiWorkbenchBtn', 'masterMuteBtn', 'conversionProgressBtn', 'webShareBtn', 'noticeCenterBtn',
+      'themeBtn', 'adminContactBtn', 'copyrightBtn', 'quickDissolveRoomBtn', 'newRoomBtn', 'switchRoomBtn',
+      'lanScanBtn', 'serverSettingsLoginBtn'
     ].map((id) => pageSource.indexOf(`id="${id}"`));
     assert.ok(topbarOrder.every((index) => index >= 0));
     assert.deepEqual(topbarOrder, [...topbarOrder].sort((left, right) => left - right));
@@ -147,14 +148,14 @@ async function main() {
     assert.match(electronServerSource, /const verified = Boolean\(verifiedResult\?\.ok\)[\s\S]{0,160}if \(!verified && index \+ 1 < strategies\.length\)/);
     assert.match(electronServerSource, /state: verified \? 'running' : 'verifying'[\s\S]{0,160}publicUrl: verified \? establishedUrl : ''/);
     assert.ok(!packageManifest.build.extraResources.some((entry) => entry.from === `SyncWatch同步观影-Client-v${packageManifest.version}.exe`));
-    assert.equal(packageManifest.build.portable.artifactName, `SyncWatch-Standard-Server-Portable-v${packageManifest.version}-\${arch}.exe`);
+    assert.equal(packageManifest.build.portable.artifactName, `SyncWatch-v${packageManifest.version}-Full-Offline-Portable-\${arch}.exe`);
     assert.equal(packageManifest.build.win.executableName, 'SyncWatch同步观影');
     assert.match(releaseScriptSource, /powershell\.exe[\s\S]{0,220}mobile\\build-apk\.ps1/);
     assert.doesNotMatch(releaseScriptSource, /Reusing the existing verified APK artifact/);
     assert.match(releaseScriptSource, /run test:all/);
     assert.match(releaseScriptSource, /Join-Path\s+\$PSScriptRoot\s+['"]dist['"]/);
     assert.match(releaseScriptSource, /Invoke-Builder ['"]electron-builder-client\.json['"]/);
-    assert.ok(releaseScriptSource.includes(`Assert-Artifact 'SyncWatch-Experience-Client-Portable-v${packageManifest.version}-x64.exe'`));
+    assert.match(releaseScriptSource, /Assert-Artifact\s+\"SyncWatch-Experience-Client-Portable-v\$\(\$manifest\.version\)-x64\.exe\"/);
     assert.match(releaseScriptSource, /Get-FileHash\s+-Algorithm SHA256/);
     assert.deepEqual([...serverLauncherBytes.subarray(0, 3)], [0xEF, 0xBB, 0xBF]);
     assert.match(serverPackageScriptSource, /Management\.Automation\.Language\.Parser\]::ParseFile/);

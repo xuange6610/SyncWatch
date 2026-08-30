@@ -44,25 +44,23 @@ if (-not $outputRoot.StartsWith($workspacePrefix, [StringComparison]::OrdinalIgn
 }
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
-$clientArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe'
+$clientArtifact = Join-Path $PSScriptRoot "dist\SyncWatch-Experience-Client-Portable-v$version-x64.exe"
 if (-not (Test-Path -LiteralPath $clientArtifact -PathType Leaf)) {
     throw 'Missing separate Windows client artifact in root dist/. Build the Experience client first.'
 }
-$androidArtifact = Join-Path $PSScriptRoot 'dist\SyncWatch-Android-v2.2.8-universal.apk'
+$androidArtifact = Join-Path $PSScriptRoot "dist\SyncWatch-Android-v$version-universal.apk"
 
 $deploymentGuidePath = 'docs\server-deployment-guide.md'
 $architectureGuidePath = 'docs\architecture.md'
-$macosGuidePath = 'docs\macos-build.md'
 $standaloneReadmePath = 'docs\standalone-server.md'
 
 $requiredFiles = @(
     'package.json', 'package-lock.json', 'server-standalone.js', 'server\standalone-tunnel.js', 'server\cloudflared-installer.js', 'vendor\cloudflared.exe',
     'start-server.ps1', 'start-server.cmd', 'start-server.sh',
-    'Dockerfile', 'docker-compose.yml', '.dockerignore', 'mac-distribution.example.json',
-    'scripts\collect-macos-distribution.ps1',
-    $standaloneReadmePath, $deploymentGuidePath, $architectureGuidePath, $macosGuidePath,
-    'server\index.js', 'server\ai-relay.js', 'server\macos-distribution.js', 'server\latest-release.js', 'server\client-address-privacy.js', 'public\index.html', 'public\js\app.js', 'public\css\style.css',
-    'dist\SyncWatch-Android-v2.2.8-universal.apk',
+    'Dockerfile', 'docker-compose.yml', '.dockerignore',
+    $standaloneReadmePath, $deploymentGuidePath, $architectureGuidePath,
+    'server\index.js', 'server\ai-relay.js', 'server\latest-release.js', 'server\client-address-privacy.js', 'public\index.html', 'public\js\app.js', 'public\css\style.css',
+    "dist\SyncWatch-Android-v$version-universal.apk",
     'tests\standalone-package-smoke.js',
     'node_modules\compression\package.json', 'node_modules\express\package.json', 'node_modules\multer\package.json',
     'node_modules\nodemailer\package.json', 'node_modules\socket.io\package.json',
@@ -129,30 +127,24 @@ try {
     # for this build only, then restore the caller's environment in finally.
     $env:Path = $nodeDirectory + [IO.Path]::PathSeparator + $originalProcessPath
     New-Item -ItemType Directory -Path $stage -Force | Out-Null
-    foreach ($name in @('package.json','package-lock.json','server-standalone.js','start-server.ps1','start-server.cmd','start-server.sh','Dockerfile','docker-compose.yml','.dockerignore','mac-distribution.example.json')) {
+    foreach ($name in @('package.json','package-lock.json','server-standalone.js','start-server.ps1','start-server.cmd','start-server.sh','Dockerfile','docker-compose.yml','.dockerignore')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $stage $name)
     }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $standaloneReadmePath) -Destination (Join-Path $stage 'README.md')
     $stagedDocs = Join-Path $stage 'docs'
     New-Item -ItemType Directory -Path $stagedDocs -Force | Out-Null
-    foreach ($guidePath in @($deploymentGuidePath, $architectureGuidePath, $macosGuidePath)) {
+    foreach ($guidePath in @($deploymentGuidePath, $architectureGuidePath)) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $guidePath) -Destination (Join-Path $stagedDocs (Split-Path -Leaf $guidePath))
     }
-    # Keep the constrained macOS artifact collector in the deployment archive.
-    # Operators may use it on a build host to stage DMG/ZIP releases without
-    # copying unrelated binaries or signing material into the server package.
     $stagedScripts = Join-Path $stage 'scripts'
     New-Item -ItemType Directory -Path $stagedScripts -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'scripts\collect-macos-distribution.ps1') -Destination (Join-Path $stagedScripts 'collect-macos-distribution.ps1')
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'server') -Destination (Join-Path $stage 'server') -Recurse
     New-Item -ItemType Directory -Path (Join-Path $stage 'vendor') -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'vendor\cloudflared.exe') -Destination (Join-Path $stage 'vendor\cloudflared.exe') -Force
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'public') -Destination (Join-Path $stage 'public') -Recurse
     New-Item -ItemType Directory -Path (Join-Path $stage 'mobile') -Force | Out-Null
-    Copy-Item -LiteralPath $androidArtifact -Destination (Join-Path $stage 'mobile\SyncWatch同步观影-v2.2.8.apk')
-    Copy-Item -LiteralPath $clientArtifact -Destination (Join-Path $stage 'SyncWatch同步观影-Client-v2.2.8.exe')
-    $macDirectory = Join-Path $stage 'mac'
-    & (Join-Path $PSScriptRoot 'scripts\collect-macos-distribution.ps1') -SourceRoot $PSScriptRoot -Destination $macDirectory -Version $version
+    Copy-Item -LiteralPath $androidArtifact -Destination (Join-Path $stage "mobile\SyncWatch同步观影-v$version.apk")
+    Copy-Item -LiteralPath $clientArtifact -Destination (Join-Path $stage "SyncWatch同步观影-Client-v$version.exe")
 
     # Ship the locked production tree so a cloud server can start without a
     # network install. Dev dependencies, build tools, tests, and source caches
@@ -203,11 +195,10 @@ try {
     try {
         $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\','/') })
         foreach ($required in @(
-            "$folderName/server/index.js", "$folderName/server/ai-relay.js", "$folderName/server/macos-distribution.js", "$folderName/server/latest-release.js", "$folderName/server/client-address-privacy.js", "$folderName/server/standalone-tunnel.js", "$folderName/public/index.html",
+            "$folderName/server/index.js", "$folderName/server/ai-relay.js", "$folderName/server/latest-release.js", "$folderName/server/client-address-privacy.js", "$folderName/server/standalone-tunnel.js", "$folderName/public/index.html",
             "$folderName/vendor/cloudflared.exe",
-            "$folderName/scripts/collect-macos-distribution.ps1",
-            "$folderName/mobile/SyncWatch同步观影-v2.2.8.apk", "$folderName/SyncWatch同步观影-Client-v2.2.8.exe", "$folderName/server-standalone.js",
-            "$folderName/README.md", "$folderName/docs/server-deployment-guide.md", "$folderName/docs/architecture.md", "$folderName/docs/macos-build.md", "$folderName/mac-distribution.example.json",
+            "$folderName/mobile/SyncWatch同步观影-v$version.apk", "$folderName/SyncWatch同步观影-Client-v$version.exe", "$folderName/server-standalone.js",
+            "$folderName/README.md", "$folderName/docs/server-deployment-guide.md", "$folderName/docs/architecture.md",
             "$folderName/node_modules/compression/package.json", "$folderName/node_modules/express/package.json", "$folderName/node_modules/nodemailer/package.json",
             "$folderName/node_modules/ffmpeg-static/package.json", "$folderName/node_modules/ffprobe-static/package.json",
             "$folderName/SyncWatch同步观影-Data/README.txt"
@@ -227,14 +218,10 @@ try {
                 throw "Package contains dependency test residue: $entry"
             }
             if ($entry.EndsWith('.exe', [StringComparison]::OrdinalIgnoreCase) -and
-                $entry -ne "$folderName/SyncWatch同步观影-Client-v2.2.8.exe" -and
+                $entry -ne "$folderName/SyncWatch同步观影-Client-v$version.exe" -and
                 $entry -ne "$folderName/vendor/cloudflared.exe" -and
                 $entry -notmatch '/node_modules/(?:ffmpeg-static/ffmpeg\.exe|ffprobe-static/bin/win32/(?:ia32|x64)/ffprobe\.exe)$') {
                 throw "Package contains an unexpected executable: $entry"
-            }
-            if (($entry.EndsWith('.dmg', [StringComparison]::OrdinalIgnoreCase) -or $entry.EndsWith('.zip', [StringComparison]::OrdinalIgnoreCase)) -and
-                $entry -notmatch ('/mac/SyncWatch同步观影-.+-v' + [Regex]::Escape($version) + '-(?:x64|arm64)\.(?:dmg|zip)$')) {
-                throw "Package contains an unexpected macOS artifact: $entry"
             }
         }
         $devNames = @($package.devDependencies.PSObject.Properties | ForEach-Object { [string]$_.Name })

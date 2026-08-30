@@ -4,7 +4,7 @@ const { pathToFileURL } = require('url');
 const { execFile } = require('child_process');
 const { app, BrowserWindow, clipboard, dialog, shell, session, ipcMain, desktopCapturer } = require('electron');
 
-const APP_VERSION = 'v2.2.8';
+const APP_VERSION = 'v2.2.9';
 const APP_NAME = 'SyncWatch同步观影';
 app.setName(APP_NAME);
 if (process.platform === 'win32') app.setAppUserModelId('com.xuan.syncwatch.client');
@@ -15,7 +15,7 @@ const allowedWebPermissions = new Set(['media', 'display-capture', 'geolocation'
 const MAX_LOGIN_MODEL_BYTES = 25 * 1024 * 1024;
 
 function iconPath() {
-  return path.join(__dirname, 'assets', process.platform === 'darwin' ? 'app-icon.png' : 'app-icon.ico');
+  return path.join(__dirname, 'assets', 'app-icon.ico');
 }
 
 function scanVisibleWindowsPrograms() {

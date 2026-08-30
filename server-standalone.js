@@ -56,7 +56,7 @@ function standaloneHelp() {
   return [
     `SyncWatch同步观影 ${APP_VERSION} 纯控制台服务端`,
     '',
-    '此入口没有桌面窗口，不会显示 Electron 原生菜单。需要“系统 / 视图 / 帮助”顶部菜单时，请运行 Windows/macOS 桌面服务器程序。',
+    '此入口没有桌面窗口，不会显示 Electron 原生菜单；需要桌面窗口时请运行 Windows 桌面服务器程序。',
     '',
     '控制台等价入口：',
     '  node server-standalone.js [选项]',
@@ -90,7 +90,6 @@ function systemBrowserCommand(value, platform = process.platform) {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
   const target = url.toString();
   if (platform === 'win32') return { command: 'rundll32.exe', args: ['url.dll,FileProtocolHandler', target] };
-  if (platform === 'darwin') return { command: 'open', args: [target] };
   return { command: 'xdg-open', args: [target] };
 }
 
@@ -227,30 +226,15 @@ async function main() {
     path.join(ROOT_DIR, 'mobile', `SyncWatch同步观影-v${releaseVersion}.apk`)
   ].find((candidate) => fs.existsSync(candidate)) || '';
   const clientDownloadCandidates = [
-    path.join(ROOT_DIR, 'dist', 'SyncWatch-Experience-Client-Portable-v2.2.8-x64.exe'),
-    path.join(ROOT_DIR, 'SyncWatch同步观影-Client-v2.2.8.exe'),
-    path.join(ROOT_DIR, 'client', 'SyncWatch同步观影-Client-v2.2.8.exe')
+    path.join(ROOT_DIR, 'dist', `SyncWatch-Experience-Client-Portable-v${releaseVersion}-x64.exe`),
+    path.join(ROOT_DIR, `SyncWatch同步观影-Client-v${releaseVersion}.exe`),
+    path.join(ROOT_DIR, 'client', `SyncWatch同步观影-Client-v${releaseVersion}.exe`)
   ];
   const clientDownloadPath = clientDownloadCandidates.find((candidate) => fs.existsSync(candidate)) || '';
-  const macArtifactCandidates = (prefix) => ({
-    x64: [
-      path.join(ROOT_DIR, 'dist', `${prefix}-x64.dmg`),
-      path.join(ROOT_DIR, `${prefix}-x64.dmg`),
-      path.join(ROOT_DIR, 'mac', `${prefix}-x64.dmg`)
-    ].find((candidate) => fs.existsSync(candidate)) || '',
-    arm64: [
-      path.join(ROOT_DIR, 'dist', `${prefix}-arm64.dmg`),
-      path.join(ROOT_DIR, `${prefix}-arm64.dmg`),
-      path.join(ROOT_DIR, 'mac', `${prefix}-arm64.dmg`)
-    ].find((candidate) => fs.existsSync(candidate)) || ''
-  });
-  const macServerDownloadPaths = macArtifactCandidates('SyncWatch-Server-macOS-v2.2.8');
-  const macClientDownloadPaths = macArtifactCandidates('SyncWatch-Client-macOS-v2.2.8');
   const controller = await startSyncWatchServer({
     host: '0.0.0.0', port, strictPort: false, portFallbackCount: 20, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
     hostControlToken: token, allowedHosts, publicUrl, androidApkPath, clientDownloadPath, tunnelManager,
-    ...(trustedProxies !== undefined ? { trustedProxies } : {}),
-    macServerDownloadPaths, macClientDownloadPaths, macDistributionRoots: [path.join(ROOT_DIR, 'dist'), ROOT_DIR, path.join(ROOT_DIR, 'mac')]
+    ...(trustedProxies !== undefined ? { trustedProxies } : {})
   });
   const local = `http://127.0.0.1:${controller.port}`;
   const accessUrls = [...new Set([publicUrl, ...controller.addresses, local].filter(Boolean))];

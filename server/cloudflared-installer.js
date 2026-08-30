@@ -19,9 +19,6 @@ function cloudflaredRuntime(platform = process.platform, arch = process.arch) {
     const suffix = { ia32: '386', x64: 'amd64', arm64: 'arm64' }[arch];
     return { assetName: `cloudflared-linux-${suffix}`, binaryName: 'cloudflared', archive: 'binary' };
   }
-  if (platform === 'darwin' && ['x64', 'arm64'].includes(arch)) {
-    return { assetName: `cloudflared-darwin-${arch === 'x64' ? 'amd64' : 'arm64'}.tgz`, binaryName: 'cloudflared', archive: 'tgz' };
-  }
   throw new Error(`当前系统不支持自动安装 cloudflared（${platform}/${arch}）`);
 }
 

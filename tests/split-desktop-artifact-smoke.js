@@ -73,7 +73,7 @@ async function stopChildTree(child) {
 
 async function main() {
   if (process.platform !== 'win32') throw new Error('拆分后的桌面 EXE 冒烟测试只能在 Windows 上运行');
-  const executable = path.resolve(process.argv[2] || path.join(__dirname, '..', 'dist', manifest.build.portable.artifactName.replace('${arch}', 'x64')));
+  const executable = path.resolve(process.argv[2] || path.join(__dirname, '..', 'dist', `SyncWatch-v${manifest.version}-Full-Offline-Portable-x64.exe`));
   const stats = fs.statSync(executable);
   assert.ok(stats.isFile() && stats.size > 1024 * 1024, '候选 EXE 不存在或体积异常');
 

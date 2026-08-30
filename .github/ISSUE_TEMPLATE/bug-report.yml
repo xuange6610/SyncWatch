@@ -23,8 +23,6 @@ body:
         - Windows 64 位
         - Windows 32 位
         - Android
-        - macOS Intel
-        - macOS Apple Silicon
         - Linux / Docker
         - 浏览器
     validations:

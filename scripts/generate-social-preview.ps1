@@ -27,7 +27,7 @@ $graphics.DrawString('SyncWatch同步观影', $fontTitle, $text, 58, 102)
 $graphics.DrawString('和重要的人，在不同的地方，看同一刻。', $fontTagline, $text, 60, 178)
 $graphics.DrawString('OPEN SOURCE WATCH PARTY', $fontLabel, $green, 60, 244)
 $graphics.DrawString('自托管 · 跨平台 · 真正同步播放', $fontMeta, $muted, 60, 286)
-$graphics.DrawString('Windows · Android · macOS · Web', $fontMeta, $muted, 60, 318)
+$graphics.DrawString('Windows · Android · Web', $fontMeta, $muted, 60, 318)
 
 $metaRectangle = New-Object System.Drawing.Rectangle 58, 388, 438, 106
 $graphics.FillRectangle($panel, $metaRectangle)

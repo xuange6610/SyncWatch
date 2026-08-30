@@ -3,8 +3,8 @@
 ## 先选择最适合你的方式
 
 - 只想加入别人的房间：下载 Experience 体验版客户端。
-- 想在 Windows 上自己开房：下载 Standard 标准版或 Full Offline 完整版。
-- 想安装到开始菜单：选择 Full Offline Installer 安装版。
+- 想在 Windows 上自己开房：下载 Full Offline 完整便携版。
+- 想用手机加入或在支持的设备上开房：下载 Android 通用 APK。
 - 想阅读和修改源代码：按下面的源码启动步骤操作。
 
 普通用户不要把 GitHub 自动生成的 `Source code (zip)` 当作安装包。它只包含源码，不保证包含 `cloudflared.exe`、FFmpeg 或各平台离线客户端。
@@ -25,15 +25,6 @@ npm start
 看到服务器地址后，在浏览器打开 `http://127.0.0.1:20311`。如果页面正常出现登录界面，说明源码服务器已经启动。
 
 项目源码默认位于你执行 `git clone` 时所在目录下的 `SyncWatch` 文件夹。按上面的推荐步骤操作时，通常是 `C:\Users\你的用户名\Desktop\SyncWatch`。在资源管理器地址栏粘贴路径即可查看。
-
-## macOS 从源码启动
-
-1. 打开“访达 → 应用程序 → 实用工具 → 终端”。
-2. 输入 `cd ~/Desktop`，让项目下载到桌面。
-3. 依次执行 `git clone`、`cd SyncWatch`、`npm ci` 和 `npm start`。
-4. 在 Safari 或 Chrome 打开 `http://127.0.0.1:20311`。
-
-若 `node --version` 或 `npm --version` 提示找不到命令，先按照运行环境教程安装 Node.js，再关闭并重新打开终端。
 
 ## 第一次登录和建房
 
@@ -62,7 +53,7 @@ npm start
 
 ## 出现问题先检查
 
-- `git` 找不到：安装 Git for Windows 或 Xcode Command Line Tools。
+- `git` 找不到：安装 Git for Windows。
 - `node` / `npm` 找不到：安装 Node.js LTS，然后重开终端。
 - `npm ci` 失败：确认网络可访问 npm，且命令是在 `SyncWatch` 目录执行。
 - 端口被占用：关闭旧服务器，或按软件提示使用新端口。

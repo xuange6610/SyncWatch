@@ -23,21 +23,21 @@ const {
 const version = '2.2.4';
 const manifest = manifestForVersion(version);
 const sourceArchives = sourceArchivesForVersion(version);
-assert.equal(manifest.length, 10);
+assert.equal(manifest.length, 8);
 assert.equal(sourceArchives.length, 2);
-assert.equal(new Set([...manifest, ...sourceArchives].map((entry) => entry.name)).size, 12);
-assert.equal(manifest.filter((entry) => entry.kind === 'application').length, 5);
+assert.equal(new Set([...manifest, ...sourceArchives].map((entry) => entry.name)).size, 10);
+assert.equal(manifest.filter((entry) => entry.kind === 'application').length, 3);
 assert.equal(manifest.filter((entry) => entry.kind === 'third-party').length, 5);
-assert.equal(assetsForSelection('bundle', version).length, 12);
+assert.equal(assetsForSelection('bundle', version).length, 10);
 assert.equal(assetsForSelection('official', version).length, 5);
-assert.equal(assetsForSelection('windows-base', version).length, 2);
-assert.equal(assetsForSelection('windows-full', version).length, 2);
+assert.equal(assetsForSelection('windows-base', version).length, 1);
+assert.equal(assetsForSelection('windows-full', version).length, 1);
 
 assert.equal(requiredForPhase('android', version).length, 0);
 assert.equal(requiredForPhase('windows-base', version).length, 1);
-assert.equal(requiredForPhase('windows-full', version).length, 3);
-assert.equal(requiredForPhase('final', version).length, 10);
-assert.equal(requiredForPhase('bundle', version).length, 12);
+assert.equal(requiredForPhase('windows-full', version).length, 2);
+assert.equal(requiredForPhase('final', version).length, 8);
+assert.equal(requiredForPhase('bundle', version).length, 10);
 
 const digestFor = (entry) => entry.sha256 || crypto.createHash('sha256').update(entry.name).digest('hex');
 const metadata = manifest.map((entry) => ({
@@ -47,14 +47,14 @@ const metadata = manifest.map((entry) => ({
   state: 'uploaded'
 }));
 const verifiedRows = verifyMetadata({ assets: metadata }, 'final', version);
-assert.equal(verifiedRows.length, 10);
+assert.equal(verifiedRows.length, 8);
 assert.throws(
   () => verifyMetadata({ assets: metadata.slice(0, -1) }, 'final', version),
-  /exactly 10 assets|Missing release candidate asset/
+  /exactly 8 assets|Missing release candidate asset/
 );
 assert.throws(
   () => verifyMetadata({ assets: [...metadata, { name: 'unexpected.bin', size: 1, digest: `sha256:${'a'.repeat(64)}`, state: 'uploaded' }] }, 'final', version),
-  /exactly 10 assets|unexpected/
+  /exactly 8 assets|unexpected/
 );
 assert.throws(
   () => verifyMetadata({ assets: [{ ...metadata[0], digest: metadata[1].digest }, ...metadata.slice(1)] }, 'final', version),
@@ -73,7 +73,7 @@ try {
   const checksumFile = path.join(temp, 'SHA256SUMS.txt');
   fs.writeFileSync(checksumFile, metadata.map((entry) => `${entry.digest.slice(7)}  ${entry.name}`).join('\n') + '\n');
   const expectedDigests = parseChecksumManifest(checksumFile);
-  assert.equal(verifyMetadataForAssets({ assets: metadata }, manifest, { expectedDigests }).length, 10);
+assert.equal(verifyMetadataForAssets({ assets: metadata }, manifest, { expectedDigests }).length, 8);
   const mismatched = new Map(expectedDigests);
   mismatched.set(metadata[0].name, '0'.repeat(64));
   assert.throws(
