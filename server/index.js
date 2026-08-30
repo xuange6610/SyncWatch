@@ -9917,6 +9917,9 @@ async function startSyncWatchServer(options = {}) {
       if (guestsDisallowed(username, room)) return failGuestLogin({ success: false, code: 'GUESTS_DISABLED', error: '房主已禁止游客进入该房间' });
       if (room.banned) return failGuestLogin({ success: false, error: room.banReason ? `房间已被服务器封禁：${room.banReason}` : '房间已被服务器封禁' });
       if (room.passwordHash && !canBypassRoomPassword(username, room) && !accountHasRoomAccess(username, room)) {
+        if (!String(payload.roomPassword ?? payload.accessPassword ?? '')) {
+          return failGuestLogin({ success: false, code: 'ROOM_PASSWORD_REQUIRED', error: '请输入房间密码' });
+        }
         if (!await verifyPasswordAsync(payload.roomPassword ?? payload.accessPassword ?? '', room.passwordHash)) {
           return failGuestLogin({ success: false, code: 'ROOM_PASSWORD_REQUIRED', error: '房间密码错误' });
         }
@@ -10077,6 +10080,7 @@ async function startSyncWatchServer(options = {}) {
       if (!room) return finishLogin({ success: false, error: '房间号不存在' });
       if (room.banned && !account.superAdmin) return finishLogin({ success: false, error: room.banReason ? `房间已被服务器封禁：${room.banReason}` : '房间已被服务器封禁' });
       if (room.passwordHash && !canBypassRoomPassword(username, room) && !accountHasRoomAccess(username, room)) {
+        if (!String(payload.roomPassword ?? payload.accessPassword ?? '')) return finishLogin({ success: false, code: 'ROOM_PASSWORD_REQUIRED', error: '请输入房间密码' });
         if (!await verifyPasswordAsync(payload.roomPassword ?? payload.accessPassword ?? '', room.passwordHash)) return finishLogin({ success: false, code: 'ROOM_PASSWORD_REQUIRED', error: '房间密码错误' });
         rememberRoomAccess(username, room);
       }

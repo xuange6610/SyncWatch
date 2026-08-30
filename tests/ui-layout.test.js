@@ -35,6 +35,12 @@ assert.match(styleSource, /\.room-marquee\.is-hidden\s*\{[^}]*display:\s*none/s,
 
 assert.match(pageSource, /class="topbar-scroll-actions"[\s\S]*id="copyrightBtn"[\s\S]*class="topbar-fixed-actions"[\s\S]*id="serverSettingsLoginBtn"[\s\S]*id="copyAddressBtn"[\s\S]*id="connectionBadge"[\s\S]*id="accountMenuBtn"/,
   '服务器设置、分享房间、连接状态和头像必须位于顶部固定区，不能进入功能滑动栏');
+assert.match(appSource, /function bindTopbarAutoCollapse\([\s\S]{0,3200}pointerenter[\s\S]{0,900}pointerleave[\s\S]{0,900}menuPinned/,
+  '桌面顶部菜单必须支持悬停临时展开、离开收起和点击固定');
+assert.match(styleSource, /@media \(max-width: 540px\)[\s\S]{0,1800}\.topbar-actions \.topbar-menu[\s\S]{0,500}grid-column:\s*1 \/ -1[\s\S]{0,900}grid-template-columns:\s*minmax\(0, 1fr\)/,
+  '手机顶部菜单必须使用完整单列下拉列表，不能把展开项拆到多列');
+assert.match(styleSource, /@media \(max-width: 540px\)[\s\S]{0,2600}\.topbar-actions \.header-feature-button \.button-label[\s\S]{0,500}display:\s*inline\s*!important/,
+  '手机单列菜单中的服务器设置和分享房间等固定按钮必须显示文字名称');
 assert.ok(
   /\.topbar-scroll-actions\s*\{[^}]*overflow-x:\s*auto/s.test(styleSource)
     || /\.topbar-scroll-actions\s*\{[^}]*overflow:\s*visible/s.test(styleSource),
@@ -98,6 +104,21 @@ assert.equal((fontPresetBlock[1].match(/^  \[/gm) || []).length, 50,
 
 assert.match(appSource, /async function readClipboardTextFromAvailableSources\([\s\S]{0,1200}SyncWatchDesktop[\s\S]{0,500}SyncWatchAndroid/,
   '网页粘贴必须在 Clipboard API 失败时尝试桌面与安卓原生桥');
+assert.match(appSource, /async function copyText\([\s\S]{0,900}writeClipboardText[\s\S]{0,900}execCommand\('copy'\)/,
+  '复制操作必须在浏览器剪贴板失败时依次尝试原生桥和旧版复制命令');
+assert.match(pageSource, /id="usersTab"[\s\S]{0,1200}member-heading-actions[\s\S]{0,900}id="collapseMembersPanelBtn"/,
+  '右侧成员面板折叠按钮必须位于可见标题操作区，不能放在会被滚动裁掉的负坐标');
+for (const id of ['username', 'password', 'roomIdInput']) {
+  assert.match(pageSource, new RegExp(`class="login-attention-field"[^>]*[\\s\\S]{0,220}id="${id}"`), `${id} 必须显示登录关键字段高亮`);
+}
+assert.match(pageSource, /id="loginRoomPasswordState"[^>]*aria-live="polite"/,
+  '房间密码输入旁必须实时显示有密码或无密码状态');
+assert.match(appSource, /async function promptForMissingLoginRoomPassword\([\s\S]{0,900}请输入房间密码[\s\S]{0,300}aria-invalid/,
+  '已知房间有密码且输入为空时必须在提交前明确提示');
+assert.match(styleSource, /@keyframes login-field-attention[\s\S]{0,500}box-shadow/,
+  '账号、密码和房间号必须有可见的闪烁高亮框');
+assert.match(styleSource, /\.workspace\.members-panel-collapsed \.user-panel \.member-heading-actions > :not\(\.user-panel-collapse-button\)\s*\{\s*display:\s*none/,
+  '成员面板收起后必须保留可见的展开按钮');
 assert.match(appSource, /function trySystemPaste\([\s\S]{0,1800}execCommand\('paste'\)[\s\S]{0,1000}Ctrl\+V/,
   '原生桥不可用时必须聚焦输入框并提供系统粘贴降级，不能直接报错终止');
 assert.match(appSource, /function renderSwitchOwnedRooms\(rooms[\s\S]{0,3200}renderRoomDirectoryDetails\(room\)[\s\S]{0,700}data-switch-owned-room/,

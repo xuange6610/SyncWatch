@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('SyncWatchPlatform', Object.freeze({
 contextBridge.exposeInMainWorld('SyncWatchDesktop', {
   openExternal: (value) => ipcRenderer.invoke('syncwatch:open-external', String(value || '')),
   readClipboardText: () => ipcRenderer.invoke('syncwatch:read-clipboard-text'),
+  writeClipboardText: (value) => ipcRenderer.invoke('syncwatch:write-clipboard-text', String(value || '')),
   setAudioMuted: (muted) => ipcRenderer.invoke('syncwatch:audio-muted', Boolean(muted)),
   listAudioSources: () => ipcRenderer.invoke('syncwatch:list-audio-sources'),
   openConvertedMediaFolder: () => ipcRenderer.invoke('syncwatch:open-compatible-media-folder'),
