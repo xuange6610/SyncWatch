@@ -680,7 +680,9 @@ async function main() {
     })()`);
     assert.equal(selfHighlight.enabled.present, true, JSON.stringify(selfHighlight));
     assert.equal(selfHighlight.enabled.highlighted, true, JSON.stringify(selfHighlight));
-    assert.match(selfHighlight.enabled.animation, /self-member-highlight/, JSON.stringify(selfHighlight));
+    const reducedMotion = await evaluate(cdp, `window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true`);
+    if (reducedMotion) assert.equal(selfHighlight.enabled.animation, 'none', JSON.stringify(selfHighlight));
+    else assert.match(selfHighlight.enabled.animation, /self-member-highlight/, JSON.stringify(selfHighlight));
     assert.equal(selfHighlight.disabled.highlighted, false, JSON.stringify(selfHighlight));
     assert.doesNotMatch(selfHighlight.disabled.animation, /self-member-highlight/, JSON.stringify(selfHighlight));
     const themeChoices = await evaluate(cdp, `Array.from(elements.themeGrid.querySelectorAll('.theme-choice')).map((choice) => ({ code: choice.querySelector('.theme-code')?.textContent.trim(), name: choice.querySelector('strong')?.textContent.trim() }))`);
