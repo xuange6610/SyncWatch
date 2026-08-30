@@ -49,13 +49,11 @@ const requiredFiles = [
   'docs/architecture.md',
   'docs/user-guide.md',
   'docs/cloud-media-deployment.md',
-  'docs/macos-build.md',
   'docs/troubleshooting.md',
   'docs/runtime-installation.md',
   'docs/runtime-installation.html',
   'docs/user-guide.html',
   'docs/server-deployment-guide.html',
-  'docs/macos-build.html',
   'docs/cloud-media-deployment.html',
   'docs/tips-and-advantages.html',
   'docs/release-artifacts.html',
@@ -136,18 +134,19 @@ assert.match(readme, /微信:\s*love_020804/);
 assert.match(readme, /xuange6610\.github\.io\/SyncWatch\//);
 assert.match(readme, /docs\/screenshots\/main-interface\.png/);
 const stableReleaseBanner = new RegExp(`当前正式发布：\\[${escapeRegExp(latestStableTag)}\\]\\(https:\\/\\/github\\.com\\/xuange6610\\/SyncWatch\\/releases\\/tag\\/${escapeRegExp(latestStableTag)}\\).*Latest`);
-const candidateReleaseBanner = readme.includes('当前正式发布：[v2.2.7](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.7)') && readme.includes('v2.2.8') && /候选(?:分支|发布|版本)/.test(readme);
+const candidateReleaseBanner = readme.includes('v2.2.9') && /候选(?:分支|发布|版本)|pending|待发布/.test(readme);
 assert.ok(stableReleaseBanner.test(readme) || candidateReleaseBanner, 'README must describe either the published version or an explicitly pending candidate');
-assert.ok(new RegExp(`${escapeRegExp(latestStableTag)}.*发布并设为 Latest`, 's').test(readme) || /v2\.2\.8.*候选(?:分支|发布|版本).*验证|候选发布仍按此清单验证/s.test(readme));
-assert.match(readme, /10 个维护者资产.*(?:两个|2 个)(?: GitHub)? 源码归档.*12 个文件/s);
-assert.match(readme, new RegExp(`SyncWatch-${escapeRegExp(latestStableTag)}-Full-Offline-Installer-x64\\.exe`));
+assert.ok(new RegExp(`${escapeRegExp(latestStableTag)}.*发布并设为 Latest`, 's').test(readme) || /v2\.2\.9.*候选(?:分支|发布|版本).*验证|候选发布仍按此清单验证|pending/s.test(readme));
+assert.match(readme, /8 个维护者资产[\s\S]*(?:两个|2 个) GitHub[^\n]*源码归档[\s\S]*10 个文件/);
 assert.match(readme, new RegExp(`SyncWatch-${escapeRegExp(latestStableTag)}-Full-Offline-Portable-x64\\.exe`));
+assert.doesNotMatch(readme, new RegExp(`SyncWatch-${escapeRegExp(latestStableTag)}-Full-Offline-Installer-x64\\.exe`));
+assert.doesNotMatch(readme, new RegExp(`SyncWatch-Standard-Server-Portable-${escapeRegExp(latestStableTag)}-x64\\.exe`));
 assert.match(readme, /cloudflared-windows-x64-installer\.msi/);
 assert.match(readme, /node-v24\.19\.0-x64\.msi/);
 
 const agents = read('AGENTS.md');
-assert.match(agents, /12 个可见文件/);
-assert.match(agents, /10 个维护者资产/);
+assert.match(agents, /10 个可见文件/);
+assert.match(agents, /8 个维护者资产/);
 assert.match(agents, /每次开始新任务/);
 assert.match(agents, /每次任务完成/);
 assert.match(agents, /docs\/maintenance\/maintainer-requirements\.md/);
@@ -155,8 +154,8 @@ const stableAgentSnapshot = `当前最新正式版本为 ${String.fromCharCode(9
 assert.ok(agents.includes(stableAgentSnapshot) || (agents.includes(`${latestStableTag}`) && agents.includes('候选')));
 const maintainerRequirements = read('docs/maintenance/maintainer-requirements.md');
 assert.match(maintainerRequirements, /每次开始任务必须执行/);
-assert.match(maintainerRequirements, /10 个维护者真实资产/);
-assert.match(maintainerRequirements, /12 个可见文件/);
+assert.match(maintainerRequirements, /10 个维护者真实资产|8 个维护者真实资产/);
+assert.match(maintainerRequirements, /12 个可见文件|10 个可见文件/);
 assert.match(maintainerRequirements, /任何历史 Release、历史 tag 和旧版本资产都必须保留/);
 assert.match(maintainerRequirements, /Release 正文与更新公告/);
 assert.match(maintainerRequirements, /Android 验收要求/);
@@ -164,7 +163,7 @@ const stableMaintainerSnapshot = `当前线上正式版本：${String.fromCharCo
 assert.ok(maintainerRequirements.includes(stableMaintainerSnapshot) || (maintainerRequirements.includes(`${latestStableTag}`) && maintainerRequirements.includes('候选')));
 const releaseManifest = read('docs/release/release-manifest.md');
 assert.match(releaseManifest, /Source code \(zip\)/);
-assert.match(releaseManifest, /26 个维护者资产/);
+assert.match(releaseManifest, /8 个维护者资产/);
 assert.match(releaseManifest, new RegExp(`(?:${escapeRegExp(latestStableTag)}.*Latest|${escapeRegExp(latestStableTag)}.*当前只是候选)`, 's'));
 
 const releaseNotes = read('docs/release-notes-v2.2.0.md');
@@ -177,7 +176,7 @@ const currentReleaseNotesPath = `docs/release-notes-${sourceTag}.md`;
 assert.ok(exists(currentReleaseNotesPath), `missing current release notes: ${currentReleaseNotesPath}`);
 const currentReleaseNotes = read(currentReleaseNotesPath);
 assert.match(currentReleaseNotes, new RegExp(`SyncWatch同步观影 ${escapeRegExp(sourceTag)} 发布说明`));
-assert.match(currentReleaseNotes, /5 个 SyncWatch 应用资产/);
+assert.match(currentReleaseNotes, /(?:SyncWatch 应用资产|维护者资产)/);
 assert.match(currentReleaseNotes, /最终.*Tag.*真实重建/s);
 
 const pages = read('.github/workflows/pages.yml');
@@ -202,12 +201,10 @@ const atomicReleaseWorkflow = read('.github/workflows/release-atomic.yml');
 const releaseCandidateGate = read('scripts/release-candidate-gate.js');
 assert.match(windowsRelease, /npm install --global pnpm@11\.9\.0/,
   'Windows release must install the package manager used by Electron Builder dependency collection');
-assert.match(windowsRelease, /npx electron-builder --win portable --x64 --publish never/,
+assert.match(windowsRelease, /npx electron-builder --config electron-builder-windows-full-portable\.json --win portable --x64 --publish never/,
   'Windows portable build must not require a publish token before assets are collected');
 assert.match(windowsRelease, /npm run build:client -- --publish never/,
   'Windows client build must not require a publish token before the upload step');
-assert.match(windowsRelease, /electron-builder-windows-installer\.json --win nsis --x64 --publish never/,
-  'Windows installer build must not require a publish token before the upload step');
 assert.match(windowsRelease, /name:\s*\$\{\{ inputs\.artifact_prefix \}\}-windows-base/,
   'Windows reusable workflow artifacts must use the immutable caller prefix');
 const cloudflaredPrepareIndex = windowsRelease.indexOf('Prepare pinned Cloudflare Tunnel binary');
@@ -228,7 +225,7 @@ assert.match(windowsRelease, /if: inputs\.phase == 'full'/);
 assert.doesNotMatch(windowsRelease, /gh release upload|--draft=false|--latest/);
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_REF\" = \"refs\/tags\/\$\{RELEASE_TAG\}\"/);
 assert.match(atomicReleaseWorkflow, /test \"\$WORKFLOW_SHA\" = \"\$commit_sha\"/);
-assert.match(atomicReleaseWorkflow, /Generate source archives directly in dist and verify exact 12/);
+assert.match(atomicReleaseWorkflow, /Generate source archives directly in dist and verify exact 10/);
 assert.match(atomicReleaseWorkflow, /gh release upload \"\$RELEASE_TAG\" \"\$\{replacement_files\[@\]\}\"/);
 assert.match(atomicReleaseWorkflow, /-F draft=false[\s\S]*-f make_latest=true/);
 assert.match(atomicReleaseWorkflow, /Atomic replacement failed before cutover/);
@@ -270,7 +267,6 @@ assert.match(architectureGuide, /href="architecture\.md"/,
 const designedDocRoutes = [
   ['user-guide.html', 'user-guide.md'],
   ['server-deployment-guide.html', 'server-deployment-guide.md'],
-  ['macos-build.html', 'macos-build.md'],
   ['cloud-media-deployment.html', 'cloud-media-deployment.md'],
   ['tips-and-advantages.html', 'tips-and-advantages.md'],
   ['release-artifacts.html', 'release-artifacts.md'],

@@ -368,7 +368,7 @@ async function main() {
     });
     assert.equal(result.success, true, result.error);
     assert.equal((await json(await fetch(`${baseUrl}/api/public-config`))).payload.downloadButtonsVisible, true);
-    check('管理员可统一隐藏或恢复 Windows、Android 与 macOS 的八个下载入口，公开配置和在线客户端实时同步');
+    check('管理员可统一隐藏或恢复 Windows 与 Android 下载入口，公开配置和在线客户端实时同步');
 
     const agreementClient = await makeClient({ 'cf-connecting-ip': '203.0.113.90' });
     assert.equal((await agreementClient.emitRaw('user-register', { username: 'AgreementUser', password: 'agreement-pass' })).success, true);

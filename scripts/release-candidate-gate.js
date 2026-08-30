@@ -27,14 +27,12 @@ function manifestForVersion(version = defaultVersion) {
   const v = String(version || '').trim();
   if (!/^\d+\.\d+\.\d+$/.test(v)) throw new Error(`Invalid release version: ${version}`);
   const windowsBase = [
-    asset(`SyncWatch-Experience-Client-Portable-v${v}-x64.exe`, 50 * MIB, 'windows-base', { maximumBytes: GIB }),
-    asset(`SyncWatch-Standard-Server-Portable-v${v}-x64.exe`, 50 * MIB, 'windows-base', { maximumBytes: GIB })
+    asset(`SyncWatch-Experience-Client-Portable-v${v}-x64.exe`, 50 * MIB, 'windows-base', { maximumBytes: GIB })
   ];
   const windowsFull = [
     // The Windows + Android-only offline closure is normally ~430 MiB after
     // macOS payloads were retired; keep a 300 MiB floor to reject incomplete
     // packages without requiring the obsolete 1 GiB macOS-inclusive bundle.
-    asset(`SyncWatch-v${v}-Full-Offline-Installer-x64.exe`, 300 * MIB, 'windows-full', { maximumBytes: 2 * GIB }),
     asset(`SyncWatch-v${v}-Full-Offline-Portable-x64.exe`, 300 * MIB, 'windows-full', { maximumBytes: 2 * GIB })
   ];
   const android = [asset(`SyncWatch-Android-v${v}-universal.apk`, 150 * MIB, 'android', { maximumBytes: GIB })];
@@ -54,7 +52,7 @@ function manifestForVersion(version = defaultVersion) {
     kind: 'third-party', maximumBytes: 128 * MIB, sha256: officialByName.get(name)?.sha256
   }));
   const manifest = [...windowsBase, ...windowsFull, ...android, ...nodeRuntime, ...cloudflared];
-  if (manifest.length !== 10 || manifest.some((entry) => entry.kind === 'third-party' && !entry.sha256)) {
+  if (manifest.length !== 8 || manifest.some((entry) => entry.kind === 'third-party' && !entry.sha256)) {
     throw new Error('Release manifest is incomplete or is missing a pinned third-party digest.');
   }
   return manifest;

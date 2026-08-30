@@ -1,6 +1,6 @@
 # SyncWatch 项目工作规则
 
-当前工作分支为 `release/v2.2.8`，源码候选版本为 `v2.2.8`；新手引导、房间发现和移动端登录滚动修复完成后，需通过构建与 10 项资产核验再发布。
+当前工作分支为 `release/v2.2.9`，源码候选版本为 `v2.2.9`；需通过构建与 8 项资产核验再发布。
 
 ## 项目导航
 
@@ -43,7 +43,7 @@
 - 安装依赖：`npm ci`（或按锁文件使用 `pnpm install --frozen-lockfile`）。
 - 开发启动：`npm start`；独立服务端：`npm run start:server`。
 - Windows 构建：`powershell -NoProfile -ExecutionPolicy Bypass -File .\build-windows.ps1`；独立服务器包：`.\build-server-package.ps1`。
-- Android 构建：`powershell -NoProfile -ExecutionPolicy Bypass -File .\mobile\build-apk.ps1`；macOS 构建需 macOS 主机或 GitHub Actions。
+- Android 构建：`powershell -NoProfile -ExecutionPolicy Bypass -File .\mobile\build-apk.ps1`。
 
 ## 测试命令
 
@@ -58,8 +58,8 @@
 
 - `main` 是稳定分支；功能在分支和 Pull Request 中验证后合并。版本由 `package.json`、Android `versionName`、Release tag 和发布说明共同更新，当前版本以源码和最新 Release 为准。
 - GitHub Pages 由 `.github/workflows/pages.yml` 发布 `docs/`；Windows/Android Release 由对应 Actions 构建并上传，发布前必须先通过仓库规范和成品契约测试。
-- 每个正式版本必须严格按当前 **12 个可见文件**发布：GitHub 自动生成的 `Source code (zip)` 与 `Source code (tar.gz)` 计 2 个，维护者实际上传的 Release 资产计 10 个。不得少传、增加重复资产或把部分集合宣称完整发布。
-- 10 个维护者资产固定为：Windows 体验版、标准版、完整版安装 EXE、完整版便携 EXE（4）；Android 通用 APK（1）；Node.js Windows x64/ARM64 MSI（2）；cloudflared Windows x64 EXE、Windows x64/x86 MSI（3）。macOS 新包不再构建或上传，历史 Release 资产保留。
+- 每个正式版本必须严格按当前 **10 个可见文件**发布：GitHub 自动生成的 `Source code (zip)` 与 `Source code (tar.gz)` 计 2 个，维护者实际上传的 Release 资产计 8 个。不得少传、增加重复资产或把部分集合宣称完整发布。
+- 8 个维护者资产固定为：Windows 体验版、Windows 完整便携版（2）；Android 通用 APK（1）；Node.js Windows x64/ARM64 MSI（2）；cloudflared Windows x64 EXE、Windows x64/x86 MSI（3）。不再构建或上传 macOS 新包，历史 Release 资产保留。
 - 每个版本的 Release 正文必须保留并更新“普通用户怎么选”“Windows + Android 套装”“一键运行包含什么”“架构支持边界”“cloudflared 独立工具”“Node.js 官方环境包”等说明，不得只替换版本号后删减原有使用信息。
 - Release 正文第一屏必须保留产品简介、首次修改默认管理员密码提示，以及“下载文件 / 版本标识 / 最适合谁 / 一句话说明”选择表。永久使用说明与上一版本保持同等完整度；“更新公告”只写上一版本到当前版本真实发生的变化，并逐项覆盖代码、功能、Android、UI/颜色、文档、构建、测试与发布流程，不得漏写实际改动或把未变化功能冒充新增。
 - 同一版本因缺陷需要重传时，只删除该版本的维护者资产并重新上传完整 10 项；不得删除历史 Release、历史 tag 或历史版本资产。重传过程中不得把资产数为 0 或不足 10 的 Release 宣称为发布完成。
@@ -107,7 +107,7 @@
 - v2.2.6 原子发布运行 `33153947802` 的第二次失败原因：复用历史 ABI 时没有检出固定版本的 Node.js Mobile 源码，却执行了 `./configure`；同时还尝试下载本次运行尚未生成的 ABI。修复：通配符复用模式仍检出固定源码，只下载历史 ABI，不下载当前运行候选。
 - 同一运行的 Android 包检查随后因仍硬编码旧官方 `libnode.so` SHA-256 而失败。修复：在 `SYNCWATCH_ALLOW_GENERATED_NODE_MOBILE=1` 的 CI 复用模式下校验生成哈希格式、来源闭包和 16KB ELF/APK 对齐；普通本地构建继续执行官方固定哈希门禁。
 - 失败运行不得删除公开 Release 资产，也不得用占位文件凑数；应先取消失败运行、读取失败 job 日志、做最小修复、提交到唯一 `release/vX.Y.Z` 分支，并从最终 tag 重新触发一次。禁止为同一版本创建新的 `codex/*` 或额外 release 分支。
-- 发布运行只允许在“源码门禁成功 + 5 个应用资产真实构建验证 + 5 个官方文件来源/缓存核验 + 10 个维护者资产汇总验证”后覆盖 Release；在此之前状态必须保持 `pending`。
+- 发布运行只允许在“源码门禁成功 + 3 个应用资产真实构建验证 + 5 个官方文件来源/缓存核验 + 8 个维护者资产汇总验证”后覆盖 Release；在此之前状态必须保持 `pending`。
 - 防止浪费 token：不要对同一失败原因重复触发构建；先用 `gh run view <run> --json status,conclusion,jobs` 和失败 job 日志确认根因，再修改。长任务只做有间隔的状态查询，不要并行启动重复 workflow。
 - 每次本次复盘新增的事实、修复和验证命令都要追加到本节，形成可追溯的自我学习记录；下次任务开始先阅读本节并执行前置检查。
 - 用户最新范围变更（2026-08-28）：后续正式构建与 Release 只保留 Windows 桌面/服务器包和 Android APK；不再构建、上传或要求任何 macOS 客户端、服务器、完整离线包、Node.js macOS 包或 cloudflared macOS 二进制。修改工作流、资产清单和文档时必须同步移除 macOS 依赖，并验证 Windows/Android 核心功能不受影响；历史 Release 的 macOS 资产按历史保留规则不得删除。
@@ -152,29 +152,29 @@
 
 - 产品定位是开源、自托管、跨平台 Watch Party/同步观影系统：服务器保存账号、房间、媒体索引、聊天和同步状态，客户端通过 HTTP 与 Socket.IO 加入。
 - 长期保留并持续说明的核心能力包括：房间创建与加入、播放/暂停/拖动/倍速同步、媒体上传与字幕、聊天/私聊/弹幕/语音、屏幕或网页共享、账号与权限、管理中心、备份恢复、日志、局域网连接和可选 Cloudflare Tunnel/HTTPS 公网访问。
-- 支持平台按 Release 中真实资产说明：Windows、Android、macOS（x64/arm64）和浏览器。GitHub Pages 仅是静态展示站，不得描述成可运行 Node.js、Socket.IO、上传、AI 或公网 Tunnel 的在线服务器。
+- 当前新版本支持 Windows、Android 和浏览器；macOS 仅保留历史 Release 记录，不再构建或上传新包。GitHub Pages 仅是静态展示站，不得描述成可运行 Node.js、Socket.IO、上传、AI 或公网 Tunnel 的在线服务器。
 - 超级管理员在登录页或管理入口验证后，直接停留在管理中心的服务器设置/权限设置，不自动进入观影房间；管理员主动选择房间后才进入观影流程。普通账号的登录、注册和入房流程保持不变。
 - 服务器设置应能控制媒体上传、房间密码、公网访问、备份恢复、日志和下载入口；隐藏服务器客户端、苹果服务器、苹果客户端、安卓客户端等入口时，必须同步检查公开配置、前端按钮和权限校验。
 - Android 页面要优先保证登录、连接、房间、同步播放、聊天、上传、全屏和屏幕共享等核心操作，竖屏按钮不得拥挤，触控目标要足够大；不为展示完整而堆叠不必要按钮。
-- Android APK 不得宣传本机内嵌桌面版 `cloudflared` 或未经验证的“一键公网访问”。当前真实边界是：手机可连接局域网或已由 Windows/macOS/Linux/云服务器开启的 HTTPS/Tunnel；小米 14/HyperOS 真机在没有实际设备证据时必须标记“未验证”。
+- Android APK 不得宣传本机内嵌桌面版 `cloudflared` 或未经验证的“一键公网访问”。当前真实边界是：手机可连接局域网或已由 Windows、Linux 或云服务器开启的 HTTPS/Tunnel；小米 14/HyperOS 真机在没有实际设备证据时必须标记“未验证”。
 
 ### 3. 发布版本和文件硬性要求
 
 - 所有公开版本、分支、Tag、Release 标题、下载链接和公告使用 `vX.Y.Z` 前缀；`package.json` 和 Android 工具链字段保留纯数字 SemVer。当前正式版本为 `v2.2.8`，已完成真实构建、哈希回读和 Release API 验证。
-- 每个正式 Release 必须有 **28 个可见文件**：26 个维护者真实资产，加 GitHub 自动生成的 `Source code (zip)` 和 `Source code (tar.gz)`。Release API 的维护者资产数必须为 26，不能用空文件、改名旧包、重复文件或占位文件凑数。
-- 每次正式版本构建开始前，必须在项目根目录创建或准备唯一的 `dist/`，所有 **28 个最终交付文件都必须直接生成到该目录**：26 个经过验证的构建/运行资产，加与最终 Tag/提交一致的源码 ZIP 和 TAR.GZ。禁止先把正式成品生成到 `release/`、`dist-client/`、`dist-installer/`、`dist-full-portable/`、`dist-mac-*`、`output/`、项目根目录或其他位置后再复制/汇总；也不得在这些位置保留同一成品副本。构建配置、脚本和 GitHub Actions 必须以根目录 `dist/` 为最终且唯一输出路径。`dist/` 内少于或多于 28 个、存在旧版本、重复、空文件或哈希不一致时，都必须标记构建未完成，不得上传或宣称发布完成。
-- `dist/` 中 28 个文件并非全部都是“启动程序”：GitHub 的两个源码归档用于审阅和自行构建，其余 26 个才是应用、安装包或运行工具。文档和交付清单必须如实区分，不能把源码归档宣传成可双击启动的软件。
-- 26 个资产固定分组：Windows 体验版/标准版/完整版安装 EXE/完整版便携 EXE 4 个；Android 通用 APK 1 个；macOS 客户端 x64/arm64 DMG/ZIP 4 个；macOS 服务器 x64/arm64 DMG/ZIP 4 个；macOS 完整离线版 x64/arm64 DMG/ZIP 4 个；Node.js Windows x64/ARM64 MSI、macOS x64 PKG/arm64 tar.gz 4 个；cloudflared Windows x64 EXE、Windows x64/x86 MSI、macOS x64/arm64 二进制 5 个。
-- 体验版用于连接已有服务器；标准版用于基本服务器运行；完整版安装 EXE 与完整版独立便携 EXE 都必须存在，且完整包应包含承诺的运行环境、cloudflared 和跨平台离线下载资源。安装程序不能替代独立 EXE，独立 EXE 也不能只做快捷方式。
-- 每个资产上传前逐项核对版本、平台、架构、字节大小、SHA-256、非空状态、包内文件闭包和实际启动结果；macOS 包必须来自真实 macOS runner，不能在 Windows 上伪造。
+- 每个正式 Release 必须有 **10 个可见文件**：8 个维护者真实资产，加 GitHub 自动生成的 `Source code (zip)` 和 `Source code (tar.gz)`。Release API 的维护者资产数必须为 8，不能用空文件、改名旧包、重复文件或占位文件凑数。
+- 每次正式版本构建开始前，必须在项目根目录创建或准备唯一的 `dist/`，所有 **10 个最终交付文件都必须直接生成到该目录**：8 个经过验证的构建/运行资产，加与最终 Tag/提交一致的源码 ZIP 和 TAR.GZ。禁止先把正式成品生成到其他位置后再改名冒充；构建配置、脚本和 GitHub Actions 必须以根目录 `dist/` 为最终输出路径。`dist/` 内少于或多于 10 个、存在旧版本、重复、空文件或哈希不一致时，都必须标记构建未完成，不得上传或宣称发布完成。
+- `dist/` 中 10 个文件并非全部都是“启动程序”：GitHub 的两个源码归档用于审阅和自行构建，其余 8 个才是应用、安装包或运行工具。文档和交付清单必须如实区分，不能把源码归档宣传成可双击启动的软件。
+- 8 个维护者资产固定分组：Windows 体验版与完整便携版 2 个；Android 通用 APK 1 个；Node.js Windows x64/ARM64 MSI 2 个；cloudflared Windows x64 EXE、Windows x64/x86 MSI 3 个。
+- 体验版用于连接已有服务器；完整便携版用于开服务器并包含承诺的 Windows/Android 离线资源。标准版、完整安装版和 macOS 新包不再进入 v2.2.9 发布集合。
+- 每个资产上传前逐项核对版本、平台、架构、字节大小、SHA-256、非空状态、包内文件闭包和实际启动结果。
 - cloudflared 和 Node.js 独立文件必须在 Release、README、Wiki、Pages 教程中分别说明用途、适用系统、安装步骤、命令示例、官方来源和常见错误；完整 SyncWatch 包已内置运行环境时，要明确说明用户无需重复安装。
-- 新版本发布顺序固定为：完成源码/配置/文档 → 本地运行和测试 → 真实构建 → 成品契约与哈希检查 → 仅清理当前版本旧资产 → 一次性上传完整 26 项 → 更新完整 Release 正文 → 发布并设为 Latest → 验证首页、latest、Actions、资产数量和下载链接。历史 Release、历史 Tag 和历史资产永远保留。
-- 用户曾要求清理旧版本和无用文件；根目录当前正式 `dist/` 的完整 28 文件集合必须保留到下一版本 28 文件全部直接构建、测试、哈希验证并完成原子替换后才能清理。若发现 `release/`、`dist-*`、`output/`、项目根目录或其他位置存在构建成品或副本，应先确认 `dist/` 中对应 28 文件完整可用，再按精确路径删除这些违规残留。未跟踪 Wiki 镜像、签名密钥备份、个人资料和其他来源不明备份目录不得擅自删除；GitHub 历史版本不得删除。
+- 新版本发布顺序固定为：完成源码/配置/文档 → 本地运行和测试 → 真实构建 → 成品契约与哈希检查 → 仅清理当前版本旧资产 → 一次性上传完整 8 项 → 更新完整 Release 正文 → 发布并设为 Latest → 验证首页、latest、Actions、资产数量和下载链接。历史 Release、历史 Tag 和历史资产永远保留。
+- 用户曾要求清理旧版本和无用文件；根目录当前正式 `dist/` 的完整 10 文件集合必须保留到下一版本 10 文件全部直接构建、测试、哈希验证并完成原子替换后才能清理。未跟踪 Wiki 镜像、签名密钥备份、个人资料和其他来源不明备份目录不得擅自删除；GitHub 历史版本不得删除。
 
 ### 4. README、Wiki 和文档要求
 
 - README 第一屏先说明“和朋友、家人、情侣远程一起看电影”，放真实主界面截图、下载/在线预览/快速开始入口和核心优势，再讲技术实现。README 同时面向普通用户和开发者，保留安装、启动、改默认密码、创建房间、成员连接、公网访问、数据目录、常见错误、构建、Release、贡献、许可证和联系方式。
-- Release 更新公告必须区分“从上一版本真实发生的变化”和“保持不变的功能”。每次版本公告都要逐项覆盖代码、功能、Android、Windows/macOS、UI/颜色/排版/交互、文档与链接、构建脚本、测试、Actions、资产和已知限制；不能只改版本号，也不能把旧功能冒充新增。
+- Release 更新公告必须区分“从上一版本真实发生的变化”和“保持不变的功能”。每次版本公告都要逐项覆盖代码、功能、Android、Windows、UI/颜色/排版/交互、文档与链接、构建脚本、测试、Actions、资产和已知限制；不能只改版本号，也不能把旧功能冒充新增。
 - Wiki 与仓库 `docs/wiki/` 保持可追溯镜像；教程要从打开窗口、输入命令、默认下载目录、启动完成、登录、创建/加入房间、客户端连接、公网访问、备份、升级和排错逐步写清，并解释每个按钮、字段、结果和操作示例。
 - 主要 Markdown 教程必须同时有可阅读的 HTML 页面；HTML 页面可以有 3D/360° 互动、动画、截图、章节导航和“下载 Markdown 原文”入口，但动画不能妨碍正文、键盘操作、移动端布局或减少动态效果偏好。
 - 管理中心 11 个模块必须各有独立 HTML 页面：房间与上传、全部房间、成员与权限组、聊天与记录、账户与注册、用户申请中心、账户权限等级、通知/通告设置、邮件设置、日志中心管理、服务器设置。每个模块的教程、按钮、字段、结果和示例必须对应真实功能；模块截图应清晰、脱敏、高清，并优先提供各模块自己的多张截图，不能用重复或无关截图套用。
@@ -204,7 +204,7 @@
 ### 7. 当前发布快照
 
 - 当前最新正式版本为 `v2.2.8`；该版本已完成最终 Tag、Actions run `33249244151`、10 个维护者资产、2 个 GitHub 源码归档、Latest 和远端哈希核对。v2.2.7 的历史交付问题仅作复盘记录，不得覆盖当前状态。
-- 同版本重传不得先清空公开 Assets。旧 26 项保持可用到新 26 项全部构建与本地门禁完成；最终安全切换时先短暂转草稿，以临时名上传并远端回读新资产，再切换正式名称。新集合完整验证前失败要恢复旧名称和公开状态；只有新集合通过后才能删除旧资产并重新公开为 Latest。
+- 同版本重传不得先清空公开 Assets。旧 8 项保持可用到新 8 项全部构建与本地门禁完成；最终安全切换时先短暂转草稿，以临时名上传并远端回读新资产，再切换正式名称。新集合完整验证前失败要恢复旧名称和公开状态；只有新集合通过后才能删除旧资产并重新公开为 Latest。
 - 维护文档和 Release 说明中的版本、下载名、链接、哈希、大小和测试数量必须以当前 GitHub API、Actions 和源码为准。新会话开始时重新核对，不得只相信本快照。
 - 目前没有小米 14/HyperOS 真机证据；后续若用户再次报告 Android 登录或服务器请求失败，先复现并增加回归测试，再重新构建 APK 和 Release，不得仅修改文案或重新命名旧 APK。
 
@@ -271,3 +271,15 @@
 - 用户反馈管理中心“账号总览”长期停留“正在同步账号状态”。根因是复用完整 `loadAdminSettings()`，任一设置/隧道读取异常都会阻断账号列表。新增服务端 `get-account-overview` action 与前端独立加载/错误态，只返回账号状态元数据，不返回明文或哈希。
 - 本轮已通过 `node --check server/index.js`、`node --check public/js/app.js`、`node tests/account-admin-audit.test.js`、`node tests/round29-layout.test.js`、`npm test`、`npm run test:repo`、`npm run test:privacy` 与 `git diff --check`。桌面/移动浏览器截图检查已完成；Electron 原生窗口的真实交互仍以本机启动日志和源码契约为证，未使用额外分支。
 - 由于本轮改变了 v2.2.7 最终 Tag 对应源码，线上 Release 仍是旧提交；提交并推送后必须从最终 Tag 重新触发唯一原子工作流。未完成前保持发布状态 `pending`，不得宣称旧 Release 包含本轮修改。
+
+### 16. v2.2.8 手机登录滚动与登录音乐按钮复修（2026-08-29）
+
+- 复核发现普通手机浏览器在 `max-width: 540px` 的后置规则重新把 `body:not(.android-client) main` 固定为视口高度，覆盖了早先的移动端自动高度修复；最终 CSS 覆盖必须让 `html/body/main/.login-page` 使用文档滚动、`overflow: visible` 和 `touch-action: pan-y`。
+- 登录背景音乐静音按钮默认同时显示音量与静音两枚 SVG，视觉上像两个按钮；`.login-music-muted-icon` 必须默认 `display: none`，仅在 `.is-muted` 状态显示。
+- `tests/browser-ui-smoke.js` 现对不带 `android-client` 的 390x844 登录页执行真实触摸滑动并断言 `scrollY` 增长；发布前继续运行该冒烟、`round29-layout`、仓库与核心测试，再从修复后的最终 Tag 重建并安全替换 v2.2.8 资产。
+
+### 17. v2.2.8 登录音乐曲目同步修复（2026-08-29）
+
+- 根因：前端保存时把旧 `url/title` 与新上传曲目合并，服务端又把旧列表再次拼接，导致更换文件后当前地址或名称仍指向旧曲目。
+- 修复：登录音乐配置以完整 `tracks` 列表和 `currentTrackId` 为权威状态；当前名称、地址均从选中曲目派生。选择新文件会立即清除旧 HTTPS 输入并以文件名填入名称；单独 HTTPS 地址会创建列表曲目；显式空列表会清空旧地址、名称和本地文件。
+- 验证：`node tests/login-music-upload-validation.test.js`、`node tests/latest26-backend.test.js`、`node tests/round29-backend.test.js`、`npm run test:repo`、`npm test`、`npm run test:privacy`、`node tests/browser-ui-smoke.js` 均通过。

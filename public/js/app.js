@@ -70,7 +70,7 @@ const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
 const ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX = 'syncwatchAccountViewPreferences:';
 const FULLSCREEN_CHAT_HINT_KEY_PREFIX = 'syncwatchFullscreenChatHint:';
 const LOGIN_MUSIC_PREFERENCE_KEY = 'syncwatchLoginMusicPreferenceV1';
-const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20 });
+const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20, libraryCollapsed: false, membersPanelCollapsed: false, memberDetailsCollapsed: false });
 const ACCOUNT_CHAT_FILTER_KEY_PREFIX = 'syncwatchChatFilter:';
 const ACCOUNT_VOICE_COLLAPSED_KEY_PREFIX = 'syncwatchVoiceCollapsed:';
 const USERNAME_MAX_UTF8_BYTES = 1024;
@@ -89,12 +89,12 @@ const ONBOARDING_GUIDE_STEPS = [
   { title: '影片与字幕', body: '在左侧影片库上传视频、字幕或安全文本；选择影片后可播放、加入队列、收藏和管理封面。' },
   { title: '同步播放', body: '播放、暂停、拖动进度和倍速由服务器同步给房间成员。需要权限的操作会显示申请或授权状态。' },
   { title: '聊天与共享', body: '右侧可以聊天、发送弹幕和语音；需要所有人看到同一画面时，请使用浏览器标签页或窗口共享。' },
-  { title: '临时公网链接', body: '服务器管理员打开“服务器设置 → 公网访问”，选择“临时公网地址”后点击“开启公网访问”。复制生成的 HTTPS 地址分享给成员；结束后点击“关闭”。' }
+  { title: '临时公网链接', body: '服务器管理员打开“服务器设置 → 公网访问”，选择“临时公网地址”后点击“开启公网访问”。使用“分享公网地址”把 HTTPS 地址发给成员；结束后点击“关闭”。' }
 ];
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
-  publicConfig: { version: 'v2.2.8', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, macServerDownloads: [], macClientDownloads: [], serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.2.9', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -128,7 +128,7 @@ const state = {
   lastPlaybackProgress: 0, volumeEmitTimer: null, mediaFailed: false, lastConnectionError: '',
   mediaNetworkRecovery: { key: '', attempts: 0, timer: null, stallTimer: null, resume: null, stability: null, waitingForNetwork: false },
   compatibilityFallbackFileId: '', compatibilityFallbackGeneration: -1,
-  uploadBatch: null, libraryCollapsed: localStorage.getItem('syncwatchFilesCollapsed') === '1',
+  uploadBatch: null, libraryCollapsed: false, membersPanelCollapsed: false,
   uploadProgressBackgrounded: false,
   playbackQuality: ['auto', 'smooth', 'original'].includes(localStorage.getItem('syncwatchPlaybackQuality')) ? localStorage.getItem('syncwatchPlaybackQuality') : 'original',
   syncDriftNotice: localStorage.getItem('syncwatchSyncDriftNotice') !== '0',
@@ -187,7 +187,7 @@ const state = {
   playerSeekDragging: false, playerSeekTarget: null, lastCommittedSeek: null,
   roomEntryNotice: null, roomEntryNoticeTimer: null, roomEntryNoticeEndsAt: 0,
   clipboardPasteFallbacks: new WeakMap(), switchOwnedRoomsLoading: false, switchOwnedRoomSnapshot: [], selectedSwitchOwnedRooms: new Set(),
-  loginRoomSnapshot: [], selectedLoginRooms: new Set(), loginRoomQuota: 1, loginOwnedRoomCount: 0, loginRoomPromptActive: false, macDownloadKind: 'client',
+  loginRoomSnapshot: [], selectedLoginRooms: new Set(), loginRoomQuota: 1, loginOwnedRoomCount: 0, loginRoomPromptActive: false,
   applicationRefreshInFlight: false, modalLayerCounter: 500, pendingQualityRequest: null,
   pendingClientModeRequests: [], clientModePromptActive: false, activeClientModeRequestId: '', skipOutroHandledGeneration: -1,
   loginCubeRotationX: -12, loginCubeRotationY: 28, loginCubeDragging: false, loginCubePointerId: null,
@@ -326,30 +326,30 @@ localStorage.setItem('syncwatchDeviceId', deviceId);
 
 const elements = {};
 const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn openOnboardingGuideBtn onboardingGuideModal closeOnboardingGuideBtn onboardingGuideDescription onboardingGuideProgress onboardingGuideStep onboardingGuideSkipBtn onboardingGuideBackBtn onboardingGuideNextBtn
-  loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn downloadMacServerBtn downloadMacClientBtn guestLoginBtn authCard
+ loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn guestLoginBtn authCard
  loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword onlineRoomSearch onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountRoomSettingsBtn accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
- filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
+ filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn collapseMembersPanelBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
   fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText openRoomManagementBtn
   playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn skipSettingsBtn skipSettingsModal closeSkipSettingsBtn skipSettingsForm skipSettingsEnabled skipIntroSeconds skipOutroSeconds skipSettingsStatus saveSkipSettingsBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
  playerContainer emptyStage emptyStageHint videoPlayer imageViewer documentViewer textViewer textReaderControls textReaderPreviousBtn textReaderPage textReaderPageCount textReaderNextBtn textReaderProgress sharedWebViewer sharedWebEmpty downloadViewer downloadTitle downloadLink screenShareCanvas screenShareVideo screenShareStatus syncNotice resumePlaybackBtn danmakuContainer reactionLayer friendVideoNoticeLayer playerInfo playerResolution playerCodec hardwareDecode
  controlRequestOverlay controlRequestTitle controlRequestDetail controlRequestSuppress controlRequestDenyBtn controlRequestAllowBtn permissionNotice permissionNoticeTitle permissionNoticeText permissionNoticeCloseBtn
  chatPanel chatHistory chatForm chatInput privateRecipient voiceBtn voiceFileInput chatImageInput chatImageBtn chatEmojiBtn chatEmojiBar chatEmojiCollapseBtn loadHistoryBtn chatToggleBtn chatOnlyToggle danmakuSettingsBtn danmakuSettingsPanel danmakuColorInput danmakuFontSizeInput danmakuFontSizeValue resetDanmakuSettingsBtn chatViewFilterBtn chatViewFilters chatViewChannel chatViewUser chatViewUserMode chatViewQuery chatViewResetBtn reactionBar userList userCount roomCode roomScheme roomShareUrl applyShareDomainBtn copyShareLinkBtn copyRoomCodeBtn copyLanAddressBtn copyPublicAddressBtn resetShareAddressBtn showQrBtn qrBox currentRoomBanner globalRoomSearch
  liveVoiceBar liveVoiceStatus voiceRoomBtn voicePrivateBtn voiceMuteBtn voiceLeaveBtn voiceAudioDock voiceDockToggleBtn liveVoiceFloating voiceFloatingStatus voiceFloatingMuteBtn voicePushToTalkBtn voiceFloatingLeaveBtn voiceFloatingCollapseBtn collapseMembersBtn
-   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeTemplateSelect loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicPlayPauseBtn loginMusicMuteBtn loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicClientVolume loginMusicClientVolumeText loginMusicAudio
-   usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus localPasswordlessCard localPasswordlessManagementEnabled localPasswordlessRoomEnabled saveLocalPasswordlessBtn localPasswordlessStatus downloadAssetSettingsCard openDownloadCenterSettingsBtn downloadAssetUploadProgress downloadAssetUploadStatus windowsServerAssetStatus androidClientAssetStatus macServerAssetStatus macClientAssetStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
-  mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn clientModeRequestCard clientModeRequestMode clientModeRequestScope clientModeRequestUserPicker clientModeRequestUserList clientModeRequestReason sendClientModeRequestBtn refreshClientModeRequestsBtn clientModeRequestStatus clientModeRequestList loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
+   authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeTemplateSelect loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicPlayPauseBtn loginMusicMuteBtn loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicClientVolume loginMusicClientVolumeText loginMusicTrackSelect loginMusicPreviousBtn loginMusicNextBtn loginMusicAudio
+   usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus localPasswordlessCard localPasswordlessManagementEnabled localPasswordlessRoomEnabled saveLocalPasswordlessBtn localPasswordlessStatus downloadAssetSettingsCard openDownloadCenterSettingsBtn downloadAssetUploadProgress downloadAssetUploadStatus windowsServerAssetStatus androidClientAssetStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
+  mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn clientModeRequestCard clientModeRequestMode clientModeRequestScope clientModeRequestUserPicker clientModeRequestUserList clientModeRequestReason sendClientModeRequestBtn refreshClientModeRequestsBtn clientModeRequestStatus clientModeRequestList loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPlaybackMode loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
  roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn roomCopyCard roomCopySourceId roomCopyTargetName roomCopyReason requestRoomCopyBtn roomCopyStatus roomCopyRequestList roomMigrationCard roomMigrationSource roomMigrationTarget migrateRoomBtn roomMigrationStatus uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permSeek permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSkipSettings permSendNotice savePermissionsBtn
  permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermSeek groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSkipSettings groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
  pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus loginLimitRequestCard loginLimitRequestList loginConcurrencyRequestCard loginConcurrencyRequestList accountAdminList refreshAccountsBtn accountViewMode registrationRequestList registrationRequestSelectAll registrationRequestSelectionCount deleteSelectedRegistrationRequestsBtn refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
   passwordPolicyCard usernamePolicyMode usernamePolicyLengthRestricted usernamePolicyMin usernamePolicyMax usernamePolicyStatus passwordPolicyMode passwordPolicyLengthRestricted passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus loginConcurrencyPolicyCard accountSessionLimit guestSessionsPerIp accountSessionWhitelistIps guestIpWhitelistIps saveLoginPolicyBtn refreshAccessRecordsBtn clearAccessRecordsBtn loginPolicyStatus accessRecordsList blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
  toastRegion clearAllToastsBtn reconnectOverlay reconnectMessage reconnectRetryBtn closeReconnectOverlayBtn accountModal closeAccountBtn accountNav accountContent theater guestConvertBtn guestConvertModal closeGuestConvertBtn guestConvertForm guestConvertUsername guestConvertPassword guestConvertPasswordConfirm guestConvertEmail guestConvertEmailCode sendGuestConvertEmailCodeBtn guestConvertStatus
- newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn downloadMacServerMainBtn downloadMacClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
+ newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
    managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
-  fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn macDownloadModal closeMacDownloadBtn macDownloadTitle macDownloadHint macDownloadArch macDownloadFormat macDownloadAvailability macDownloadStatus confirmMacDownloadBtn
+ fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
   operationHistoryModal closeOperationHistoryBtn operationHistoryList refreshOperationHistoryBtn operationHistoryQuery operationHistoryScope operationHistorySelectAll deleteSelectedOperationsBtn chatContextMenu chatContextDeleteBtn roomMediaPreviewModal closeRoomMediaPreviewBtn roomMediaPreviewTitle roomMediaPreviewSelectAll roomMediaPreviewBatchDeleteBtn roomMediaPreviewBanUploadBtn roomMediaPreviewActionStatus roomMediaPreviewList roomMediaPreviewPlayer globalRoomStorageLimitMb applyGlobalRoomStorageLimitBtn audioSourceModal closeAudioSourceBtn audioSourcePlatform audioSourceVolume audioSourceVolumeText audioSourceStatus refreshAudioSourcesBtn startAudioSourceBtn stopAudioSourceBtn
 dataBackupCard dataBackupScope exportDataBtn importDataBtn importDataInput dataBackupStatus dataBackupProgress dataBackupProgressLabel dataBackupProgressPercent dataBackupProgressBar dataBackupProgressDetail
@@ -406,6 +406,7 @@ async function initialize() {
   renderThemeChoices();
   applyMasterMute();
   applyMemberDetailsCollapsed();
+  applyMembersPanelCollapsed();
   initializeNetworkSpeedMonitor();
   window.SyncWatchDesktop?.onCloseRequested?.(showDesktopClosePrompt);
   window.SyncWatchDesktop?.onDisplayCaptureFallbackRequested?.(handleDisplayCaptureFallbackRequest);
@@ -430,7 +431,7 @@ function normalizeAccountViewPreferences(value = {}) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const color = /^#[0-9a-f]{6}$/i.test(String(source.danmakuColor || '')) ? String(source.danmakuColor).toLowerCase() : DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuColor;
   const fontSize = Math.max(14, Math.min(42, Math.round(Number(source.danmakuFontSize) || DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuFontSize)));
-  return { conciseMode: source.conciseMode === true, chatOnly: source.chatOnly === true, danmakuColor: color, danmakuFontSize: fontSize };
+  return { conciseMode: source.conciseMode === true, chatOnly: source.chatOnly === true, danmakuColor: color, danmakuFontSize: fontSize, libraryCollapsed: source.libraryCollapsed === true, membersPanelCollapsed: source.membersPanelCollapsed === true, memberDetailsCollapsed: source.memberDetailsCollapsed === true };
 }
 
 function accountViewPreferenceStorageKey(username = state.user?.username) {
@@ -487,7 +488,7 @@ function hydrateAccountScopedViewState(username = state.user?.username) {
 function accountViewPreferencesFromProfile(profile) {
   const candidates = [profile?.viewPreferences, profile?.preferences?.view, profile?.preferences];
   return candidates.find((candidate) => candidate && typeof candidate === 'object'
-    && ['conciseMode', 'chatOnly', 'danmakuColor', 'danmakuFontSize'].some((key) => Object.prototype.hasOwnProperty.call(candidate, key))) || null;
+    && ['conciseMode', 'chatOnly', 'danmakuColor', 'danmakuFontSize', 'libraryCollapsed', 'membersPanelCollapsed', 'memberDetailsCollapsed'].some((key) => Object.prototype.hasOwnProperty.call(candidate, key))) || null;
 }
 
 function readCachedAccountViewPreferences(username = state.user?.username) {
@@ -511,12 +512,18 @@ function applyDanmakuPreferences(preferences = state.accountViewPreferences) {
 function applyAccountViewPreferences(preferences = state.accountViewPreferences) {
   const normalized = normalizeAccountViewPreferences(preferences);
   state.accountViewPreferences = normalized;
+  state.libraryCollapsed = normalized.libraryCollapsed;
+  state.membersPanelCollapsed = normalized.membersPanelCollapsed;
+  state.memberDetailsCollapsed = normalized.memberDetailsCollapsed;
   document.body.classList.toggle('concise-mode', normalized.conciseMode);
   elements.conciseModeBtn?.setAttribute('aria-pressed', String(normalized.conciseMode));
   elements.conciseModeBtn?.classList.toggle('active', normalized.conciseMode);
   if (elements.conciseModeBtn) elements.conciseModeBtn.title = normalized.conciseMode ? '退出简洁模式' : '只保留核心观影功能';
   if (elements.chatOnlyToggle) elements.chatOnlyToggle.checked = normalized.chatOnly;
   applyDanmakuPreferences(normalized);
+  applyLibraryCollapsed();
+  applyMembersPanelCollapsed();
+  applyMemberDetailsCollapsed();
   renderChat();
 }
 
@@ -543,7 +550,10 @@ async function saveAccountViewPreferences(patch = {}) {
     conciseMode: next.conciseMode,
     chatOnly: next.chatOnly,
     danmakuColor: next.danmakuColor,
-    danmakuFontSize: next.danmakuFontSize
+    danmakuFontSize: next.danmakuFontSize,
+    libraryCollapsed: next.libraryCollapsed,
+    membersPanelCollapsed: next.membersPanelCollapsed,
+    memberDetailsCollapsed: next.memberDetailsCollapsed
   });
   if (!result.success) {
     applyAccountViewPreferences(previous); cacheAccountViewPreferences(previous);
@@ -561,8 +571,14 @@ function conciseNoticeAllowed(message) {
 
 function toggleDanmakuSettings() {
   const opening = elements.danmakuSettingsPanel?.classList.contains('is-hidden');
+  if (opening && state.mobileChatCollapsed) {
+    state.mobileChatCollapsed = false;
+    applyMobileChatCollapsed();
+  }
   elements.danmakuSettingsPanel?.classList.toggle('is-hidden', !opening);
   elements.danmakuSettingsBtn?.setAttribute('aria-expanded', String(Boolean(opening)));
+  elements.danmakuSettingsBtn?.classList.toggle('active', Boolean(opening));
+  if (opening) elements.danmakuSettingsPanel?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function previewDanmakuFontSize() {
@@ -819,6 +835,7 @@ function initializeLoginMusic() {
   audio.addEventListener('durationchange', updateLoginMusicProgress);
   audio.addEventListener('loadedmetadata', updateLoginMusicProgress);
   audio.addEventListener('ended', updateLoginMusicProgress);
+  audio.addEventListener('ended', handleLoginMusicEnded);
   audio.addEventListener('play', syncLoginMusicClientControls);
   audio.addEventListener('pause', syncLoginMusicClientControls);
   audio.addEventListener('volumechange', syncLoginMusicClientControls);
@@ -927,6 +944,7 @@ function toggleMemberDetails() {
   try { localStorage.setItem('syncwatchMemberDetailsCollapsed', state.memberDetailsCollapsed ? '1' : '0'); } catch (_) {}
   applyMemberDetailsCollapsed();
   renderUsers();
+  void saveAccountViewPreferences({ memberDetailsCollapsed: state.memberDetailsCollapsed });
 }
 
 function applyLoginMarquee(notice = state.publicConfig.marqueeNotice || {}) {
@@ -941,19 +959,30 @@ function applyLoginMarquee(notice = state.publicConfig.marqueeNotice || {}) {
 }
 
 function normalizedLoginMusic(value = {}) {
-  const tracks = (Array.isArray(value.tracks) ? value.tracks : []).map((track) => ({
+  let tracks = (Array.isArray(value.tracks) ? value.tracks : []).map((track) => ({
     id: String(track?.id || '').slice(0, 80), title: String(track?.title || track?.originalName || '登录音乐').slice(0, 100),
     originalName: String(track?.originalName || '').slice(0, 180), storedName: String(track?.storedName || '').slice(0, 180),
     url: String(track?.url || '').trim(), mimeType: String(track?.mimeType || 'audio/mpeg').slice(0, 120), size: Math.max(0, Number(track?.size) || 0), createdAt: String(track?.createdAt || '')
   })).filter((track) => track.url);
+  const legacyUrl = String(value.url || '').trim();
+  if (!Array.isArray(value.tracks) && legacyUrl && !tracks.some((track) => track.url === legacyUrl)) {
+    tracks = [{ id: String(value.currentTrackId || `legacy-${legacyUrl}`).slice(0, 80), title: String(value.title || '登录音乐').slice(0, 100), originalName: '', storedName: '', url: legacyUrl, mimeType: 'audio/mpeg', size: 0, createdAt: '' }, ...tracks];
+  }
+  const selected = tracks.find((track) => track.id === String(value.currentTrackId || ''))
+    || tracks.find((track) => track.url === legacyUrl) || tracks[0] || null;
+  const requestedMode = String(value.playbackMode || '').trim();
+  const playbackMode = ['single', 'list-loop', 'shuffle', 'single-loop'].includes(requestedMode)
+    ? requestedMode : (value.shuffle === true ? 'shuffle' : (value.loop === false ? 'single' : 'list-loop'));
   return {
     enabled: value.enabled === true,
     showTitle: value.showTitle !== false,
-    title: String(value.title || '').slice(0, 80),
-    url: String(value.url || '').trim(),
+    title: String(value.title || selected?.title || '').slice(0, 80),
+    url: selected?.url || '',
+    currentTrackId: selected?.id || '',
     volume: Math.max(0, Math.min(1, Number(value.volume) || 0.3)),
     loop: value.loop !== false,
     shuffle: value.shuffle === true,
+    playbackMode,
     tracks
   };
 }
@@ -971,8 +1000,8 @@ function normalizedLoginVideo(value = {}) {
 
 function currentLoginMusicTitle(music = state.publicConfig.loginMusic || {}) {
   const normalized = normalizedLoginMusic(music);
-  const selected = normalized.tracks.find((track) => track.url === normalized.url);
-  return normalized.title || selected?.title || selected?.originalName?.replace(/\.[^.]+$/, '') || '登录背景音乐';
+  const selected = normalized.tracks.find((track) => track.id === normalized.currentTrackId);
+  return selected?.title || normalized.title || selected?.originalName?.replace(/\.[^.]+$/, '') || '登录背景音乐';
 }
 
 function renderLoginMusicTracks(value = state.publicConfig.loginMusic || {}) {
@@ -1007,7 +1036,7 @@ function applyLoginMusic(value = {}) {
   if (elements.loginMusicNowPlayingTitle) elements.loginMusicNowPlayingTitle.textContent = title;
   if (elements.loginMusicNowPlaying) elements.loginMusicNowPlaying.classList.toggle('is-hidden', !(music.enabled && music.url && music.showTitle && !state.authenticated));
   if (!audio) return;
-  audio.loop = music.loop;
+  audio.loop = music.playbackMode === 'single-loop';
   audio.volume = state.loginMusicPreference.volume ?? music.volume;
   audio.muted = state.loginMusicPreference.muted;
   if ((audio.getAttribute('src') || '') !== music.url) { audio.pause(); audio.setAttribute('src', music.url || ''); audio.load(); }
@@ -1015,6 +1044,52 @@ function applyLoginMusic(value = {}) {
   else if (!music.enabled || state.authenticated) audio.pause();
   updateLoginMusicProgress();
   syncLoginMusicClientControls();
+}
+
+function renderLoginMusicPicker(music = state.publicConfig.loginMusic || {}) {
+  const select = elements.loginMusicTrackSelect;
+  if (!select) return;
+  const tracks = Array.isArray(music.tracks) ? music.tracks : [];
+  select.innerHTML = tracks.length ? tracks.map((track) => `<option value="${escapeHtml(track.id)}">${escapeHtml(track.title || track.originalName || '登录音乐')}</option>`).join('') : '<option value="">暂无曲目</option>';
+  select.value = music.currentTrackId || tracks[0]?.id || '';
+  select.disabled = tracks.length < 2;
+}
+
+function selectLoginMusicTrack(trackId, { autoplay = true } = {}) {
+  const music = normalizedLoginMusic(state.publicConfig.loginMusic || {});
+  const track = music.tracks.find((entry) => entry.id === String(trackId || ''));
+  if (!track) return;
+  state.loginMusicPreference.trackId = track.id;
+  saveLoginMusicPreference();
+  applyLoginMusic({ ...music, currentTrackId: track.id, url: track.url, title: track.title });
+  if (autoplay && elements.loginMusicAudio && !state.loginMusicPreference.paused) elements.loginMusicAudio.play().catch(() => {});
+}
+
+function stepLoginMusicTrack(direction = 1) {
+  const music = normalizedLoginMusic(state.publicConfig.loginMusic || {});
+  if (music.tracks.length < 2) return;
+  const index = Math.max(0, music.tracks.findIndex((track) => track.id === music.currentTrackId));
+  let nextIndex = index + direction;
+  if (nextIndex < 0) nextIndex = music.tracks.length - 1;
+  if (nextIndex >= music.tracks.length) nextIndex = 0;
+  selectLoginMusicTrack(music.tracks[nextIndex].id);
+}
+
+function handleLoginMusicEnded() {
+  const music = normalizedLoginMusic(state.publicConfig.loginMusic || {});
+  if (music.playbackMode === 'single-loop') return;
+  if (music.playbackMode === 'single' || music.tracks.length < 2) {
+    state.loginMusicPreference.paused = true;
+    saveLoginMusicPreference();
+    syncLoginMusicClientControls();
+    return;
+  }
+  if (music.playbackMode === 'shuffle') {
+    const choices = music.tracks.filter((track) => track.id !== music.currentTrackId);
+    selectLoginMusicTrack(choices[Math.floor(Math.random() * choices.length)].id);
+    return;
+  }
+  stepLoginMusicTrack(1);
 }
 
 function applyLoginVideo(value = {}) {
@@ -1043,12 +1118,14 @@ function syncLoginMusicSettings(value = state.publicConfig.loginMusic || {}) {
   if (elements.loginMusicUrl) elements.loginMusicUrl.value = music.url;
   if (elements.loginMusicVolume) elements.loginMusicVolume.value = String(music.volume);
   if (elements.loginMusicLoop) elements.loginMusicLoop.checked = music.loop;
+  if (elements.loginMusicPlaybackMode) elements.loginMusicPlaybackMode.value = music.playbackMode;
   if (elements.loginMusicPreview && !state.loginMusicObjectUrl) {
     elements.loginMusicPreview.setAttribute('src', music.url || '');
     if (music.url) elements.loginMusicPreview.load();
   }
   updateLoginMusicVolumeLabel();
   renderLoginMusicTracks(music);
+  renderLoginMusicPicker(music);
   if (elements.loginMusicStatus) elements.loginMusicStatus.textContent = music.url
     ? `${music.enabled ? '已启用' : '已保存但未启用'} · ${currentLoginMusicTitle(music)}`
     : '当前未设置登录音乐';
@@ -1207,6 +1284,10 @@ function updateLoginMusicVolumeLabel() {
 function previewSelectedLoginMusicFile() {
   const file = elements.loginMusicFile?.files?.[0];
   if (!file || !elements.loginMusicPreview) return;
+  // A newly selected file becomes the replacement candidate. Clear stale
+  // remote metadata immediately so the form cannot submit the old address.
+  if (elements.loginMusicTitle) elements.loginMusicTitle.value = file.name.replace(/\.[^.]+$/, '');
+  if (elements.loginMusicUrl) elements.loginMusicUrl.value = '';
   if (state.loginMusicObjectUrl) URL.revokeObjectURL(state.loginMusicObjectUrl);
   state.loginMusicObjectUrl = URL.createObjectURL(file);
   elements.loginMusicPreview.src = state.loginMusicObjectUrl;
@@ -1225,7 +1306,8 @@ function previewLoginMusic() {
 
 async function saveLoginMusicSettings() {
   if (!state.adminSettings?.serverAdmin) return toast('请先验证服务器管理员密码并加载设置', 'error');
-  let url = String(elements.loginMusicUrl?.value || '').trim();
+  const enteredUrl = String(elements.loginMusicUrl?.value || '').trim();
+  let url = enteredUrl;
   const files = [...(elements.loginMusicFile?.files || [])];
   const uploadedTracks = [];
   setLoginMediaUploadProgress(elements.loginMusicUploadProgress, 0, files.length ? '准备上传…' : '正在保存设置…');
@@ -1238,8 +1320,20 @@ async function saveLoginMusicSettings() {
   }
   if (url && !/^https:\/\//i.test(url) && !url.startsWith('/')) return toast('音乐地址必须是 HTTPS 地址或服务器上传路径', 'error');
   const existingTracks = normalizedLoginMusic(state.publicConfig.loginMusic || {}).tracks;
-  const mergedTracks = [...new Map([...existingTracks, ...uploadedTracks].map((track) => [track.id || track.url, track])).values()];
-  const music = normalizedLoginMusic({ enabled: elements.loginMusicEnabled?.checked, showTitle: elements.loginMusicShowTitle?.checked !== false, title: elements.loginMusicTitle?.value, url, volume: elements.loginMusicVolume?.value, loop: elements.loginMusicLoop?.checked, tracks: mergedTracks });
+  const urlTrack = !uploadedTracks.length && /^https:\/\//i.test(enteredUrl)
+    ? [{ id: `https-${enteredUrl}`, title: String(elements.loginMusicTitle?.value || '').trim() || enteredUrl.split('/').pop()?.split('?')[0] || '登录音乐', originalName: '', storedName: '', url: enteredUrl, mimeType: 'audio/mpeg', size: 0, createdAt: new Date().toISOString() }]
+    : [];
+  const mergedTracks = [...new Map([...existingTracks, ...urlTrack, ...uploadedTracks].map((track) => [track.id || track.url, track])).values()];
+  // A newly uploaded file is always the current track. This prevents an old
+  // HTTPS value left in the form from surviving as the active address/title.
+  const currentTrack = uploadedTracks[0] || urlTrack[0] || mergedTracks.find((track) => track.url === enteredUrl) || mergedTracks[0];
+  url = currentTrack?.url || '';
+  const title = uploadedTracks[0]?.title || String(elements.loginMusicTitle?.value || '').trim() || currentTrack?.title || '';
+  const tracksWithCurrentTitle = currentTrack
+    ? mergedTracks.map((track) => track.id === currentTrack.id ? { ...track, title } : track)
+    : mergedTracks;
+  const playbackMode = elements.loginMusicPlaybackMode?.value || 'list-loop';
+  const music = normalizedLoginMusic({ enabled: elements.loginMusicEnabled?.checked, showTitle: elements.loginMusicShowTitle?.checked !== false, title, url, currentTrackId: currentTrack?.id || '', volume: elements.loginMusicVolume?.value, loop: playbackMode !== 'single', shuffle: playbackMode === 'shuffle', playbackMode, tracks: tracksWithCurrentTitle });
   const result = await adminAction('set-login-music', music);
   toast(result.message || result.error || '登录音乐设置完成', result.success ? 'success' : 'error', 7000);
   if (!result.success) return;
@@ -1918,14 +2012,6 @@ function bindUiEvents() {
   elements.downloadClientBtn?.addEventListener('click', downloadDesktopClient);
   elements.downloadClientMainBtn?.addEventListener('click', downloadDesktopClient);
   elements.downloadLoginApkBtn?.addEventListener('click', downloadAndroidApk);
-  elements.downloadMacServerBtn?.addEventListener('click', () => openMacDownload('server'));
-  elements.downloadMacServerMainBtn?.addEventListener('click', () => openMacDownload('server'));
-  elements.downloadMacClientBtn?.addEventListener('click', () => openMacDownload('client'));
-  elements.downloadMacClientMainBtn?.addEventListener('click', () => openMacDownload('client'));
-  elements.closeMacDownloadBtn?.addEventListener('click', closeMacDownload);
-  elements.macDownloadArch?.addEventListener('change', syncMacDownloadSelection);
-  elements.macDownloadFormat?.addEventListener('change', syncMacDownloadSelection);
-  elements.confirmMacDownloadBtn?.addEventListener('click', confirmMacDownload);
   elements.showRegisterBtn.addEventListener('click', () => showAuthMode('register'));
   elements.showLoginBtn.addEventListener('click', () => showAuthMode('login'));
   elements.forgotPasswordBtn.addEventListener('click', recoverPasswordByEmail);
@@ -1970,6 +2056,7 @@ function bindUiEvents() {
   elements.folderInput?.addEventListener('change', uploadFolder);
   elements.cancelUploadBtn?.addEventListener('click', cancelUpload);
   elements.collapseFilesBtn?.addEventListener('click', toggleLibraryCollapsed);
+  elements.collapseMembersPanelBtn?.addEventListener('click', toggleMembersPanelCollapsed);
   elements.fileList.addEventListener('click', handleFileAction);
   elements.fileList.addEventListener('change', handleLibraryQueueSelection);
   elements.libraryQueueSelectAll?.addEventListener('change', toggleLibraryQueueSelectAll);
@@ -2281,6 +2368,13 @@ function bindUiEvents() {
   elements.loginMusicMuteBtn?.addEventListener('click', toggleLoginMusicMute);
   elements.loginMusicClientVolume?.addEventListener('input', changeLoginMusicClientVolume);
   elements.loginMusicProgress?.addEventListener('input', seekLoginMusic);
+  elements.loginMusicTrackSelect?.addEventListener('change', (event) => selectLoginMusicTrack(event.target.value));
+  elements.loginMusicPreviousBtn?.addEventListener('click', () => stepLoginMusicTrack(-1));
+  elements.loginMusicNextBtn?.addEventListener('click', () => stepLoginMusicTrack(1));
+  elements.loginMusicPlaybackMode?.addEventListener('change', () => {
+    const mode = elements.loginMusicPlaybackMode.value;
+    syncLoginMusicSettings({ ...state.publicConfig.loginMusic, playbackMode: mode, loop: mode !== 'single', shuffle: mode === 'shuffle' });
+  });
   elements.previewLoginMusicBtn?.addEventListener('click', previewLoginMusic);
   elements.saveLoginMusicBtn?.addEventListener('click', saveLoginMusicSettings);
   elements.removeLoginMusicBtn?.addEventListener('click', removeLoginMusic);
@@ -2625,6 +2719,16 @@ function bindUiEvents() {
   document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
   document.addEventListener('keydown', (event) => {
     const editableTarget = event.target?.matches?.('input, textarea, select, [contenteditable="true"]');
+    if (event.key.toLowerCase() === 'l' && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey && isPlayerFullscreen() && !editableTarget) {
+      event.preventDefault();
+      toggleFullscreenInteractionLock();
+      return;
+    }
+    if (event.key === 'Enter' && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey && isPlayerFullscreen() && !editableTarget) {
+      event.preventDefault();
+      openFullscreenChat();
+      return;
+    }
     if (event.key === 'F2' && !event.ctrlKey && !event.altKey && !event.metaKey && isPlayerFullscreen() && !editableTarget) {
       event.preventDefault();
       openFullscreenChat();
@@ -3388,7 +3492,7 @@ async function emitAck(event, payload = {}, timeout = 15000) {
 function deviceInfo() {
   const ua = navigator.userAgent;
   const browser = /Edg\//.test(ua) ? '微软 Edge 浏览器' : /Chrome\//.test(ua) ? '谷歌 Chrome 浏览器' : /Firefox\//.test(ua) ? '火狐浏览器' : /Safari\//.test(ua) ? '苹果 Safari 浏览器' : '浏览器';
-  const platform = /Windows/.test(ua) ? 'Windows 系统' : /Android/.test(ua) ? '安卓系统' : /iPhone|iPad/.test(ua) ? '苹果手机系统' : /Mac OS/.test(ua) ? '苹果电脑系统' : /Linux/.test(ua) ? 'Linux 系统' : '未知系统';
+  const platform = /Windows/.test(ua) ? 'Windows 系统' : /Android/.test(ua) ? '安卓系统' : /iPhone|iPad/.test(ua) ? '苹果手机系统' : /Linux/.test(ua) ? 'Linux 系统' : '未知系统';
   const deviceName = /Mobile|Android|iPhone/.test(ua) ? '手机' : /iPad|Tablet/.test(ua) ? '平板' : '电脑';
   return { browser, platform, deviceName, deviceId, hostToken: state.hostToken };
 }
@@ -3891,121 +3995,6 @@ async function openContactProtocol(type, protocolUrl) {
 function downloadDesktopClient() {
   if (!state.publicConfig.clientDownloadAvailable) return toast('服务器尚未提供电脑客户端安装程序', 'error');
   const link = document.createElement('a'); link.href = '/api/client-download'; link.download = ''; document.body.appendChild(link); link.click(); link.remove();
-}
-
-function macDownloadEntries(kind) {
-  const key = kind === 'server' ? 'macServerDownloads' : 'macClientDownloads';
-  const entries = new Map();
-  for (const raw of Array.isArray(state.publicConfig[key]) ? state.publicConfig[key] : []) {
-    const architecture = String(raw?.architecture || '').toLowerCase();
-    if (!['arm64', 'x64'].includes(architecture)) continue;
-    const formats = [...new Set((Array.isArray(raw?.formats) ? raw.formats : [])
-      .map((format) => String(format || '').toLowerCase()).filter((format) => ['dmg', 'zip'].includes(format)))];
-    if (!formats.length) continue;
-    const sources = [...new Set((Array.isArray(raw?.sources) ? raw.sources : [])
-      .map((source) => String(source || '').toLowerCase()).filter((source) => ['local', 'remote'].includes(source)))];
-    const existing = entries.get(architecture);
-    if (existing) {
-      existing.formats = [...new Set([...existing.formats, ...formats])];
-      existing.sources = [...new Set([...existing.sources, ...sources])];
-      continue;
-    }
-    const requestedPreferred = String(raw?.preferredFormat || '').toLowerCase();
-    entries.set(architecture, {
-      architecture, formats, sources,
-      preferredFormat: formats.includes(requestedPreferred) ? requestedPreferred : formats.includes('dmg') ? 'dmg' : formats[0]
-    });
-  }
-  return ['arm64', 'x64'].map((architecture) => entries.get(architecture)).filter(Boolean);
-}
-
-function macDownloadArchitectures(kind) { return macDownloadEntries(kind).map((entry) => entry.architecture); }
-function macArchitectureLabel(architecture) { return architecture === 'arm64' ? 'Apple Silicon（M 系列）' : 'Intel x64'; }
-function macFormatLabel(format) { return format === 'dmg' ? 'DMG（推荐安装）' : 'ZIP（解压部署）'; }
-function macSourceLabel(source) { return source === 'local' ? '服务器本地文件' : source === 'remote' ? '远程 HTTPS' : '来源未标注'; }
-
-function replaceMacDownloadOptions(select, options, selectedValue = '') {
-  if (!select) return;
-  const fragment = document.createDocumentFragment();
-  if (!options.length) {
-    const option = document.createElement('option'); option.value = ''; option.textContent = '暂无可用选项'; fragment.appendChild(option);
-  } else for (const item of options) {
-    const option = document.createElement('option'); option.value = item.value; option.textContent = item.label; fragment.appendChild(option);
-  }
-  select.replaceChildren(fragment);
-  select.value = options.some((item) => item.value === selectedValue) ? selectedValue : options[0]?.value || '';
-  queueMicrotask(() => syncEnhancedSelect(select));
-}
-
-function renderMacDownloadAvailability(entries) {
-  if (!elements.macDownloadAvailability) return;
-  elements.macDownloadAvailability.replaceChildren();
-  if (!entries.length) {
-    const empty = document.createElement('div'); empty.className = 'mac-download-empty';
-    const title = document.createElement('strong'); title.textContent = '尚未提供真实的 macOS 安装包';
-    const detail = document.createElement('span'); detail.textContent = '请管理员在 macOS 构建机运行 scripts/build-macos.sh 生成 DMG/ZIP，并放入部署目录；也可以通过 mac/mac-distribution.json 配置真实 HTTPS 发布地址。';
-    empty.append(title, detail); elements.macDownloadAvailability.appendChild(empty); return;
-  }
-  for (const entry of entries) {
-    const row = document.createElement('article'); row.className = 'mac-download-availability-row';
-    const heading = document.createElement('strong'); heading.textContent = macArchitectureLabel(entry.architecture);
-    const chips = document.createElement('div'); chips.className = 'mac-download-chips';
-    for (const format of entry.formats) {
-      const chip = document.createElement('span'); chip.className = 'mac-download-chip is-format'; chip.textContent = format.toUpperCase(); chips.appendChild(chip);
-    }
-    for (const source of entry.sources) {
-      const chip = document.createElement('span'); chip.className = `mac-download-chip is-${source}`; chip.textContent = macSourceLabel(source); chips.appendChild(chip);
-    }
-    if (!entry.sources.length) {
-      const chip = document.createElement('span'); chip.className = 'mac-download-chip'; chip.textContent = macSourceLabel(''); chips.appendChild(chip);
-    }
-    row.append(heading, chips); elements.macDownloadAvailability.appendChild(row);
-  }
-}
-
-function syncMacDownloadSelection() {
-  const entries = macDownloadEntries(state.macDownloadKind);
-  const entry = entries.find((candidate) => candidate.architecture === String(elements.macDownloadArch?.value || '').toLowerCase());
-  const previousFormat = String(elements.macDownloadFormat?.value || '').toLowerCase();
-  const formats = entry?.formats || [];
-  const preferredFormat = formats.includes(previousFormat) ? previousFormat : entry?.preferredFormat || formats[0] || '';
-  replaceMacDownloadOptions(elements.macDownloadFormat, formats.map((format) => ({ value: format, label: macFormatLabel(format) })), preferredFormat);
-  const selectedFormat = String(elements.macDownloadFormat?.value || '').toLowerCase();
-  const available = Boolean(entry && formats.includes(selectedFormat));
-  if (elements.confirmMacDownloadBtn) {
-    elements.confirmMacDownloadBtn.disabled = !available;
-    elements.confirmMacDownloadBtn.textContent = available ? `下载 ${selectedFormat.toUpperCase()}` : '暂无可下载文件';
-  }
-  if (!elements.macDownloadStatus) return;
-  elements.macDownloadStatus.textContent = entry
-    ? `${macArchitectureLabel(entry.architecture)} 已发布 ${entry.formats.map((format) => format.toUpperCase()).join('、')}；来源包括：${entry.sources.length ? entry.sources.map(macSourceLabel).join('、') : macSourceLabel('')}。`
-    : '当前服务器尚未上传 macOS 真实产物。Windows 无法生成可运行、已签名和公证的 DMG，请使用 macOS 构建机或 macOS CI 发布后再下载。';
-}
-
-function openMacDownload(kind = 'client') {
-  state.macDownloadKind = kind === 'server' ? 'server' : 'client';
-  const entries = macDownloadEntries(state.macDownloadKind);
-  if (elements.macDownloadTitle) elements.macDownloadTitle.textContent = state.macDownloadKind === 'server' ? '下载苹果服务器' : '下载苹果客户端';
-  const preferredArchitecture = entries.some((entry) => entry.architecture === 'arm64') ? 'arm64' : entries[0]?.architecture || '';
-  replaceMacDownloadOptions(elements.macDownloadArch, entries.map((entry) => ({ value: entry.architecture, label: macArchitectureLabel(entry.architecture) })), preferredArchitecture);
-  renderMacDownloadAvailability(entries);
-  syncMacDownloadSelection();
-  elements.macDownloadModal?.classList.remove('is-hidden');
-}
-
-function closeMacDownload() { elements.macDownloadModal?.classList.add('is-hidden'); }
-
-function confirmMacDownload() {
-  const architecture = String(elements.macDownloadArch?.value || '').toLowerCase();
-  const format = String(elements.macDownloadFormat?.value || '').toLowerCase();
-  const entry = macDownloadEntries(state.macDownloadKind).find((candidate) => candidate.architecture === architecture);
-  if (!entry || !entry.formats.includes(format)) return toast('所选 Mac 架构或文件格式尚未发布', 'error');
-  const endpoint = state.macDownloadKind === 'server' ? '/api/macos-server-download' : '/api/macos-client-download';
-  const link = document.createElement('a');
-  link.href = `${endpoint}?arch=${encodeURIComponent(architecture)}&format=${encodeURIComponent(format)}`;
-  link.download = ''; link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
-  closeMacDownload();
-  toast(`${state.macDownloadKind === 'server' ? '苹果服务器' : '苹果客户端'} ${format.toUpperCase()} 已开始下载`, 'success');
 }
 
 function utf8ByteLength(value) {
@@ -5475,10 +5464,10 @@ async function loadPublicConfig(silent = false) {
 
 function applyPublicConfig() {
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.2.8';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.2.9';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.8'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.2.9'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -5527,22 +5516,6 @@ function applyPublicConfig() {
   if (elements.downloadLoginApkBtn) {
     elements.downloadLoginApkBtn.title = state.publicConfig.androidApkAvailable ? '下载 Android 客户端' : '当前服务器尚未提供 Android 安装包';
     elements.downloadLoginApkBtn.dataset.available = String(Boolean(state.publicConfig.androidApkAvailable));
-  }
-  const macServerEntries = macDownloadEntries('server');
-  const macClientEntries = macDownloadEntries('client');
-  for (const button of [elements.downloadMacServerBtn, elements.downloadMacServerMainBtn]) if (button) {
-    button.classList.toggle('is-hidden', !showDownloads || (button === elements.downloadMacServerMainBtn && !state.authenticated));
-    button.dataset.available = String(macServerEntries.length > 0);
-    button.title = macServerEntries.length
-      ? macServerEntries.map((entry) => `${macArchitectureLabel(entry.architecture)} ${entry.formats.map((format) => format.toUpperCase()).join('/')}`).join('；')
-      : '当前服务器尚未上传 macOS 服务器真实安装包';
-  }
-  for (const button of [elements.downloadMacClientBtn, elements.downloadMacClientMainBtn]) if (button) {
-    button.classList.toggle('is-hidden', !showDownloads || (button === elements.downloadMacClientMainBtn && !state.authenticated));
-    button.dataset.available = String(macClientEntries.length > 0);
-    button.title = macClientEntries.length
-      ? macClientEntries.map((entry) => `${macArchitectureLabel(entry.architecture)} ${entry.formats.map((format) => format.toUpperCase()).join('/')}`).join('；')
-      : '当前服务器尚未上传 macOS 客户端真实安装包';
   }
   const canSeePort = Boolean(state.authenticated && (state.capabilities.serverHost || state.capabilities.superAdmin));
   elements.headerServerPortGroup?.classList.toggle('is-hidden', !canSeePort);
@@ -5640,10 +5613,8 @@ function downloadAssetSummary(value) {
 
 function renderDownloadAssetStatuses() {
   const details = state.publicConfig.downloadAssetDetails || {};
-  if (elements.windowsServerAssetStatus) elements.windowsServerAssetStatus.textContent = downloadAssetSummary(details.windowsServer);
+  if (elements.windowsServerAssetStatus) elements.windowsServerAssetStatus.textContent = downloadAssetSummary(details.windowsClient);
   if (elements.androidClientAssetStatus) elements.androidClientAssetStatus.textContent = downloadAssetSummary(details.androidClient);
-  if (elements.macServerAssetStatus) elements.macServerAssetStatus.textContent = downloadAssetSummary(details.macServer || state.publicConfig.macServerDownloads);
-  if (elements.macClientAssetStatus) elements.macClientAssetStatus.textContent = downloadAssetSummary(details.macClient || state.publicConfig.macClientDownloads);
 }
 
 function openDownloadCenter(check = false) {
@@ -5670,7 +5641,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.2.8';
+    const current = state.publicConfig.version || 'v2.2.9';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -6069,7 +6040,7 @@ function trySystemPaste(input, { uppercase = false, label = '内容', onValue = 
   if (handled) return true;
   const shortcut = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || window.SyncWatchAndroid
     ? '请长按输入框并选择“粘贴”'
-    : '请按 Ctrl+V（macOS 请按 Command+V）';
+    : '请按 Ctrl+V';
   toast(`系统限制了自动读取，${label}输入框已聚焦，${shortcut}。`, '', 9000);
   return false;
 }
@@ -6139,7 +6110,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.2.8.apk';
+    link.download = 'SyncWatch同步观影-v2.2.9.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -6156,7 +6127,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch-Android-v2.2.8-universal.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.2.9-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -7367,7 +7338,27 @@ function applyLibraryCollapsed() {
     elements.collapseFilesBtn.setAttribute('aria-expanded', String(!state.libraryCollapsed));
   }
 }
-function toggleLibraryCollapsed() { state.libraryCollapsed = !state.libraryCollapsed; localStorage.setItem('syncwatchFilesCollapsed', state.libraryCollapsed ? '1' : '0'); applyLibraryCollapsed(); }
+function toggleLibraryCollapsed() {
+  state.libraryCollapsed = !state.libraryCollapsed;
+  applyLibraryCollapsed();
+  void saveAccountViewPreferences({ libraryCollapsed: state.libraryCollapsed });
+}
+
+function applyMembersPanelCollapsed() {
+  document.querySelector('.workspace')?.classList.toggle('members-panel-collapsed', state.membersPanelCollapsed);
+  if (elements.collapseMembersPanelBtn) {
+    const label = state.membersPanelCollapsed ? '展开成员栏' : '折叠成员栏';
+    elements.collapseMembersPanelBtn.textContent = state.membersPanelCollapsed ? '‹' : '›';
+    elements.collapseMembersPanelBtn.title = label;
+    elements.collapseMembersPanelBtn.setAttribute('aria-label', label);
+    elements.collapseMembersPanelBtn.setAttribute('aria-expanded', String(!state.membersPanelCollapsed));
+  }
+}
+function toggleMembersPanelCollapsed() {
+  state.membersPanelCollapsed = !state.membersPanelCollapsed;
+  applyMembersPanelCollapsed();
+  void saveAccountViewPreferences({ membersPanelCollapsed: state.membersPanelCollapsed });
+}
 
 function viewStaticFile(file) {
   if (!file || isTimedFile(file) || file.status !== 'approved') return toast('该文件当前不可查看', 'error');
@@ -12560,7 +12551,7 @@ function resetShareAddress() {
   toast(`已重置为当前 IPv4 房间地址：${input.value}`, 'success');
 }
 function roomShareAddress() { return preferredShareAddress(); }
-async function copyText(value, successMessage, fallbackTitle = '复制地址') {
+async function copyText(value, successMessage, fallbackTitle = '分享地址') {
   const text = String(value ?? '');
   try {
     if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
@@ -12589,11 +12580,11 @@ async function copyAddress() {
   const publicAddress = publicShareAddress(); const localAddress = lanShareAddress();
   if (window.SyncWatchPlatform?.serverApp === true && !hasCustomBase && publicAddress && localAddress && publicAddress !== localAddress) {
     const selected = await showAppSelect({
-      title: '分享房间', description: '请选择要复制的地址类型。关闭窗口不会执行复制。', label: '分享地址',
+      title: '分享房间', description: '请选择要分享的地址类型。关闭窗口不会执行分享。', label: '分享地址',
       options: [
         { value: 'public', label: `公网地址：${publicAddress}` },
         { value: 'lan', label: `内网地址：${localAddress}` }
-      ], initialValue: publicAddress === shareAddressForBase(location.origin) ? 'public' : 'lan', confirmText: '复制所选地址', cancelText: '关闭'
+      ], initialValue: publicAddress === shareAddressForBase(location.origin) ? 'public' : 'lan', confirmText: '分享所选地址', cancelText: '关闭'
     });
     if (selected === null) return;
     address = selected === 'public' ? publicAddress : localAddress;
@@ -12604,19 +12595,19 @@ async function copyAddress() {
 async function copyLanAddress() {
   const address = lanShareAddress();
   if (!address) return toast('当前没有可用的内网地址', 'error');
-  await copyText(address, `内网房间地址已复制：${address}`, '复制内网地址');
+  await copyText(address, `内网房间地址已复制：${address}`, '分享内网地址');
 }
 
 async function copyPublicAddress() {
   const address = publicShareAddress();
   if (!address) return toast('公网访问尚未开启，请先开启公网访问', 'error');
-  await copyText(address, `公网房间地址已复制：${address}`, '复制公网地址');
+  await copyText(address, `公网房间地址已复制：${address}`, '分享公网地址');
 }
 
 async function copyRoomCode() {
   const code = String(state.room?.id || elements.roomCode?.textContent || '').trim();
   if (!code) return;
-  await copyText(code, `房间号 ${code} 已复制`, '复制房间号');
+  await copyText(code, `房间号 ${code} 已复制`, '分享房间号');
 }
 
 function activeTunnelPublicUrl() {
@@ -12630,7 +12621,7 @@ async function copyTunnelUrl() {
   const baseUrl = activeTunnelPublicUrl();
   const url = baseUrl ? shareAddressForBase(baseUrl) : '';
   if (!url) return toast('公网访问尚未开启', 'error');
-  await copyText(url, `公网房间地址已复制：${url}`, '复制公网地址');
+  await copyText(url, `公网房间地址已复制：${url}`, '分享公网地址');
 }
 
 async function openExternalUrl(value) {
@@ -12968,16 +12959,8 @@ async function loadAdminSettings({ silent = false } = {}) {
     elements.marqueeSpeed.value = Number(marquee.speed) || 30;
     elements.marqueeScope.value = marquee.scope || 'all';
     elements.marqueeStatus.textContent = marquee.enabled ? '当前正在滚动显示' : '当前未启用';
-    const loginMusic = result.admin.loginMusic || state.publicConfig.loginMusic || {};
-    state.publicConfig.loginMusic = normalizedLoginMusic({ enabled: false, title: '', url: '', volume: 0.3, loop: true, ...loginMusic });
-    if (elements.loginMusicEnabled) elements.loginMusicEnabled.checked = loginMusic.enabled === true;
-    if (elements.loginMusicTitle) elements.loginMusicTitle.value = loginMusic.title || '';
-    if (elements.loginMusicUrl) elements.loginMusicUrl.value = loginMusic.url || '';
-    if (elements.loginMusicVolume) elements.loginMusicVolume.value = Math.max(0, Math.min(1, Number(loginMusic.volume) || 0.3));
-    if (elements.loginMusicLoop) elements.loginMusicLoop.checked = loginMusic.loop !== false;
-    updateLoginMusicVolumeLabel();
-    renderLoginMusicTracks(state.publicConfig.loginMusic);
-    if (elements.loginMusicStatus) elements.loginMusicStatus.textContent = loginMusic.url ? `${loginMusic.enabled ? '已启用' : '已保存但未启用'} · ${loginMusic.title || '登录背景音乐'}` : '当前未设置登录音乐';
+    const loginMusic = normalizedLoginMusic({ enabled: false, title: '', url: '', volume: 0.3, loop: true, ...(result.admin.loginMusic || state.publicConfig.loginMusic || {}) });
+    syncLoginMusicSettings(loginMusic);
     if (elements.registrationAccountNoticeToggle) {
       elements.registrationAccountNoticeToggle.checked = result.admin.registrationAccountNoticeEnabled !== false;
       elements.registrationAccountNoticeToggle.disabled = false;
@@ -13867,7 +13850,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-v2.2.8-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.2.9'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
@@ -15527,7 +15510,7 @@ async function deleteSelectedAccountAuditLogs() {
 }
 
 async function handleAccountMenu(event) {
-  if (['logoutBtn', 'logoutKeepCredentialsBtn', 'androidApkBtn', 'downloadClientMainBtn', 'downloadMacServerMainBtn', 'downloadMacClientMainBtn'].includes(event.target.id)) return;
+  if (['logoutBtn', 'logoutKeepCredentialsBtn', 'androidApkBtn', 'downloadClientMainBtn'].includes(event.target.id)) return;
   if (event.target.closest('#accountRoomSettingsBtn')) {
     setAccountDropdownOpen(false);
     if (!state.authenticated || !(state.capabilities.owner || state.capabilities.superAdmin || state.permissions.manageRoom)) return toast('请先进入自己拥有的房间后再打开房间设置', 'error');
@@ -16495,7 +16478,6 @@ function localizedDeviceLabel(value, kind = 'device') {
   if (/harmonyos|hongmeng/i.test(raw)) return '鸿蒙系统';
   if (/android/i.test(raw)) return '安卓系统';
   if (/iphone|ipad|ios/i.test(raw)) return '苹果手机系统';
-  if (/mac\s*os|macos/i.test(raw)) return '苹果电脑系统';
   if (/windows/i.test(raw)) return 'Windows 系统';
   if (/linux/i.test(raw)) return 'Linux 系统';
   console.debug('未识别的设备信息（仅日志）：', raw);

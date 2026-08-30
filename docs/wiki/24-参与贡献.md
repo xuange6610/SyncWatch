@@ -105,5 +105,5 @@ npm run test:all
 2. 等待 **Repository checks** 自动检查通过；涉及平台构建时核对贡献者列出的本地测试证据。
 3. 在 Files changed 中逐文件审核；有问题就提交 Review，贡献者修正后重新检查。
 4. 批准并合并到 `main`。普通修改推荐 Squash merge，保留一个清晰的正式提交。
-5. 需要发布成品时更新版本号与变更说明，在对应系统真实构建并验证 EXE、APK、ZIP 或 macOS 包，再创建新的 GitHub Release。
+5. 需要发布成品时更新版本号与变更说明，真实构建并验证 Windows EXE、Android APK 和独立服务端文件，再创建新的 GitHub Release。
 6. GitHub Pages 会在 `main` 中的文档发生变化后自动部署；程序新版本不会只因为合并代码就自动生成，仍需完成发布验收。

@@ -132,11 +132,13 @@ async function uploadVideo(baseUrl, token, filename, content) {
 
     const viewPreferences = await ack(member, 'account-action', {
       action: 'set-view-preferences', conciseMode: true, chatOnly: true,
-      danmakuColor: '#12abef', danmakuFontSize: 31
+      danmakuColor: '#12abef', danmakuFontSize: 31,
+      libraryCollapsed: true, membersPanelCollapsed: true, memberDetailsCollapsed: true
     });
     assert.equal(viewPreferences.success, true, viewPreferences.error);
     assert.deepEqual(viewPreferences.profile.viewPreferences, {
-      conciseMode: true, chatOnly: true, danmakuColor: '#12abef', danmakuFontSize: 31
+      conciseMode: true, chatOnly: true, danmakuColor: '#12abef', danmakuFontSize: 31,
+      libraryCollapsed: true, membersPanelCollapsed: true, memberDetailsCollapsed: true
     });
     let conciseMemberSawScreenNotice = false;
     member.on('screen-notice', () => { conciseMemberSawScreenNotice = true; });
@@ -513,6 +515,8 @@ async function uploadVideo(baseUrl, token, filename, content) {
     const persisted = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8'));
     assert.equal(persisted.version, 13, 'v2.2.4 state migrations must persist the current schema version');
     assert.equal(persisted.accounts.RoomMember.viewPreferences.conciseMode, true);
+    assert.equal(persisted.accounts.RoomMember.viewPreferences.libraryCollapsed, true);
+    assert.equal(persisted.accounts.RoomMember.viewPreferences.membersPanelCollapsed, true);
     assert.equal(persisted.accounts.DelegatedAdmin.mustChangePassword, false);
     assert.deepEqual(persisted.rooms.SOURCE24.skipSettings, { enabled: true, introSeconds: 45, outroSeconds: 80 });
     assert.equal(persisted.rooms.SOURCE24.savedState.webShare.url, 'https://example.com/watch-together');

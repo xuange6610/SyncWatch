@@ -154,7 +154,7 @@ async function stopChildTree(child) {
 async function main() {
   if (process.platform !== 'win32') throw new Error('成品 EXE 冒烟测试只能在 Windows 上运行');
 
-  const input = process.argv[2] || path.join(__dirname, '..', 'dist', packageManifest.build.portable.artifactName.replace('${arch}', 'x64'));
+  const input = process.argv[2] || path.join(__dirname, '..', 'dist', `SyncWatch-v${packageManifest.version}-Full-Offline-Portable-x64.exe`);
   const executable = path.resolve(input);
   const stats = fs.statSync(executable);
   assert.ok(stats.isFile() && stats.size > 1024 * 1024, '候选 EXE 不存在或体积异常');
@@ -276,4 +276,3 @@ main().catch((error) => {
   console.error('成品 EXE 冒烟失败：', error);
   process.exitCode = 1;
 });
-
