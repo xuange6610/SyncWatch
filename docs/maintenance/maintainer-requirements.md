@@ -120,7 +120,7 @@
 
 - 当前线上正式版本：`v2.2.9`；Release API 有 8 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
-- 当前源码与发布状态：`v2.2.9` 的最终 Tag `ba18ae482ae3604a2bca92246eeb365b8236735f`、Actions run `33323728228`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成；Windows 体验版/完整便携版、Android 模拟器和 Microsoft Defender 扫描均通过。
+- 当前源码与发布状态：`v2.2.9` 的最终注释 Tag 对象 `f3fea87172734d1da9eeb74c1411c2076ed960f5` 指向提交 `bf659447f5cc3aac920ad4e4ce337a306eff585f`；Actions run `33330356910`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成；Windows 体验版/完整便携版、Android 模拟器和 Microsoft Defender 扫描均通过。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
 - v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7、v2.2.8 的历史 Release 保持不变；v2.2.9 当前为 Latest。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。
