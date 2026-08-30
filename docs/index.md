@@ -26,7 +26,7 @@
 
 ## 当前事实边界
 
-- [v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9) 当前为候选发布；计划提供 8 个维护者资产，页面另含两个 GitHub 源码归档。正式下载以 GitHub Release API 实际资产和发布公告状态为准。
+- [v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9) 已完成最终构建并公开为 Latest；Release API 核对到 8 个维护者资产，页面另含两个 GitHub 源码归档，共 10 个可见文件。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
 - v2.2.9 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。
