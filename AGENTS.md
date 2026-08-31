@@ -328,3 +328,9 @@
 - 同一运行的 Windows 基础包在 `tests/epipe-smoke.js` 的生产 Electron 退出阶段超过 20 秒，停在窗口创建后的生命周期；本地重复运行可稳定通过。修复为让启动页脚本执行具备 2 秒有界超时，避免无头页面脚本阻塞服务器启动和 smoke 退出。
 - Android 校验现从 `package.json` 的数字 SemVer 动态计算 `major*10000 + minor*100 + patch`，并匹配当前 `versionName`；本地 `npm run test:repo`、`node tests/android-package.test.js --source-only`、`node tests/release-atomic-workflow.test.js`、`npm run test:epipe` 均通过。
 - 失败运行未进入 Windows/Android 应用成品上传、10 文件审计或 Release 资产替换；下一步必须提交并推送修复、移动唯一 `v2.3.0` 注释 Tag 后仅重新触发一次完整原子发布。
+
+### 24. v2.3.0 第二次原子运行门禁复盘（2026-08-31）
+
+- 原子运行 `33354804242` 已通过源码、官方文件和运行时复用；Android 失败原因为 PowerShell 将 `Where-Object` 管道直接置于 `if -or` 条件，合法版本 `2.3.0` 仍被判定为非法；Windows EPIPE 生产 smoke 在隐藏渲染器关闭阶段仍超过 20 秒。
+- 修复为先把非法版本段收集到数组再判断数量；仅在 `SYNCWATCH_EPIPE_CASE=production` 的专用 smoke 场景使用 `app.exit(0)`，普通启动与其他 smoke 仍走优雅 `app.quit()`。本地 PowerShell 解析、`npm run test:epipe`、`npm run test:repo`、Android 源码门禁和原子工作流契约均通过。
+- 该失败运行未生成或上传应用资产，未替换 v2.2.9；下一次从新修复提交移动唯一 `v2.3.0` 注释 Tag 后再触发一次完整原子发布。

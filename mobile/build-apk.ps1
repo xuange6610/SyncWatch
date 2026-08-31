@@ -3,7 +3,8 @@ Set-Location -LiteralPath $PSScriptRoot
 $packageMetadata = ([System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '..\package.json')) | ConvertFrom-Json)
 $version = [string]$packageMetadata.version
 $versionParts = $version -split '\.'
-if ($versionParts.Count -ne 3 -or $versionParts | Where-Object { $_ -notmatch '^\d+$' }) {
+$invalidVersionParts = @($versionParts | Where-Object { $_ -notmatch '^\d+$' })
+if ($versionParts.Count -ne 3 -or $invalidVersionParts.Count -gt 0) {
     throw "package.json version must be a numeric SemVer, got '$version'."
 }
 $expectedVersionCode = ([int]$versionParts[0] * 10000) + ([int]$versionParts[1] * 100) + [int]$versionParts[2]

@@ -2443,7 +2443,14 @@ async function startApplication() {
     serverController?.startConfiguredTunnel?.().catch((error) => console.warn('公网隧道自动启动失败：', error.message));
   });
   if (SMOKE_MODE && process.env.SYNCWATCH_SMOKE_EXIT_MS) {
-    setTimeout(() => app.quit(), Math.max(500, Number(process.env.SYNCWATCH_SMOKE_EXIT_MS) || 2000)).unref?.();
+    const exitSmoke = () => {
+      // The EPIPE smoke deliberately destroys Electron's output pipes. On
+      // Windows, graceful app.quit() can wait on a hidden renderer forever;
+      // the smoke only needs to prove the guard and clean process exit.
+      if (process.env.SYNCWATCH_EPIPE_CASE === 'production') app.exit(0);
+      else app.quit();
+    };
+    setTimeout(exitSmoke, Math.max(500, Number(process.env.SYNCWATCH_SMOKE_EXIT_MS) || 2000)).unref?.();
   }
 }
 
