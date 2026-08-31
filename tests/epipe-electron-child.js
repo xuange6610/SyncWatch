@@ -46,8 +46,10 @@ if (mode === 'production') {
   // Hosted Windows runners can leave a hidden renderer alive after the
   // production smoke requests graceful shutdown. Keep that test-only path
   // bounded while preserving the app's normal app.quit() behavior first.
-  const forceExitTimer = setTimeout(() => process.exit(0), 5000);
-  forceExitTimer.unref?.();
+  setTimeout(() => {
+    record('smoke', 'force-exit');
+    process.exit(0);
+  }, 5000);
 } else if (mode === 'test-entry') {
   require('./epipe-guard');
   const { app } = require('electron');

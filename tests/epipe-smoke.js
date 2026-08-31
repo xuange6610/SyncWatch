@@ -53,6 +53,10 @@ function assertElectronEntryGuards() {
     'epipe-electron-child.js: test-entry 分支必须先安装 EPIPE 防护');
   assert.equal(childSource.search(/\bconsole\.(?:log|info|warn|error|debug)\s*\(/), -1,
     'epipe-electron-child.js: 安装分支防护前不得 console 输出');
+  assert.match(childSource, /record\('smoke', 'force-exit'\);\s*process\.exit\(0\);/,
+    'epipe-electron-child.js: production smoke 必须保留有界强制退出与生命周期证据');
+  assert.doesNotMatch(childSource, /forceExitTimer\.unref|setTimeout\(\(\) => \{[\s\S]*?record\('smoke', 'force-exit'\)[\s\S]*?\}\s*,\s*5000\)\.unref/,
+    'epipe-electron-child.js: Windows Electron 仅剩原生消息循环时不得 unref 强制退出计时器');
 
   const productionSource = fs.readFileSync(path.resolve(__dirname, '..', 'electron-pink.js'), 'utf8');
   const productionGuardIndex = productionSource.indexOf('process.stdout');

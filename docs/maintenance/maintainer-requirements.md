@@ -189,3 +189,9 @@
 - 原子运行 `33357161907` 使用 `f84b4db` 候选标签；Android 签名构建已通过并进入模拟器验收，Windows 仍在生产 Electron EPIPE smoke 的隐藏渲染器退出阶段超时，整轮在生成/上传应用资产前取消，线上 `v2.2.9` 资产保持不变。
 - 根因仍局限于测试子进程优雅退出请求在无头 Windows runner 中未及时结束；将 `tests/epipe-electron-child.js` 的 5 秒测试专用兜底从 `app.exit(0)` 改为 `process.exit(0)`。该兜底只在 `SYNCWATCH_EPIPE_CASE=production` smoke 生效，不改变正常应用关闭路径，也不跳过 EPIPE 断言。
 - 修复后必须先通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布；失败运行的候选 artifact 不得作为 Release 资产。
+
+### 27. v2.3.0 第五次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33358197230` 的源码门禁、官方文件、Node.js Mobile 复用和 Android 签名构建均通过；Windows 日志确认 stdout/stderr 已真实产生 EPIPE，但 5 秒测试兜底没有执行，生产 smoke 在 20 秒后超时。整轮已强制取消，未生成或上传 Windows/Full Offline/正式 Release 资产。
+- 根因是测试兜底计时器调用了 `unref()`；GitHub Windows Electron 在只剩原生消息循环而没有 Node 引用型句柄时，不保证调度该计时器。修复为保留 5 秒计时器引用，触发前记录 `smoke:force-exit`，再调用仅限测试子进程的 `process.exit(0)`；EPIPE 真实触发与退出码断言仍保留。
+- `tests/epipe-smoke.js` 增加静态契约，防止该强制退出计时器再次被 `unref()`。下一次触发前必须通过本地 EPIPE、仓库与发布工作流契约，并从新的最终候选标签只运行一次完整原子发布。
