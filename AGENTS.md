@@ -375,6 +375,12 @@
 - 最终根因是 `electron-pink.js` 的 `setTimeout(exitSmoke, ...).unref()`；该计时器在 Electron 仅剩原生消息循环时不保证调度，导致即使回调内部使用 `process.exit(0)` 也不会执行。仅在 `SMOKE_MODE` 下移除 `unref()` 并保留计时器引用，普通应用未进入该分支；生产 smoke 仍直接 `process.exit(0)`，其他 smoke 仍 `app.quit()`。
 - `tests/epipe-smoke.js` 增加计时器引用契约。修复后必须通过本地 EPIPE、仓库与发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
 
+### 31. v2.3.0 第十二次原子运行 Android ADB Broken pipe 复盘（2026-08-31）
+
+- 原子运行 `33367347110` 的源码、官方文件、Node.js Mobile 运行时复用、Windows 体验版和 Android 签名 APK 构建均通过；失败发生在模拟器已完成启动后的 `adb install --no-streaming`，日志为 `cmd: Failure calling service package: Broken pipe (32)`。APK 未进入安装后的版本、启动或崩溃检查，线上 `v2.2.9` Release 未改变。
+- 根因是 runner 启动后的 ADB/package 服务瞬态断连，不是 APK 构建或应用崩溃。修复 `scripts/android-emulator-smoke.sh`：安装失败仅在明确匹配 `Broken pipe (32)` 时执行 `adb reconnect device`、重启 ADB、重新等待 `sys.boot_completed`，最多重试 3 次；保留包校验超时的专门处理，其他安装错误立即失败。`tests/release-atomic-workflow.test.js` 增加断连重试和次数上限契约。
+- 该轮未创建或上传 `v2.3.0` Release，也未替换任何历史资产。修复后必须先通过本地仓库、隐私、EPIPE 和发布工作流契约，再移动唯一 `v2.3.0` 注释 Tag 并只触发一次完整原子发布；失败候选 artifact 不得复用。
+
 ### 30. v2.3.0 第八次原子运行 EPIPE 复盘（2026-08-31）
 
 - 原子运行 `33361791025` 仍在 Windows EPIPE smoke 超时；日志只有 `child:production-loaded`、窗口创建和 EPIPE 事件，没有退出标记。生产退出计时器已保持引用，说明 `startApplication()` 更早卡在启动页更新阶段。
