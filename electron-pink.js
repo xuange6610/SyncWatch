@@ -2155,7 +2155,6 @@ async function updateSplash(progress, message, logMessage = message) {
       execution,
       new Promise((resolve) => {
         timer = setTimeout(resolve, 2000);
-        timer.unref?.();
       })
     ]);
     if (timer) clearTimeout(timer);

@@ -67,6 +67,8 @@ function assertElectronEntryGuards() {
     'electron-pink.js: production EPIPE smoke 必须在 Electron 生命周期阻塞前直接退出');
   assert.match(productionSource, /setTimeout\(exitSmoke, Math\.max\(500, Number\(process\.env\.SYNCWATCH_SMOKE_EXIT_MS\) \|\| 2000\)\);/,
     'electron-pink.js: production smoke 退出计时器必须保持引用并实际调度');
+  assert.doesNotMatch(productionSource, /timer = setTimeout\(resolve, 2000\);\s*timer\.unref\?\./,
+    'electron-pink.js: updateSplash 超时计时器必须保持引用并实际调度');
   return entryFiles.length;
 }
 
