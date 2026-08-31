@@ -75,6 +75,16 @@
 - 发布前必须逐项核对文件名、版本号、平台/架构、非空大小、SHA-256 和 Release 资产数量；缺少任一真实构建产物时，标记版本未完成并停止上传，不用改名文件或占位文件凑数。资产清单以 [docs/release/release-manifest.md](docs/release/release-manifest.md) 为准。
 - 发布执行顺序固定为“完成全部源码与文档改动 → 本地运行/测试 → 真实构建并验证应用成品、核验缓存第三方文件 → 逐项核对哈希与 10+2 文件数 → 仅清理当前版本旧资产 → 一次性完整覆盖上传”。任何测试、构建或资产校验未完成时不得先发布；历史版本资产不得删除。
 
+## 发布失败技术经验统一执行手册
+
+- 发布排障的唯一技术汇总见 [docs/maintenance/release-failure-playbook.md](docs/maintenance/release-failure-playbook.md)；本节是下次会话必须遵守的摘要。
+- 先核对源码版本、注释 Tag、提交/树哈希、唯一 `release/vX.Y.Z` 分支、Release API 和 Actions，再做任何构建或上传；版本升级后搜索旧版本字符串和硬编码哈希。
+- 先完成本地源码、平台、隐私、EPIPE 和发布工作流契约，再移动唯一 Tag 并只触发一次原子工作流。失败先读具体 job 日志并取消整轮，禁止盲目重跑、并行运行、复用候选 artifact、改名旧包或占位补齐。
+- Windows Electron smoke 中，`unref()` 计时器、隐藏渲染器 `executeJavaScript()`、Tray 初始化和 `app.quit()` 生命周期都可能阻塞退出；测试专用路径必须保留计时器引用，必要时仅在 `SYNCWATCH_SMOKE_MODE=1` 跳过非必要初始化并使用测试子进程 `process.exit(0)`，不得改变正式程序路径。
+- Android runner 不固定过时硬件 profile；ADB 等待、安装、启动、崩溃和截图必须在同一 emulator action 脚本完成。区分 ADB 初始化故障、包校验超时和 APK/应用真实崩溃。
+- Node.js/cloudflared 只复用 `.cache/release-third-party/` 中已核验官方文件；访问 cloudflared manifest 必须使用 `GH_TOKEN`。上传前逐项核对 8 个维护者资产、2 个源码归档、版本/平台/架构、非空大小、SHA-256、启动结果和远端下载回读。
+- 当前 `v2.3.0` 运行 `33365811610` 的 Windows EPIPE 仍失败于 `app:browser-window-created`，已取消且未生成正式资产；因此 `v2.3.0` 继续保持 `pending`，不得据此宣称已发布。
+
 ## 自动版本规则
 
 - 版本号必须在 `package.json`、Android `versionName`/`versionCode`、Release tag 和 `docs/release-notes-vX.Y.Z.md` 中保持一致；补丁版本递增用于兼容修复，功能版本递增前必须更新发布说明。

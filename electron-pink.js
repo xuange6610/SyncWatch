@@ -55,6 +55,7 @@ const HELP_LINKS = Object.freeze({
 });
 const HELP_LINK_ALLOWLIST = new Set(Object.values(HELP_LINKS));
 const SMOKE_MODE = process.env.SYNCWATCH_SMOKE_MODE === '1';
+const EPIPE_PRODUCTION_SMOKE = SMOKE_MODE && process.env.SYNCWATCH_EPIPE_CASE === 'production';
 // Allow the server launcher to inject a fresh owner token for portable deployments;
 // interactive desktop launches still receive a cryptographically random token.
 const HOST_CONTROL_TOKEN = String(process.env.SYNCWATCH_HOST_TOKEN || '').trim()
@@ -2334,6 +2335,12 @@ function configureWebPermissions() {
 }
 
 function createMainWindow() {
+  // The EPIPE production probe only validates the real entry-point guard and
+  // server startup. Hosted Windows Electron can block while creating a second
+  // hidden renderer after the probe has closed its output pipes; keep this
+  // test-only path windowless while every normal smoke and packaged launch
+  // still creates the full main window.
+  if (EPIPE_PRODUCTION_SMOKE) return;
   mainWindow = new BrowserWindow({
     width: 1320, height: 840, minWidth: 920, minHeight: 640, center: true, show: false,
     title: APP_NAME, icon: iconPath(), backgroundColor: '#100c16', autoHideMenuBar: false,

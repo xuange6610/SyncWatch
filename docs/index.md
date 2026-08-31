@@ -14,7 +14,7 @@
 | 平台说明 | 当前新版本只提供 Windows、Android 和浏览器；历史 macOS 版本仍可在旧 Release 中查看 |
 | 错误、诊断、备份和安全 | [故障排查](troubleshooting.md)、[安全策略](../SECURITY.md) |
 | Release、文件地图和贡献 | [v2.3.0 发布说明](release-notes-v2.3.0.md)、[v2.2.6 发布说明](release-notes-v2.2.6.md)、[发布文件说明](release-artifacts.md)、[仓库文件地图](repository-map.md)、[参与贡献](contributing.html)、[CONTRIBUTING.md](../CONTRIBUTING.md) |
-| Codex 长期维护、版本与交付要求 | [维护者长期要求](maintenance/maintainer-requirements.md)、[Release 固定资产清单](release/release-manifest.md) |
+| Codex 长期维护、版本与交付要求 | [维护者长期要求](maintenance/maintainer-requirements.md)、[发布失败技术手册](maintenance/release-failure-playbook.md)、[Release 固定资产清单](release/release-manifest.md) |
 
 ## 文档分层
 

@@ -75,6 +75,8 @@ function assertElectronEntryGuards() {
     'electron-pink.js: updateSplash 必须在调用渲染器脚本前安排超时计时器');
   assert.match(productionSource, /if \(SMOKE_MODE\) return;[\s\S]*?const value = Math\.max\(0,\s*Math\.min\(100/,
     'electron-pink.js: smoke 模式必须跳过隐藏启动页脚本更新');
+  assert.match(productionSource, /const EPIPE_PRODUCTION_SMOKE = SMOKE_MODE && process\.env\.SYNCWATCH_EPIPE_CASE === 'production';[\s\S]*?function createMainWindow\(\) \{[\s\S]*?if \(EPIPE_PRODUCTION_SMOKE\) return;/,
+    'electron-pink.js: EPIPE production smoke 必须跳过可能阻塞的第二个隐藏窗口');
   assert.match(productionSource, /buildMenu\(\);\s*if \(!SMOKE_MODE\) createTray\(\);/,
     'electron-pink.js: smoke 模式必须跳过托盘初始化');
   return entryFiles.length;

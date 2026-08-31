@@ -2,7 +2,7 @@
 
 当前 `release/v2.3.0` 正在候选发布阶段；源码版本已切换到 `v2.3.0`，但在最终构建、启动验收、哈希和 8+2 文件核验完成前，Release `v2.2.9` 仍保持 Latest。
 
-本文记录用户已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口，具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
+本文记录已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口。发布失败的技术根因、门禁和固定执行顺序统一见 [release-failure-playbook.md](release-failure-playbook.md)；具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
 
 这些要求只适用于 SyncWatch同步观影。新项目只继承 Codex 全局 `AGENTS.md` 中的通用工作流程，不得自动继承本项目的名称、版本号、28 文件或平台清单。
 
