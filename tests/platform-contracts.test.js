@@ -5,7 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const packageManifest = JSON.parse(read('package.json'));
-assert.equal(packageManifest.version, '2.2.9');
+assert.equal(packageManifest.version, '2.3.0');
 assert.equal(packageManifest.scripts['build:mac'], undefined);
 for (const file of ['electron-builder-mac-client.json','electron-builder-mac-server.json','electron-builder-mac-full.json','mac-distribution.example.json','server/macos-distribution.js']) {
   assert.equal(fs.existsSync(path.join(root, file)), false, `removed macOS file still exists: ${file}`);
@@ -13,6 +13,9 @@ for (const file of ['electron-builder-mac-client.json','electron-builder-mac-ser
 for (const file of ['server/index.js','electron-pink.js','electron-client.js','server-standalone.js']) {
   assert.doesNotMatch(read(file), /macos|macOS|darwin/i, `${file} still contains removed macOS integration`);
 }
-assert.match(read('electron-builder-windows-full-portable.json'), /SyncWatch-v2\.2\.9-Full-Offline-Portable/);
+assert.match(
+  read('electron-builder-windows-full-portable.json'),
+  new RegExp(`SyncWatch-v${packageManifest.version.replace(/\./g, '\\.')}-Full-Offline-Portable`)
+);
 assert.doesNotMatch(read('electron-builder-windows-full-portable.json'), /macOS|macos|offline-downloads\/mac/);
 console.log('Windows and Android platform contract tests passed; macOS build integration is removed.');

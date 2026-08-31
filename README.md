@@ -22,9 +22,9 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.2.9 已完成最终构建、启动验收、哈希核对并公开为 Latest。本版本只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.3.0 正在候选发布阶段；最终 Tag、Release 资产和线上页面核验完成后才会替换 Latest。本版本计划只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-当前正式发布：[v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9)，已发布并设为 Latest。
+当前正式发布：[v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9)；[v2.3.0 候选发布说明](docs/release-notes-v2.3.0.md)待最终构建、资产核验和审批合并后更新。
 
 本版本的交付清单是 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；完成核验后才会标记为 Latest。
 
@@ -47,19 +47,19 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 | 下载文件 | 运行角色 | 适合谁 | 作用 |
 | --- | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Experience-Client-Portable-v2.2.9-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
-| [`SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
-| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
-| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
-| [`SyncWatch-Android-v2.2.9-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.2.9/SyncWatch-Android-v2.2.9-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
+| [`SyncWatch-Experience-Client-Portable-v2.3.0-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.0/SyncWatch-Experience-Client-Portable-v2.3.0-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
+| [`SyncWatch-v2.3.0-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.0/SyncWatch-v2.3.0-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
+| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.0/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.0/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.0/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.0/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
+| [`SyncWatch-Android-v2.3.0-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.0/SyncWatch-Android-v2.3.0-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
 | [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 10 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
-| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.2.9.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
+| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.3.0.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.3.0.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
 ## 第一次启动服务器
 
 ### 使用服务器 EXE
 
-1. 从 Releases 下载 `SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe`，双击即可开房。
+1. 从 Releases 下载 `SyncWatch-v2.3.0-Full-Offline-Portable-x64.exe`，双击即可开房。
 2. 安装版按向导选择目录并启动；独立完整版和标准版放进普通文件夹后双击。Windows 防火墙询问时，只按你的实际网络环境允许访问。
 3. 浏览器会打开 `http://127.0.0.1:20311`；如果端口被占用，以软件显示的地址为准。
 4. 使用默认管理员账号 `admin`、密码 `admin888` 登录。
@@ -270,7 +270,7 @@ Git 没有要求所有文件都必须使用英文名称。仓库采用的规则�
 - [常见错误与报错处理](docs/troubleshooting.md)
 - [使用技巧与优势](docs/tips-and-advantages.md)
 - [发布文件与下载说明](docs/release-artifacts.html)
-- [v2.2.9 发布说明](docs/release-notes-v2.2.9.md) · [v2.2.3 发布说明](docs/release-notes-v2.2.3.md)
+- [v2.3.0 发布说明](docs/release-notes-v2.3.0.md) · [v2.2.3 发布说明](docs/release-notes-v2.2.3.md)
 - [仓库文件地图](docs/repository-map.html)
 - [新手快速开始 HTML](docs/quick-start.html)
 - [Wiki 完整教程目录](docs/wiki-guide.md) · [仓库内 Wiki 镜像](docs/wiki/)
@@ -362,7 +362,7 @@ QQ: 2590813506<br>
 
 本项目将持续开源，欢迎大家学习、交流和共同改进。如果你在使用过程中发现问题、有新的功能想法，或者希望一起优化代码，都可以联系我沟通。也欢迎提交建议、反馈问题和分享改进方案，希望通过大家共同参与，让项目不断完善，变得更加稳定、实用和好用。
 
-### v2.2.9 维护说明
+### v2.3.0 维护说明
 
 - Windows 服务器启动设置窗口已适配短屏滚动，底部保存/取消按钮不会再被裁切；“申请多设备登录”提示支持自动换行。
 - 房主可在账户菜单“房间设置”或“我的房间”自有房间卡片中打开当前房间设置；该入口只显示“房间与上传”“成员与权限组”“聊天与记录”三个模块，并在切换房间后加载对应配置。
@@ -379,7 +379,7 @@ QQ: 2590813506<br>
 - 管理中心“账号总览”改为独立请求和错误处理，账号状态加载失败会显示明确提示并允许重试，不会一直停留在“正在同步账号状态”。
 - Electron 服务端窗口使用专用登录布局，立体方块保持在可视区域，鼠标滚轮可滚动访问完整登录内容。
 - 管理中心标题会显示当前客户端主题。账号密码只保存不可逆哈希，管理员不能读取历史明文；如需协助用户，进入账号管理后使用“设置新密码”，旧会话会立即失效。
-- v2.2.9 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包，历史版本 Release 保持不变。
+- v2.3.0 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包，历史版本 Release 保持不变。
 
 #### 网页共享与继续观看
 
