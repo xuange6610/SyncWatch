@@ -2148,7 +2148,18 @@ async function updateSplash(progress, message, logMessage = message) {
   if (!splashWindow || splashWindow.isDestroyed()) return;
   const value = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
   const script = `(() => { const fill = document.getElementById('fill'); const percent = document.getElementById('percent'); const status = document.getElementById('status'); const log = document.getElementById('log'); if (fill) fill.style.width = ${JSON.stringify(value + '%')}; if (percent) percent.textContent = ${JSON.stringify(value + '%')}; if (status) status.textContent = ${JSON.stringify(String(message || ''))}; if (log && ${JSON.stringify(String(logMessage || ''))}) { const line = document.createElement('div'); line.textContent = ${JSON.stringify(String(logMessage || ''))}; log.appendChild(line); log.scrollTop = log.scrollHeight; } })()`;
-  try { await splashWindow.webContents.executeJavaScript(script, true); } catch (_) {}
+  try {
+    const execution = splashWindow.webContents.executeJavaScript(script, true);
+    let timer;
+    await Promise.race([
+      execution,
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, 2000);
+        timer.unref?.();
+      })
+    ]);
+    if (timer) clearTimeout(timer);
+  } catch (_) {}
 }
 
 async function showRuntimeInformation() {

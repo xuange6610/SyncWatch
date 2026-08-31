@@ -164,3 +164,10 @@
 
 - 原子运行 `33327086419` 的源码门禁、官方文件、Android 签名 APK 和 Windows 基础包均通过；失败发生在 `reactivecircus/android-emulator-runner` 启动后的内部 ADB 输入/设置超时命令，错误为 `Failure calling service input: Broken pipe (32)`，仓库 smoke 尚未执行，线上 Release 资产保持不变。
 - 尝试拆分 runner 与 smoke 后确认该 action 会在 `script` 返回后无条件清理 emulator，后置步骤无法复用设备，因此撤回拆分方案。最终保留同一步仓库 smoke，并在脚本中重新等待 ADB/`sys.boot_completed`；安装、启动、崩溃日志和截图门禁仍严格执行。修复提交合并并移动最终注释 Tag 后只触发一次完整原子发布。
+
+### 23. v2.3.0 首次原子运行构建门禁复盘（2026-08-31）
+
+- 原子运行 `33353935801` 的源码门禁、官方资产与 Node.js Mobile 运行时复用均通过；Android 构建在 Gradle 成功后被 `mobile/build-apk.ps1` 的 APK 元数据检查拒绝，原因是校验仍写死 `versionCode 20209` / `versionName 2.2.9`。
+- 同一运行的 Windows 基础包在 `tests/epipe-smoke.js` 的生产 Electron 退出阶段超过 20 秒，停在窗口创建后的生命周期；本地重复运行可稳定通过。修复为让启动页脚本执行具备 2 秒有界超时，避免无头页面脚本阻塞服务器启动和 smoke 退出。
+- Android 校验现从 `package.json` 的数字 SemVer 动态计算 `major*10000 + minor*100 + patch`，并匹配当前 `versionName`；本地 `npm run test:repo`、`node tests/android-package.test.js --source-only`、`node tests/release-atomic-workflow.test.js`、`npm run test:epipe` 均通过。
+- 失败运行未进入 Windows/Android 应用成品上传、10 文件审计或 Release 资产替换；下一步必须提交并推送修复、移动唯一 `v2.3.0` 注释 Tag 后仅重新触发一次完整原子发布。
