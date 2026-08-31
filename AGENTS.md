@@ -334,3 +334,9 @@
 - 原子运行 `33354804242` 已通过源码、官方文件和运行时复用；Android 失败原因为 PowerShell 将 `Where-Object` 管道直接置于 `if -or` 条件，合法版本 `2.3.0` 仍被判定为非法；Windows EPIPE 生产 smoke 在隐藏渲染器关闭阶段仍超过 20 秒。
 - 修复为先把非法版本段收集到数组再判断数量；仅在 `SYNCWATCH_EPIPE_CASE=production` 的专用 smoke 场景使用 `app.exit(0)`，普通启动与其他 smoke 仍走优雅 `app.quit()`。本地 PowerShell 解析、`npm run test:epipe`、`npm run test:repo`、Android 源码门禁和原子工作流契约均通过。
 - 该失败运行未生成或上传应用资产，未替换 v2.2.9；下一次从新修复提交移动唯一 `v2.3.0` 注释 Tag 后再触发一次完整原子发布。
+
+### 25. v2.3.0 第三次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33355477589` 的源码、官方文件和 Node.js Mobile 运行时复用通过；Android 已进入构建，Windows 仍在生产 EPIPE smoke 的隐藏渲染器退出阶段超时，未生成应用资产。
+- EPIPE 专用子进程现先保留生产入口的优雅退出请求，并在 5 秒测试兜底后调用 `app.exit(0)`；仅作用于 `tests/epipe-electron-child.js` 的生产 smoke，不改变正常应用和其他 smoke 的关闭路径。修复后本地 `npm run test:epipe` 与原子工作流契约通过。
+- 该运行未替换任何 Release 资产；需将候选标签移动到本修复提交后再触发一次完整原子发布。
