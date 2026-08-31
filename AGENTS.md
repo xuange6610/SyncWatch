@@ -54,6 +54,12 @@
 - 提交信息使用 `feat:`、`fix:`、`perf:`、`style:`、`refactor:`、`docs:` 等清晰前缀。
 - 版本发布工作统一使用一个 `release/vX.Y.Z` 分支并通过 Pull Request 合并；不要为同一版本长期保留多个 `codex/*release*` 临时分支，已合并或放弃的临时分支应及时删除。
 
+### 管理员合并授权例外
+
+- 仅当用户在当前对话明确授权使用仓库管理员权限合并指定 Pull Request 时，才允许对该 PR 使用管理员合并（例如 `gh pr merge --admin`）满足分支保护的审批门槛。
+- 该例外只解除“必需 Review”这一审批条件；PR 必须已经通过所有自动检查，且必须核对目标分支、源分支、提交哈希和变更范围。不得借此强制推送、改写历史、删除历史 Release/Tag 或跳过构建、成品、隐私和资产门禁。
+- 用户未明确授权，或自动检查未通过、提交身份不一致、存在未审计变更时，仍必须停止并等待维护者审批。
+
 ## GitHub 发布规范
 
 - `main` 是稳定分支；功能在分支和 Pull Request 中验证后合并。版本由 `package.json`、Android `versionName`、Release tag 和发布说明共同更新，当前版本以源码和最新 Release 为准。
