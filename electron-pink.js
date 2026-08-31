@@ -2444,7 +2444,7 @@ async function startApplication() {
   createMainWindow();
   configureWebPermissions();
   buildMenu();
-  createTray();
+  if (!SMOKE_MODE) createTray();
   await updateSplash(100, '启动完成', '主窗口已打开，服务器与房间可以使用');
   setTimeout(() => { if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close(); }, 450);
   setImmediate(() => {

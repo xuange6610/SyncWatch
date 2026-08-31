@@ -225,3 +225,9 @@
 - 原子运行 `33364149052` 已锁定提交 `c76172ddef87b2cbc6b2b01e1a3a3e6e49d4f31b`；源码、官方文件、Node.js Mobile 运行时和 Android 签名构建通过，Windows EPIPE 冒烟再次失败，随后强制取消，未生成或上传正式资产，线上 `v2.2.9` 未改变。
 - 新日志仍停在 `app:browser-window-created`，即使超时 Promise 先于调用创建也没有 `smoke:force-exit`；说明 Windows Electron 的 `webContents.executeJavaScript()` 调用可能同步阻塞主线程，事件循环无法调度任何 JavaScript 计时器。
 - 修复为仅在 `SYNCWATCH_SMOKE_MODE=1` 的测试进程跳过隐藏启动页脚本更新；正式运行不设置该变量，继续使用真实启动页和有界超时。新增静态契约锁定 smoke 跳过路径；修复后必须通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
+
+### 33. v2.3.0 第十一次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33364998941` 已锁定提交 `30b641d`；源码、官方文件、Node.js Mobile 运行时和 Android 签名构建通过，Windows EPIPE 冒烟仍在第二个 `browser-window-created` 后超时，随后强制取消，未生成或上传正式资产，线上 `v2.2.9` 未改变。
+- 跳过 `updateSplash()` 后故障位置前移到主窗口创建后的托盘初始化阶段，日志仍没有 `smoke:force-exit`；托管 Windows Electron 的 `Tray` 初始化可能阻塞主线程，测试退出计时器无法注册。
+- 修复为仅在 `SYNCWATCH_SMOKE_MODE=1` 的测试进程跳过 `createTray()`；正式程序继续创建系统托盘。新增静态契约锁定该分支；修复后必须通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。

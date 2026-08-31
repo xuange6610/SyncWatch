@@ -75,6 +75,8 @@ function assertElectronEntryGuards() {
     'electron-pink.js: updateSplash 必须在调用渲染器脚本前安排超时计时器');
   assert.match(productionSource, /if \(SMOKE_MODE\) return;[\s\S]*?const value = Math\.max\(0,\s*Math\.min\(100/,
     'electron-pink.js: smoke 模式必须跳过隐藏启动页脚本更新');
+  assert.match(productionSource, /buildMenu\(\);\s*if \(!SMOKE_MODE\) createTray\(\);/,
+    'electron-pink.js: smoke 模式必须跳过托盘初始化');
   return entryFiles.length;
 }
 
