@@ -2450,7 +2450,9 @@ async function startApplication() {
       if (process.env.SYNCWATCH_EPIPE_CASE === 'production') process.exit(0);
       else app.quit();
     };
-    setTimeout(exitSmoke, Math.max(500, Number(process.env.SYNCWATCH_SMOKE_EXIT_MS) || 2000)).unref?.();
+    // Keep the smoke exit timer referenced. Electron's Windows native loop
+    // can otherwise skip an unref'ed Node timer while a hidden renderer closes.
+    setTimeout(exitSmoke, Math.max(500, Number(process.env.SYNCWATCH_SMOKE_EXIT_MS) || 2000));
   }
 }
 

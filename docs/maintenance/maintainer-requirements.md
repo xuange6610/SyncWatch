@@ -201,3 +201,9 @@
 - 原子运行 `33360205011` 的源码、官方文件、Node.js Mobile 复用和 Android 签名构建均通过；Windows EPIPE 日志确认 stdout/stderr 已产生多次 EPIPE，但生产 smoke 在 20 秒后超时，且子进程 5 秒兜底没有写入 `smoke:force-exit`。该轮已取消，未生成或上传 Windows/Full Offline/正式 Release 资产。
 - 根因是生产 smoke 的 1.6 秒 `app.exit(0)` 先进入 Electron 关闭生命周期，Windows runner 在隐藏渲染器阶段不再调度 Node 定时器；因此子进程计时器即使保持引用也无法执行。修复为在 `SYNCWATCH_EPIPE_CASE=production` 的 smoke 回调中直接调用测试专用 `process.exit(0)`，在进入 Electron 生命周期阻塞前确定退出；普通桌面运行和其他 smoke 继续使用 `app.quit()`。
 - `tests/epipe-smoke.js` 增加静态断言锁定该生产 smoke 路径。修复后必须通过本地 EPIPE、仓库与发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
+
+### 29. v2.3.0 第七次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33361005257` 的日志显示 stdout/stderr EPIPE 已触发，但 `child:production-loaded` 后没有 `smoke:force-exit` 或进程退出；Windows runner 在隐藏渲染器关闭阶段直接跳过了生产退出回调，整轮未生成或上传正式资产。
+- 最终根因是 `electron-pink.js` 的 `setTimeout(exitSmoke, ...).unref()`；该计时器在 Electron 仅剩原生消息循环时不保证调度，导致即使回调内部使用 `process.exit(0)` 也不会执行。仅在 `SMOKE_MODE` 下移除 `unref()` 并保留计时器引用，普通应用未进入该分支；生产 smoke 仍直接 `process.exit(0)`，其他 smoke 仍 `app.quit()`。
+- `tests/epipe-smoke.js` 增加计时器引用契约。修复后必须通过本地 EPIPE、仓库与发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
