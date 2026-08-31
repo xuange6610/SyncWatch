@@ -76,7 +76,7 @@ assert.match(styleSource, /#desktopCloseModal\s+\.desktop-close-actions\s*>\s*bu
 for (const id of [
   'refreshAllApplicationsBtn', 'marqueeLoginEnabled', 'copyLanAddressBtn',
   'copyPublicAddressBtn', 'lanAccessEnabled', 'themeFontSearch', 'themeFontSelect',
-  'switchOwnedRoomRefreshBtn', 'switchOwnedRoomList', 'switchOwnedRoomStatus',
+  'switchRoomSearch', 'switchOwnedRoomRefreshBtn', 'switchOwnedRoomList', 'switchOwnedRoomStatus',
   'tunnelAutoDiagnose'
 ]) {
   assert.match(pageSource, new RegExp(`id="${id}"`), `界面缺少 ${id}`);
@@ -125,6 +125,8 @@ assert.match(appSource, /function renderSwitchOwnedRooms\(rooms[\s\S]{0,3200}ren
   '更换房间弹窗必须复用账号资料中的本人房间并提供一键进入');
 assert.match(appSource, /function renderSwitchOwnedRooms\(rooms[\s\S]{0,3200}data-switch-owned-select[\s\S]{0,900}data-switch-room-action="delete-selected"/,
   'Switch-room owned-room cards must support item selection and batch deletion.');
+assert.match(appSource, /switchOwnedRoomQuery[\s\S]{0,900}visibleRooms[\s\S]{0,900}ownerName[\s\S]{0,400}ownerUsername/,
+  '更换房间列表必须支持按房主、房间号和房间名字模糊搜索');
 assert.match(appSource, /const visibleRooms = \[\.\.\.filteredRooms\]\.sort\(\(left, right\) => Number\(right\.id === state\.room\?\.id\) - Number\(left\.id === state\.room\?\.id\)\)/,
   'The current room must remain pinned to the top of the all-rooms dashboard.');
 assert.match(styleSource, /\.global-room-item\.is-current-room\s*\{[^}]*animation:\s*current-room-pulse/s,

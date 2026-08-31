@@ -134,7 +134,7 @@ assert.match(readme, /微信:\s*love_020804/);
 assert.match(readme, /xuange6610\.github\.io\/SyncWatch\//);
 assert.match(readme, /docs\/screenshots\/main-interface\.png/);
 const stableReleaseBanner = new RegExp(`当前正式发布：\\[${escapeRegExp(latestStableTag)}\\]\\(https:\\/\\/github\\.com\\/xuange6610\\/SyncWatch\\/releases\\/tag\\/${escapeRegExp(latestStableTag)}\\).*Latest`);
-const candidateReleaseBanner = readme.includes('v2.2.9') && /候选(?:分支|发布|版本)|pending|待发布/.test(readme);
+const candidateReleaseBanner = readme.includes('v2.3.0') && /候选(?:分支|发布|版本)|pending|待发布/.test(readme);
 assert.ok(stableReleaseBanner.test(readme) || candidateReleaseBanner, 'README must describe either the published version or an explicitly pending candidate');
 assert.ok(new RegExp(`${escapeRegExp(latestStableTag)}.*发布并设为 Latest`, 's').test(readme) || /v2\.2\.9.*候选(?:分支|发布|版本).*验证|候选发布仍按此清单验证|pending/s.test(readme));
 assert.match(readme, /8 个维护者资产[\s\S]*(?:两个|2 个) GitHub[^\n]*源码归档[\s\S]*10 个文件/);

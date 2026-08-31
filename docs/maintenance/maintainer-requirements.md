@@ -1,6 +1,6 @@
 # SyncWatch 长期维护与交付要求
 
-当前 `release/v2.2.9` 已完成真实构建、启动验收、哈希和 8+2 文件核验；Release `v2.2.9` 已公开并标记为 Latest。
+当前 `release/v2.3.0` 正在候选发布阶段；源码版本已切换到 `v2.3.0`，但在最终构建、启动验收、哈希和 8+2 文件核验完成前，Release `v2.2.9` 仍保持 Latest。
 
 本文记录用户已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口，具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
 
@@ -91,7 +91,7 @@
 - README 面向普通用户和开发者：先说明产品价值、真实主界面和下载入口，再讲技术架构；新手步骤要从下载、启动、登录、改密码、创建房间、成员连接一直写到公网访问和排错。
 - `docs/index.md` 是仓库文档导航；用户操作变化更新 README/使用文档，产品能力变化更新 `PRODUCT.md`，UI/架构变化更新 `DESIGN.md`，长期技术知识更新 `docs/`。
 - GitHub Wiki 与仓库内 `docs/wiki/` 保持可追溯镜像；不能把 Wiki 页面存在当成同步完成，需核对真实 Wiki 仓库或在线页面。
-- 外部贡献采用 Fork/分支/Pull Request，维护者审核和自动检查通过后合并；未经确认的贡献不得直接覆盖稳定源码。
+- 外部贡献采用 Fork/分支/Pull Request，原则上在维护者审核和自动检查通过后合并；如果用户在当前对话明确授权使用仓库管理员权限合并指定 PR，可仅针对该 PR 使用管理员合并满足必需 Review 门槛，但仍必须自动检查通过、核对提交身份，不得强推、改写历史或跳过构建、成品、隐私和资产门禁。未经确认的贡献不得直接覆盖稳定源码。
 
 ## 11. Git、上传与本地清理
 
@@ -119,6 +119,7 @@
 ## 13. 当前发布基线
 
 - 当前线上正式版本：`v2.2.9`；Release API 有 8 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
+- 当前候选版本：`v2.3.0`；唯一发布分支为 `release/v2.3.0`，待 PR 合并和原子发布工作流完成后再更新正式版本快照。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
 - 当前源码与发布状态：`v2.2.9` 的最终注释 Tag 对象 `f3fea87172734d1da9eeb74c1411c2076ed960f5` 指向提交 `bf659447f5cc3aac920ad4e4ce337a306eff585f`；Actions run `33330356910`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成；Windows 体验版/完整便携版、Android 模拟器和 Microsoft Defender 扫描均通过。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。

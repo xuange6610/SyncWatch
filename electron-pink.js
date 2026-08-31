@@ -2138,10 +2138,17 @@ async function createSplash() {
   });
   const html = `<!doctype html><meta charset="utf-8"><style>
     *{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;background:#101318;font-family:"Microsoft YaHei",sans-serif;color:#f8f7f2}
-    main{width:calc(100% - 36px);text-align:center;padding:32px;border:1px solid #46525b;border-radius:8px;background:#1a2027;box-shadow:0 18px 50px #0008}.mark{display:grid;width:58px;height:58px;margin:0 auto;place-items:center;border-radius:7px;background:#c7a763;color:#101318;font-size:30px}h1{font-size:25px;margin:14px 0 6px}p{margin:6px;color:#dce3e5}.bar{width:250px;height:5px;margin:30px auto 0;background:#ffffff20;border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;background:#c7a763;animation:load 1.4s ease-in-out infinite}@keyframes load{0%{width:0}60%{width:80%}100%{width:100%}}small{display:block;margin-top:20px;color:#b9c2c9}
-  </style><main><div class="mark">🎬</div><h1>SyncWatch同步观影</h1><p>正在启动 SyncWatch同步观影 服务器…</p><div class="bar"><i></i></div><small>${COPYRIGHT}</small></main>`;
+    main{width:calc(100% - 36px);padding:25px 30px;border:1px solid #46525b;border-radius:8px;background:#1a2027;box-shadow:0 18px 50px #0008}.head{display:flex;align-items:center;gap:14px}.mark{display:grid;width:48px;height:48px;flex:0 0 48px;place-items:center;border-radius:7px;background:#c7a763;color:#101318;font-size:24px}h1{font-size:22px;margin:0 0 4px}p{margin:0;color:#dce3e5;font-size:13px}.progress-row{display:flex;align-items:center;gap:10px;margin-top:24px}.bar{height:8px;flex:1;background:#ffffff20;border-radius:8px;overflow:hidden}.bar i{display:block;width:0;height:100%;background:#c7a763;transition:width .25s ease}.percent{width:42px;color:#f2d58b;text-align:right;font-variant-numeric:tabular-nums;font-weight:700}.log{height:78px;margin-top:14px;padding:8px 10px;overflow:auto;color:#b9c2c9;background:#101318;border:1px solid #ffffff14;border-radius:5px;font-size:11px;line-height:1.55;text-align:left}.log div:last-child{color:#f2d58b}small{display:block;margin-top:14px;color:#89959c;font-size:10px}
+  </style><main><div class="head"><div class="mark">SW</div><div><h1>SyncWatch同步观影</h1><p id="status">正在准备启动…</p></div></div><div class="progress-row"><div class="bar"><i id="fill"></i></div><strong id="percent" class="percent">0%</strong></div><div id="log" class="log" aria-live="polite"></div><small>${COPYRIGHT}</small></main>`;
   await splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
   if (!SMOKE_MODE && !splashWindow.isDestroyed()) splashWindow.show();
+}
+
+async function updateSplash(progress, message, logMessage = message) {
+  if (!splashWindow || splashWindow.isDestroyed()) return;
+  const value = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
+  const script = `(() => { const fill = document.getElementById('fill'); const percent = document.getElementById('percent'); const status = document.getElementById('status'); const log = document.getElementById('log'); if (fill) fill.style.width = ${JSON.stringify(value + '%')}; if (percent) percent.textContent = ${JSON.stringify(value + '%')}; if (status) status.textContent = ${JSON.stringify(String(message || ''))}; if (log && ${JSON.stringify(String(logMessage || ''))}) { const line = document.createElement('div'); line.textContent = ${JSON.stringify(String(logMessage || ''))}; log.appendChild(line); log.scrollTop = log.scrollHeight; } })()`;
+  try { await splashWindow.webContents.executeJavaScript(script, true); } catch (_) {}
 }
 
 async function showRuntimeInformation() {
@@ -2359,10 +2366,14 @@ function createMainWindow() {
 
 async function startApplication() {
   await createSplash();
+  await updateSplash(8, '正在检查运行环境…', '启动页已打开，正在检查运行环境');
   await new Promise((resolve) => setImmediate(resolve));
+  await updateSplash(18, '正在加载服务器模块…', '加载 HTTP、Socket.IO 与媒体服务模块');
   ({ startSyncWatchServer } = require('./server'));
   if (storageSetupError) throw new Error(userFacingDesktopError(storageSetupError, '无法在程序根目录创建数据文件夹，请检查目录写入权限', '初始化数据目录失败'));
+  await updateSplash(30, '正在初始化数据目录…', '检查数据目录与实例锁');
   await migrateLegacyData();
+  await updateSplash(40, '正在读取服务器配置…', '读取端口、网卡、公网地址和权限设置');
   activeServerSettings = loadServerSettings({ create: !process.env.SYNCWATCH_DATA_DIR && commandLinePort() === '' && process.env.PORT === undefined });
   applyAutostartSetting(activeServerSettings.autostart);
   const startPort = resolvedStartPort(activeServerSettings);
@@ -2401,6 +2412,7 @@ async function startApplication() {
       applyAutostartSetting(true);
     }
   });
+  await updateSplash(58, '正在启动本机服务…', '准备 HTTP、WebSocket 和媒体 Range 服务');
   serverController = await startSyncWatchServer({
     host: '0.0.0.0', port: startPort, strictPort: false, dataDir, allowedHosts: configuredHosts,
     publicUrl: activeServerSettings.publicUrl, lanAddress,
@@ -2408,11 +2420,14 @@ async function startApplication() {
     publicDir: path.join(__dirname, 'public'), hostControlToken: HOST_CONTROL_TOKEN, tunnelManager, androidApkPath, clientDownloadPath,
     onFactoryResetRequested: factoryResetAndRestart, onRestartRequested: restartApplication
   });
+  await updateSplash(78, '服务器已启动，正在创建窗口…', `本机服务已监听端口 ${serverController.port}`);
   configureDisplayCapture();
   createMainWindow();
   configureWebPermissions();
   buildMenu();
   createTray();
+  await updateSplash(100, '启动完成', '主窗口已打开，服务器与房间可以使用');
+  setTimeout(() => { if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close(); }, 450);
   setImmediate(() => {
     serverController?.startConfiguredTunnel?.().catch((error) => console.warn('公网隧道自动启动失败：', error.message));
   });

@@ -1,10 +1,10 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.2.9 正式版；当前下载、哈希与资产列表以 [GitHub Release v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9) 为准，已核对 8 个维护者资产，页面连同 2 个源码归档共 10 个文件。
+适用范围：v2.3.0 候选版；当前正式下载仍以 [GitHub Release v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9) 为准。v2.3.0 的哈希、资产列表和页面链接待最终 Release API 核验后切换，共计划 8 个维护者资产和 2 个源码归档。
 
 ## 直接使用
 
-双击 Release 中的 `SyncWatch-v2.2.9-Full-Offline-Portable-x64.exe`。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
+双击 Release 中的 `SyncWatch-v2.3.0-Full-Offline-Portable-x64.exe`。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
 
 程序窗口打开后，从“系统 → 分享内网地址”分享链接。同一 Wi-Fi 或有线网络内的手机、平板、电脑、笔记本和电视浏览器均可访问。
 
@@ -88,7 +88,7 @@
 - 默认清晰度为原画；全屏可切换横屏/竖屏并手动放大缩小，桌面、网页和 Android 支持悬浮播放/画中画。
 - 屏幕共享采用低延迟画面帧同步，桌面端在系统和所选来源支持时会同时采集声音；Android 10 及以上客户端使用系统 MediaProjection 原生投屏，支持横竖屏热切换，并会在停止、锁屏、授权撤销、切换服务器或退出应用时自动结束。浏览器或受系统保护的窗口可能只允许共享画面。
 - 网页和 Android 手机端在竖屏使用“观影 / 聊天 / 片库 / 成员”四个至少 44px 高的入口，一次只展开一个主模块；四个入口随页面自然滚动，不会固定遮住下方内容。片库和成员以全宽抽屉打开，观影工具在小屏下重排为两列。顶栏“功能”使用不改变播放器高度的覆盖菜单，390px 起为三列，较窄手机为可滚动两列；点账号行会展开紧凑账号菜单，首行保留“退出登录，保留账号密码”和普通“退出登录”。前者清除会话后把本次账号密码恢复到登录表单，普通退出不保留。Android 按钮触控高度保持至少 48px。横屏保留播放器与聊天并排；功能项与 PC 端保持一致。
-- 顶栏“下载 APK”会下载本 EXE 内置并经过签名校验的 `SyncWatch-Android-v2.2.9-universal.apk`。安装后输入服务器地址即可使用与网页端一致的房间、播放、聊天、上传、全屏和账户功能；普通客户端不显示服务器 LAN IP，公网分享只使用可信 HTTPS/Tunnel 地址。
+- 顶栏“下载 APK”会下载本 EXE 内置并经过签名校验的 `SyncWatch-Android-v2.3.0-universal.apk`。安装后输入服务器地址即可使用与网页端一致的房间、播放、聊天、上传、全屏和账户功能；普通客户端不显示服务器 LAN IP，公网分享只使用可信 HTTPS/Tunnel 地址。
 - Electron 桌面端已配置系统屏幕/窗口选择器与捕获授权。Android APK 支持原生屏幕投放、文件多选、递归文件夹上传、上传中止、麦克风、下载和系统全屏；iPhone/iPad 浏览器目前不开放网页屏幕捕获，可观看共享或上传媒体同步播放。
 
 ## 公网访问
@@ -125,7 +125,7 @@ Windows Server、Linux、Docker Compose、自定义端口、安全组、域名 H
 
 不要删除 `.secrets/`、`config.json` 或 `chat-history.jsonl`；这些文件分别保存邮件加密密钥与主机令牌、账户/房间状态和聊天记录。只有在明确需要恢复 `admin/admin888` 时才删除非隐藏的 `secrets/` 目录。`cache/`、`logs/`、`crash-dumps/` 是桌面端可再生缓存，服务器迁移时可一并复制，也可以在服务停止后清理。
 
-EXE 未使用商业代码签名证书，首次运行仍可能出现 SmartScreen；在取得可信 Authenticode 证书前不能保证所有杀毒软件不误报。v2.2.9 有体验版和完整便携版两个用途不同的 Windows EXE，请在 [GitHub Releases](https://github.com/xuange6610/SyncWatch/releases) 中按文件名核对各自的字节数和 SHA-256。
+EXE 未使用商业代码签名证书，首次运行仍可能出现 SmartScreen；在取得可信 Authenticode 证书前不能保证所有杀毒软件不误报。v2.3.0 有体验版和完整便携版两个用途不同的 Windows EXE，请在 [GitHub Releases](https://github.com/xuange6610/SyncWatch/releases) 中按文件名核对各自的字节数和 SHA-256。
 
 ## 从源代码重新生成 EXE
 
@@ -135,7 +135,7 @@ EXE 未使用商业代码签名证书，首次运行仍可能出现 SmartScreen�
 powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
 ```
 
-脚本先执行接口、硬化、媒体、Electron、多窗口同步、公网隧道和成品契约，再使用现有发布密钥构建并验证 Android v2.2.9 APK。Windows 与 Android 正式构建产物必须由最终 Tag 源码直接生成到根目录 `dist/`，不会用空文件、旧包或改名文件补齐。
+脚本先执行接口、硬化、媒体、Electron、多窗口同步、公网隧道和成品契约，再使用现有发布密钥构建并验证 Android v2.3.0 APK。Windows 与 Android 正式构建产物必须由最终 Tag 源码直接生成到根目录 `dist/`，不会用空文件、旧包或改名文件补齐。
 
 - `electron-pink.js`：桌面入口、屏幕捕获、托盘和公网隧道生命周期。
 - `server/index.js`：HTTP、Socket.IO、账号、聊天、权限、文件与同步状态。
