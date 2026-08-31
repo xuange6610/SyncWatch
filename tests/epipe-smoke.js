@@ -69,6 +69,10 @@ function assertElectronEntryGuards() {
     'electron-pink.js: production smoke 退出计时器必须保持引用并实际调度');
   assert.doesNotMatch(productionSource, /timer = setTimeout\(resolve, 2000\);\s*timer\.unref\?\./,
     'electron-pink.js: updateSplash 超时计时器必须保持引用并实际调度');
+  const splashExecutionIndex = productionSource.indexOf('splashWindow.webContents.executeJavaScript(script, true)');
+  const splashTimerIndex = productionSource.indexOf('timer = setTimeout(resolve, 2000);');
+  assert.ok(splashTimerIndex >= 0 && splashTimerIndex < splashExecutionIndex,
+    'electron-pink.js: updateSplash 必须在调用渲染器脚本前安排超时计时器');
   return entryFiles.length;
 }
 

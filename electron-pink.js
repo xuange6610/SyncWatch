@@ -2148,14 +2148,19 @@ async function updateSplash(progress, message, logMessage = message) {
   if (!splashWindow || splashWindow.isDestroyed()) return;
   const value = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
   const script = `(() => { const fill = document.getElementById('fill'); const percent = document.getElementById('percent'); const status = document.getElementById('status'); const log = document.getElementById('log'); if (fill) fill.style.width = ${JSON.stringify(value + '%')}; if (percent) percent.textContent = ${JSON.stringify(value + '%')}; if (status) status.textContent = ${JSON.stringify(String(message || ''))}; if (log && ${JSON.stringify(String(logMessage || ''))}) { const line = document.createElement('div'); line.textContent = ${JSON.stringify(String(logMessage || ''))}; log.appendChild(line); log.scrollTop = log.scrollHeight; } })()`;
+  let timer;
   try {
+    // Schedule the bound before asking a possibly stalled hidden renderer to
+    // execute the progress update. On Windows the call itself can block while
+    // the splash renderer is closing, so creating the timer afterwards is too
+    // late to protect startup.
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(resolve, 2000);
+    });
     const execution = splashWindow.webContents.executeJavaScript(script, true);
-    let timer;
     await Promise.race([
       execution,
-      new Promise((resolve) => {
-        timer = setTimeout(resolve, 2000);
-      })
+      timeout
     ]);
     if (timer) clearTimeout(timer);
   } catch (_) {}
