@@ -680,6 +680,32 @@ textarea:focus { border-color: var(--pink); box-shadow: 0 0 0 3px #52c7b820; }
 .desktop-close-card .setting-status { min-height: 0; margin: 10px 0 0; color: var(--red); }
 @keyframes recommended-action-breathe { 0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, var(--pink)) 28%, transparent), 0 8px 22px color-mix(in srgb, var(--theme-accent, var(--pink)) 12%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent, var(--pink)) 70%, transparent), 0 0 24px color-mix(in srgb, var(--theme-accent, var(--pink)) 38%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .owner-exit-actions > .owner-exit-default, .desktop-close-actions > [data-desktop-close="minimize"] { animation: none; } }
+
+/* Keep grouped toolbar menus readable at laptop widths. Legacy single-row
+   rules could shrink the panel until Chinese labels wrapped one character per
+   line; the grouped controls need a stable readable width. */
+.topbar-menu-trigger { min-width: 78px; justify-content: center; }
+.topbar-menu-panel { min-width: 250px; width: max-content; max-width: min(360px, calc(100vw - 24px)); }
+.topbar-menu-panel .header-feature-button { white-space: normal; }
+.topbar-menu-panel .header-feature-button .button-label { overflow-wrap: break-word; word-break: keep-all; }
+@media (min-width: 925px) and (max-width: 1450px) {
+  .topbar { display: grid; grid-template-columns: max-content minmax(0, 1fr) minmax(0, auto); grid-template-areas: "brand room actions"; height: auto; min-height: 58px; padding-block: 6px; gap: 10px; }
+  .topbar > .brand { grid-area: brand; }
+  .topbar > .room-header { grid-area: room; width: auto; max-width: none; min-width: 0; }
+  .topbar > .topbar-actions { grid-area: actions; max-width: min(52vw, 640px); min-width: 0; justify-self: end; }
+  .topbar-scroll-actions { min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: visible; scrollbar-width: none; }
+  .topbar-scroll-actions::-webkit-scrollbar { display: none; }
+  .topbar-fixed-actions { gap: 4px; }
+  .server-endpoint-badge { max-width: clamp(112px, 12vw, 150px); }
+}
+@media (min-width: 925px) and (max-width: 1120px) {
+  .topbar { grid-template-columns: max-content minmax(120px, 1fr) max-content; }
+  .room-header { grid-template-columns: minmax(0, 1.4fr) minmax(52px, .8fr); gap: 8px; }
+  .room-header > span:nth-child(n + 3) { display: none; }
+  .topbar > .topbar-actions { max-width: min(56vw, 470px); }
+  .topbar-scroll-actions .header-feature-button .button-label { display: none; }
+  .topbar-scroll-actions .header-feature-button { min-width: 34px; padding-inline: 6px; justify-content: center; }
+}
 .f11-prompt-card { width: min(450px, 100%); text-align: center; }.f11-prompt-card h2 { margin: 6px 0 8px; }.f11-prompt-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }.f11-prompt-preference { display: grid; gap: 6px; margin-top: 14px; text-align: left; color: var(--muted); font-size: 11px; }.f11-prompt-preference select { width: 100%; }.f11-prompt-card .text-button { width: 100%; margin-top: 8px; }
 .global-room-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .global-room-metrics > span { min-width: 0; display: grid; gap: 3px; padding: 8px; background: #00000018; border: 1px solid var(--line); border-radius: 6px; }.global-room-metrics small { color: var(--muted); font-size: 9px; }.global-room-metrics strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }

@@ -1,5 +1,7 @@
 # SyncWatch 长期维护与交付要求
 
+当前线上正式版本：`v2.3.1`（候选发布，尚未切换 Latest）；完成源码、构建、启动、哈希和远端页面核对后才可公开。
+
 `v2.3.0` 同版本纠正覆盖已完成并公开为 Latest。共享性能、音源状态、主题回执和桌面启动重试已进入重新构建的 8 项维护者资产；原子工作流在构建、启动、哈希和远端回读全部成功后删除了被替换的 v2.3.0 旧资产，所有历史 Release 保持不变。
 
 本文记录已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口。发布失败的技术根因、门禁和固定执行顺序统一见 [release-failure-playbook.md](release-failure-playbook.md)；具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
