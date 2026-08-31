@@ -63,6 +63,8 @@ function assertElectronEntryGuards() {
   const productionElectronIndex = productionSource.indexOf("require('electron')");
   assert.ok(productionGuardIndex >= 0 && productionGuardIndex < productionElectronIndex,
     'electron-pink.js: 生产入口必须在加载 Electron 前安装 EPIPE 防护');
+  assert.match(productionSource, /SYNCWATCH_EPIPE_CASE === 'production'\) process\.exit\(0\);/,
+    'electron-pink.js: production EPIPE smoke 必须在 Electron 生命周期阻塞前直接退出');
   return entryFiles.length;
 }
 

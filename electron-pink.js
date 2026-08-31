@@ -2447,7 +2447,7 @@ async function startApplication() {
       // The EPIPE smoke deliberately destroys Electron's output pipes. On
       // Windows, graceful app.quit() can wait on a hidden renderer forever;
       // the smoke only needs to prove the guard and clean process exit.
-      if (process.env.SYNCWATCH_EPIPE_CASE === 'production') app.exit(0);
+      if (process.env.SYNCWATCH_EPIPE_CASE === 'production') process.exit(0);
       else app.quit();
     };
     setTimeout(exitSmoke, Math.max(500, Number(process.env.SYNCWATCH_SMOKE_EXIT_MS) || 2000)).unref?.();
