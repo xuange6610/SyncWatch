@@ -2885,7 +2885,7 @@ async function startSyncWatchServer(options = {}) {
         screenShare: { active: false, socketId: null, username: null },
         audioShare: { active: false, socketId: null, username: null, displayName: '', platform: 'system', sourceName: '', volume: 0.8 },
         webShare: {
-          active: savedWebShare.active === true && Boolean(savedWebUrl), url: savedWebUrl,
+          active: savedWebShare.active === true && Boolean(savedWebUrl), mode: savedWebShare.mode === 'live' ? 'live' : 'url', url: savedWebUrl,
           title: cleanText(savedWebShare.title || '共享网页', 120), changedBy: cleanUsername(savedWebShare.changedBy),
           updatedAt: Math.max(0, Number(savedWebShare.updatedAt) || 0), revision: Math.max(0, Math.floor(Number(savedWebShare.revision) || 0))
         }
@@ -2948,7 +2948,7 @@ async function startSyncWatchServer(options = {}) {
       },
       textReading: normalizeTextReadingState(runtime.roomState.textReading),
       webShare: {
-        active: runtime.roomState.webShare.active === true, url: normalizeSharedWebUrl(runtime.roomState.webShare.url),
+        active: runtime.roomState.webShare.active === true, mode: runtime.roomState.webShare.mode === 'live' ? 'live' : 'url', url: normalizeSharedWebUrl(runtime.roomState.webShare.url),
         title: cleanText(runtime.roomState.webShare.title, 120), changedBy: cleanUsername(runtime.roomState.webShare.changedBy),
         updatedAt: Math.max(0, Number(runtime.roomState.webShare.updatedAt) || 0), revision: Math.max(0, Math.floor(Number(runtime.roomState.webShare.revision) || 0))
       },
@@ -11153,12 +11153,6 @@ async function startSyncWatchServer(options = {}) {
       const snapshot = playbackSnapshot();
       io.to(roomChannel()).emit('playback-command', { ...snapshot, action, sourceSocketId: socket.id, serverTime: snapshot.updatedAt });
       io.to(roomChannel()).emit('playback-change', change);
-      if (action === 'seek') {
-        const actorName = state.accounts[user.username]?.displayName || user.username;
-        broadcastRoomNotice(user.roomId, `${actorName} 将进度拖动到 ${Math.floor(roomState.playback.currentTime)} 秒`, {
-          kind: 'playback-seek', actor: user.username, actorName, currentTime: roomState.playback.currentTime
-        });
-      }
       return acknowledgement?.({ success: true, change });
     });
 
@@ -11175,13 +11169,13 @@ async function startSyncWatchServer(options = {}) {
         revision: roomState.playback.revision + 1
       };
       const textReading = resetTextReadingState(null, user.username);
-      roomState.webShare = { active: false, url: '', title: '', changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1 };
+      roomState.webShare = { active: false, mode: 'live', url: '', title: '', changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1 };
       const screenShareStopped = stopScreenShare('', user.roomId);
       persist();
       recordOperation({ actor: user.username, action: 'clear-playback', summary: '清空当前播放画面', undo: { kind: 'clear-playback', before: previous } });
       io.to(roomChannel()).emit('playback-state', playbackSnapshot());
       io.to(roomChannel()).emit('text-reading-state', textReading);
-      io.to(roomChannel()).emit('web-share-state', { active: false, url: '', title: '', sharedBy: '', updatedAt: Date.now() });
+      io.to(roomChannel()).emit('web-share-state', { active: false, mode: 'live', url: '', title: '', sharedBy: '', updatedAt: Date.now() });
       const actorName = state.accounts[user.username]?.displayName || user.username;
       const notice = broadcastRoomNotice(user.roomId, `${actorName} 清空了画面`, {
         kind: 'playback-cleared', actor: user.username, actorName, important: true
@@ -12352,7 +12346,8 @@ async function startSyncWatchServer(options = {}) {
       }
       const url = normalizeSharedWebUrl(payload.url);
       if (!url) return acknowledgement?.({ success: false, error: '请输入有效的 HTTP 或 HTTPS 网址' });
-      stopScreenShare(roomState.screenShare.socketId, user.roomId);
+      const liveMode = payload.mode === 'live';
+      if (!liveMode) stopScreenShare(roomState.screenShare.socketId, user.roomId);
       // A URL share replaces the synchronized media surface. Clear the
       // previous video/audio state first so clients cannot keep rendering a
       // stale player underneath the shared page.
@@ -12364,7 +12359,7 @@ async function startSyncWatchServer(options = {}) {
       };
       const textReading = resetTextReadingState(null, user.username);
       roomState.webShare = {
-        active: true, url, title: cleanText(payload.title || '共享网页', 120),
+        active: true, mode: liveMode ? 'live' : 'url', url, title: cleanText(payload.title || '共享网页', 120),
         changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1
       };
       persist();
@@ -12372,7 +12367,7 @@ async function startSyncWatchServer(options = {}) {
       io.to(roomChannel()).emit('text-reading-state', textReading);
       io.to(roomChannel()).emit('web-share-state', { roomId: user.roomId, ...roomState.webShare, serverTime: Date.now() });
       recordOperation({ actor: user.username, action: 'web-share-start', summary: `共享网址：${url}` });
-      return acknowledgement?.({ success: true, webShare: { ...roomState.webShare }, message: '网址已同步到当前房间；原播放画面已清空。网址由各端独立加载，如需相同实时画面请使用标签页/窗口共享' });
+      return acknowledgement?.({ success: true, webShare: { ...roomState.webShare }, message: liveMode ? '网页已同步为实时画面，房间成员将看到同一标签页或窗口' : '网址已同步到当前房间；原播放画面已清空。网址由各端独立加载，如需相同实时画面请使用标签页/窗口共享' });
     });
 
     onSafe('web-share-stop', (payload = {}, acknowledgement) => {
@@ -12382,14 +12377,15 @@ async function startSyncWatchServer(options = {}) {
       if (!(user.username === state.room.ownerUsername || isSuperAdmin(user.username) || permissions.shareWeb || permissions.manageRoom)) {
         return acknowledgement?.({ success: false, error: '没有停止网址共享的权限' });
       }
-      roomState.webShare = { active: false, url: '', title: '', changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1 };
+      const stoppedScreenShare = stopScreenShare(roomState.screenShare.socketId, user.roomId);
+      roomState.webShare = { active: false, mode: 'live', url: '', title: '', changedBy: user.username, updatedAt: Date.now(), revision: Math.max(0, Number(roomState.webShare.revision) || 0) + 1 };
       persist();
       io.to(roomChannel()).emit('web-share-state', { roomId: user.roomId, ...roomState.webShare, serverTime: Date.now() });
       const actorName = state.accounts[user.username]?.displayName || user.username;
       const notice = broadcastRoomNotice(user.roomId, `${actorName} 清空了画面`, {
         kind: 'playback-cleared', actor: user.username, actorName, important: true
       });
-      return acknowledgement?.({ success: true, message: '网址共享已停止', notice });
+      return acknowledgement?.({ success: true, message: '网址共享已停止', screenShareStopped: stoppedScreenShare, notice });
     });
 
     onSafe('chat-delete', async (payload = {}, acknowledgement) => {
@@ -13886,7 +13882,7 @@ async function startSyncWatchServer(options = {}) {
         persist();
         recordOperation({ actor: user.username, action: 'upload-limits', summary: '修改服务器上传限制', scope: 'server', undo: { kind: 'upload-limits', before, after: { uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds } } });
         for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('upload-limits', { maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds });
-        return acknowledgement?.({ success: true, message: bytes || seconds ? '上传限制已保存' : '已取消上传大小和时长限制' });
+        return acknowledgement?.({ success: true, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, message: bytes || seconds ? '上传限制已保存' : '已取消上传大小和时长限制' });
       }
       if (action === 'set-room-storage-limit') {
         const targetRoomId = normalizeRoomId(payload.roomId) || currentRoomId();

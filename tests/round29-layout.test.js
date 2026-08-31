@@ -40,6 +40,10 @@ assert.match(app, /elements\.danmakuSettingsBtn\?\.addEventListener\('click', to
 assert.match(css, /panel-collapse-pulse/);
 assert.match(css, /\.topbar-menu:not\(\[open\]\)\s*>\s*\.topbar-menu-panel\s*\{\s*display:\s*none/,
   '未展开的顶部菜单不得渲染内部按钮或挤出视口');
+assert.match(css, /\.topbar-menu-panel::before\s*\{[^}]*top:\s*-8px;[^}]*height:\s*8px;/,
+  '桌面顶部菜单必须保留从触发器到下拉项的连续悬停路径');
+assert.match(css, /@media\s*\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)[\s\S]{0,260}\.topbar-menu:hover\s*>\s*\.topbar-menu-panel\s*\{\s*display:\s*grid\s*!important;/,
+  '支持悬停的桌面浏览器必须能直接展开顶部菜单项');
 assert.match(html, /id=["']fullscreenLockBtn["'][\s\S]{0,220}快捷键 L/,
   '全屏锁定按钮必须明确显示 L 快捷键');
 assert.match(html, /按 F2 或回车呼出边看边聊/,
@@ -72,8 +76,13 @@ assert.ok(html.lastIndexOf('id="loginHostShortcuts"') > html.indexOf('id="myRoom
 assert.ok(html.indexOf('id="loginHostShortcuts"') < html.indexOf('class="device-ip-row"'), '服务器快捷入口必须位于设备 IP 信息之前');
 assert.doesNotMatch(html, /id=["']adminUnlimitedDevices["']/, 'admin 登录策略应使用明确的并发数量，而不是不限设备开关');
 assert.match(html, /id=["']adminMaxConcurrentSessions["'][^>]*type=["']number["'][^>]*min=["']1["'][^>]*max=["']20["']/);
-assert.match(html, /实时共享网页画面/);
-assert.match(html, /同步网址（各端独立浏览）/);
+assert.match(html, /同步观影网址（实时画面）/);
+assert.match(html, /支持任意 HTTP\/HTTPS 网页/);
+assert.match(app, /if \(!roomId\)[\s\S]{0,140}请输入房间号后再登录/);
+assert.match(app, /mode: 'live'/);
+assert.match(app, /const passwordState = room\.passwordRequired \? ['"]密码：有['"] : ['"]密码：无['"]/, '在线房间下拉必须显示实时密码状态');
+assert.match(app, /select\.id === ['"]onlineRoomSelect['"][\s\S]{0,220}Math\.min\(520/, '在线房间下拉菜单必须提供更宽的可读宽度');
+assert.match(css, /recommended-action-breathe/);
 assert.match(app, /state\.localCapture\s*=\s*stream[\s\S]{0,500}emitAck\(['"]screen-share-start['"]/, '屏幕流必须在通知观看端建连前可用');
 assert.match(app, /get-account-overview/, '账号总览必须使用独立服务端 action');
 assert.match(app, /SyncWatchPlatform\?\.serverApp\) document\.body\.classList\.add\(['"]electron-server['"]\)/, 'Electron 服务端必须使用专用布局标记');
@@ -139,6 +148,13 @@ assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stri
 assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated \|\| state\.managementOnlyAuth\)/,
   '进入普通观影房间后必须隐藏服务器登录快捷入口');
 assert.match(app, /function initializeMiddleMouseScroll\(\)/, '网页端必须注册中键拖动滚动处理');
+assert.match(app, /state\.publicConfig\s*=\s*\{[\s\S]{0,320}maxUploadBytes:[\s\S]{0,240}uploadTimeLimitSeconds:/, '保存上传限制后必须立即同步影片库提示状态');
+assert.match(app, /function saveUploadLimits\(\)[\s\S]{0,1000}applyPublicConfig\(\)/, '上传限制保存完成后必须重新渲染客户端提示');
+assert.match(app, /else elements\.topbarDisplayModeBtn\.textContent\s*=\s*compact\s*\?\s*['"]精简模式['"]\s*:\s*['"]文字模式['"]/, '工具栏模式切换必须兼容直接文本节点');
+assert.match(app, /loginMusicNowPlaying\.classList\.toggle\(['"]is-hidden['"],\s*!\(music\.enabled\s*&&\s*music\.url\s*&&\s*!state\.authenticated\)/,
+  '登录音乐控制窗口不能因隐藏标题设置而在手机网页消失');
+assert.match(css, /\.login-page\s*>\s*\.login-now-playing\s*\{\s*z-index:\s*180;/,
+  '登录音乐控制窗口必须位于登录表单之上');
 assert.match(app, /function initializeOnboardingGuide\(\)/, '首次进入必须注册新手引导');
 assert.match(app, /ONBOARDING_GUIDE_KEY/, '新手引导完成状态必须持久化');
 assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*main \{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,

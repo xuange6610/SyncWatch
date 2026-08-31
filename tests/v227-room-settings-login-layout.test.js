@@ -23,6 +23,6 @@ assert.match(app, /videoManagementBatchCoverBtn/, '视频管理必须提供批�
 assert.match(app, /\/api\/files\/cover\/batch/, '批量封面必须调用服务器生成接口');
 assert.match(server, /onSafe\(['"]web-share-start['"]/, '服务端必须提供网页共享启动事件');
 assert.match(server, /fileId:\s*null[\s\S]{0,240}playbackRate:\s*1/, '网页共享启动必须清空原播放状态');
-assert.match(html, /同步网址.*各端独立浏览/, '网页 URL 模式必须明确各端独立加载边界');
+assert.match(html, /同步观影网址（实时画面）|同步网址.*各端独立浏览/, '网页共享必须明确实时画面或兼容预览边界');
 
 console.log('v2.2.8 room settings and login layout contract passed');

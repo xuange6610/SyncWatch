@@ -3,7 +3,7 @@
 const HOST_TOKEN_SESSION_KEY = 'syncwatchHostToken';
 const UI_COPY_DEFAULTS = Object.freeze({
   'login.title': '登录 SyncWatch同步观影', 'login.usernameLabel': '账号或邮箱', 'login.passwordLabel': '密码',
-  'login.roomLabel': '房间号（可选）', 'login.submit': '登录并进入房间', 'login.register': '注册账号',
+  'login.roomLabel': '房间号（必填）', 'login.submit': '登录并进入房间', 'login.register': '注册账号',
   'login.guest': '游客模式 · 免注册', 'login.guestIpOccupied': '当前 IP 已有游客在线，请先退出后再进入',
   'login.forgot': '忘记密码', 'login.admin': '服务器设置', 'login.connecting': '正在连接服务器…',
   'topbar.appName': 'SyncWatch同步观影', 'topbar.serverSettings': '服务器设置', 'topbar.management': '管理中心',
@@ -144,7 +144,7 @@ const state = {
   operationHistoryQuery: '', operationHistoryScope: '', selectedOperations: new Set(), returnToManagementAfterChild: false,
   managementOnlyAuth: false,
   managementSection: 'server', managementScope: 'full', managementHomeParent: null, managementHomeNextSibling: null, adminRefreshTimer: null, adminRefreshInFlight: false,
-  controlRequest: null, controlSuppressions: {}, lanRooms: [], selectedLanRooms: new Set(), onlineRooms: [], onlineRoomSearch: '', lanRoomSearch: '', lanScanResolver: null,
+  controlRequest: null, controlSuppressions: {}, lanRooms: [], selectedLanRooms: new Set(), onlineRooms: [], onlineRoomSearch: '', onlineRoomsRefreshTimer: null, lanRoomSearch: '', lanScanResolver: null,
   screenPeers: new Map(), remoteScreenPeer: null, remoteScreenStream: null, screenSignalQueues: new Map(),
   screenAudioContext: null, screenAudioNextTime: 0, screenAudioSequence: 0, screenAudioQueue: [], screenAudioLastSequence: 0, screenAudioLastSequenceAt: 0, screenAudioProcessor: null, screenAudioSource: null,
   screenAudioSink: null, screenPlaybackAudioContext: null,
@@ -156,7 +156,7 @@ const state = {
   liveVoiceStream: null, liveVoiceMode: '', liveVoiceMuted: false, liveVoicePeers: new Map(), liveVoiceSignalQueues: new Map(), pendingVoiceCallId: '',
   liveVoiceCollapsed: localStorage.getItem('syncwatchLiveVoiceCollapsed') !== '0', liveVoiceFloatingCollapsed: localStorage.getItem('syncwatchVoiceFloatingCollapsed') !== '0', liveVoicePushRestoreMuted: null,
   roomIdTouched: false, loginRoomPasswordRequired: null, loginRoomPasswordRoomId: '', agreementResolver: null, screenNoticeTimer: null, viewRotation: 0, viewZoom: 1,
-  webShare: { active: false, url: '', title: '', updatedAt: 0 }, floatingPlayerActive: false, documentPipWindow: null, pipDanmakuLayer: null, ownerExitResolver: null, recentNoticeKeys: new Map(),
+  webShare: { active: false, mode: 'live', url: '', title: '', updatedAt: 0 }, floatingPlayerActive: false, documentPipWindow: null, pipDanmakuLayer: null, ownerExitResolver: null, recentNoticeKeys: new Map(),
   desktopClosePending: false,
   pendingJoinRoomId: '', mediaCategoryFilter: '', mediaCategories: [], roomMarquee: null,
   selectedProfileRooms: new Set(), selectedMediaFiles: new Set(), selectedLibraryQueueFiles: new Set(), selectedQueueFiles: new Set(), selectedManagementFiles: new Set(), selectedGlobalRooms: new Set(), selectedRoomMediaPreviewFiles: new Set(), roomMediaPreviewRoomId: '', roomMediaPreviewFiles: [],
@@ -186,7 +186,7 @@ const state = {
   mediaProcessingStatus: null, mediaProcessingLoading: false, mediaProcessingSearch: '', selectedMediaProcessingTasks: new Set(),
   playerSeekDragging: false, playerSeekTarget: null, lastCommittedSeek: null,
   roomEntryNotice: null, roomEntryNoticeTimer: null, roomEntryNoticeEndsAt: 0,
-  clipboardPasteFallbacks: new WeakMap(), switchOwnedRoomsLoading: false, switchOwnedRoomSnapshot: [], selectedSwitchOwnedRooms: new Set(),
+  clipboardPasteFallbacks: new WeakMap(), switchOwnedRoomsLoading: false, switchOwnedRoomSnapshot: [], switchOwnedRoomQuery: '', selectedSwitchOwnedRooms: new Set(),
   loginRoomSnapshot: [], selectedLoginRooms: new Set(), loginRoomQuota: 1, loginOwnedRoomCount: 0, loginRoomPromptActive: false,
   applicationRefreshInFlight: false, modalLayerCounter: 500, pendingQualityRequest: null,
   pendingClientModeRequests: [], clientModePromptActive: false, activeClientModeRequestId: '', skipOutroHandledGeneration: -1,
@@ -347,7 +347,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
-   managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
+   managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchRoomSearch switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
   fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown serverEndpointDetailsModal closeServerEndpointDetailsBtn serverEndpointDetailsAddress serverEndpointDetailsState serverEndpointDetailsHint copyServerEndpointDetailsBtn openServerEndpointDetailsBtn roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
@@ -1034,7 +1034,13 @@ function applyLoginMusic(value = {}) {
   const audio = elements.loginMusicAudio;
   const title = currentLoginMusicTitle(music);
   if (elements.loginMusicNowPlayingTitle) elements.loginMusicNowPlayingTitle.textContent = title;
-  if (elements.loginMusicNowPlaying) elements.loginMusicNowPlaying.classList.toggle('is-hidden', !(music.enabled && music.url && music.showTitle && !state.authenticated));
+  // The title preference controls the label, not whether playback controls
+  // exist. Keep the play, mute and progress controls available on mobile web
+  // even when the administrator hides the title text.
+  if (elements.loginMusicNowPlaying) {
+    elements.loginMusicNowPlaying.classList.toggle('is-hidden', !(music.enabled && music.url && !state.authenticated));
+    elements.loginMusicNowPlaying.classList.toggle('is-title-hidden', !music.showTitle);
+  }
   if (!audio) return;
   audio.loop = music.playbackMode === 'single-loop';
   audio.volume = state.loginMusicPreference.volume ?? music.volume;
@@ -2043,6 +2049,9 @@ function bindUiEvents() {
     renderOnlineRoomOptions();
   });
   elements.refreshOnlineRoomsBtn?.addEventListener('click', refreshOnlineRooms);
+  if (!state.onlineRoomsRefreshTimer) state.onlineRoomsRefreshTimer = setInterval(() => {
+    if (!state.authenticated && !document.hidden) void loadOnlineRooms();
+  }, 15000);
   elements.myRoomsLoginBtn?.addEventListener('click', loadMyRoomsBeforeLogin);
   elements.serverAdminLoginBtn?.addEventListener('click', () => loginAsServerAdmin('management'));
   elements.serverAdminRoomLoginBtn?.addEventListener('click', () => loginAsServerAdmin('room'));
@@ -2599,6 +2608,10 @@ function bindUiEvents() {
   elements.closeSwitchRoomBtn?.addEventListener('click', () => elements.switchRoomModal.classList.add('is-hidden'));
   elements.switchRoomForm?.addEventListener('submit', switchRoom);
   elements.switchOwnedRoomRefreshBtn?.addEventListener('click', () => refreshSwitchOwnedRooms(true));
+  elements.switchRoomSearch?.addEventListener('input', () => {
+    state.switchOwnedRoomQuery = elements.switchRoomSearch.value;
+    renderSwitchOwnedRooms(state.switchOwnedRoomSnapshot);
+  });
   elements.switchOwnedRoomList?.addEventListener('click', handleSwitchOwnedRoomAction);
   elements.switchOwnedRoomList?.addEventListener('change', handleSwitchOwnedRoomSelection);
   elements.pasteSwitchRoomIdBtn?.addEventListener('click', () => pasteIntoInput(elements.switchRoomId, true));
@@ -2908,7 +2921,10 @@ function positionEnhancedSelectMenu() {
   const trigger = shell?.querySelector('.select-trigger');
   if (!trigger) return;
   const rect = trigger.getBoundingClientRect();
-  const width = Math.max(170, rect.width);
+  const preferredWidth = select.id === 'onlineRoomSelect'
+    ? Math.max(rect.width, Math.min(520, window.innerWidth - 16))
+    : rect.width;
+  const width = Math.max(170, Math.min(window.innerWidth - 16, preferredWidth));
   const maxHeight = Math.max(150, Math.min(360, window.innerHeight - 20));
   const menuHeight = Math.min(menu.scrollHeight || 220, maxHeight);
   const openAbove = rect.bottom + 6 + menuHeight > window.innerHeight && rect.top - 6 - menuHeight >= 8;
@@ -3422,6 +3438,7 @@ function connectSocket() {
   state.socket.on('screen-notice', showScreenNotice);
   state.socket.on('permissions-changed', handlePermissionsChanged);
   state.socket.on('system-notification', (notice) => {
+    if (notice?.kind === 'playback-seek') return;
     const key = `${notice?.roomId || ''}|${notice?.kind || ''}|${notice?.actor || ''}|${notice?.message || ''}`;
     const previous = Number(state.recentNoticeKeys.get(key) || 0);
     if (Date.now() - previous < 5000) return;
@@ -3619,10 +3636,10 @@ function handleLoginUsernameInput() {
     elements.roomIdInput.value = '';
     elements.loginRoomPassword.value = '';
     setLoginRoomPasswordState(null, '未选择房间');
-    elements.roomLookupStatus.textContent = '超级管理员可留空进入临时房间，也可手动输入现有房间号';
+    elements.roomLookupStatus.textContent = '请输入房间号；超级管理员可使用本机管理入口直接进入设置';
     setLoginStatus('admin 登录不会自动填写房间号；服务器设备也可使用超级管理员入口。', true);
   } else if (!admin && !elements.roomIdInput.value) {
-    elements.roomLookupStatus.textContent = '房间号可留空；留空会进入退出即删除的临时房间，也可从在线房间中选择';
+    elements.roomLookupStatus.textContent = '房间号为必填项，请从在线房间中选择或手动输入';
   }
 }
 
@@ -3650,7 +3667,8 @@ function renderOnlineRoomOptions() {
   const current = String(elements.roomIdInput?.value || '').trim().toUpperCase();
   const options = rooms.map((room) => {
     const owner = room.ownerName || room.ownerUsername || '未知';
-    return `<option value="${escapeHtml(room.id)}">[${room.temporary ? '临时房间' : '正式房间'}] ${escapeHtml(room.name)} · 房主 ${escapeHtml(owner)} · ${escapeHtml(room.id)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 需密码' : ''}</option>`;
+    const passwordState = room.passwordRequired ? '密码：有' : '密码：无';
+    return `<option value="${escapeHtml(room.id)}">[${room.temporary ? '临时房间' : '正式房间'}] ${escapeHtml(room.name)} · 房主 ${escapeHtml(owner)} · 房间号 ${escapeHtml(room.id)} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人 · ${passwordState}</option>`;
   }).join('');
   const emptyText = query && !rooms.length ? `没有匹配“${escapeHtml(query)}”的在线房间` : '当前服务器在线房间';
   elements.onlineRoomSelect.innerHTML = `<option value="">${emptyText}</option>${options}`;
@@ -4361,9 +4379,12 @@ async function recoverPasswordByEmail() {
 async function login(event) {
   event.preventDefault();
   const roomId = String(elements.roomIdInput?.value || '').trim().toUpperCase();
+  if (!roomId) {
+    elements.roomIdInput?.focus();
+    return setLoginStatus('请输入房间号后再登录');
+  }
   if (roomId && !/^[A-Z0-9]{4,32}$/.test(roomId)) return setLoginStatus('请输入正确的房间号（4-32 位大写字母或数字）');
   try {
-    if (!roomId && await maybeShowLoginRoomReminder()) return;
     if (await promptForMissingLoginRoomPassword(roomId)) return;
     await submitAccountLogin();
   } catch (error) {
@@ -4404,6 +4425,10 @@ async function submitAccountLogin() {
 
 async function guestLogin() {
   if (elements.guestLoginBtn?.disabled) return;
+  if (!String(elements.roomIdInput?.value || '').trim()) {
+    elements.roomIdInput?.focus();
+    return setLoginStatus('请输入房间号后再进入游客模式');
+  }
   elements.guestLoginBtn.disabled = true;
   const originalText = elements.guestLoginBtn.textContent;
   elements.guestLoginBtn.textContent = '正在进入游客模式…';
@@ -4577,6 +4602,8 @@ function openSwitchRoom(roomId = '') {
   if (!state.authenticated) return toast('请先登录账号', 'error');
   elements.switchRoomId.value = String(roomId || '').trim().toUpperCase();
   elements.switchRoomPassword.value = '';
+  state.switchOwnedRoomQuery = '';
+  if (elements.switchRoomSearch) elements.switchRoomSearch.value = '';
   renderSwitchOwnedRooms(state.profile?.recentRooms || [], { loading: !state.profile });
   elements.switchRoomModal.classList.remove('is-hidden');
   elements.switchRoomId.focus();
@@ -4589,12 +4616,16 @@ function renderSwitchOwnedRooms(rooms = [], { loading = false, error = '' } = {}
   const ownedRooms = (Array.isArray(rooms) ? rooms : [])
     .filter((room) => room?.owned)
     .sort((left, right) => Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) || String(left.name || left.id).localeCompare(String(right.name || right.id), 'zh-CN'));
+  const query = String(state.switchOwnedRoomQuery || '').trim().toLocaleLowerCase();
+  const visibleRooms = query
+    ? ownedRooms.filter((room) => [room.name, room.id, room.ownerName, room.ownerUsername].some((value) => String(value || '').toLocaleLowerCase().includes(query)))
+    : ownedRooms;
   if (elements.switchOwnedRoomStatus) {
     elements.switchOwnedRoomStatus.textContent = loading
       ? '正在刷新…'
       : error
         ? '刷新失败，可使用已有列表'
-        : `共 ${ownedRooms.length} 个`;
+        : query ? `显示 ${visibleRooms.length}/${ownedRooms.length} 个` : `共 ${ownedRooms.length} 个`;
   }
   state.switchOwnedRoomSnapshot = ownedRooms;
   state.selectedSwitchOwnedRooms = new Set([...state.selectedSwitchOwnedRooms].filter((id) => ownedRooms.some((room) => room.id === id)));
@@ -4602,7 +4633,12 @@ function renderSwitchOwnedRooms(rooms = [], { loading = false, error = '' } = {}
     elements.switchOwnedRoomList.innerHTML = `<div class="switch-owned-room-empty"><p>${loading ? '正在读取我的房间…' : error ? escapeHtml(error) : '还没有自己拥有的正式房间。'}</p><button data-switch-room-action="create" class="primary-button" type="button">创建正式房间</button></div>`;
     return;
   }
-  elements.switchOwnedRoomList.innerHTML = `<div class="room-directory-toolbar switch-room-toolbar"><label class="check-line"><input data-switch-owned-select-all type="checkbox" ${state.selectedSwitchOwnedRooms.size === ownedRooms.length ? 'checked' : ''}> 全选</label><button data-switch-room-action="delete-selected" class="danger-button" type="button" ${state.selectedSwitchOwnedRooms.size ? '' : 'disabled'}>删除所选（${state.selectedSwitchOwnedRooms.size}）</button></div>${ownedRooms.map((room) => {
+  if (!visibleRooms.length) {
+    elements.switchOwnedRoomList.innerHTML = `<div class="switch-owned-room-empty"><p>没有匹配“${escapeHtml(state.switchOwnedRoomQuery)}”的房间。</p><small>可搜索房主名字、房间号或房间名字。</small></div>`;
+    return;
+  }
+  const allVisibleSelected = visibleRooms.every((room) => state.selectedSwitchOwnedRooms.has(String(room.id || '').toUpperCase()));
+  elements.switchOwnedRoomList.innerHTML = `<div class="room-directory-toolbar switch-room-toolbar"><label class="check-line"><input data-switch-owned-select-all type="checkbox" ${allVisibleSelected ? 'checked' : ''}> 全选</label><button data-switch-room-action="delete-selected" class="danger-button" type="button" ${state.selectedSwitchOwnedRooms.size ? '' : 'disabled'}>删除所选（${state.selectedSwitchOwnedRooms.size}）</button></div>${visibleRooms.map((room) => {
     const id = String(room.id || '').toUpperCase();
     const current = id === currentRoomId;
     const disabled = current || room.banned;
@@ -4657,7 +4693,12 @@ async function handleSwitchOwnedRoomAction(event) {
 
 function handleSwitchOwnedRoomSelection(event) {
   if (event.target.matches('[data-switch-owned-select-all]')) {
-    state.selectedSwitchOwnedRooms = event.target.checked ? new Set(state.switchOwnedRoomSnapshot.map((room) => room.id)) : new Set();
+    const query = String(state.switchOwnedRoomQuery || '').trim().toLocaleLowerCase();
+    const visibleRooms = query
+      ? state.switchOwnedRoomSnapshot.filter((room) => [room.name, room.id, room.ownerName, room.ownerUsername].some((value) => String(value || '').toLocaleLowerCase().includes(query)))
+      : state.switchOwnedRoomSnapshot;
+    if (event.target.checked) visibleRooms.forEach((room) => state.selectedSwitchOwnedRooms.add(String(room.id || '').toUpperCase()));
+    else visibleRooms.forEach((room) => state.selectedSwitchOwnedRooms.delete(String(room.id || '').toUpperCase()));
   } else if (event.target.matches('[data-switch-owned-select]')) {
     if (event.target.checked) state.selectedSwitchOwnedRooms.add(event.target.value); else state.selectedSwitchOwnedRooms.delete(event.target.value);
   } else return;
@@ -5829,6 +5870,7 @@ function applyTopbarDisplayMode(mode) {
   elements.topbarDisplayModeBtn.title = compact ? '切换为文字模式' : '切换为精简模式';
   const label = elements.topbarDisplayModeBtn.querySelector('.button-label');
   if (label) label.textContent = compact ? '精简模式' : '文字模式';
+  else elements.topbarDisplayModeBtn.textContent = compact ? '精简模式' : '文字模式';
 }
 
 function toggleTopbarDisplayMode() {
@@ -6012,7 +6054,7 @@ function openWebUrl() {
     elements.webUrlInput.value = url;
     elements.webFrame.src = url;
     updateWebSharePreviewState();
-    elements.webShareStatus.textContent = '网页已在软件内打开；若站点禁止嵌入，请点击“共享当前网页/窗口”选择对应浏览器标签页。';
+    elements.webShareStatus.textContent = '兼容预览已打开，仅本机独立浏览；需要房间同步画面请点击“同步观影网址（实时画面）”。';
   } catch (error) { elements.webShareStatus.textContent = error.message; }
 }
 
@@ -6062,14 +6104,27 @@ function handleWebProbeAction(event) {
 }
 
 async function shareCurrentWebWindow() {
+  let url = '';
   try {
-    const url = normalizedWebUrl(elements.webUrlInput.value);
+    url = normalizedWebUrl(elements.webUrlInput.value);
     elements.webUrlInput.value = url;
     window.open(url, '_blank', 'noopener,noreferrer');
-  } catch (_) {}
+  } catch (error) {
+    elements.webShareStatus.textContent = error.message;
+    return;
+  }
   elements.webShareModal.classList.add('is-hidden');
-  toast('请在系统选择器中选择刚打开的网页标签页或软件窗口；需要声音时勾选共享音频。');
+  toast('请选择刚打开的网页标签页或窗口；需要声音时勾选共享音频。');
   await toggleScreenShare();
+  // Persist the URL as room metadata after capture starts. The live screen
+  // remains the authoritative surface; URL metadata lets late joiners see
+  // what the host opened without falling back to an independent iframe.
+  if (state.localCapture || state.nativeCapture) {
+    const title = (() => { try { return new URL(url).hostname || '共享网页'; } catch (_) { return '共享网页'; } })();
+    const result = await emitAck('web-share-start', { url, title, mode: 'live' }, 20000);
+    if (!result.success) toast(result.error || '网页同步状态保存失败', 'error');
+    else applyWebShareState(result.webShare);
+  }
 }
 
 async function pasteWebUrl() {
@@ -6181,18 +6236,7 @@ async function clearWebShare() {
 }
 
 async function shareWebUrl() {
-  let url;
-  try { url = normalizedWebUrl(elements.webUrlInput.value); }
-  catch (error) { elements.webShareStatus.textContent = error.message; return; }
-  let title = '共享网页';
-  try { title = new URL(url).hostname || title; } catch (_) {}
-  const result = await emitAck('web-share-start', { url, title }, 20000);
-  elements.webShareStatus.textContent = result.message || result.error;
-  if (!result.success) return toast(result.error, 'error');
-  elements.webShareModal.classList.add('is-hidden');
-  if (elements.webFrame) { elements.webFrame.src = 'about:blank'; elements.webFrame.dataset.initialized = ''; }
-  applyWebShareState(result.webShare);
-  toast(result.message, 'success');
+  await shareCurrentWebWindow();
 }
 
 function applyWebShareState(webShare = {}) {
@@ -6202,11 +6246,22 @@ function applyWebShareState(webShare = {}) {
   const revision = Math.max(0, Number(webShare.revision) || 0);
   const currentRevision = Math.max(0, Number(state.webShare?.revision) || 0);
   if (revision && currentRevision && revision < currentRevision) return;
-  state.webShare = { active: Boolean(webShare.active), url: webShare.url || '', title: webShare.title || '', updatedAt: Number(webShare.updatedAt) || 0, revision, roomId };
+  state.webShare = { active: Boolean(webShare.active), mode: webShare.mode === 'url' ? 'url' : 'live', url: webShare.url || '', title: webShare.title || '', updatedAt: Number(webShare.updatedAt) || 0, revision, roomId };
   if (state.room) state.room.webShare = { ...webShare };
   if (!state.webShare.active) {
     clearLocalWebViews();
     restorePlaybackStage();
+    return;
+  }
+  if (state.webShare.mode === 'live') {
+    // Live browser capture is rendered by the screen-share surface. Never
+    // load the URL in an independent iframe for this mode.
+    elements.webFrame?.classList.add('is-hidden');
+    elements.sharedWebViewer?.classList.add('is-hidden');
+    elements.emptyStage.classList.toggle('is-hidden', Boolean(state.screenShareActive));
+    elements.nowPlayingName.textContent = `网页实时共享：${state.webShare.title || state.webShare.url}`;
+    elements.syncStatus.textContent = state.screenShareActive ? '网页画面同步中' : '等待网页画面共享';
+    updateControlAccess();
     return;
   }
   if (state.screenShareActive) hideScreenShare();
@@ -6291,7 +6346,7 @@ async function loadRoomInfo() {
   if (!id) {
     setLoginRoomPasswordState(null, '未选择房间');
     if (elements.roomLookupStatus) elements.roomLookupStatus.textContent = elements.username.value.trim().toLowerCase() === 'admin'
-      ? '超级管理员留空将进入退出即删除的临时房间' : '房间号可留空；留空会进入退出即删除的临时房间，也可选择在线房间';
+      ? '请输入房间号；超级管理员可使用本机管理入口直接进入设置' : '房间号为必填项，请从在线房间中选择或手动输入';
     return null;
   }
   if (!/^[A-Z0-9]{4,32}$/.test(id)) {
@@ -8826,9 +8881,13 @@ function showPlaybackChange(change) {
   const actions = { play: '开始播放', pause: '暂停播放', seek: `将进度从 ${formatTime(change.before.currentTime)} 调到 ${formatTime(change.after.currentTime)}`, volume: change.after.muted ? '同步静音了播放器' : `把音量调到 ${Math.round(change.after.volume * 100)}%`, rate: `将同步倍速调整为 ${formatPlaybackRate(change.after.playbackRate)}`, speed: `将同步倍速调整为 ${formatPlaybackRate(change.after.playbackRate)}`, 'playback-rate': `将同步倍速调整为 ${formatPlaybackRate(change.after.playbackRate)}`, undo: `撤回操作，回到 ${formatTime(change.after.currentTime)}` };
   const message = `${change.changedBy} ${actions[change.action] || '调整了播放'}`;
   if (!canControlPlayback()) return toast(message);
-  toastWithAction(message, '撤回这次操作', async () => {
+  if (change.action === 'seek') {
+    for (const item of elements.toastRegion?.querySelectorAll('[data-playback-action="seek"]') || []) dismissToast(item);
+  }
+  const item = toastWithAction(message, '撤回这次操作', async () => {
     const result = await emitAck('undo-playback-change', { changeId: change.id }); if (!result.success) toast(result.error, 'error');
   }, 12000);
+  if (item && change.action === 'seek') item.dataset.playbackAction = 'seek';
 }
 
 function showSyncNotice(text, kind = 'status') {
@@ -14064,20 +14123,25 @@ async function saveExperiencePolicy() {
   if (result.success && state.adminSettings) state.adminSettings.experiencePerMinute = result.experiencePerMinute;
 }
 async function saveUploadLimits() {
-  const result = await adminAction('set-upload-limits', {
-    uploadLimitBytes: Math.floor(Number(elements.uploadLimitMb.value || 0) * 1024 * 1024),
-    uploadTimeLimitSeconds: Number(elements.uploadTimeLimit.value || 0)
-  });
+  const uploadLimitBytes = Math.floor(Number(elements.uploadLimitMb.value || 0) * 1024 * 1024);
+  const uploadTimeLimitSeconds = Number(elements.uploadTimeLimit.value || 0);
+  const result = await adminAction('set-upload-limits', { uploadLimitBytes, uploadTimeLimitSeconds });
   if (!result.success) return toast(result.message || result.error, 'error');
+  state.publicConfig = {
+    ...state.publicConfig,
+    maxUploadBytes: Number.isFinite(Number(result.maxUploadBytes)) ? Number(result.maxUploadBytes) : uploadLimitBytes,
+    uploadTimeLimitSeconds: Number.isFinite(Number(result.uploadTimeLimitSeconds)) ? Number(result.uploadTimeLimitSeconds) : uploadTimeLimitSeconds
+  };
+  applyPublicConfig();
   const textResult = await adminAction('set-text-upload-policy', {
     allowTextUploads: elements.allowTextUploadsToggle?.checked !== false
   });
-  toast(textResult.message || textResult.error || result.message, textResult.success ? 'success' : 'error');
   if (textResult.success) {
     state.publicConfig.allowTextUploads = textResult.allowTextUploads !== false;
     if (state.adminSettings) state.adminSettings.allowTextUploads = state.publicConfig.allowTextUploads;
-    applyPublicConfig();
   }
+  applyPublicConfig();
+  toast(textResult.message || textResult.error || result.message, textResult.success ? 'success' : 'error');
 }
 async function savePermissions() {
   const username = elements.permissionUser.value; if (!username) return toast('请选择成员', 'error');
