@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { app, BrowserWindow, Menu, clipboard } = require('electron');
+const APP_VERSION = require('../package.json').version;
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-runtime-info-'));
 const outputDir = path.join(os.tmpdir(), 'syncwatch-ui-review');
@@ -65,7 +66,7 @@ async function run() {
   assert.notEqual(metrics.bodyBackground, 'rgb(255, 255, 255)');
   assert.notEqual(metrics.panelBackground, 'rgb(255, 255, 255)');
   assert.equal(metrics.buttonBackground, 'rgb(199, 167, 99)');
-  assert.match(metrics.title, /SyncWatch同步观影 v2\.2\.9/);
+  assert.equal(metrics.title, `SyncWatch同步观影 v${APP_VERSION}`);
   assert.equal(metrics.hasDataDirectory, true);
   assert.deepEqual(metrics.actionLabels, ['复制', '打开', '复制', '打开']);
   assert.equal(metrics.noOverflow, true);
@@ -86,9 +87,7 @@ async function run() {
 async function finish(exitCode) {
   try { BrowserWindow.getAllWindows().forEach((window) => window.destroy()); } catch (_) {}
   try { fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); } catch (_) {}
-  process.exitCode = exitCode;
-  app.quit();
-  setTimeout(() => app.exit(exitCode), 2500).unref?.();
+  app.exit(exitCode);
 }
 
 app.whenReady().then(async () => {

@@ -287,6 +287,34 @@ async function main() {
     assert.equal(acceptedTheme.success, true, acceptedTheme.error);
     assert.equal((await themeResponse).accepted, true);
 
+    const rejectedThemeRequest = once(manager, 'theme-sync-requested');
+    assert.equal((await ack(themeAdmin, 'theme-sync-request', { themeId: 'living-room', targetUsernames: ['FeatureManager'] })).success, true);
+    const rejectedTheme = await rejectedThemeRequest;
+    const rejectedThemeResponse = once(themeAdmin, 'theme-sync-responded');
+    assert.equal((await ack(manager, 'theme-sync-response', { requestId: rejectedTheme.id, accepted: false })).success, true);
+    const rejectedPayload = await rejectedThemeResponse;
+    assert.equal(rejectedPayload.accepted, false);
+    assert.match(rejectedPayload.message, /已拒绝/);
+
+    const alreadyAppliedRequest = once(manager, 'theme-sync-requested');
+    assert.equal((await ack(themeAdmin, 'theme-sync-request', { themeId: 'cinema-deck', targetUsernames: ['FeatureManager'] })).success, true);
+    const alreadyAppliedTheme = await alreadyAppliedRequest;
+    const alreadyAppliedResponse = once(themeAdmin, 'theme-sync-responded');
+    assert.equal((await ack(manager, 'theme-sync-response', { requestId: alreadyAppliedTheme.id, accepted: true, alreadyApplied: true })).success, true);
+    const alreadyAppliedPayload = await alreadyAppliedResponse;
+    assert.equal(alreadyAppliedPayload.accepted, true);
+    assert.equal(alreadyAppliedPayload.alreadyApplied, true);
+
+    const contradictoryRequest = once(manager, 'theme-sync-requested');
+    assert.equal((await ack(themeAdmin, 'theme-sync-request', { themeId: 'living-room', targetUsernames: ['FeatureManager'] })).success, true);
+    const contradictoryTheme = await contradictoryRequest;
+    const contradictoryResponse = once(themeAdmin, 'theme-sync-responded');
+    assert.equal((await ack(manager, 'theme-sync-response', { requestId: contradictoryTheme.id, accepted: false, alreadyApplied: true })).success, true);
+    const contradictoryPayload = await contradictoryResponse;
+    assert.equal(contradictoryPayload.accepted, false);
+    assert.equal(contradictoryPayload.alreadyApplied, false);
+    assert.match(contradictoryPayload.message, /已拒绝/);
+
     const clientPasswordChange = await ack(themeAdmin, 'account-action', {
       action: 'change-password', currentPassword: 'admin888', newPassword: 'ClientAdmin888'
     });

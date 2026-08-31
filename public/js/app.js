@@ -73,6 +73,18 @@ const LOGIN_MUSIC_PREFERENCE_KEY = 'syncwatchLoginMusicPreferenceV1';
 const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20, libraryCollapsed: false, membersPanelCollapsed: false, memberDetailsCollapsed: false });
 const ACCOUNT_CHAT_FILTER_KEY_PREFIX = 'syncwatchChatFilter:';
 const ACCOUNT_VOICE_COLLAPSED_KEY_PREFIX = 'syncwatchVoiceCollapsed:';
+const DEFAULT_DESKTOP_SHARE_SETTINGS = Object.freeze({ resolution: 'native', fps: 'device', quality: 'ultra', systemAudio: true });
+function readDesktopShareSettings() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('syncwatchDesktopShareSettings') || '{}');
+    return {
+      resolution: typeof stored.resolution === 'string' ? stored.resolution : DEFAULT_DESKTOP_SHARE_SETTINGS.resolution,
+      fps: stored.fps === 'device' ? 'device' : Math.max(5, Math.min(240, Number(stored.fps) || 0)) || DEFAULT_DESKTOP_SHARE_SETTINGS.fps,
+      quality: ['balanced', 'high', 'ultra'].includes(stored.quality) ? stored.quality : DEFAULT_DESKTOP_SHARE_SETTINGS.quality,
+      systemAudio: stored.systemAudio !== false
+    };
+  } catch (_) { return { ...DEFAULT_DESKTOP_SHARE_SETTINGS }; }
+}
 const USERNAME_MAX_UTF8_BYTES = 1024;
 const PASSWORD_MAX_UTF8_BYTES = 4096;
 const hostTokenFromHash = new URLSearchParams(location.hash.slice(1)).get('host') || '';
@@ -108,6 +120,7 @@ const state = {
   localCapture: null, captureTimer: null, captureVideo: null, captureCanvas: null, captureSession: 0,
   captureInFlight: false, captureSequence: 0, screenShareActive: false, screenShareKey: '', screenShareRequestInFlight: false,
   screenFrameSendGeneration: 0, screenFrameReliableInFlight: false, screenFrameReliablePending: null, screenFrameReliableLastAt: 0,
+  screenFallbackViewerCount: 0, detectedDisplayFps: 60,
   nativeCapture: null, nativeCaptureSession: 0, nativeCaptureStartTimer: null, nativeCaptureFrameBusy: false, nativeCapturePendingFrame: null,
   captureRestoreTimer: null, captureRestoreInFlight: false,
   pendingScreenFrame: null, decodingScreenFrame: false, lastScreenFrameSequence: 0, screenFrameGeneration: 0,
@@ -168,7 +181,7 @@ const state = {
   friendChatUser: '', friendMessages: new Map(), friendRequests: [], friendSettings: { messageNotifications: true, allowFriendRequests: true, allowPasswordlessOwnRoomJoin: false }, friendChatManage: false,
   friendChatSelection: new Set(), friendChatContextMessageId: '', friendReplyTo: null,
   selectedDevices: new Set(),
-  desktopShareSettings: JSON.parse(localStorage.getItem('syncwatchDesktopShareSettings') || '{"resolution":"native","fps":30,"quality":"high","systemAudio":true}'),
+  desktopShareSettings: readDesktopShareSettings(),
   masterMuted: localStorage.getItem('syncwatchMasterMuted') === '1', masterMuteStates: new WeakMap(),
   toastRegionHomeParent: null, toastRegionHomeNextSibling: null,
   locationPromptDisabled: localStorage.getItem('syncwatchLocationPromptDisabled') === '1', locationAuthorizationMembers: [], locationAuthorizationQuery: '',
@@ -351,7 +364,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
   fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown serverEndpointDetailsModal closeServerEndpointDetailsBtn serverEndpointDetailsAddress serverEndpointDetailsState serverEndpointDetailsHint copyServerEndpointDetailsBtn openServerEndpointDetailsBtn roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
-  operationHistoryModal closeOperationHistoryBtn operationHistoryList refreshOperationHistoryBtn operationHistoryQuery operationHistoryScope operationHistorySelectAll deleteSelectedOperationsBtn chatContextMenu chatContextDeleteBtn roomMediaPreviewModal closeRoomMediaPreviewBtn roomMediaPreviewTitle roomMediaPreviewSelectAll roomMediaPreviewBatchDeleteBtn roomMediaPreviewBanUploadBtn roomMediaPreviewActionStatus roomMediaPreviewList roomMediaPreviewPlayer globalRoomStorageLimitMb applyGlobalRoomStorageLimitBtn audioSourceModal closeAudioSourceBtn audioSourcePlatform audioSourceVolume audioSourceVolumeText audioSourceStatus refreshAudioSourcesBtn startAudioSourceBtn stopAudioSourceBtn
+  operationHistoryModal closeOperationHistoryBtn operationHistoryList refreshOperationHistoryBtn operationHistoryQuery operationHistoryScope operationHistorySelectAll deleteSelectedOperationsBtn chatContextMenu chatContextDeleteBtn roomMediaPreviewModal closeRoomMediaPreviewBtn roomMediaPreviewTitle roomMediaPreviewSelectAll roomMediaPreviewBatchDeleteBtn roomMediaPreviewBanUploadBtn roomMediaPreviewActionStatus roomMediaPreviewList roomMediaPreviewPlayer globalRoomStorageLimitMb applyGlobalRoomStorageLimitBtn audioSourceModal closeAudioSourceBtn audioSourcePlatform audioSourceVolume audioSourceVolumeText audioSourceStatus refreshAudioSourcesBtn startAudioSourceBtn stopAudioSourceBtn audioShareRoomStatus audioShareRoomText unlockSharedAudioBtn desktopShareActualStatus
 dataBackupCard dataBackupScope exportDataBtn importDataBtn importDataInput dataBackupStatus dataBackupProgress dataBackupProgressLabel dataBackupProgressPercent dataBackupProgressBar dataBackupProgressDetail
 webShareModal closeWebShareBtn webUrlInput pasteWebUrlBtn openWebUrlBtn shareWebUrlBtn probeWebUrlBtn shareWebWindowBtn webShareStatus webProbeResults webShareEmpty webFrame
  themeModal closeThemeBtn resetThemeBtn syncThemeBtn themeSyncTargets themeSyncAll themeSyncSelected themeSyncMemberList themeGrid themeFontSearch themeFontSelect applyThemeFontBtn resetThemeFontBtn themeFontStatus copyrightNotice newRoomId
@@ -2661,6 +2674,7 @@ function bindUiEvents() {
   elements.startAudioSourceBtn?.addEventListener('click', startAudioSourceShare);
   elements.stopAudioSourceBtn?.addEventListener('click', () => stopAudioSourceShare(true));
   elements.audioSourceVolume?.addEventListener('input', updateAudioSourceVolume);
+  elements.unlockSharedAudioBtn?.addEventListener('click', unlockSharedAudio);
   elements.webShareBtn?.addEventListener('click', openWebShare);
   elements.closeWebShareBtn?.addEventListener('click', closeAndClearWebShare);
   elements.openWebUrlBtn?.addEventListener('click', openWebUrl);
@@ -3238,6 +3252,8 @@ function connectSocket() {
     resetOutgoingScreenFrames();
     state.socketAuthenticated = false; state.resumeNeeded = Boolean(state.token);
     closeLiveVoicePeers();
+    closeScreenPeers();
+    closeAudioSourcePeers();
     if (state.intentionalLogout) { setReconnectState(false); return; }
     updateConnection(false, '连接中断'); updateRoomHeader(); setReconnectMessage('连接中断，正在自动重试…'); setReconnectState(Boolean(state.authenticated));
     if (state.nativeCapture) stopNativeCapture(false);
@@ -3428,6 +3444,9 @@ function connectSocket() {
   state.socket.on('screen-share-webrtc-request', () => requestScreenPeerConnection());
   state.socket.on('screen-share-viewer-ready', ({ viewerSocketId }) => createSharerPeer(viewerSocketId));
   state.socket.on('screen-share-signal', handleScreenShareSignal);
+  state.socket.on('screen-share-fallback-state', ({ fallbackViewerCount }) => {
+    state.screenFallbackViewerCount = Math.max(0, Number(fallbackViewerCount) || 0);
+  });
   state.socket.on('screen-share-audio', playScreenShareAudio);
   state.socket.on('screen-share-stopped', handleScreenShareStopped);
   state.socket.on('audio-share-state', applyAudioSourceShareState);
@@ -5942,6 +5961,12 @@ function renderThemeSyncTargets() {
 function enqueueThemeSyncRequest(request = {}) {
   const themeId = String(request.themeId || '');
   if (!UI_THEMES.some(([id]) => id === themeId) || !request.id) return;
+  if (themeId === state.uiTheme) {
+    void emitAck('theme-sync-response', { requestId: request.id, accepted: true, alreadyApplied: true }, 15000)
+      .then((result) => { if (!result.success) toast(result.error || '风格同步响应未送达', 'error'); })
+      .catch((error) => toast(`风格同步响应失败：${localizedError(error, '请稍后重试')}`, 'error'));
+    return;
+  }
   if (state.themeSyncQueue.some((entry) => entry.id === request.id)) return;
   state.themeSyncQueue.push(request);
   void window.SyncWatchDesktop?.showNotification?.({ title: 'SyncWatch 界面同步申请', body: `${request.requestedByName || request.requestedBy || '管理员'} 请求同步界面风格。` }).catch(() => {});
@@ -5973,8 +5998,11 @@ async function processThemeSyncQueue() {
 
 function handleThemeSyncResponse(response = {}) {
   const name = response.displayName || response.username || '成员';
-  const action = response.accepted ? '已同步' : '保持了自己的风格';
-  toast(`${name}${action}“${response.themeName || '当前'}”`, response.accepted ? 'success' : '', 5000);
+  const themeName = response.themeName || '当前风格';
+  const message = response.alreadyApplied
+    ? `${name}已经在使用“${themeName}”，无需重复同步`
+    : response.accepted ? `${name}已接受并同步“${themeName}”` : `${name}已拒绝同步“${themeName}”`;
+  toast(message, response.accepted ? 'success' : 'error', 7000);
 }
 
 function muteMediaElement(media) {
@@ -6233,6 +6261,11 @@ async function clearWebShare() {
     if (!result.success) return toast(result.error || '清空共享画面失败', 'error');
   }
   applyWebShareState({ active: false });
+}
+
+function stopLiveWebShare() {
+  if (!state.webShare?.active || state.webShare.mode !== 'live') return;
+  applyWebShareState({ active: false, mode: 'live', url: '', title: '', revision: Number(state.webShare.revision) + 1 });
 }
 
 async function shareWebUrl() {
@@ -10928,9 +10961,34 @@ function sendCapturedScreenFrame(packet) {
   } else state.socket.volatile.emit('screen-share-frame', packet);
 }
 
+async function detectDisplayRefreshRate() {
+  if (document.hidden || typeof requestAnimationFrame !== 'function') return state.detectedDisplayFps || 60;
+  const samples = [];
+  let previous = 0;
+  await new Promise((resolve) => {
+    const sample = (now) => {
+      if (previous > 0 && now > previous) samples.push(now - previous);
+      previous = now;
+      if (samples.length >= 30) resolve(); else requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  const sorted = samples.filter((value) => value > 1 && value < 40).sort((left, right) => left - right);
+  const median = sorted[Math.floor(sorted.length / 2)] || 1000 / 60;
+  const measured = 1000 / median;
+  const commonRates = [60, 75, 90, 100, 120, 144, 165, 180, 200, 240];
+  state.detectedDisplayFps = commonRates.reduce((best, rate) => Math.abs(rate - measured) < Math.abs(best - measured) ? rate : best, 60);
+  return state.detectedDisplayFps;
+}
+
+function desktopShareTargetFps() {
+  const configured = state.desktopShareSettings?.fps;
+  const requestedDesktopShareFps = configured === 'device' ? state.detectedDisplayFps : Number(configured);
+  return Math.max(5, Math.min(240, Number(requestedDesktopShareFps) || 60));
+}
+
 function screenCaptureDelay() {
-  const fps = Math.max(5, Math.min(60, Number(state.desktopShareSettings?.fps) || 30));
-  const target = Math.round(1000 / fps);
+  const target = Math.round(1000 / Math.min(20, desktopShareTargetFps()));
   return screenSocketTransport() === 'websocket' ? target : Math.max(target, 120);
 }
 
@@ -10943,13 +11001,39 @@ function createScreenPeer(remoteSocketId, role) {
   const peer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] });
   peer.syncWatchRemoteSocketId = remoteSocketId;
   peer.syncWatchRole = role;
+  peer.syncWatchDisconnectTimer = null;
   peer.onicecandidate = (event) => {
     if (!event.candidate || !state.socketAuthenticated) return;
     state.socket.emit('screen-share-signal', { targetSocketId: remoteSocketId, candidate: event.candidate.toJSON?.() || event.candidate });
   };
   peer.onconnectionstatechange = () => {
+    clearTimeout(peer.syncWatchDisconnectTimer); peer.syncWatchDisconnectTimer = null;
+    if (role === 'viewer' && peer.connectionState === 'connected' && state.socketAuthenticated) {
+      state.socket.emit('screen-share-transport-state', { transport: 'webrtc' });
+    }
+    if (peer.connectionState === 'disconnected') {
+      if (role === 'viewer' && state.remoteScreenPeer === peer && state.socketAuthenticated) {
+        state.socket.emit('screen-share-transport-state', { transport: 'fallback' });
+        elements.screenShareCanvas.classList.remove('is-hidden');
+      }
+      peer.syncWatchDisconnectTimer = setTimeout(() => {
+        if (peer.connectionState !== 'disconnected') return;
+        if (role === 'viewer' && state.remoteScreenPeer === peer) {
+          detachRemoteScreenPeer();
+          setTimeout(() => void requestScreenPeerConnection(), 400);
+        }
+        if (role === 'sharer' && state.screenPeers.get(remoteSocketId) === peer) {
+          state.screenPeers.delete(remoteSocketId);
+          try { peer.close(); } catch (_) {}
+        }
+      }, 3500);
+      return;
+    }
     if (!['failed', 'closed'].includes(peer.connectionState)) return;
-    if (role === 'viewer' && state.remoteScreenPeer === peer) detachRemoteScreenPeer();
+    if (role === 'viewer' && state.remoteScreenPeer === peer) {
+      if (state.screenShareActive && state.socketAuthenticated) state.socket.emit('screen-share-transport-state', { transport: 'fallback' });
+      detachRemoteScreenPeer();
+    }
     if (role === 'sharer' && state.screenPeers.get(remoteSocketId) === peer) state.screenPeers.delete(remoteSocketId);
     try { peer.close(); } catch (_) {}
   };
@@ -10961,7 +11045,11 @@ function createScreenPeer(remoteSocketId, role) {
       elements.screenShareVideo.srcObject = stream;
       elements.screenShareCanvas.classList.add('is-hidden');
       elements.screenShareVideo.classList.remove('is-hidden');
-      elements.screenShareVideo.play().catch(() => showSyncNotice('点击画面可继续播放共享声音'));
+      if (state.socketAuthenticated) state.socket.emit('screen-share-transport-state', { transport: 'webrtc' });
+      elements.screenShareVideo.play().then(() => elements.audioShareRoomStatus?.classList.add('audio-ready')).catch(() => {
+        elements.audioShareRoomStatus?.classList.remove('audio-ready');
+        showSyncNotice('点击“开启声音”可继续播放共享声音');
+      });
     };
   }
   return peer;
@@ -10978,7 +11066,7 @@ async function applyQueuedScreenCandidates(remoteSocketId, peer) {
 function detachRemoteScreenPeer() {
   const peer = state.remoteScreenPeer;
   state.remoteScreenPeer = null;
-  if (peer) { try { peer.close(); } catch (_) {} }
+  if (peer) { clearTimeout(peer.syncWatchDisconnectTimer); try { peer.close(); } catch (_) {} }
   if (state.remoteScreenStream) state.remoteScreenStream.getTracks().forEach((track) => track.stop());
   state.remoteScreenStream = null;
   elements.screenShareVideo.pause(); elements.screenShareVideo.srcObject = null; elements.screenShareVideo.classList.add('is-hidden');
@@ -11007,10 +11095,10 @@ async function createSharerPeer(viewerSocketId) {
     if (track.kind === 'video') {
       const parameters = sender.getParameters();
       parameters.encodings = parameters.encodings?.length ? parameters.encodings : [{}];
-      const bitrate = ({ balanced: 6_000_000, high: 14_000_000, ultra: 28_000_000 })[state.desktopShareSettings?.quality] || 14_000_000;
+      const bitrate = ({ balanced: 4_000_000, high: 9_000_000, ultra: 18_000_000 })[state.desktopShareSettings?.quality] || 9_000_000;
       parameters.encodings[0].maxBitrate = bitrate;
-      parameters.encodings[0].maxFramerate = Math.max(5, Math.min(60, Number(state.desktopShareSettings?.fps) || 30));
-      parameters.degradationPreference = state.desktopShareSettings?.quality === 'ultra' ? 'maintain-resolution' : 'balanced';
+      parameters.encodings[0].maxFramerate = desktopShareTargetFps();
+      parameters.degradationPreference = 'balanced';
       sender.setParameters(parameters).catch(() => {});
     }
   }
@@ -11054,9 +11142,9 @@ function startBrowserAudioRelay(stream) {
   stopBrowserAudioRelay();
   if (!stream?.getAudioTracks?.().length || !window.AudioContext) return;
   try {
-    const context = new AudioContext({ latencyHint: 'playback', sampleRate: 48000 });
+    const context = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
     const source = context.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
-    const processor = context.createScriptProcessor(4096, Math.min(2, source.channelCount || 2), Math.min(2, source.channelCount || 2));
+    const processor = context.createScriptProcessor(1024, Math.min(2, source.channelCount || 2), Math.min(2, source.channelCount || 2));
     const sink = context.createGain(); sink.gain.value = 0;
     processor.onaudioprocess = (event) => {
       if (!canSendScreenFrame() && !state.audioSourceShareActive) return;
@@ -11067,12 +11155,15 @@ function startBrowserAudioRelay(stream) {
       }
       const channels = Math.min(2, event.inputBuffer.numberOfChannels);
       const frames = event.inputBuffer.length;
-      const interleaved = new Float32Array(frames * channels);
+      const interleaved = new Int16Array(frames * channels);
       for (let channel = 0; channel < channels; channel += 1) {
         const input = event.inputBuffer.getChannelData(channel);
-        for (let index = 0; index < frames; index += 1) interleaved[index * channels + channel] = input[index];
+        for (let index = 0; index < frames; index += 1) {
+          const sample = Math.max(-1, Math.min(1, input[index]));
+          interleaved[index * channels + channel] = sample < 0 ? Math.round(sample * 32768) : Math.round(sample * 32767);
+        }
       }
-      state.socket.volatile.emit('screen-share-audio', { data: interleaved.buffer, sampleRate: event.inputBuffer.sampleRate, channels, sequence: ++state.screenAudioSequence });
+      state.socket.volatile.emit('screen-share-audio', { data: interleaved.buffer, sampleRate: event.inputBuffer.sampleRate, channels, sampleFormat: 's16', sequence: ++state.screenAudioSequence });
     };
     source.connect(processor); processor.connect(sink); sink.connect(context.destination);
     state.screenAudioContext = context; state.screenAudioSource = source; state.screenAudioProcessor = processor; state.screenAudioSink = sink;
@@ -11116,6 +11207,7 @@ async function refreshNativeAudioSources() {
     windowSources.forEach((source) => {
       const option = document.createElement('option'); option.value = `native:${source.id}`; option.textContent = source.name;
       option.dataset.nativeSource = '1'; option.dataset.sourceName = source.name; option.dataset.sourceKind = source.kind;
+      option.dataset.processName = source.processName || '';
       option.dataset.captureSourceId = source.captureSourceId || ''; group.appendChild(option);
     });
     select.appendChild(group);
@@ -11124,7 +11216,7 @@ async function refreshNativeAudioSources() {
     const group = document.createElement('optgroup'); group.label = '显示器 / 全部系统声音（程序捕获失败时使用）';
     screenSources.forEach((source, index) => {
       const option = document.createElement('option'); option.value = `native:${source.id}`; option.textContent = source.name || `显示器 ${index + 1}`;
-      option.dataset.nativeSource = '1'; option.dataset.sourceName = option.textContent; option.dataset.sourceKind = 'screen'; group.appendChild(option);
+      option.dataset.nativeSource = '1'; option.dataset.sourceName = option.textContent; option.dataset.sourceKind = 'screen'; option.dataset.processName = ''; group.appendChild(option);
     });
     select.appendChild(group);
   }
@@ -11187,6 +11279,10 @@ async function startAudioSourceShare() {
     const selectedOption = elements.audioSourcePlatform?.selectedOptions?.[0];
     const selectedNativeId = selectedPlatform.startsWith('native:') ? selectedPlatform.slice(7) : '';
     const sourceName = selectedNativeId ? String(selectedOption?.dataset.sourceName || selectedOption?.textContent || '').trim() : '';
+    const selectedSource = state.nativeAudioSources.find((source) => source.id === selectedNativeId);
+    const processName = selectedNativeId ? String(selectedOption?.dataset.processName || selectedSource?.processName || '').trim() : '';
+    const sourceKind = selectedNativeId ? String(selectedOption?.dataset.sourceKind || selectedSource?.kind || '').trim() : 'screen';
+    const mediaTitle = sourceName;
     const fallbackScreenId = state.nativeAudioSources.find((source) => source.kind === 'screen')?.id || '';
     const nativeSourceId = selectedNativeId
       ? String(selectedOption?.dataset.captureSourceId || (selectedOption?.dataset.sourceKind === 'process' ? fallbackScreenId : selectedNativeId))
@@ -11205,7 +11301,7 @@ async function startAudioSourceShare() {
     state.audioSourceStream = stream;
     state.audioSourceShareActive = true;
     const result = await emitAck('audio-share-start', {
-      platform: audioPlatformForSource(sourceName, selectedPlatform), sourceName, volume: state.audioSourceVolume
+      platform: audioPlatformForSource(sourceName, selectedPlatform), sourceName, processName, mediaTitle, sourceKind, volume: state.audioSourceVolume
     }, 15000);
     if (!result.success) throw new Error(result.error || '服务器拒绝音源共享');
     state.audioSourceShare = result.audioShare;
@@ -11229,6 +11325,25 @@ function stopAudioSourceShare(notify = false) {
   applyAudioSourceShareState({ active: false });
 }
 
+function updateAudioShareLayout() {
+  const container = elements.playerContainer;
+  const status = elements.audioShareRoomStatus;
+  if (!container || !status || status.classList.contains('is-hidden')) {
+    container?.style.removeProperty('--audio-share-bottom');
+    container?.style.removeProperty('--audio-share-info-bottom');
+    return;
+  }
+  const progress = elements.playerProgressBar;
+  const progressStyle = progress ? getComputedStyle(progress) : null;
+  const progressVisible = progress && progressStyle.display !== 'none' && !progress.classList.contains('is-hidden');
+  const progressHeight = progressVisible ? progress.getBoundingClientRect().height : 0;
+  const progressBottom = progressVisible ? Math.max(0, Number.parseFloat(progressStyle.bottom) || 0) : 4;
+  const audioBottom = Math.ceil(progressBottom + progressHeight + 8);
+  container.style.setProperty('--audio-share-bottom', `${audioBottom}px`);
+  const statusHeight = status.getBoundingClientRect().height;
+  container.style.setProperty('--audio-share-info-bottom', `${Math.ceil(audioBottom + statusHeight + 8)}px`);
+}
+
 function applyAudioSourceShareState(audioShare = {}) {
   state.audioSourceShare = audioShare;
   const active = Boolean(audioShare.active);
@@ -11239,22 +11354,48 @@ function applyAudioSourceShareState(audioShare = {}) {
   const remoteAudio = elements.voiceAudioDock?.querySelector('[data-audio-source-remote]');
   if (remoteAudio) remoteAudio.volume = Math.max(0, Math.min(1, Number(audioShare.volume ?? 1)));
   const platformNames = { system: '电脑程序', netease: '网易云音乐', qqmusic: 'QQ 音乐', kugou: '酷狗音乐', qishui: '汽水音乐' };
-  const sourceLabel = audioShare.sourceName || platformNames[audioShare.platform] || '电脑音源';
+  const sourceLabel = audioShare.mediaTitle || audioShare.sourceName || platformNames[audioShare.platform] || '电脑音源';
+  const processLabel = audioShare.processName ? ` · 进程 ${audioShare.processName}` : '';
+  const sharerLabel = audioShare.displayName || audioShare.username || '成员';
   if (elements.audioSourceBtn) elements.audioSourceBtn.textContent = own ? '停止共享音源' : active ? `${sourceLabel}播放中` : '共享电脑音源';
   if (elements.audioSourceStatus) elements.audioSourceStatus.textContent = active
-    ? `${audioShare.displayName || audioShare.username || '成员'} 正在通过${sourceLabel}放歌 · 同步音量 ${Math.round((Number(audioShare.volume) || 0) * 100)}%`
+    ? `${sharerLabel} 正在共享 ${sourceLabel}${processLabel} · 同步音量 ${Math.round((Number(audioShare.volume) || 0) * 100)}%`
     : '当前未共享音源';
+  if (elements.audioShareRoomText) elements.audioShareRoomText.textContent = active
+    ? `${sharerLabel} · ${sourceLabel}${processLabel}` : '当前没有共享音源';
+  elements.audioShareRoomStatus?.classList.toggle('is-hidden', !active);
+  elements.playerContainer?.classList.toggle('audio-share-active', active);
+  updateAudioShareLayout();
+  if (!active) elements.audioShareRoomStatus?.classList.remove('audio-ready');
   if (elements.startAudioSourceBtn) elements.startAudioSourceBtn.disabled = active;
   if (elements.stopAudioSourceBtn) elements.stopAudioSourceBtn.disabled = !own;
 }
 
+window.addEventListener('resize', updateAudioShareLayout, { passive: true });
+
 function createAudioSourcePeer(remoteSocketId, role) {
   const peer = new RTCPeerConnection({ iceServers: LIVE_VOICE_ICE_SERVERS, iceCandidatePoolSize: 8, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' });
   peer.syncWatchRemoteSocketId = remoteSocketId;
+  peer.syncWatchDisconnectTimer = null;
   peer.onicecandidate = ({ candidate }) => {
     if (candidate && state.socketAuthenticated) state.socket.emit('audio-share-signal', { targetSocketId: remoteSocketId, candidate: candidate.toJSON?.() || candidate });
   };
   peer.onconnectionstatechange = () => {
+    clearTimeout(peer.syncWatchDisconnectTimer); peer.syncWatchDisconnectTimer = null;
+    if (peer.connectionState === 'disconnected') {
+      peer.syncWatchDisconnectTimer = setTimeout(() => {
+        if (peer.connectionState !== 'disconnected') return;
+        if (role === 'viewer' && state.remoteAudioSourcePeer === peer) {
+          detachRemoteAudioSourcePeer();
+          setTimeout(() => void requestAudioSourcePeerConnection(), 400);
+        }
+        if (role === 'sharer' && state.audioSourcePeers.get(remoteSocketId) === peer) {
+          state.audioSourcePeers.delete(remoteSocketId);
+          try { peer.close(); } catch (_) {}
+        }
+      }, 3500);
+      return;
+    }
     if (!['failed', 'closed'].includes(peer.connectionState)) return;
     if (role === 'viewer' && state.remoteAudioSourcePeer === peer) detachRemoteAudioSourcePeer();
     if (role === 'sharer' && state.audioSourcePeers.get(remoteSocketId) === peer) state.audioSourcePeers.delete(remoteSocketId);
@@ -11273,9 +11414,12 @@ function createAudioSourcePeer(remoteSocketId, role) {
       audio.srcObject = stream;
       audio.volume = Math.max(0, Math.min(1, Number(state.audioSourceShare?.volume ?? 1)));
       if (state.masterMuted) muteMediaElement(audio);
-      audio.play().catch(() => showSyncNotice('点击画面后即可继续收听房间音源'));
+      audio.play().then(() => elements.audioShareRoomStatus?.classList.add('audio-ready')).catch(() => {
+        elements.audioShareRoomStatus?.classList.remove('audio-ready');
+        showSyncNotice('点击“开启声音”即可继续收听房间音源');
+      });
       for (const receiver of peer.getReceivers?.() || []) {
-        if (receiver.jitterBufferTarget !== undefined) receiver.jitterBufferTarget = 0.08;
+        if (receiver.jitterBufferTarget !== undefined) receiver.jitterBufferTarget = 0.04;
       }
     };
   }
@@ -11348,7 +11492,7 @@ async function handleAudioSourceSignal(payload = {}) {
 
 function detachRemoteAudioSourcePeer() {
   const peer = state.remoteAudioSourcePeer; state.remoteAudioSourcePeer = null;
-  if (peer) { try { peer.close(); } catch (_) {} }
+  if (peer) { clearTimeout(peer.syncWatchDisconnectTimer); try { peer.close(); } catch (_) {} }
   if (state.remoteAudioSourceStream) state.remoteAudioSourceStream.getTracks().forEach((track) => track.stop());
   state.remoteAudioSourceStream = null;
   const audio = elements.voiceAudioDock?.querySelector('[data-audio-source-remote]');
@@ -11365,6 +11509,20 @@ function stopBrowserAudioRelay() {
   for (const node of [state.screenAudioSource, state.screenAudioProcessor, state.screenAudioSink]) { try { node?.disconnect(); } catch (_) {} }
   try { state.screenAudioContext?.close(); } catch (_) {}
   state.screenAudioContext = null; state.screenAudioSource = null; state.screenAudioProcessor = null; state.screenAudioSink = null; state.screenAudioSequence = 0; state.screenAudioQueue = []; state.screenAudioLastSequence = 0; state.screenAudioLastSequenceAt = 0;
+}
+
+async function unlockSharedAudio() {
+  const resumptions = [state.screenPlaybackAudioContext, state.screenAudioContext]
+    .filter((context) => context?.state === 'suspended')
+    .map((context) => context.resume());
+  const media = [elements.screenShareVideo, ...document.querySelectorAll('[data-audio-source-remote]')]
+    .filter((item) => item?.srcObject);
+  const attempts = [...resumptions, ...media.map((item) => item.play())];
+  const results = await Promise.allSettled(attempts);
+  const failed = results.some((result) => result.status === 'rejected');
+  elements.audioShareRoomStatus?.classList.toggle('audio-ready', !failed);
+  if (failed) toast('浏览器仍阻止播放声音，请确认媒体音量与系统静音状态后再试', 'error');
+  else toast('共享声音已开启', 'success');
 }
 
 function binaryScreenAudio(data) {
@@ -11390,20 +11548,26 @@ function playScreenShareAudio(packet = {}) {
   if (state.remoteScreenStream?.getAudioTracks().some((track) => track.readyState === 'live')) return;
   if (state.remoteAudioSourceStream?.getAudioTracks().some((track) => track.readyState === 'live')) return;
   const bytes = binaryScreenAudio(packet.data); const channels = Math.max(1, Math.min(2, Number(packet.channels) || 1)); const sampleRate = Number(packet.sampleRate) || 48000;
-  if (!bytes || bytes.byteLength % 4) return;
+  const sampleFormat = packet.sampleFormat === 's16' ? 's16' : 'f32';
+  const bytesPerSample = sampleFormat === 's16' ? 2 : 4;
+  if (!bytes || bytes.byteLength % bytesPerSample) return;
   try {
-    const input = new Float32Array(bytes); const frames = Math.floor(input.length / channels);
+    const input = sampleFormat === 's16' ? new Int16Array(bytes) : new Float32Array(bytes);
+    const frames = Math.floor(input.length / channels);
     if (!frames) return;
     const sequence = Math.max(0, Math.floor(Number(packet.sequence) || 0));
     if (sequence && sequence <= state.screenAudioLastSequence) return;
     if (sequence) { state.screenAudioLastSequence = sequence; state.screenAudioLastSequenceAt = performance.now(); }
-    const context = state.screenPlaybackAudioContext || new AudioContext({ latencyHint: 'playback', sampleRate });
+    const context = state.screenPlaybackAudioContext || new AudioContext({ latencyHint: 'interactive', sampleRate });
     state.screenPlaybackAudioContext = context;
     if (context.state === 'suspended') context.resume().catch(() => {});
     const buffer = context.createBuffer(channels, frames, sampleRate);
     for (let channel = 0; channel < channels; channel += 1) {
       const output = buffer.getChannelData(channel);
-      for (let index = 0; index < frames; index += 1) output[index] = input[index * channels + channel];
+      for (let index = 0; index < frames; index += 1) {
+        const sample = input[index * channels + channel];
+        output[index] = sampleFormat === 's16' ? sample / 32768 : sample;
+      }
     }
     state.screenAudioQueue.push({ buffer, sequence, duration: buffer.duration });
     state.screenAudioQueue.sort((left, right) => left.sequence - right.sequence);
@@ -11413,15 +11577,15 @@ function playScreenShareAudio(packet = {}) {
     if (gap > .4) {
       const reference = sequence || state.screenAudioQueue[state.screenAudioQueue.length - 1]?.sequence || 0;
       if (reference) state.screenAudioQueue = state.screenAudioQueue.filter((item) => item.sequence >= reference - 1);
-      state.screenAudioNextTime = now + .08;
+      state.screenAudioNextTime = now + .04;
     }
     const buffered = Math.max(0, (state.screenAudioNextTime || now) - now);
-    if (buffered < .08 && state.screenAudioQueue.length < 3) return;
+    if (buffered < .04 && state.screenAudioQueue.length < 2) return;
     while (state.screenAudioQueue.length) {
       const item = state.screenAudioQueue.shift();
       const source = context.createBufferSource(); source.buffer = item.buffer;
       const gain = context.createGain(); gain.gain.value = Math.max(0, Math.min(1, Number(packet.volume ?? 1))); source.connect(gain); gain.connect(context.destination);
-      const startAt = Math.max(now + .02, state.screenAudioNextTime || 0);
+      const startAt = Math.max(now + .01, state.screenAudioNextTime || 0);
       source.start(startAt); state.screenAudioNextTime = startAt + item.duration;
     }
   } catch (_) {}
@@ -11453,10 +11617,15 @@ function openDesktopShareSettings() {
   if (!canShareScreen()) return permissionDeniedToast('共享屏幕或软件画面');
   const settings = state.desktopShareSettings || {};
   elements.desktopShareResolution.value = settings.resolution || 'native';
-  elements.desktopShareFps.value = String(settings.fps || 30);
-  elements.desktopShareQuality.value = settings.quality || 'high';
+  elements.desktopShareFps.value = String(settings.fps || 'device');
+  elements.desktopShareQuality.value = settings.quality || 'ultra';
   elements.desktopShareSystemAudio.checked = settings.systemAudio !== false;
   elements.desktopShareModal.classList.remove('is-hidden');
+  void detectDisplayRefreshRate().then((fps) => {
+    const option = elements.desktopShareFps?.querySelector('option[value="device"]');
+    if (option) option.textContent = `当前设备最高刷新率（检测约 ${fps} FPS）`;
+    if (elements.desktopShareActualStatus) elements.desktopShareActualStatus.textContent = `将请求原生分辨率与约 ${fps} FPS；最终以系统实际捕获值为准。`;
+  });
 }
 
 function closeDesktopShareSettings() { elements.desktopShareModal?.classList.add('is-hidden'); }
@@ -11464,8 +11633,8 @@ function closeDesktopShareSettings() { elements.desktopShareModal?.classList.add
 async function startConfiguredDesktopShare() {
   state.desktopShareSettings = {
     resolution: elements.desktopShareResolution.value || 'native',
-    fps: Math.max(5, Math.min(60, Number(elements.desktopShareFps.value) || 30)),
-    quality: ['balanced', 'high', 'ultra'].includes(elements.desktopShareQuality.value) ? elements.desktopShareQuality.value : 'high',
+    fps: elements.desktopShareFps.value === 'device' ? 'device' : Math.max(5, Math.min(240, Number(elements.desktopShareFps.value) || 60)),
+    quality: ['balanced', 'high', 'ultra'].includes(elements.desktopShareQuality.value) ? elements.desktopShareQuality.value : 'ultra',
     systemAudio: elements.desktopShareSystemAudio.checked
   };
   localStorage.setItem('syncwatchDesktopShareSettings', JSON.stringify(state.desktopShareSettings));
@@ -11479,12 +11648,21 @@ function configuredCaptureSize() {
   return match ? { width: Number(match[1]), height: Number(match[2]) } : null;
 }
 
+function fallbackScreenCaptureSize(video) {
+  const requested = configuredCaptureSize();
+  const sourceWidth = requested?.width || video.videoWidth;
+  const sourceHeight = requested?.height || video.videoHeight;
+  const scale = Math.min(1, 1280 / sourceWidth, 720 / sourceHeight);
+  return { width: Math.max(1, Math.round(sourceWidth * scale)), height: Math.max(1, Math.round(sourceHeight * scale)) };
+}
+
 async function startBrowserScreenShare() {
   state.screenShareRequestInFlight = true; updateControlAccess();
   let stream = null; let serverStarted = false;
   try {
     const requested = configuredCaptureSize();
-    const fps = Math.max(5, Math.min(60, Number(state.desktopShareSettings?.fps) || 30));
+    if (state.desktopShareSettings?.fps === 'device') await detectDisplayRefreshRate();
+    const fps = desktopShareTargetFps();
     const videoConstraints = requested
       ? { width: { ideal: requested.width, max: requested.width }, height: { ideal: requested.height, max: requested.height }, frameRate: { ideal: fps, max: fps } }
       : { frameRate: { ideal: fps, max: fps }, resizeMode: 'none' };
@@ -11507,12 +11685,20 @@ async function startBrowserScreenShare() {
     // Viewers can answer before the start acknowledgement returns. Publish
     // the stream first so their WebRTC offer always receives a real track.
     state.localCapture = stream;
-    const result = await emitAck('screen-share-start', { settings: state.desktopShareSettings });
+    const captureSettings = captureTrack.getSettings();
+    const actualFps = Math.round(Number(captureSettings.frameRate) || fps);
+    const actualWidth = Math.round(Number(captureSettings.width) || 0);
+    const actualHeight = Math.round(Number(captureSettings.height) || 0);
+    const actualSettings = { actualFps, actualWidth, actualHeight, hasAudio: stream.getAudioTracks().length > 0 };
+    const result = await emitAck('screen-share-start', { settings: { ...state.desktopShareSettings, requestedFps: fps, ...actualSettings } });
     if (!result.success) throw new Error(result.error || '服务器拒绝屏幕共享');
     serverStarted = true;
     if (captureTrack.readyState === 'ended') throw new Error('屏幕捕获已由用户停止');
     elements.screenShareBtn.textContent = '停止共享';
-    showScreenShare({ active: true, socketId: state.socket.id, username: state.user?.username || '我' });
+    state.screenFallbackViewerCount = Math.max(0, Number(result.fallbackViewerCount) || 0);
+    showScreenShare({ active: true, socketId: state.socket.id, username: state.user?.username || '我', settings: result.screenShare?.settings });
+    const actualSizeLabel = actualWidth && actualHeight ? ` · ${actualWidth} × ${actualHeight}` : '';
+    if (elements.desktopShareActualStatus) elements.desktopShareActualStatus.textContent = `实际捕获 ${actualFps} FPS${actualSizeLabel}${actualSettings.hasAudio ? ' · 系统声音已捕获' : ' · 未捕获系统声音'}`;
     startBrowserAudioRelay(stream);
     await startFrameCapture(stream);
   } catch (error) {
@@ -11598,6 +11784,7 @@ function stopNativeCapture(notifyServer, { invokeBridge = true } = {}) {
     try { Promise.resolve(capture.bridge?.stopScreenCapture?.()).catch(() => {}); } catch (_) {}
   }
   if (notifyServer && state.socketAuthenticated) state.socket.emit('screen-share-stop');
+  stopLiveWebShare();
   hideScreenShare(); updateControlAccess();
 }
 
@@ -11644,6 +11831,9 @@ async function startFrameCapture(stream) {
   const session = ++state.captureSession; clearTimeout(state.captureTimer); state.captureSequence = 0; resetOutgoingScreenFrames();
   const video = document.createElement('video'); video.srcObject = stream; video.muted = true; video.playsInline = true;
   state.captureVideo = video; state.captureCanvas = document.createElement('canvas');
+  elements.screenShareVideo.srcObject = stream; elements.screenShareVideo.muted = true;
+  elements.screenShareVideo.classList.remove('is-hidden'); elements.screenShareCanvas.classList.add('is-hidden');
+  await elements.screenShareVideo.play().catch(() => {});
   await video.play(); scheduleCaptureFrame(session, 0);
 }
 
@@ -11657,15 +11847,13 @@ async function captureScreenFrame(session) {
   const started = performance.now(); state.captureInFlight = true;
   try {
     const video = state.captureVideo; if (!video.videoWidth || !video.videoHeight) return;
-    const requested = configuredCaptureSize();
-    const maxWidth = requested?.width || video.videoWidth;
-    const maxHeight = requested?.height || video.videoHeight;
-    const scale = Math.min(1, maxWidth / video.videoWidth, maxHeight / video.videoHeight);
-    const canvas = state.captureCanvas; const width = Math.max(1, Math.round(video.videoWidth * scale)); const height = Math.max(1, Math.round(video.videoHeight * scale));
+    if (state.screenFallbackViewerCount <= 0) return;
+    const fallback = fallbackScreenCaptureSize(video);
+    const canvas = state.captureCanvas; const width = fallback.width; const height = fallback.height;
     if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
     canvas.getContext('2d', { alpha: false }).drawImage(video, 0, 0, width, height); drawLocalScreenPreview(canvas);
     if (state.socketAuthenticated && state.socket.connected && state.screenShareActive) {
-      const quality = ({ balanced: .72, high: .88, ultra: .96 })[state.desktopShareSettings?.quality] || .88;
+      const quality = ({ balanced: .62, high: .72, ultra: .8 })[state.desktopShareSettings?.quality] || .72;
       const blob = await canvasToBlob(canvas, 'image/jpeg', quality);
       if (blob && session === state.captureSession && state.localCapture) {
         const data = await blob.arrayBuffer();
@@ -11693,7 +11881,9 @@ function stopLocalCapture(notify) {
   state.localCapture = null; state.captureSession += 1; clearTimeout(state.captureTimer); state.captureTimer = null; state.captureInFlight = false;
   clearTimeout(state.captureRestoreTimer); state.captureRestoreTimer = null;
   if (state.captureVideo) { state.captureVideo.pause(); state.captureVideo.srcObject = null; }
+  elements.screenShareVideo.pause(); elements.screenShareVideo.srcObject = null; elements.screenShareVideo.muted = false; elements.screenShareVideo.classList.add('is-hidden');
   state.captureVideo = null; state.captureCanvas = null; stream.getTracks().forEach((track) => track.stop()); elements.screenShareBtn.textContent = '共享画面';
+  stopLiveWebShare();
   if (notify && state.socketAuthenticated) state.socket.emit('screen-share-stop');
   hideScreenShare();
 }
@@ -11709,7 +11899,15 @@ function showScreenShare(share) {
   suspendMediaForScreenShare(); updateControlAccess();
   hidePlaybackViews(); elements.emptyStage.classList.add('is-hidden'); elements.screenShareCanvas.classList.remove('is-hidden');
   const local = hasLocalScreenCapture();
-  elements.screenShareStatus.textContent = `${share.username}${local ? '（本机预览）' : ''} 正在共享屏幕${local ? '' : ' · 等待最新画面'}`; elements.screenShareStatus.classList.remove('is-hidden');
+  const actualFps = Math.round(Number(share.settings?.actualFps) || 0);
+  const actualSize = Number(share.settings?.actualWidth) > 0 && Number(share.settings?.actualHeight) > 0 ? `${share.settings.actualWidth} × ${share.settings.actualHeight}` : '';
+  const actualLabel = [actualSize, actualFps ? `${actualFps} FPS` : ''].filter(Boolean).join(' · ');
+  elements.screenShareStatus.textContent = `${share.username}${local ? '（本机预览）' : ''} 正在共享屏幕${actualLabel ? ` · 实际捕获 ${actualLabel}` : local ? '' : ' · 等待最新画面'}`; elements.screenShareStatus.classList.remove('is-hidden');
+  if (share.settings?.hasAudio) {
+    elements.audioShareRoomText.textContent = `${share.username || '成员'} 正在共享屏幕声音`;
+    elements.audioShareRoomStatus.classList.remove('is-hidden');
+    elements.audioShareRoomStatus.classList.toggle('audio-ready', local);
+  }
   if (!local) setTimeout(requestScreenPeerConnection, 0);
 }
 
@@ -11757,8 +11955,9 @@ function hideScreenShare({ preserveLocal = false } = {}) {
   try { state.screenPlaybackAudioContext?.close(); } catch (_) {}
   state.screenPlaybackAudioContext = null; state.screenAudioNextTime = 0; state.screenAudioQueue = []; state.screenAudioLastSequence = 0;
   const wasActive = state.screenShareActive || state.shareMediaSuspended;
-  state.screenShareActive = false; state.screenShareKey = ''; state.pendingScreenFrame = null; state.lastScreenFrameSequence = 0; state.screenFrameGeneration += 1;
-  clearScreenCanvas(); elements.screenShareCanvas.classList.add('is-hidden'); elements.screenShareStatus.classList.add('is-hidden');
+  state.screenShareActive = false; state.screenShareKey = ''; state.pendingScreenFrame = null; state.lastScreenFrameSequence = 0; state.screenFrameGeneration += 1; state.screenFallbackViewerCount = 0;
+  clearScreenCanvas(); elements.screenShareCanvas.classList.add('is-hidden'); elements.screenShareVideo.pause(); elements.screenShareVideo.srcObject = null; elements.screenShareVideo.classList.add('is-hidden'); elements.screenShareStatus.classList.add('is-hidden');
+  if (!state.audioSourceShare?.active) elements.audioShareRoomStatus?.classList.add('is-hidden');
   if (state.room) state.room.screenShare = { active: false, socketId: null, username: null };
   state.shareMediaSuspended = false; updateControlAccess();
   if (wasActive) restorePlaybackStage();

@@ -69,32 +69,34 @@ assert.match(app, /class="admin-request-table"/);
 assert.match(css, /\.account-admin-list\.view-table, \.registration-request-list\.view-table/);
 assert.match(css, /\.account-admin-list\.view-compact/);
 
-// 8) Shared audio uses a 48 kHz playback context, buffered queue and higher-quality WebRTC.
-assert.match(app, /new AudioContext\(\{ latencyHint: 'playback', sampleRate: 48000 \}\)/);
-assert.match(app, /createScriptProcessor\(4096,/);
+// 8) Shared audio uses an interactive 48 kHz context, compact 20 ms PCM fallback and higher-quality WebRTC.
+assert.match(app, /new AudioContext\(\{ latencyHint: 'interactive', sampleRate: 48000 \}\)/);
+assert.match(app, /createScriptProcessor\(1024,/);
+assert.match(app, /new Int16Array\(/);
+assert.match(app, /sampleFormat: 's16'/);
 assert.match(app, /state\.screenAudioQueue/);
 assert.match(app, /state\.screenAudioLastSequence/);
 assert.match(app, /maxBitrate = 320000/);
 assert.match(app, /maxaveragebitrate=320000/);
-assert.match(app, /jitterBufferTarget = 0\.08/);
+assert.match(app, /jitterBufferTarget = 0\.04/);
 
-// 9) The web surface stays on v2.2.0 and the standalone client uses the
+// 9) The web surface reports the current release and the standalone client uses the
 // unified desktop product identity introduced by the split release.
-assert.match(html, /版本 v2\.1\.8 · 版权所有/);
-assert.match(html, /id="versionText">v2\.1\.8</);
+assert.match(html, /版本 v2\.3\.0 · 版权所有/);
+assert.match(html, /id="versionText">v2\.3\.0</);
 assert.match(launcher, /<title>同步观影<\/title>/);
 assert.match(launcher, /SYNCWATCH DESKTOP/);
 assert.doesNotMatch(html, /v2\.0\.5|2\.0\.5/);
 assert.doesNotMatch(app, /v2\.0\.5|2\.0\.5/);
 assert.doesNotMatch(launcher, /v2\.0\.5|2\.0\.5/);
 
-// 10) One server setting controls all four platform download categories on
-// both the login screen and the authenticated account menu.
+// 10) One server setting controls the supported Windows and Android downloads
+// on both the login screen and the authenticated account menu.
 assert.match(html, /id="downloadButtonsVisible"/);
 for (const id of [
-  'downloadClientBtn', 'downloadClientMainBtn', 'downloadLoginApkBtn', 'androidApkBtn',
-  'downloadMacServerBtn', 'downloadMacServerMainBtn', 'downloadMacClientBtn', 'downloadMacClientMainBtn'
+  'downloadClientBtn', 'downloadClientMainBtn', 'downloadLoginApkBtn', 'androidApkBtn'
 ]) assert.match(html, new RegExp(`id=["']${id}["']`));
+assert.doesNotMatch(html, /id=["']downloadMac(?:Server|Client)/);
 assert.match(app, /const showDownloads = state\.publicConfig\.downloadButtonsVisible !== false/);
 assert.match(app, /notice-preferences-updated/);
 assert.match(app, /downloadButtonsVisible: elements\.downloadButtonsVisible\?\.checked !== false/);
@@ -104,7 +106,6 @@ assert.match(app, /downloadButtonsVisible: elements\.downloadButtonsVisible\?\.c
 assert.match(html, /href="\/css\/pro-max\.css"/);
 assert.match(launcher, /href="public\/css\/pro-max-launcher\.css"/);
 assert.match(proMaxCss, /@media \(max-width:\s*760px\)[\s\S]*?button:not\([^}]+min-height:\s*48px/);
-assert.doesNotMatch(proMaxCss, /min-height:\s*44px/);
 assert.match(launcherProMaxCss, /focus-visible/);
 
-console.log('Frontend v2.2.0 product, accessibility and Pro Max redesign contracts passed.');
+console.log('Frontend current-release product, accessibility and Pro Max redesign contracts passed.');

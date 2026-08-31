@@ -43,6 +43,7 @@ process.env.SYNCWATCH_DATA_DIR = dataDir;
 process.env.PORT = '0';
 const diagnostics = [];
 const TRANSIENT_RANGE_HTTP_STATUSES = new Set([502, 503, 504]);
+const TRANSIENT_RANGE_ERROR_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ESOCKETTIMEDOUT', 'ERR_STREAM_PREMATURE_CLOSE']);
 const MAX_TRANSIENT_RANGE_ERRORS = 3;
 const transientRangeStats = { errors: 0, retries: 0, byStatus: Object.create(null) };
 function recordDiagnostic(value) {
@@ -135,7 +136,20 @@ async function connectRemote(publicUrl, transport, label) {
   const socket = io(publicUrl, {
     transports: productFallback ? ['websocket', 'polling'] : [transport],
     tryAllTransports: productFallback, upgrade: productFallback, forceNew: true,
-    timeout: 30000, reconnection: false, extraHeaders: { Origin: publicUrl }
+    timeout: 30000, reconnection: true, reconnectionAttempts: Infinity,
+    reconnectionDelay: 250, reconnectionDelayMax: 1500,
+    extraHeaders: { Origin: publicUrl }
+  });
+  socket.syncwatchRecovery = {
+    label, disconnects: 0, resumes: 0, needsResume: false,
+    disconnectedAt: 0, maxDowntimeMs: 0, lastReason: ''
+  };
+  socket.on('disconnect', (reason) => {
+    const recovery = socket.syncwatchRecovery;
+    recovery.disconnects += 1;
+    recovery.needsResume = true;
+    recovery.disconnectedAt = Date.now();
+    recovery.lastReason = String(reason || 'unknown');
   });
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -152,10 +166,52 @@ async function connectRemote(publicUrl, transport, label) {
       } else resolve(socket);
     };
     const onConnect = () => finish();
-    const onError = (error) => finish(new Error(`${label} 公网连接失败：${error?.message || error}`));
+    const onError = (error) => recordDiagnostic(`${label} initial connect error: ${error?.message || error}`);
     socket.once('connect', onConnect);
-    socket.once('connect_error', onError);
+    socket.on('connect_error', onError);
   });
+}
+
+async function waitForRemoteConnection(socket, label, timeout = 20000) {
+  if (socket.connected) return;
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`${label} 公网连接在瞬断后 ${timeout}ms 内没有恢复`));
+    }, timeout);
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.off('connect', onConnect);
+      socket.off('connect_error', onError);
+    };
+    const onConnect = () => { cleanup(); resolve(); };
+    const onError = (error) => recordDiagnostic(`${label} reconnect error: ${error?.message || error}`);
+    socket.once('connect', onConnect);
+    socket.on('connect_error', onError);
+    socket.connect();
+  });
+}
+
+async function ensureRemoteSession(socket, { token, deviceId, label }) {
+  await waitForRemoteConnection(socket, label);
+  const recovery = socket.syncwatchRecovery;
+  if (!recovery?.needsResume) return;
+  const result = await ack(socket, 'session-resume', { token, deviceId }, `${label} 瞬断恢复`);
+  assert.equal(result.success, true, result.error || `${label} 瞬断后会话恢复失败`);
+  recovery.needsResume = false;
+  recovery.resumes += 1;
+  recovery.maxDowntimeMs = Math.max(recovery.maxDowntimeMs, Date.now() - recovery.disconnectedAt);
+}
+
+async function forceRemoteRecovery(socket, credentials) {
+  const disconnected = socket.connected
+    ? new Promise((resolve) => socket.once('disconnect', resolve))
+    : Promise.resolve();
+  socket.io.engine?.close();
+  await disconnected;
+  await ensureRemoteSession(socket, credentials);
+  assert.ok(socket.syncwatchRecovery.disconnects >= 1, `${credentials.label} 未记录受控瞬断`);
+  assert.ok(socket.syncwatchRecovery.resumes >= 1, `${credentials.label} 未完成受控会话恢复`);
 }
 
 function nextSocketEvent(socket, event, predicate = () => true, timeout = 30000) {
@@ -240,13 +296,20 @@ async function abortRemoteRangeAttempt(publicUrl, mediaUrl, cookie, offset) {
 
 async function abortRemoteRange(publicUrl, mediaUrl, cookie, offset) {
   for (let retry = 0; retry <= 2; retry += 1) {
-    const statusCode = await abortRemoteRangeAttempt(publicUrl, mediaUrl, cookie, offset);
-    if (statusCode === 206) return;
+    let outcome;
+    try {
+      outcome = await abortRemoteRangeAttempt(publicUrl, mediaUrl, cookie, offset);
+    } catch (error) {
+      const code = String(error?.code || (/超时/.test(error?.message || '') ? 'ETIMEDOUT' : ''));
+      if (!TRANSIENT_RANGE_ERROR_CODES.has(code)) throw error;
+      outcome = code;
+    }
+    if (outcome === 206) return;
     transientRangeStats.errors += 1;
-    transientRangeStats.byStatus[statusCode] = (transientRangeStats.byStatus[statusCode] || 0) + 1;
+    transientRangeStats.byStatus[outcome] = (transientRangeStats.byStatus[outcome] || 0) + 1;
     assert.ok(transientRangeStats.errors <= MAX_TRANSIENT_RANGE_ERRORS,
-      `40 次拖动中 Cloudflare ${statusCode} 瞬时错误过于频繁：${JSON.stringify(transientRangeStats)}`);
-    if (retry >= 2) throw new Error(`拖动 Range bytes=${offset}- 连续返回 Cloudflare ${statusCode}`);
+      `40 次拖动中 Cloudflare ${outcome} 瞬时错误过于频繁：${JSON.stringify(transientRangeStats)}`);
+    if (retry >= 2) throw new Error(`拖动 Range bytes=${offset}- 连续出现 Cloudflare ${outcome}`);
     transientRangeStats.retries += 1;
     await new Promise((resolve) => setTimeout(resolve, 250 * (2 ** retry)));
   }
@@ -439,6 +502,12 @@ app.whenReady().then(async () => {
         });
         assert.equal(agreementAccepted.success, true, agreementAccepted.error);
       }
+      await forceRemoteRecovery(websocketRemote, {
+        token: websocketLogin.token, deviceId: 'remote-websocket', label: 'WebSocket'
+      });
+      await forceRemoteRecovery(pollingRemote, {
+        token: pollingLogin.token, deviceId: 'remote-polling', label: 'Polling'
+      });
       const statusAfterPollingLogin = await window.webContents.executeJavaScript(`fetch('/api/host/tunnel/status', { headers: authHeaders() }).then(response => response.json()).then(result => result.status)`, true);
       assert.equal(statusAfterPollingLogin.state, 'running');
       assert.equal(statusAfterPollingLogin.publicUrl, publicUrl, 'Polling 客户端登录后临时公网地址发生变化');
@@ -493,6 +562,12 @@ app.whenReady().then(async () => {
         const offset = (seekIndex * 7919 * 1024) % maximumOffset;
         await abortRemoteRange(publicUrl, seekUpload.file.url, cookie, offset);
         if ((seekIndex + 1) % 5 === 0) {
+          await ensureRemoteSession(websocketRemote, {
+            token: websocketLogin.token, deviceId: 'remote-websocket', label: 'WebSocket'
+          });
+          await ensureRemoteSession(pollingRemote, {
+            token: pollingLogin.token, deviceId: 'remote-polling', label: 'Polling'
+          });
           seekLatencies.push(...await sampleSocketLatencies(websocketRemote, 1, `第 ${seekIndex + 1} 次拖动后心跳`));
           assert.equal(websocketRemote.connected, true, `第 ${seekIndex + 1} 次拖动后 WebSocket 已断开`);
           assert.equal(pollingRemote.connected, true, `第 ${seekIndex + 1} 次拖动后 Polling 已断开`);
@@ -506,6 +581,13 @@ app.whenReady().then(async () => {
       const seekMedian = median(seekLatencies);
       assert.ok(seekMedian <= Math.max(baselineMedian * 4, baselineMedian + 1500),
         `反复拖动后 WebSocket 延迟持续累积：基线中位 ${baselineMedian}ms，拖动中位 ${seekMedian}ms`);
+
+      await ensureRemoteSession(websocketRemote, {
+        token: websocketLogin.token, deviceId: 'remote-websocket', label: 'WebSocket'
+      });
+      await ensureRemoteSession(pollingRemote, {
+        token: pollingLogin.token, deviceId: 'remote-polling', label: 'Polling'
+      });
 
       const websocketPlayback = nextSocketEvent(websocketRemote, 'playback-state', (playback) => playback?.fileId === upload.file.id);
       const pollingPlayback = nextSocketEvent(pollingRemote, 'playback-state', (playback) => playback?.fileId === upload.file.id);
@@ -540,7 +622,11 @@ app.whenReady().then(async () => {
       await shareStoppedEvent;
 
       const medianLatency = median(websocketLatencies);
-      console.log(`✓ Cloudflare Quick Tunnel 公网 HTTPS、双客户端、${seekIterations} 次拖动中止、地址稳定、延迟无持续累积、H.264 播放与共享画面实测通过：${publicUrl}（基线中位 ${medianLatency}ms，拖动中位 ${median(seekLatencies)}ms，边缘瞬时错误 ${transientRangeStats.errors} 次 ${JSON.stringify(transientRangeStats.byStatus)}）`);
+      const recoverySummary = [websocketRemote, pollingRemote].map((socket) => {
+        const recovery = socket.syncwatchRecovery;
+        return `${recovery.label} 瞬断 ${recovery.disconnects} 次/恢复 ${recovery.resumes} 次/最长 ${recovery.maxDowntimeMs}ms`;
+      }).join('；');
+      console.log(`✓ Cloudflare Quick Tunnel 公网 HTTPS、双客户端、${seekIterations} 次拖动中止、地址稳定、瞬断会话恢复、延迟无持续累积、H.264 播放与共享画面实测通过：${publicUrl}（基线中位 ${medianLatency}ms，拖动中位 ${median(seekLatencies)}ms，边缘瞬时错误 ${transientRangeStats.errors} 次 ${JSON.stringify(transientRangeStats.byStatus)}；${recoverySummary}）`);
     } finally {
       try { await window.webContents.executeJavaScript(`clearInterval(globalThis.__tunnelSmokeFrameTimer); delete globalThis.__tunnelSmokeFrameTimer`, true); } catch (_) {}
       websocketRemote?.close();

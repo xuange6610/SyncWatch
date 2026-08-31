@@ -32,7 +32,7 @@
 - `Tray` 初始化可能阻塞同一主线程；测试 smoke 可在 `SYNCWATCH_SMOKE_MODE=1` 跳过托盘初始化，正式程序仍必须创建托盘。
 - 托管 Windows 的第二个隐藏 `BrowserWindow` 也可能让生产 EPIPE smoke 卡在 `app:browser-window-created`；仅在 `SYNCWATCH_EPIPE_CASE=production` 的测试分支跳过主窗口创建，其他 smoke 和正式程序仍创建完整主窗口。
 - 每次调整生命周期都要记录阶段日志（窗口创建、EPIPE、强制退出），并用 `npm run test:epipe` 和静态契约测试锁定测试专用分支，不能改变正常应用关闭路径。
-- 2026-08-31 的 `33365811610` 仍在 `app:browser-window-created` 后超时；该轮已取消，未产生正式 Windows/Full Offline 资产，线上 `v2.2.9` 未改变。后续必须先定位剩余初始化调用，再重新触发发布。
+- 2026-08-31 的 `33365811610` 曾在 `app:browser-window-created` 后超时；该轮已取消且未产生正式资产。后续修复已由最终运行 `33370280271` 验证并成功发布，不能继续把该历史失败当作当前状态。
 
 ### 2.4 Android 模拟器和 ADB
 
@@ -86,3 +86,10 @@ surfaces: README, Pages canonical, Wiki, Release body, Latest link
 ```
 
 缺少任何一项时，发布状态为 `pending`，并保留失败日志和候选 artifact 的隔离边界。
+
+## 5. v2.3.0 最终成功基线
+
+- 注释 Tag 对象：`11203ae2587029415b7332b9409b22ac0f64bdaf`；目标提交：`c2086ca6fa1a64a4ffa117361ae42921b3ab4956`。
+- 原子运行 `33370280271` 成功完成源码、官方文件、Android、Windows、Defender、10 文件审计、上传和远端 SHA-256 回读。
+- Release API 有 8 个维护者资产，页面另有 2 个源码归档，v2.3.0 已公开为 Latest。
+- 该 Tag 后的工作区改动不属于首次公开的 v2.3.0 资产。用户已授权执行同版本纠正覆盖；仍必须从新最终 Tag 重新执行本手册的完整证据链，并仅在新 8 项远端回读成功后删除被替换的 v2.3.0 旧资产。

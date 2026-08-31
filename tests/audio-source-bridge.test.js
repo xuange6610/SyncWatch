@@ -38,9 +38,11 @@ assert.match(app, /chromeMediaSourceId:\s*videoSourceId/);
 assert.match(app, /fallbackScreenId[\s\S]{0,500}attempts\.push\(desktopConstraints\(fallbackScreenId\)\)/);
 assert.match(app, /audio-share-start'[\s\S]{0,180}sourceName/);
 
-assert.match(server, /const sourceName = cleanText\(payload\.sourceName, 120\)/);
-assert.match(server, /roomState\.audioShare = \{[^\n]+platform, sourceName, volume \}/);
-assert.match(server, /audioShare: \{ active: false,[^\n]+sourceName: ''/);
+assert.match(server, /function sanitizeAudioSourceMetadata\(/);
+assert.match(server, /sourceName: cleanText\(payload\.sourceName, 120\)/);
+assert.match(server, /processName: cleanText\(payload\.processName, 80\)/);
+assert.match(server, /roomState\.audioShare = \{[^\n]+platform, \.\.\.metadata, volume \}/);
+assert.match(server, /audioShare: \{ active: false,[^\n]+processName: ''[^\n]+mediaTitle: ''/);
 
 assert.doesNotMatch(mainPreload, /syncwatch:picture-in-picture/);
 

@@ -2883,7 +2883,7 @@ async function startSyncWatchServer(options = {}) {
         },
         textReading: normalizeTextReadingState(saved.textReading),
         screenShare: { active: false, socketId: null, username: null },
-        audioShare: { active: false, socketId: null, username: null, displayName: '', platform: 'system', sourceName: '', volume: 0.8 },
+        audioShare: { active: false, socketId: null, username: null, displayName: '', platform: 'system', sourceName: '', processName: '', mediaTitle: '', sourceKind: '', volume: 0.8 },
         webShare: {
           active: savedWebShare.active === true && Boolean(savedWebUrl), mode: savedWebShare.mode === 'live' ? 'live' : 'url', url: savedWebUrl,
           title: cleanText(savedWebShare.title || '共享网页', 120), changedBy: cleanUsername(savedWebShare.changedBy),
@@ -2891,7 +2891,7 @@ async function startSyncWatchServer(options = {}) {
         }
       },
       playbackChanges: [], playbackGeneration: 0, latestScreenFrame: null, screenFrameSequence: 0,
-      screenFrameGeneration: 0, screenFrameDeliveries: new Map(), playbackRequests: [], playbackRequestSuppressions: new Map(), controlRequests: [], themeSyncRequests: []
+      screenFrameGeneration: 0, screenFrameDeliveries: new Map(), screenWebrtcViewers: new Set(), playbackRequests: [], playbackRequestSuppressions: new Map(), controlRequests: [], themeSyncRequests: []
     };
   }
   function roomRuntime(roomIdValue = '') {
@@ -4558,9 +4558,21 @@ async function startSyncWatchServer(options = {}) {
     const runtime = roomRuntime(id);
     for (const member of roomUsers(id)) {
       const targetSocket = io.sockets.sockets.get(member.socketId);
+      if (member.socketId === runtime.roomState.screenShare.socketId || !targetSocket || runtime.screenWebrtcViewers.has(targetSocket.id)) continue;
       if (targetSocket) queueScreenFrameForSocket(id, targetSocket, packet);
     }
     return runtime.screenFrameDeliveries.size;
+  }
+
+  function emitScreenFallbackState(roomIdValue = '') {
+    const id = normalizeRoomId(roomIdValue) || currentRoomId();
+    const runtime = roomRuntime(id);
+    const sharerSocketId = runtime.roomState.screenShare.socketId;
+    if (!sharerSocketId) return 0;
+    const fallbackViewerCount = roomUsers(id).filter((member) => member.socketId !== sharerSocketId
+      && io.sockets.sockets.has(member.socketId) && !runtime.screenWebrtcViewers.has(member.socketId)).length;
+    io.to(sharerSocketId).emit('screen-share-fallback-state', { fallbackViewerCount });
+    return fallbackViewerCount;
   }
 
   function stopScreenShare(socketId = '', roomIdValue = '') {
@@ -4571,13 +4583,33 @@ async function startSyncWatchServer(options = {}) {
       return false;
     }
     if (socketId && runtime.roomState.screenShare.socketId !== socketId) return false;
+    const stoppedShare = runtime.roomState.screenShare;
     runtime.roomState.screenShare = { active: false, socketId: null, username: null };
     runtime.latestScreenFrame = null;
     runtime.screenFrameSequence = 0;
     runtime.screenFrameGeneration += 1;
+    runtime.screenWebrtcViewers.clear();
     clearScreenFrameDeliveries(runtime);
     io.to(roomChannel(id)).emit('screen-share-stopped');
+    if (runtime.roomState.webShare?.active && runtime.roomState.webShare.mode === 'live') {
+      runtime.roomState.webShare = {
+        active: false, mode: 'live', url: '', title: '', changedBy: stoppedShare.username || '',
+        updatedAt: Date.now(), revision: Math.max(0, Number(runtime.roomState.webShare.revision) || 0) + 1
+      };
+      persist();
+      io.to(roomChannel(id)).emit('web-share-state', { roomId: id, ...runtime.roomState.webShare, serverTime: Date.now() });
+    }
     return true;
+  }
+
+  function sanitizeAudioSourceMetadata(payload = {}) {
+    const sourceKind = ['process', 'window', 'screen', 'tab'].includes(payload.sourceKind) ? payload.sourceKind : '';
+    return {
+      sourceName: cleanText(payload.sourceName, 120),
+      processName: cleanText(payload.processName, 80).replace(/[\\/]/g, ''),
+      mediaTitle: cleanText(payload.mediaTitle || payload.sourceName, 160),
+      sourceKind
+    };
   }
 
   function stopAudioShare(socketId = '', roomIdValue = '') {
@@ -4585,7 +4617,7 @@ async function startSyncWatchServer(options = {}) {
     const runtime = roomRuntime(id);
     if (!runtime.roomState.audioShare?.active) return false;
     if (socketId && runtime.roomState.audioShare.socketId !== socketId) return false;
-    runtime.roomState.audioShare = { active: false, socketId: null, username: null, displayName: '', platform: 'system', sourceName: '', volume: 0.8 };
+    runtime.roomState.audioShare = { active: false, socketId: null, username: null, displayName: '', platform: 'system', sourceName: '', processName: '', mediaTitle: '', sourceKind: '', volume: 0.8 };
     io.to(roomChannel(id)).emit('audio-share-state', { ...runtime.roomState.audioShare });
     return true;
   }
@@ -8829,6 +8861,9 @@ async function startSyncWatchServer(options = {}) {
 
   function attachUser(socket, session, clientInfo = {}) {
     const previousPresence = [...users.values()].find((entry) => entry.sessionToken === session.token && entry.roomId === session.roomId) || null;
+    const resumedAudioShare = Boolean(previousPresence
+      && roomRuntime(session.roomId).roomState.audioShare?.active
+      && roomRuntime(session.roomId).roomState.audioShare.socketId === previousPresence.socketId);
     const alreadyPresent = Boolean(previousPresence);
     const wasAccountOnline = alreadyPresent || accountIsOnline(session.username);
     const currentUser = users.get(socket.id);
@@ -8871,6 +8906,8 @@ async function startSyncWatchServer(options = {}) {
     users.set(socket.id, info);
     broadcastAccountPresence(info.username, true, { announceOnline: !wasAccountOnline });
     socket.join(roomChannel(session.roomId));
+    const resumedAudioRuntime = resumedAudioShare ? roomRuntime(session.roomId) : null;
+    if (resumedAudioRuntime) resumedAudioRuntime.roomState.audioShare.socketId = socket.id;
     io.to(roomChannel(session.roomId)).emit('users-list', usersList(session.roomId));
     emitRoomDirectoryChanged(session.roomId, 'member-joined');
     if (!alreadyPresent) {
@@ -8885,6 +8922,10 @@ async function startSyncWatchServer(options = {}) {
     }
     socket.emit('room-state', roomSnapshot(session.roomId));
     socket.emit('web-share-state', { roomId: session.roomId, ...roomRuntime(session.roomId).roomState.webShare, serverTime: Date.now() });
+    if (resumedAudioRuntime) {
+      io.to(roomChannel(session.roomId)).emit('audio-share-state', { ...resumedAudioRuntime.roomState.audioShare });
+      socket.to(roomChannel(session.roomId)).emit('audio-share-webrtc-request', { sharerSocketId: socket.id });
+    }
     if (!alreadyPresent) emitRoomEntryNotice(socket, session.roomId);
     if (agreementAccepted(session.username)) setImmediate(() => emitPendingClientModeRequests(socket, session.username));
     const runtime = roomRuntime(session.roomId);
@@ -11045,22 +11086,24 @@ async function startSyncWatchServer(options = {}) {
       if (request.targetUsernames?.length && !request.targetUsernames.includes(user.username)) return acknowledgement?.({ success: false, error: '这次风格同步邀请未指定给当前账号' });
       if (request.responses[socket.id]) return acknowledgement?.({ success: true, duplicate: true, accepted: request.responses[socket.id].accepted });
       const accepted = payload.accepted === true;
+      const alreadyApplied = accepted && payload.alreadyApplied === true;
       const response = {
         accepted, username: user.username, displayName: state.accounts[user.username]?.displayName || user.username,
-        socketId: socket.id, respondedAt: now
+        alreadyApplied, socketId: socket.id, respondedAt: now
       };
       request.responses[socket.id] = response;
       const resultPayload = {
         requestId: request.id, themeId: request.themeId, themeName: request.themeName,
-        accepted, username: response.username, displayName: response.displayName,
-        message: `${response.displayName}${accepted ? '已同意' : '已拒绝'}同步“${request.themeName}”界面风格`
+        accepted, alreadyApplied, username: response.username, displayName: response.displayName,
+        message: alreadyApplied ? `${response.displayName}已经在使用“${request.themeName}”界面风格`
+          : `${response.displayName}${accepted ? '已同意' : '已拒绝'}同步“${request.themeName}”界面风格`
       };
       accountChangeNotice(request.requestedBy, {
         kind: 'theme-sync', roomId: user.roomId, approved: accepted,
         actor: response.username, actorName: response.displayName,
         requestId: request.id, message: resultPayload.message
       }, 'theme-sync-responded', resultPayload);
-      return acknowledgement?.({ success: true, accepted, themeId: request.themeId, themeName: request.themeName });
+      return acknowledgement?.({ success: true, accepted, alreadyApplied, themeId: request.themeId, themeName: request.themeName });
     });
 
     onSafe('text-reading-update', (payload = {}, acknowledgement) => {
@@ -12616,9 +12659,13 @@ async function startSyncWatchServer(options = {}) {
       const requestedSettings = payload.settings && typeof payload.settings === 'object' ? payload.settings : {};
       const screenSettings = {
         resolution: cleanText(requestedSettings.resolution || 'native', 32) || 'native',
-        fps: Math.max(5, Math.min(60, Math.round(Number(requestedSettings.fps) || 30))),
-        quality: ['balanced', 'high', 'ultra'].includes(requestedSettings.quality) ? requestedSettings.quality : 'high',
+        fps: Math.max(5, Math.min(240, Math.round(Number(requestedSettings.requestedFps || requestedSettings.fps) || 60))),
+        quality: ['balanced', 'high', 'ultra'].includes(requestedSettings.quality) ? requestedSettings.quality : 'ultra',
         systemAudio: requestedSettings.systemAudio !== false,
+        actualFps: Math.max(0, Math.min(240, Math.round(Number(requestedSettings.actualFps) || 0))),
+        actualWidth: Math.max(0, Math.min(16384, Math.round(Number(requestedSettings.actualWidth) || 0))),
+        actualHeight: Math.max(0, Math.min(16384, Math.round(Number(requestedSettings.actualHeight) || 0))),
+        hasAudio: requestedSettings.hasAudio === true,
         capabilities: Object.fromEntries(['mouse', 'keyboard', 'fileTransfer', 'sound', 'camera', 'remoteOpen'].map((key) => [key, Boolean(requestedSettings.capabilities?.[key])] ))
       };
       stopAudioShare('', user.roomId);
@@ -12631,10 +12678,12 @@ async function startSyncWatchServer(options = {}) {
       runtime.latestScreenFrame = null;
       runtime.screenFrameSequence = 0;
       runtime.screenFrameGeneration += 1;
+      runtime.screenWebrtcViewers.clear();
       clearScreenFrameDeliveries(runtime);
       io.to(roomChannel()).emit('screen-share-started', { ...roomState.screenShare });
       socket.to(roomChannel()).emit('screen-share-webrtc-request', { sharerSocketId: socket.id });
-      return acknowledgement?.({ success: true, screenShare: { ...roomState.screenShare } });
+      const fallbackViewerCount = emitScreenFallbackState(user.roomId);
+      return acknowledgement?.({ success: true, screenShare: { ...roomState.screenShare }, fallbackViewerCount });
     });
     onSafe('screen-share-frame', (frame, acknowledgement) => {
       const user = socketUser(socket, acknowledgement);
@@ -12659,9 +12708,23 @@ async function startSyncWatchServer(options = {}) {
       const sharer = users.get(sharerSocketId);
       if (!sharer || sharer.roomId !== user.roomId) return acknowledgement?.({ success: false, error: '共享者已离线' });
       io.to(sharerSocketId).emit('screen-share-viewer-ready', { viewerSocketId: socket.id });
+      emitScreenFallbackState(user.roomId);
       return acknowledgement?.({ success: true });
     });
+    onSafe('screen-share-transport-state', (payload = {}, acknowledgement) => {
+      const user = socketUser(socket, acknowledgement);
+      if (!user) return;
+      const runtime = roomRuntime(user.roomId);
+      const sharerSocketId = runtime.roomState.screenShare.socketId;
+      if (!sharerSocketId || sharerSocketId === socket.id) return acknowledgement?.({ success: false, error: '当前没有可更新的共享画面传输' });
+      if (payload.transport === 'webrtc') runtime.screenWebrtcViewers.add(socket.id);
+      else runtime.screenWebrtcViewers.delete(socket.id);
+      clearScreenFrameDelivery(runtime, socket.id);
+      const fallbackViewerCount = emitScreenFallbackState(user.roomId);
+      return acknowledgement?.({ success: true, transport: payload.transport === 'webrtc' ? 'webrtc' : 'fallback', fallbackViewerCount });
+    });
     onSafe('screen-share-signal', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `screen-share-signal:${socket.id}`, 240, 60 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement);
       if (!user) return;
       const targetSocketId = cleanText(payload.targetSocketId, 80);
@@ -12674,6 +12737,9 @@ async function startSyncWatchServer(options = {}) {
       const candidate = payload.candidate && typeof payload.candidate === 'object'
         ? { candidate: cleanText(payload.candidate.candidate, 4000), sdpMid: cleanText(payload.candidate.sdpMid, 100), sdpMLineIndex: Number(payload.candidate.sdpMLineIndex) || 0 } : null;
       if (!description && !candidate) return acknowledgement?.({ success: false, error: '屏幕共享信令内容无效' });
+      if (description && !['offer', 'answer'].includes(description.type)) return acknowledgement?.({ success: false, error: '屏幕共享信令类型无效' });
+      if (description?.type === 'offer' && (socket.id !== sharerSocketId || targetSocketId === sharerSocketId)) return acknowledgement?.({ success: false, error: '只有共享者可以发送画面连接请求' });
+      if (description?.type === 'answer' && (targetSocketId !== sharerSocketId || socket.id === sharerSocketId)) return acknowledgement?.({ success: false, error: '只有观看者可以回复画面连接请求' });
       io.to(targetSocketId).emit('screen-share-signal', { fromSocketId: socket.id, description, candidate });
       return acknowledgement?.({ success: true });
     });
@@ -12685,9 +12751,9 @@ async function startSyncWatchServer(options = {}) {
       const requestedPlatform = cleanText(payload.platform, 180);
       const platform = ['system', 'netease', 'qqmusic', 'kugou', 'qishui'].includes(requestedPlatform)
         || /^native:window:[\w-]+$/i.test(requestedPlatform) ? requestedPlatform : 'system';
-      const sourceName = cleanText(payload.sourceName, 120);
+      const metadata = sanitizeAudioSourceMetadata(payload);
       const volume = Math.max(0, Math.min(1, Number(payload.volume) || 0));
-      roomState.audioShare = { active: true, socketId: socket.id, username: user.username, displayName: state.accounts[user.username]?.displayName || user.username, platform, sourceName, volume };
+      roomState.audioShare = { active: true, socketId: socket.id, username: user.username, displayName: state.accounts[user.username]?.displayName || user.username, platform, ...metadata, volume };
       io.to(roomChannel()).emit('audio-share-state', { ...roomState.audioShare });
       socket.to(roomChannel()).emit('audio-share-webrtc-request', { sharerSocketId: socket.id });
       broadcastRoomNotice(user.roomId, `${roomState.audioShare.displayName} 开始共享电脑音源`, { kind: 'audio-share', actor: user.username });
@@ -12703,6 +12769,7 @@ async function startSyncWatchServer(options = {}) {
       return acknowledgement?.({ success: true });
     });
     onSafe('audio-share-signal', (payload = {}, acknowledgement) => {
+      if (socketRateLimited(socket, `audio-share-signal:${socket.id}`, 240, 60 * 1000, acknowledgement)) return;
       const user = socketUser(socket, acknowledgement); if (!user) return;
       const targetSocketId = cleanText(payload.targetSocketId, 80);
       const target = users.get(targetSocketId);
@@ -12714,6 +12781,9 @@ async function startSyncWatchServer(options = {}) {
       const candidate = payload.candidate && typeof payload.candidate === 'object'
         ? { candidate: cleanText(payload.candidate.candidate, 4000), sdpMid: cleanText(payload.candidate.sdpMid, 100), sdpMLineIndex: Number(payload.candidate.sdpMLineIndex) || 0 } : null;
       if (!description && !candidate) return acknowledgement?.({ success: false, error: '电脑音源信令内容无效' });
+      if (description && !['offer', 'answer'].includes(description.type)) return acknowledgement?.({ success: false, error: '电脑音源信令类型无效' });
+      if (description?.type === 'offer' && (socket.id !== sharerSocketId || targetSocketId === sharerSocketId)) return acknowledgement?.({ success: false, error: '只有音源共享者可以发送连接请求' });
+      if (description?.type === 'answer' && (targetSocketId !== sharerSocketId || socket.id === sharerSocketId)) return acknowledgement?.({ success: false, error: '只有音源观看者可以回复连接请求' });
       io.to(targetSocketId).emit('audio-share-signal', { fromSocketId: socket.id, description, candidate });
       return acknowledgement?.({ success: true });
     });
@@ -12742,9 +12812,9 @@ async function startSyncWatchServer(options = {}) {
       if (!size || size > SCREEN_AUDIO_LIMIT_BYTES || sampleRate < 8000 || sampleRate > 96000 || channels < 1 || channels > 2) return acknowledgement?.({ success: false, error: '共享音频数据无效' });
       socket.to(roomChannel()).emit('screen-share-audio', {
         data, sampleRate, channels, sequence: Math.max(0, Number(packet.sequence) || 0),
+        sampleFormat: packet.sampleFormat === 's16' ? 's16' : 'f32',
         volume: sharingAudio ? roomState.audioShare.volume : 1,
-        source: sharingAudio ? 'audio-share' : 'screen-share',
-        latencyHint: sharingAudio ? 'playback' : ''
+        source: sharingAudio ? 'audio-share' : 'screen-share', latencyHint: 'interactive'
       });
       return acknowledgement?.({ success: true });
     }, { allowAnyPayload: true });
@@ -15012,7 +15082,9 @@ async function startSyncWatchServer(options = {}) {
     socket.on('disconnect', (reason) => {
       const user = users.get(socket.id);
       if (user) {
-        clearScreenFrameDelivery(roomRuntime(user.roomId), socket.id);
+        const runtime = roomRuntime(user.roomId);
+        clearScreenFrameDelivery(runtime, socket.id);
+        if (runtime.screenWebrtcViewers.delete(socket.id)) emitScreenFallbackState(user.roomId);
         leaveLiveVoice(user, 'disconnect');
         if (closing) { users.delete(socket.id); return; }
         const explicitDisconnect = reason === 'client namespace disconnect' || reason === 'server namespace disconnect';

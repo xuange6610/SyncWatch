@@ -339,6 +339,28 @@ async function main() {
     })()`);
     const memberPanelPath = path.join(outputDir, 'member-panel-collapse-button-desktop.png'); await capture(cdp, memberPanelPath); images.push(memberPanelPath);
 
+    const desktopShareSettings = await evaluate(cdp, `(() => {
+      localStorage.removeItem('syncwatchDesktopShareSettings');
+      state.desktopShareSettings = { ...DEFAULT_DESKTOP_SHARE_SETTINGS };
+      openDesktopShareSettings();
+      const modal = elements.desktopShareModal.getBoundingClientRect();
+      const card = elements.desktopShareModal.querySelector('.desktop-share-modal-card').getBoundingClientRect();
+      return {
+        resolution: elements.desktopShareResolution.value, fps: elements.desktopShareFps.value,
+        quality: elements.desktopShareQuality.value, systemAudio: elements.desktopShareSystemAudio.checked,
+        status: elements.desktopShareActualStatus.textContent,
+        cardHeight: card.height,
+        inside: card.left >= modal.left && card.top >= modal.top && card.right <= modal.right && card.bottom <= modal.bottom
+      };
+    })()`);
+    assert.deepEqual({ resolution: desktopShareSettings.resolution, fps: desktopShareSettings.fps, quality: desktopShareSettings.quality, systemAudio: desktopShareSettings.systemAudio },
+      { resolution: 'native', fps: 'device', quality: 'ultra', systemAudio: true }, JSON.stringify(desktopShareSettings));
+    assert.match(desktopShareSettings.status, /实际|原生|刷新率/);
+    assert.equal(desktopShareSettings.inside, true, JSON.stringify(desktopShareSettings));
+    assert.ok(desktopShareSettings.cardHeight < 500, JSON.stringify(desktopShareSettings));
+    const desktopShareSettingsPath = path.join(outputDir, 'desktop-share-settings-desktop.png'); await capture(cdp, desktopShareSettingsPath); images.push(desktopShareSettingsPath);
+    await evaluate(cdp, `closeDesktopShareSettings(); true`);
+
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
     const wideRoomHeader = await evaluate(cdp, `(() => {
       const header = document.getElementById('roomHeader');
@@ -359,6 +381,36 @@ async function main() {
     assert.ok(wideRoomHeader.fields.every((field) => field.width > 0 && field.valueWidth > 0 && field.right <= wideRoomHeader.right + 1), JSON.stringify(wideRoomHeader));
 
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const mobileShareSettings = await evaluate(cdp, `(() => {
+      document.body.classList.add('android-client');
+      openDesktopShareSettings();
+      const card = elements.desktopShareModal.querySelector('.desktop-share-modal-card').getBoundingClientRect();
+      const controls = [...elements.desktopShareModal.querySelectorAll('select, button')].filter((item) => getComputedStyle(item).display !== 'none');
+      return {
+        left: card.left, right: card.right, top: card.top, bottom: card.bottom,
+        minControlHeight: Math.min(...controls.map((item) => item.getBoundingClientRect().height)),
+        bodyWidth: document.body.scrollWidth, viewport: innerWidth
+      };
+    })()`);
+    assert.ok(mobileShareSettings.left >= 0 && mobileShareSettings.right <= 390 && mobileShareSettings.top >= 0 && mobileShareSettings.bottom <= 844, JSON.stringify(mobileShareSettings));
+    assert.ok(mobileShareSettings.minControlHeight >= 43.5, JSON.stringify(mobileShareSettings));
+    assert.ok(mobileShareSettings.bodyWidth <= mobileShareSettings.viewport + 2, JSON.stringify(mobileShareSettings));
+    const mobileShareSettingsPath = path.join(outputDir, 'desktop-share-settings-mobile.png'); await capture(cdp, mobileShareSettingsPath); images.push(mobileShareSettingsPath);
+    const mobileAudioShareStatus = await evaluate(cdp, `(() => {
+      closeDesktopShareSettings();
+      elements.playerProgressBar.classList.remove('is-hidden');
+      applyAudioSourceShareState({ active: true, socketId: 'remote-audio', username: 'music-host', displayName: '共享成员', platform: 'qishui', sourceName: '测试歌曲', mediaTitle: '测试歌曲', processName: 'qishui.exe', sourceKind: 'process', volume: .8 });
+      const bar = elements.audioShareRoomStatus.getBoundingClientRect();
+      const button = elements.unlockSharedAudioBtn.getBoundingClientRect();
+      const progress = elements.playerProgressBar.getBoundingClientRect();
+      return { left: bar.left, right: bar.right, top: bar.top, bottom: bar.bottom, text: elements.audioShareRoomText.textContent, buttonHeight: button.height, bodyWidth: document.body.scrollWidth, viewport: innerWidth, progressTop: progress.top, progressBottom: progress.bottom, progressHeight: progress.height, configuredBottom: elements.playerContainer.style.getPropertyValue('--audio-share-bottom'), computedBottom: getComputedStyle(elements.audioShareRoomStatus).bottom, noSeekOverlap: bar.bottom <= progress.top };
+    })()`);
+    assert.ok(mobileAudioShareStatus.left >= 0 && mobileAudioShareStatus.right <= 390 && mobileAudioShareStatus.bottom <= 844, JSON.stringify(mobileAudioShareStatus));
+    assert.match(mobileAudioShareStatus.text, /共享成员.*测试歌曲.*qishui\.exe/);
+    assert.ok(mobileAudioShareStatus.buttonHeight >= 43.5 && mobileAudioShareStatus.bodyWidth <= mobileAudioShareStatus.viewport + 2, JSON.stringify(mobileAudioShareStatus));
+    assert.equal(mobileAudioShareStatus.noSeekOverlap, true, JSON.stringify(mobileAudioShareStatus));
+    const mobileAudioShareStatusPath = path.join(outputDir, 'audio-share-room-status-mobile.png'); await capture(cdp, mobileAudioShareStatusPath); images.push(mobileAudioShareStatusPath);
+    await evaluate(cdp, `applyAudioSourceShareState({ active: false }); true`);
     const mobileMenuInteraction = await evaluate(cdp, `(() => {
       document.body.classList.add('android-client', 'mobile-actions-open');
       const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');

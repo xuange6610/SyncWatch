@@ -2334,13 +2334,32 @@ function configureWebPermissions() {
   ));
 }
 
-function createMainWindow() {
+async function loadMainWindowWithRetry(targetWindow, url, { attempts = 5 } = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (!targetWindow || targetWindow.isDestroyed()) throw new Error('主窗口在加载完成前已关闭');
+    try {
+      await targetWindow.loadURL(url);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= attempts) break;
+      const delay = Math.min(1200, 200 * (2 ** (attempt - 1)));
+      await updateSplash(82 + attempt * 2, '本机服务正在就绪…', `主窗口第 ${attempt} 次连接未就绪，${delay} 毫秒后重试`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error(userFacingDesktopError(lastError, '本机服务已经启动，但主窗口暂时无法连接；请检查安全软件是否拦截本机回环连接', '主窗口加载失败'));
+}
+
+async function createMainWindow() {
   // The EPIPE production probe only validates the real entry-point guard and
   // server startup. Hosted Windows Electron can block while creating a second
   // hidden renderer after the probe has closed its output pipes; keep this
   // test-only path windowless while every normal smoke and packaged launch
   // still creates the full main window.
   if (EPIPE_PRODUCTION_SMOKE) return;
+  if (mainWindow && !mainWindow.isDestroyed()) return mainWindow;
   mainWindow = new BrowserWindow({
     width: 1320, height: 840, minWidth: 920, minHeight: 640, center: true, show: false,
     title: APP_NAME, icon: iconPath(), backgroundColor: '#100c16', autoHideMenuBar: false,
@@ -2365,11 +2384,6 @@ function createMainWindow() {
       mainWindow.setFullScreen(false);
     }
   });
-  mainWindow.once('ready-to-show', () => {
-    splashWindow?.close(); splashWindow = null;
-    if (!SMOKE_MODE) mainWindow.show();
-    console.log(`APP_READY=${localUrl()}`);
-  });
   mainWindow.on('close', (event) => {
     if (SMOKE_MODE || forceQuit || shuttingDown) return;
     event.preventDefault();
@@ -2387,7 +2401,13 @@ function createMainWindow() {
     }
     mainWindow = null;
   });
-  mainWindow.loadURL(`${localUrl()}#host=${encodeURIComponent(HOST_CONTROL_TOKEN)}`);
+  const readyToShow = new Promise((resolve) => mainWindow.once('ready-to-show', resolve));
+  await loadMainWindowWithRetry(mainWindow, `${localUrl()}#host=${encodeURIComponent(HOST_CONTROL_TOKEN)}`);
+  await readyToShow;
+  splashWindow?.close(); splashWindow = null;
+  if (!SMOKE_MODE && mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+  console.log(`APP_READY=${localUrl()}`);
+  return mainWindow;
 }
 
 async function startApplication() {
@@ -2448,12 +2468,11 @@ async function startApplication() {
   });
   await updateSplash(78, '服务器已启动，正在创建窗口…', `本机服务已监听端口 ${serverController.port}`);
   configureDisplayCapture();
-  createMainWindow();
+  await createMainWindow();
   configureWebPermissions();
   buildMenu();
   if (!SMOKE_MODE) createTray();
   await updateSplash(100, '启动完成', '主窗口已打开，服务器与房间可以使用');
-  setTimeout(() => { if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close(); }, 450);
   setImmediate(() => {
     serverController?.startConfiguredTunnel?.().catch((error) => console.warn('公网隧道自动启动失败：', error.message));
   });
@@ -2479,7 +2498,10 @@ app.whenReady().then(startApplication).catch(async (error) => {
   }
   splashWindow?.close(); dialog.showErrorBox('启动失败', message); app.quit();
 });
-app.on('activate', () => { if (mainWindow) mainWindow.show(); else if (serverController) createMainWindow(); });
+app.on('activate', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+  else if (serverController) void createMainWindow().catch((error) => dialog.showErrorBox('窗口打开失败', userFacingDesktopError(error, '主窗口无法连接本机服务，请重新启动应用', '窗口打开失败')));
+});
 app.on('window-all-closed', () => {});
 app.on('before-quit', (event) => {
   if (!serverController || shuttingDown) return;

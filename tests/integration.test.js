@@ -555,6 +555,29 @@ async function main() {
     assert.equal(duplicateTokenResume.success, false); assert.match(duplicateTokenResume.error, /另一台设备|另一端/);
     check('Socket 断线后会话可迁移到新 ID，但在线连接不会被同令牌重复窗口抢占');
 
+    const audioReconnectOriginal = await makeClient();
+    assert.equal((await audioReconnectOriginal.emit('user-register', { username: 'AudioReconnectUser', password: '123456' })).success, true);
+    const audioReconnectLogin = await audioReconnectOriginal.emit('user-login', {
+      username: 'AudioReconnectUser', password: '123456', deviceId: 'audio-reconnect-device'
+    });
+    assert.equal(audioReconnectLogin.success, true, audioReconnectLogin.error);
+    assert.equal((await host.emit('owner-action', { action: 'grant-control', username: 'AudioReconnectUser' })).success, true);
+    const audioReconnectStarted = await audioReconnectOriginal.emit('audio-share-start', {
+      platform: 'system', sourceName: '瞬断恢复测试音源', processName: 'syncwatch-test.exe', mediaTitle: '瞬断恢复测试音源', sourceKind: 'process', volume: 0.8
+    });
+    assert.equal(audioReconnectStarted.success, true, audioReconnectStarted.error);
+    audioReconnectOriginal.close();
+    await delay(120);
+    const audioReconnectClient = await makeClient();
+    const audioResumed = await audioReconnectClient.emit('session-resume', { token: audioReconnectLogin.token, deviceId: 'audio-reconnect-device' });
+    assert.equal(audioResumed.success, true, audioResumed.error);
+    const resumedAudioRoom = await audioReconnectClient.emit('room-refresh');
+    assert.equal(resumedAudioRoom.room.audioShare.active, true);
+    assert.equal(resumedAudioRoom.room.audioShare.socketId, audioReconnectClient.id);
+    assert.equal((await audioReconnectClient.emit('audio-share-update', { volume: 0.55 })).success, true);
+    assert.equal((await audioReconnectClient.emit('audio-share-stop')).success, true);
+    check('电脑音源共享在传输层瞬断后迁移到新会话，恢复连接仍可更新并停止');
+
     const cookie = await fetch(`${baseUrl}/api/session`, {
       method: 'POST',
       headers: auth(hostToken, { 'X-Forwarded-Host': 'cinema.trycloudflare.com', 'X-Forwarded-Proto': 'https' })
@@ -986,6 +1009,47 @@ async function main() {
     assert.equal((await unbannedOldToken.emit('session-resume', { token: bannedLogin.token })).success, false);
     check('移出与封禁都会撤销会话令牌，解封后旧令牌也不会复活');
 
+    const liveWebStopped = bob.nextEvent('web-share-state', (payload) => payload.active === false && payload.url === '');
+    const liveWebStarted = await host.emit('web-share-start', { mode: 'live', url: 'https://example.com/live-share', title: '实时网页画面' });
+    assert.equal(liveWebStarted.success, true, liveWebStarted.error);
+    const highRefreshShare = await host.emit('screen-share-start', { settings: { resolution: 'native', fps: 240, quality: 'ultra', systemAudio: true } });
+    assert.equal(highRefreshShare.success, true, highRefreshShare.error);
+    assert.equal(highRefreshShare.screenShare.settings.fps, 240);
+    assert.equal((await host.emit('screen-share-stop')).success, true);
+    await liveWebStopped;
+    const liveShareRefresh = await bob.emit('room-refresh');
+    assert.equal(liveShareRefresh.room.webShare.active, false);
+    assert.equal(liveShareRefresh.room.webShare.url, '');
+    check('实时网页画面允许请求 240 FPS，停止屏幕共享会原子清理网页共享状态');
+
+    const audioStateStarted = bob.nextEvent('audio-share-state', (payload) => payload.active === true);
+    const audioStarted = await host.emit('audio-share-start', {
+      platform: 'qishui', sourceName: '正在播放的歌曲 - 汽水音乐', processName: 'qishui.exe',
+      mediaTitle: '正在播放的歌曲', sourceKind: 'process', volume: 0.86
+    });
+    assert.equal(audioStarted.success, true, audioStarted.error);
+    const sharedAudioState = await audioStateStarted;
+    assert.equal(sharedAudioState.processName, 'qishui.exe');
+    assert.equal(sharedAudioState.mediaTitle, '正在播放的歌曲');
+    assert.equal(sharedAudioState.sourceKind, 'process');
+    const injectedAudioOffer = await bob.emit('audio-share-signal', {
+      targetSocketId: host.id, description: { type: 'offer', sdp: 'v=0\r\n' }
+    });
+    assert.equal(injectedAudioOffer.success, false);
+    assert.match(injectedAudioOffer.error, /只有音源共享者/);
+    const reversedAudioAnswer = await host.emit('audio-share-signal', {
+      targetSocketId: bob.id, description: { type: 'answer', sdp: 'v=0\r\n' }
+    });
+    assert.equal(reversedAudioAnswer.success, false);
+    assert.match(reversedAudioAnswer.error, /只有音源观看者/);
+    const audioStateStopped = bob.nextEvent('audio-share-state', (payload) => payload.active === false);
+    assert.equal((await host.emit('audio-share-stop')).success, true);
+    const clearedAudioState = await audioStateStopped;
+    assert.equal(clearedAudioState.processName, '');
+    assert.equal(clearedAudioState.mediaTitle, '');
+    assert.equal(clearedAudioState.sourceKind, '');
+    check('电脑音源共享广播脱敏后的进程、媒体标题和来源类型，停止后房间状态立即清空');
+
     assert.equal((await host.emit('screen-share-start')).success, true);
     assert.equal((await bob.emit('screen-share-start')).success, false);
     assert.equal((await host.emit('screen-share-stop')).success, true);
@@ -1002,23 +1066,43 @@ async function main() {
     assert.equal((await ioAck(sharerIo, 'user-login', { username: 'FrameSharer', password: '123456', deviceId: 'sharer-device' })).success, true);
     assert.equal((await host.emit('owner-action', { action: 'grant-control', username: 'FrameSharer' })).success, true);
     assert.equal((await ioAck(sharerIo, 'screen-share-start')).success, true);
+    const injectedViewerOffer = await ioAck(viewerIo, 'screen-share-signal', {
+      targetSocketId: sharerIo.id, description: { type: 'offer', sdp: 'v=0\r\n' }
+    });
+    assert.equal(injectedViewerOffer.success, false);
+    assert.match(injectedViewerOffer.error, /只有共享者/);
+    const reversedSharerAnswer = await ioAck(sharerIo, 'screen-share-signal', {
+      targetSocketId: viewerIo.id, description: { type: 'answer', sdp: 'v=0\r\n' }
+    });
+    assert.equal(reversedSharerAnswer.success, false);
+    assert.match(reversedSharerAnswer.error, /只有观看者/);
 
     const firstFramePromise = nextIoEvent(viewerIo, 'screen-share-frame', (packet) => packet?.sequence === 1);
     assert.equal((await ioAck(sharerIo, 'screen-share-frame', { data: Buffer.from([1, 2, 3, 4]), width: 2, height: 1 })).success, true);
     const firstFrame = await firstFramePromise;
     assert.equal(firstFrame.width, 2); assert.equal(firstFrame.height, 1); assert.deepEqual(Buffer.from(firstFrame.data), Buffer.from([1, 2, 3, 4]));
+    assert.equal((await ioAck(viewerIo, 'screen-share-transport-state', { transport: 'webrtc' })).success, true);
+    const suppressedFrames = [];
+    const collectSuppressedFrame = (packet) => suppressedFrames.push(packet);
+    viewerIo.on('screen-share-frame', collectSuppressedFrame);
     await delay(90);
-    const secondFramePromise = nextIoEvent(viewerIo, 'screen-share-frame', (packet) => packet?.sequence === 2);
     assert.equal((await ioAck(sharerIo, 'screen-share-frame', { data: Buffer.from([5, 6, 7]), width: 3, height: 1 })).success, true);
+    await delay(160);
+    viewerIo.off('screen-share-frame', collectSuppressedFrame);
+    assert.equal(suppressedFrames.length, 0, 'WebRTC 已连接的观看者不应继续接收 JPEG 兜底帧');
+    assert.equal((await ioAck(viewerIo, 'screen-share-transport-state', { transport: 'fallback' })).success, true);
+    await delay(90);
+    const secondFramePromise = nextIoEvent(viewerIo, 'screen-share-frame', (packet) => packet?.sequence === 3);
+    assert.equal((await ioAck(sharerIo, 'screen-share-frame', { data: Buffer.from([8, 9, 10]), width: 3, height: 1 })).success, true);
     const secondFrame = await secondFramePromise;
-    assert.deepEqual(Buffer.from(secondFrame.data), Buffer.from([5, 6, 7]));
+    assert.deepEqual(Buffer.from(secondFrame.data), Buffer.from([8, 9, 10]));
 
     const lateViewer = await makeIoClient();
     assert.equal((await ioAck(lateViewer, 'user-register', { username: 'LateViewer', password: '123456' })).success, true);
-    const cachedFramePromise = nextIoEvent(lateViewer, 'screen-share-frame', (packet) => packet?.sequence === 2);
+    const cachedFramePromise = nextIoEvent(lateViewer, 'screen-share-frame', (packet) => packet?.sequence === 3);
     assert.equal((await ioAck(lateViewer, 'user-login', { username: 'LateViewer', password: '123456', deviceId: 'late-device' })).success, true);
     const cachedFrame = await cachedFramePromise;
-    assert.deepEqual(Buffer.from(cachedFrame.data), Buffer.from([5, 6, 7]));
+    assert.deepEqual(Buffer.from(cachedFrame.data), Buffer.from([8, 9, 10]));
 
     const pollingViewer = await makeIoClient({ transports: ['polling'], upgrade: false });
     assert.equal(pollingViewer.io.engine.transport.name, 'polling');
@@ -1032,7 +1116,7 @@ async function main() {
     const pollingViewerLogin = await ioAck(pollingViewer, 'user-login', { username: 'PollingFrameViewer', password: '123456', deviceId: 'polling-viewer-device' });
     assert.equal(pollingViewerLogin.success, true, pollingViewerLogin.error);
     assert.equal(await waitUntil(() => pollingFrames.length === 1, 3000), true, 'polling 观看者应可靠收到缓存首帧');
-    assert.deepEqual(Buffer.from(pollingFrames[0].data), Buffer.from([5, 6, 7]));
+    assert.deepEqual(Buffer.from(pollingFrames[0].data), Buffer.from([8, 9, 10]));
 
     await delay(90);
     assert.equal((await ioAck(sharerIo, 'screen-share-frame', { data: Buffer.from([11]), width: 11, height: 1 })).success, true);
