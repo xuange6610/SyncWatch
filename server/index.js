@@ -46,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.3.0';
+const APP_VERSION = 'v2.3.1';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -266,6 +266,11 @@ const CLOSE_FINAL_TIMEOUT_MS = 5000;
 const DATA_LOCK_DIRECTORY_NAME = '.syncwatch-instance.lock';
 const DATA_LOCK_OWNER_FILE = 'owner.json';
 const DATA_LOCK_CONTROL_FILE = 'control.json';
+// A process can exit without running the synchronous lock cleanup path (for
+// example Android force-stops the dedicated service process). PID values may
+// then be reused by an unrelated process, so liveness alone is not proof that
+// the lock owner is still the SyncWatch instance which created it.
+const DATA_LOCK_STALE_MS = 30 * 1000;
 const DATA_LOCK_HEARTBEAT_MS = 10000;
 const ROOM_EMPTY_CLOSE_MS = 90 * 1000;
 const DEFAULT_LEGAL_AGREEMENT_VERSION = '2.2.3';
@@ -1820,6 +1825,8 @@ function activeDataLockOwner(owner, canonicalDirectory) {
   if (!owner || owner.hostname.toLowerCase() !== os.hostname().toLowerCase()) return true;
   const ownerDirectory = process.platform === 'win32' ? String(owner.dataDirectory || '').toLowerCase() : String(owner.dataDirectory || '');
   if (ownerDirectory && ownerDirectory !== canonicalDirectory) return false;
+  const updatedAt = Date.parse(String(owner.updatedAt || ''));
+  if (Number.isFinite(updatedAt) && Date.now() - updatedAt > DATA_LOCK_STALE_MS) return false;
   if (!processIsAlive(owner.pid)) return false;
   if (owner.processStartMarker) {
     const currentMarker = linuxProcessStartMarker(owner.pid);
@@ -2210,10 +2217,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.0.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.1.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.0-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.0-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.1-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.1-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
@@ -6701,7 +6708,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.0-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.1-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6788,7 +6795,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.0-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.1-universal.apk');
   });
 
   const mediaRoute = (req, res) => {

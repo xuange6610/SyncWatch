@@ -289,6 +289,28 @@ async function testDataDirectorySingleInstanceLock() {
     assert.notEqual(recoveredOwner.token, 'crashed-instance-token-1234567890');
     await replacement.close(); replacement = null;
     assert.equal(fs.existsSync(lockPath), false, '回收崩溃遗留锁后的实例仍须正常释放锁');
+
+    // Android can reuse a stale PID for an unrelated process. A lock whose
+    // heartbeat stopped long enough ago must be reclaimed even when that PID
+    // is currently alive; otherwise the APK remains permanently blocked after
+    // a force-stop/restart cycle.
+    fs.mkdirSync(lockPath);
+    fs.writeFileSync(path.join(lockPath, 'owner.json'), `${JSON.stringify({
+      version: 1,
+      pid: process.pid,
+      hostname: os.hostname(),
+      token: 'reused-pid-stale-token-1234567890',
+      dataDirectory: path.resolve(sharedDataDir),
+      startedAt: new Date(Date.now() - 120_000).toISOString(),
+      updatedAt: new Date(Date.now() - 120_000).toISOString(),
+      processStartMarker: ''
+    }, null, 2)}\n`, 'utf8');
+    replacement = await startSyncWatchServer({ host: '127.0.0.1', port: 0, dataDir: sharedDataDir, publicDir, ffprobePath: '', ffmpegPath: '' });
+    const reusedPidOwner = JSON.parse(fs.readFileSync(path.join(lockPath, 'owner.json'), 'utf8'));
+    assert.equal(reusedPidOwner.pid, process.pid);
+    assert.notEqual(reusedPidOwner.token, 'reused-pid-stale-token-1234567890');
+    await replacement.close(); replacement = null;
+    assert.equal(fs.existsSync(lockPath), false);
     console.log('✓ 同一 SyncWatch同步观影-Data 在不同端口也只允许单实例写入，独立数据目录可并行，正常关闭释放且崩溃遗留锁可安全回收');
   } finally {
     await first?.close().catch(() => {});

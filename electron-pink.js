@@ -2314,7 +2314,10 @@ function configureDisplayCapture() {
       console.error('屏幕捕获授权失败:', error);
       callback({});
     }
-  }, { useSystemPicker: true });
+  // Use Electron's callback path so Windows loopback audio is included in the
+  // same MediaStream as the captured display. Chromium's system picker can
+  // return a video-only stream even when the caller requests audio.
+  }, { useSystemPicker: false });
 }
 
 function configureWebPermissions() {

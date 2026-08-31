@@ -192,6 +192,11 @@ public final class MainActivity extends Activity implements ScreenCaptureService
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        // Migrate the pre-2.3.1 development default once. Keep any other
+        // user-selected port unchanged.
+        if (preferences.getInt(PREF_LOCAL_SERVER_PORT, MobileServerService.SERVER_PORT) == 5000) {
+            preferences.edit().putInt(PREF_LOCAL_SERVER_PORT, MobileServerService.SERVER_PORT).apply();
+        }
         localServerMode = preferences.getBoolean(PREF_LOCAL_SERVER_MODE, false);
         root = new FrameLayout(this);
         root.setBackgroundColor(COLOR_BACKGROUND);
@@ -285,7 +290,7 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.3.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.3.1");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
 
         CookieManager cookieManager = CookieManager.getInstance();

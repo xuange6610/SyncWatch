@@ -76,14 +76,17 @@ assert.match(app, /new Int16Array\(/);
 assert.match(app, /sampleFormat: 's16'/);
 assert.match(app, /state\.screenAudioQueue/);
 assert.match(app, /state\.screenAudioLastSequence/);
-assert.match(app, /maxBitrate = 320000/);
-assert.match(app, /maxaveragebitrate=320000/);
-assert.match(app, /jitterBufferTarget = 0\.04/);
+assert.match(app, /maxBitrate = 256000/);
+assert.match(app, /maxaveragebitrate=256000/);
+assert.match(app, /jitterBufferTarget = 0\.12/);
+assert.match(app, /minptime=10;ptime=20;maxplaybackrate=48000/);
+assert.match(css, /grid-template-columns:\s*max-content minmax\(0, 1fr\) minmax\(0, auto\)/);
+assert.match(css, /max-width:\s*min\(56vw, 470px\)/);
 
 // 9) The web surface reports the current release and the standalone client uses the
 // unified desktop product identity introduced by the split release.
-assert.match(html, /版本 v2\.3\.0 · 版权所有/);
-assert.match(html, /id="versionText">v2\.3\.0</);
+assert.match(html, /版本 v2\.3\.1 · 版权所有/);
+assert.match(html, /id="versionText">v2\.3\.1</);
 assert.match(launcher, /<title>同步观影<\/title>/);
 assert.match(launcher, /SYNCWATCH DESKTOP/);
 assert.doesNotMatch(html, /v2\.0\.5|2\.0\.5/);

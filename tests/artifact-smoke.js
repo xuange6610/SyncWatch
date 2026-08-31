@@ -207,13 +207,20 @@ async function main() {
     assert.equal(config.name, 'SyncWatch同步观影');
     assert.equal(config.version, expectedPublicVersion, '成品公开版本与 package.json 不一致');
     assert.equal(config.port, port, '成品未监听指定的随机测试端口');
-    assert.equal(config.androidApkAvailable, false, '主 EXE 不应内嵌 Android APK');
-    assert.equal(config.clientDownloadAvailable, false, '主 EXE 不应内嵌独立电脑客户端');
-    assert.deepEqual(config.macServerDownloads, [], '主 EXE 不应内嵌 macOS 服务器');
-    assert.deepEqual(config.macClientDownloads, [], '主 EXE 不应内嵌 macOS 客户端');
-    for (const endpoint of ['/api/android-apk', '/api/client-download', '/api/macos-server-download', '/api/macos-client-download']) {
+    assert.equal(config.androidApkAvailable, true, '完整离线 EXE 必须内嵌 Android APK');
+    assert.equal(config.clientDownloadAvailable, true, '完整离线 EXE 必须内嵌 Windows 体验版');
+    assert.deepEqual(config.macServerDownloads || [], [], '主 EXE 不应内嵌 macOS 服务器');
+    assert.deepEqual(config.macClientDownloads || [], [], '主 EXE 不应内嵌 macOS 客户端');
+    for (const endpoint of ['/api/macos-server-download', '/api/macos-client-download']) {
       const response = await fetch(`${baseUrl}${endpoint}`, { signal: AbortSignal.timeout(15_000) });
       assert.equal(response.status, 404, `${endpoint} 必须明确表示独立产物未内嵌`);
+    }
+    for (const endpoint of ['/api/android-apk', '/api/client-download']) {
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        headers: { Range: 'bytes=0-0' }, signal: AbortSignal.timeout(15_000)
+      });
+      assert.ok([200, 206].includes(response.status), `${endpoint} 必须能从完整离线 EXE 下载内嵌资产`);
+      await response.arrayBuffer();
     }
 
     pollingSocket = await connectSocket(baseUrl, 'polling', 'Socket.IO polling');

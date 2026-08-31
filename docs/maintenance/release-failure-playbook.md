@@ -89,7 +89,7 @@ surfaces: README, Pages canonical, Wiki, Release body, Latest link
 
 ## 5. v2.3.0 最终成功基线
 
-- 注释 Tag 对象：`11203ae2587029415b7332b9409b22ac0f64bdaf`；目标提交：`c2086ca6fa1a64a4ffa117361ae42921b3ab4956`。
-- 原子运行 `33370280271` 成功完成源码、官方文件、Android、Windows、Defender、10 文件审计、上传和远端 SHA-256 回读。
+- 最终注释 Tag 对象：`d5db7eff01faa57624b7d750f161eba982fb0d0c`；目标提交：`f931bf2097c03712d90d3aa7c30314c675e8d5e7`；源码树：`d6f5ad6794d2ba119fad539cc52686b8df132b95`。
+- 原子运行 `33405585536` 成功完成源码、官方文件、Android、Windows、Defender、10 文件审计、上传和远端 SHA-256 回读。
 - Release API 有 8 个维护者资产，页面另有 2 个源码归档，v2.3.0 已公开为 Latest。
-- 该 Tag 后的工作区改动不属于首次公开的 v2.3.0 资产。用户已授权执行同版本纠正覆盖；仍必须从新最终 Tag 重新执行本手册的完整证据链，并仅在新 8 项远端回读成功后删除被替换的 v2.3.0 旧资产。
+- 首次公开运行 `33370280271` 和旧 Tag 对象 `11203ae2587029415b7332b9409b22ac0f64bdaf` 只作为被替换资产的历史基线；本次纠正覆盖已在新 8 项远端回读成功后删除旧资产，历史 Release 与历史版本资产未改动。

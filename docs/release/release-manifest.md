@@ -1,5 +1,7 @@
 # Release 资产清单
 
+v2.3.1 当前只是候选发布：必须完成 8 个维护者资产、2 个 GitHub 源码归档、启动/核心流程和远端 SHA-256 回读后，才允许切换 Latest；v2.3.0 历史资产保持不变。
+
 ## 数量规则
 
 按当前维护者范围，每个新正式版本只发布 Windows 与 Android，页面应显示 10 个文件：
@@ -32,20 +34,20 @@ Release API 的 `assets` 数量必须为 8；页面把两个源码归档也算�
 
 ## 当前记录
 
-v2.3.0 首次公开基线于 2026-08-31 完成最终 Tag 构建、哈希回读和 8+2 文件核对，并公开为 Latest。该基线的注释 Tag 对象为 `11203ae2587029415b7332b9409b22ac0f64bdaf`，指向提交 `c2086ca6fa1a64a4ffa117361ae42921b3ab4956`，原子运行 `33370280271` 成功。下表只记录本次纠正覆盖前的旧资产基线，不能作为新覆盖完成证据。
+v2.3.0 同版本纠正覆盖于 2026-08-31 完成最终 Tag 构建、哈希回读和 8+2 文件核对，并公开为 Latest。最终注释 Tag 对象为 `d5db7eff01faa57624b7d750f161eba982fb0d0c`，指向提交 `f931bf2097c03712d90d3aa7c30314c675e8d5e7`，原子运行 `33405585536` 成功。下表记录当前 Release API 回读的新 8 项维护者资产。
 
 | 维护者资产 | 字节数 | SHA-256 |
 | --- | ---: | --- |
-| `SyncWatch-Experience-Client-Portable-v2.3.0-x64.exe` | 176761015 | `7c0a73af4c8fb38d468c9e51ebdd303fed60405548cd8266c0cd5685af0b88de` |
-| `SyncWatch-v2.3.0-Full-Offline-Portable-x64.exe` | 402461389 | `1281d4df2c791bacdd43fd3052455add77230e6f5d0fce17a260400e4bafad98` |
-| `SyncWatch-Android-v2.3.0-universal.apk` | 161639409 | `85210bb2301d54cb63b398c68eadf2318ab6029dca877e9080ba197670591b7b` |
+| `SyncWatch-Experience-Client-Portable-v2.3.0-x64.exe` | 176761018 | `66852eb044b5ae1ea7ea93c8b58c20a60f7cc76989ac5ccf84ed2e0349557f2a` |
+| `SyncWatch-v2.3.0-Full-Offline-Portable-x64.exe` | 402448677 | `39265451a947004eda5a9c9e39b3eb223a732309e0e10ac78574eea80653dfb6` |
+| `SyncWatch-Android-v2.3.0-universal.apk` | 161644959 | `135510a7ebd98d009bf9299c62acfcdc811c37c18c6472394155b1a4e058fd6a` |
 | `node-v24.19.0-x64.msi` | 32972800 | `f0f66c2a80c08a30a5ab5179ee9ea9e45f9b46289436a8cc87ff833b852db351` |
 | `node-v24.19.0-arm64.msi` | 29491200 | `47b16e1b1012b1b9ad62169b3a466adb6bc758b2cb8bd8224683c086836484f8` |
 | `cloudflared-windows-x64.exe` | 54893480 | `c29eee2b121f5436a642eed69fd9767da7e7b8c510fa50aaa130337f931357b5` |
 | `cloudflared-windows-x64-installer.msi` | 19357696 | `7067806367266ad66ae8e742b2856827a8ff07e1eb45f8fcbb335d4a28988a23` |
 | `cloudflared-windows-x86-installer.msi` | 19090432 | `c8d16c3cf20106958ec907361844c170cbeafb1f1c8ba24c906f332413381dc5` |
 
-用户已授权以 v2.3.0 同版本纠正更新覆盖共享性能、音源状态、主题回执和桌面启动重试改动。新的应用资产必须从新最终 Tag 重新构建，不能重用、改名或复制上表中的旧应用包；原子切换成功后只删除被新 8 项替换的 v2.3.0 旧资产，所有历史 Release 保持不变。新运行的提交、Tag 对象、字节数和 SHA-256 以本次原子工作流远端回读及 Release API 为准。
+共享性能、音源状态、主题回执和桌面启动重试已经由最终 Tag 重新构建进入当前应用资产，没有重用、改名或复制旧应用包。原子切换成功后只删除了被新 8 项替换的 v2.3.0 旧资产，所有历史 Release 保持不变。
 
 v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4 和 v2.2.5 的历史 Release 保持原有 26 个维护者资产与两个 GitHub 源码归档。v2.2.6 的旧 26 项曾被用户确认未包含本轮源码修正，因此旧 Actions、旧 Tag SHA 和旧远端哈希只作为线上基线，不能作为同版本更正版完成证据。
 

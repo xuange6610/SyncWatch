@@ -247,8 +247,7 @@ public final class MobileServerService extends Service {
     public static String getHostUrl(Context context) {
         String token = getHostToken(context);
         Snapshot snapshot = getSnapshot(context);
-        int port = snapshot.port > 0 ? snapshot.port : context.getSharedPreferences(
-                MOBILE_PREFERENCES, MODE_PRIVATE).getInt(PREF_LOCAL_SERVER_PORT, SERVER_PORT);
+        int port = snapshot.port > 0 ? snapshot.port : getConfiguredPort(context);
         if (port < 1 || port > 65535) port = SERVER_PORT;
         return token.isEmpty() ? "" : hostUrl(port, token);
     }
@@ -277,8 +276,7 @@ public final class MobileServerService extends Service {
             publish(currentSnapshot);
             return START_STICKY;
         }
-        int savedPort = getSharedPreferences(MOBILE_PREFERENCES, MODE_PRIVATE)
-                .getInt(PREF_LOCAL_SERVER_PORT, SERVER_PORT);
+        int savedPort = getConfiguredPort(this);
         configuredPort = intent == null ? savedPort : intent.getIntExtra(EXTRA_PORT, savedPort);
         if (configuredPort < 1 || configuredPort > 65535) {
             configuredPort = SERVER_PORT;
@@ -293,6 +291,17 @@ public final class MobileServerService extends Service {
                 Snapshot.starting("正在准备手机服务器…", configuredPort));
         nodeExecutor.execute(this::launchNodeServer);
         return START_STICKY;
+    }
+
+    private static int getConfiguredPort(Context context) {
+        android.content.SharedPreferences preferences = context.getSharedPreferences(
+                MOBILE_PREFERENCES, MODE_PRIVATE);
+        int port = preferences.getInt(PREF_LOCAL_SERVER_PORT, SERVER_PORT);
+        if (port == 5000) {
+            port = SERVER_PORT;
+            preferences.edit().putInt(PREF_LOCAL_SERVER_PORT, port).apply();
+        }
+        return port;
     }
 
     private void launchNodeServer() {
@@ -539,7 +548,7 @@ public final class MobileServerService extends Service {
                 + "process.on('SIGTERM',()=>shutdown(0)); process.on('SIGINT',()=>shutdown(0));\n"
                 + "process.on('uncaughtException',error=>{report(error);shutdown(1);});\n"
                 + "process.on('unhandledRejection',error=>{report(error);shutdown(1);});\n"
-                + "(async()=>{try{const requestedPort=" + configuredPort + ";await assertPortAvailable(requestedPort);const {startSyncWatchServer}=require(path.join(runtimeRoot,'server','mobile-index.js'));instance=await startSyncWatchServer({host:'0.0.0.0',port:requestedPort,publicDir:path.join(runtimeRoot,'public'),dataDir:dataRoot,hostControlToken:hostToken,tunnelManager,androidApkPath:path.join(dataRoot,'SyncWatch同步观影-v2.3.0.apk'),ffprobePath:'',ffmpegPath:''});atomic(readyFile,{port:instance.port,addresses:instance.addresses||[]});}catch(error){report(error);shutdown(1);}})();\n";
+                + "(async()=>{try{const requestedPort=" + configuredPort + ";await assertPortAvailable(requestedPort);const {startSyncWatchServer}=require(path.join(runtimeRoot,'server','mobile-index.js'));instance=await startSyncWatchServer({host:'0.0.0.0',port:requestedPort,publicDir:path.join(runtimeRoot,'public'),dataDir:dataRoot,hostControlToken:hostToken,tunnelManager,androidApkPath:path.join(dataRoot,'SyncWatch同步观影-v2.3.1.apk'),ffprobePath:'',ffmpegPath:''});atomic(readyFile,{port:instance.port,addresses:instance.addresses||[]});}catch(error){report(error);shutdown(1);}})();\n";
     }
 
     private boolean publishReportedStartupError(File runtimeRoot) {
