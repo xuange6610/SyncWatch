@@ -2146,6 +2146,10 @@ async function createSplash() {
 
 async function updateSplash(progress, message, logMessage = message) {
   if (!splashWindow || splashWindow.isDestroyed()) return;
+  // Smoke processes keep the splash hidden and only exercise server/window
+  // lifecycle. Avoid synchronously calling a hidden renderer in that path;
+  // hosted Windows Electron can block the main thread while it tears down.
+  if (SMOKE_MODE) return;
   const value = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
   const script = `(() => { const fill = document.getElementById('fill'); const percent = document.getElementById('percent'); const status = document.getElementById('status'); const log = document.getElementById('log'); if (fill) fill.style.width = ${JSON.stringify(value + '%')}; if (percent) percent.textContent = ${JSON.stringify(value + '%')}; if (status) status.textContent = ${JSON.stringify(String(message || ''))}; if (log && ${JSON.stringify(String(logMessage || ''))}) { const line = document.createElement('div'); line.textContent = ${JSON.stringify(String(logMessage || ''))}; log.appendChild(line); log.scrollTop = log.scrollHeight; } })()`;
   let timer;

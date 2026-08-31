@@ -219,3 +219,9 @@
 - 原子运行 `33362470344` 已锁定到提交 `7016ef2578170f999b6892ad93ab658f8f35ef1c`；源码门禁、官方运行时核验、Node.js Mobile 运行时复用和 Android 签名构建均通过，Windows 基础包在 EPIPE 冒烟阶段失败，Android 模拟器 job 随后被取消，未生成或上传正式应用资产，线上 `v2.2.9` 保持不变。
 - Windows 日志确认 stdout/stderr EPIPE 均真实触发，但生命周期停在 `app:browser-window-created`，没有 `smoke:force-exit`。根因是 `updateSplash()` 先调用 `webContents.executeJavaScript()`，再创建 2 秒超时 Promise；隐藏渲染器卡住时调用本身不返回，超时计时器没有机会安排。
 - 修复为先创建并保留 2 秒超时计时器，再调用渲染器脚本；新增静态契约要求计时器创建位置早于 `executeJavaScript`。本地 `npm run test:epipe`、`npm run test:repo` 和 `node tests/release-atomic-workflow.test.js` 均通过。下一次必须提交、推送并移动唯一 `v2.3.0` 注释标签后只触发一次完整原子发布。
+
+### 32. v2.3.0 第十次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33364149052` 已锁定提交 `c76172ddef87b2cbc6b2b01e1a3a3e6e49d4f31b`；源码、官方文件、Node.js Mobile 运行时和 Android 签名构建通过，Windows EPIPE 冒烟再次失败，随后强制取消，未生成或上传正式资产，线上 `v2.2.9` 未改变。
+- 新日志仍停在 `app:browser-window-created`，即使超时 Promise 先于调用创建也没有 `smoke:force-exit`；说明 Windows Electron 的 `webContents.executeJavaScript()` 调用可能同步阻塞主线程，事件循环无法调度任何 JavaScript 计时器。
+- 修复为仅在 `SYNCWATCH_SMOKE_MODE=1` 的测试进程跳过隐藏启动页脚本更新；正式运行不设置该变量，继续使用真实启动页和有界超时。新增静态契约锁定 smoke 跳过路径；修复后必须通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
