@@ -1,8 +1,8 @@
 # SyncWatch 长期维护与交付要求
 
-当前 `release/v2.3.0` 正在候选发布阶段；源码版本已切换到 `v2.3.0`，但在最终构建、启动验收、哈希和 8+2 文件核验完成前，Release `v2.2.9` 仍保持 Latest。
+`v2.3.0` 已公开为 Latest。用户已明确授权对当前版本执行一次同版本纠正覆盖，把共享性能、音源状态、主题回执和桌面启动重试纳入重新构建的 8 项维护者资产；只有原子工作流完成构建、启动、哈希和远端回读后才能删除被替换的 v2.3.0 旧资产，所有历史 Release 保持不变。
 
-本文记录用户已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口，具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
+本文记录已经确认、需要后续 Codex 会话持续执行的现役要求。它是详细工作规范；根目录 `AGENTS.md` 是自动加载入口。发布失败的技术根因、门禁和固定执行顺序统一见 [release-failure-playbook.md](release-failure-playbook.md)；具体产品、设计、使用和发布资产事实分别以 `PRODUCT.md`、`DESIGN.md`、`README.md` 和 `docs/release/release-manifest.md` 为准。
 
 这些要求只适用于 SyncWatch同步观影。新项目只继承 Codex 全局 `AGENTS.md` 中的通用工作流程，不得自动继承本项目的名称、版本号、28 文件或平台清单。
 
@@ -118,12 +118,12 @@
 
 ## 13. 当前发布基线
 
-- 当前线上正式版本：`v2.2.9`；Release API 有 8 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
-- 当前候选版本：`v2.3.0`；唯一发布分支为 `release/v2.3.0`，待 PR 合并和原子发布工作流完成后再更新正式版本快照。
+- 当前线上正式版本：`v2.3.0`；Release API 有 8 个维护者资产，GitHub 页面另含 2 个源码归档，Latest 已指向本版本。旧版本资产仍仅作历史记录。
+- 当前纠正更新源码：`release/v2.3.0` 工作区中的共享性能、音源状态、主题回执和 Electron 启动重试已获同版本覆盖授权，正在等待最终提交、PR、Tag 和原子构建证据。
 - 当前仓库：`https://github.com/xuange6610/SyncWatch`。
-- 当前源码与发布状态：`v2.2.9` 的最终注释 Tag 对象 `f3fea87172734d1da9eeb74c1411c2076ed960f5` 指向提交 `bf659447f5cc3aac920ad4e4ce337a306eff585f`；Actions run `33330356910`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成；Windows 体验版/完整便携版、Android 模拟器和 Microsoft Defender 扫描均通过。
+- 当前源码与发布状态：`v2.3.0` 的最终注释 Tag 对象 `11203ae2587029415b7332b9409b22ac0f64bdaf` 指向提交 `c2086ca6fa1a64a4ffa117361ae42921b3ab4956`；Actions run `33370280271`、8 个维护者资产、2 个源码归档、Latest 和远端哈希均已核对完成；Windows 体验版/完整便携版、Android 模拟器和 Microsoft Defender 扫描均通过。
 - 当前 Pages：`https://xuange6610.github.io/SyncWatch/`。
-- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7、v2.2.8 的历史 Release 保持不变；v2.2.9 当前为 Latest。
+- v2.1.7、v2.1.8、v2.1.9、v2.2.0、v2.2.3、v2.2.4、v2.2.5、v2.2.6、v2.2.7、v2.2.8、v2.2.9 的历史 Release 保持不变；v2.3.0 当前为 Latest。
 - 版本、资产或在线状态变化后必须更新本节和对应权威文档；不得让该快照长期冒充新状态。
 
 ### 14. v2.2.9 原子发布模拟器复盘（2026-08-30）
@@ -164,3 +164,83 @@
 
 - 原子运行 `33327086419` 的源码门禁、官方文件、Android 签名 APK 和 Windows 基础包均通过；失败发生在 `reactivecircus/android-emulator-runner` 启动后的内部 ADB 输入/设置超时命令，错误为 `Failure calling service input: Broken pipe (32)`，仓库 smoke 尚未执行，线上 Release 资产保持不变。
 - 尝试拆分 runner 与 smoke 后确认该 action 会在 `script` 返回后无条件清理 emulator，后置步骤无法复用设备，因此撤回拆分方案。最终保留同一步仓库 smoke，并在脚本中重新等待 ADB/`sys.boot_completed`；安装、启动、崩溃日志和截图门禁仍严格执行。修复提交合并并移动最终注释 Tag 后只触发一次完整原子发布。
+
+### 23. v2.3.0 首次原子运行构建门禁复盘（2026-08-31）
+
+- 原子运行 `33353935801` 的源码门禁、官方资产与 Node.js Mobile 运行时复用均通过；Android 构建在 Gradle 成功后被 `mobile/build-apk.ps1` 的 APK 元数据检查拒绝，原因是校验仍写死 `versionCode 20209` / `versionName 2.2.9`。
+- 同一运行的 Windows 基础包在 `tests/epipe-smoke.js` 的生产 Electron 退出阶段超过 20 秒，停在窗口创建后的生命周期；本地重复运行可稳定通过。修复为让启动页脚本执行具备 2 秒有界超时，避免无头页面脚本阻塞服务器启动和 smoke 退出。
+- Android 校验现从 `package.json` 的数字 SemVer 动态计算 `major*10000 + minor*100 + patch`，并匹配当前 `versionName`；本地 `npm run test:repo`、`node tests/android-package.test.js --source-only`、`node tests/release-atomic-workflow.test.js`、`npm run test:epipe` 均通过。
+- 失败运行未进入 Windows/Android 应用成品上传、10 文件审计或 Release 资产替换；下一步必须提交并推送修复、移动唯一 `v2.3.0` 注释 Tag 后仅重新触发一次完整原子发布。
+
+### 24. v2.3.0 第二次原子运行门禁复盘（2026-08-31）
+
+- 原子运行 `33354804242` 已通过源码、官方文件和运行时复用；Android 失败原因为 PowerShell 将 `Where-Object` 管道直接置于 `if -or` 条件，合法版本 `2.3.0` 仍被判定为非法；Windows EPIPE 生产 smoke 在隐藏渲染器关闭阶段仍超过 20 秒。
+- 修复为先把非法版本段收集到数组再判断数量；仅在 `SYNCWATCH_EPIPE_CASE=production` 的专用 smoke 场景使用 `app.exit(0)`，普通启动与其他 smoke 仍走优雅 `app.quit()`。本地 PowerShell 解析、`npm run test:epipe`、`npm run test:repo`、Android 源码门禁和原子工作流契约均通过。
+- 该失败运行未生成或上传应用资产，未替换 v2.2.9；下一次从新修复提交移动唯一 `v2.3.0` 注释 Tag 后再触发一次完整原子发布。
+
+### 25. v2.3.0 第三次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33355477589` 的源码、官方文件和 Node.js Mobile 运行时复用通过；Android 已进入构建，Windows 仍在生产 EPIPE smoke 的隐藏渲染器退出阶段超时，未生成应用资产。
+- EPIPE 专用子进程现先保留生产入口的优雅退出请求，并在 5 秒测试兜底后调用 `app.exit(0)`；仅作用于 `tests/epipe-electron-child.js` 的生产 smoke，不改变正常应用和其他 smoke 的关闭路径。修复后本地 `npm run test:epipe` 与原子工作流契约通过。
+- 该运行未替换任何 Release 资产；需将候选标签移动到本修复提交后再触发一次完整原子发布。
+
+### 26. v2.3.0 第四次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33357161907` 使用 `f84b4db` 候选标签；Android 签名构建已通过并进入模拟器验收，Windows 仍在生产 Electron EPIPE smoke 的隐藏渲染器退出阶段超时，整轮在生成/上传应用资产前取消，线上 `v2.2.9` 资产保持不变。
+- 根因仍局限于测试子进程优雅退出请求在无头 Windows runner 中未及时结束；将 `tests/epipe-electron-child.js` 的 5 秒测试专用兜底从 `app.exit(0)` 改为 `process.exit(0)`。该兜底只在 `SYNCWATCH_EPIPE_CASE=production` smoke 生效，不改变正常应用关闭路径，也不跳过 EPIPE 断言。
+- 修复后必须先通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布；失败运行的候选 artifact 不得作为 Release 资产。
+
+### 27. v2.3.0 第五次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33358197230` 的源码门禁、官方文件、Node.js Mobile 复用和 Android 签名构建均通过；Windows 日志确认 stdout/stderr 已真实产生 EPIPE，但 5 秒测试兜底没有执行，生产 smoke 在 20 秒后超时。整轮已强制取消，未生成或上传 Windows/Full Offline/正式 Release 资产。
+- 根因是测试兜底计时器调用了 `unref()`；GitHub Windows Electron 在只剩原生消息循环而没有 Node 引用型句柄时，不保证调度该计时器。修复为保留 5 秒计时器引用，触发前记录 `smoke:force-exit`，再调用仅限测试子进程的 `process.exit(0)`；EPIPE 真实触发与退出码断言仍保留。
+- `tests/epipe-smoke.js` 增加静态契约，防止该强制退出计时器再次被 `unref()`。下一次触发前必须通过本地 EPIPE、仓库与发布工作流契约，并从新的最终候选标签只运行一次完整原子发布。
+
+### 28. v2.3.0 第六次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33360205011` 的源码、官方文件、Node.js Mobile 复用和 Android 签名构建均通过；Windows EPIPE 日志确认 stdout/stderr 已产生多次 EPIPE，但生产 smoke 在 20 秒后超时，且子进程 5 秒兜底没有写入 `smoke:force-exit`。该轮已取消，未生成或上传 Windows/Full Offline/正式 Release 资产。
+- 根因是生产 smoke 的 1.6 秒 `app.exit(0)` 先进入 Electron 关闭生命周期，Windows runner 在隐藏渲染器阶段不再调度 Node 定时器；因此子进程计时器即使保持引用也无法执行。修复为在 `SYNCWATCH_EPIPE_CASE=production` 的 smoke 回调中直接调用测试专用 `process.exit(0)`，在进入 Electron 生命周期阻塞前确定退出；普通桌面运行和其他 smoke 继续使用 `app.quit()`。
+- `tests/epipe-smoke.js` 增加静态断言锁定该生产 smoke 路径。修复后必须通过本地 EPIPE、仓库与发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
+
+### 29. v2.3.0 第七次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33361005257` 的日志显示 stdout/stderr EPIPE 已触发，但 `child:production-loaded` 后没有 `smoke:force-exit` 或进程退出；Windows runner 在隐藏渲染器关闭阶段直接跳过了生产退出回调，整轮未生成或上传正式资产。
+- 最终根因是 `electron-pink.js` 的 `setTimeout(exitSmoke, ...).unref()`；该计时器在 Electron 仅剩原生消息循环时不保证调度，导致即使回调内部使用 `process.exit(0)` 也不会执行。仅在 `SMOKE_MODE` 下移除 `unref()` 并保留计时器引用，普通应用未进入该分支；生产 smoke 仍直接 `process.exit(0)`，其他 smoke 仍 `app.quit()`。
+- `tests/epipe-smoke.js` 增加计时器引用契约。修复后必须通过本地 EPIPE、仓库与发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
+
+### 30. v2.3.0 第八次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33361791025` 仍在 Windows EPIPE smoke 超时；日志只有 `child:production-loaded`、窗口创建和 EPIPE 事件，没有退出标记。生产退出计时器已保持引用，说明 `startApplication()` 更早卡在启动页更新阶段。
+- 根因是 `updateSplash()` 的 2 秒有界执行计时器仍调用 `unref()`；Windows Electron 原生循环在隐藏渲染器脚本未完成时同样不会调度该兜底，导致启动流程无法继续。移除该计时器的 `unref()`，并保留生产 smoke 的有界 `process.exit(0)` 路径；普通应用行为不变。
+- `tests/epipe-smoke.js` 增加 `updateSplash` 计时器引用断言。修复后必须通过本地 EPIPE、仓库与发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
+
+### 31. v2.3.0 第九次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33362470344` 已锁定到提交 `7016ef2578170f999b6892ad93ab658f8f35ef1c`；源码门禁、官方运行时核验、Node.js Mobile 运行时复用和 Android 签名构建均通过，Windows 基础包在 EPIPE 冒烟阶段失败，Android 模拟器 job 随后被取消，未生成或上传正式应用资产，线上 `v2.2.9` 保持不变。
+- Windows 日志确认 stdout/stderr EPIPE 均真实触发，但生命周期停在 `app:browser-window-created`，没有 `smoke:force-exit`。根因是 `updateSplash()` 先调用 `webContents.executeJavaScript()`，再创建 2 秒超时 Promise；隐藏渲染器卡住时调用本身不返回，超时计时器没有机会安排。
+- 修复为先创建并保留 2 秒超时计时器，再调用渲染器脚本；新增静态契约要求计时器创建位置早于 `executeJavaScript`。本地 `npm run test:epipe`、`npm run test:repo` 和 `node tests/release-atomic-workflow.test.js` 均通过。下一次必须提交、推送并移动唯一 `v2.3.0` 注释标签后只触发一次完整原子发布。
+
+### 32. v2.3.0 第十次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33364149052` 已锁定提交 `c76172ddef87b2cbc6b2b01e1a3a3e6e49d4f31b`；源码、官方文件、Node.js Mobile 运行时和 Android 签名构建通过，Windows EPIPE 冒烟再次失败，随后强制取消，未生成或上传正式资产，线上 `v2.2.9` 未改变。
+- 新日志仍停在 `app:browser-window-created`，即使超时 Promise 先于调用创建也没有 `smoke:force-exit`；说明 Windows Electron 的 `webContents.executeJavaScript()` 调用可能同步阻塞主线程，事件循环无法调度任何 JavaScript 计时器。
+- 修复为仅在 `SYNCWATCH_SMOKE_MODE=1` 的测试进程跳过隐藏启动页脚本更新；正式运行不设置该变量，继续使用真实启动页和有界超时。新增静态契约锁定 smoke 跳过路径；修复后必须通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
+
+### 33. v2.3.0 第十一次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33364998941` 已锁定提交 `30b641d`；源码、官方文件、Node.js Mobile 运行时和 Android 签名构建通过，Windows EPIPE 冒烟仍在第二个 `browser-window-created` 后超时，随后强制取消，未生成或上传正式资产，线上 `v2.2.9` 未改变。
+- 跳过 `updateSplash()` 后故障位置前移到主窗口创建后的托盘初始化阶段，日志仍没有 `smoke:force-exit`；托管 Windows Electron 的 `Tray` 初始化可能阻塞主线程，测试退出计时器无法注册。
+- 修复为仅在 `SYNCWATCH_SMOKE_MODE=1` 的测试进程跳过 `createTray()`；正式程序继续创建系统托盘。新增静态契约锁定该分支；修复后必须通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布。
+
+### 34. v2.3.0 最终原子发布完成与 Tag 后边界（2026-08-31）
+
+- 原子运行 `33370280271` 已成功完成源码门禁、官方文件核验、Android 签名构建与模拟器启动、Windows 体验版与完整便携版启动、Microsoft Defender、10 文件审计和远端 SHA-256 回读。
+- v2.3.0 注释 Tag 对象 `11203ae2587029415b7332b9409b22ac0f64bdaf` 指向提交 `c2086ca6fa1a64a4ffa117361ae42921b3ab4956`；Release API 有 8 个维护者资产，页面另有 2 个源码归档，当前为公开 Latest。
+- 本次对话新增的共享传输与 PCM 延迟优化、实时音源状态、主题回执和 Electron 启动重试位于首次发布 Tag 之后。用户已授权移动唯一 v2.3.0 注释 Tag 并通过原子工作流重传纠正资产；新 8 项完整验证前仍只能描述为待覆盖源码，不得提前删除旧资产或宣称覆盖完成。
+
+### 35. v2.3.0 同版本纠正覆盖授权与新增门禁（2026-08-31）
+
+- 覆盖成功后只删除被新集合替换的 v2.3.0 旧 8 项；不得删除任何历史 Release、历史 Tag 或历史资产。
+- 音源共享者在同一会话的传输层瞬断恢复时必须把权威 `socketId` 迁移到新连接并重建 WebRTC Peer；停止、断线超时和切房仍必须立即清空房间状态。
+- 画面 WebRTC 进入 `disconnected` 时必须立即恢复 JPEG 兜底，持续断开后再重建 Peer；offer 只能由共享者发送，answer 只能由观看者发送，信令需要限流。
+- 音源状态条必须根据实际进度条高度动态避让，移动端、桌面和全屏都不能遮住 seek 控件。Tunnel 验收必须主动制造 WebSocket 与 Polling 瞬断，并断言两者恢复次数大于零。

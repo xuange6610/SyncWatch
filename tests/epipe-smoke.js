@@ -53,12 +53,32 @@ function assertElectronEntryGuards() {
     'epipe-electron-child.js: test-entry 分支必须先安装 EPIPE 防护');
   assert.equal(childSource.search(/\bconsole\.(?:log|info|warn|error|debug)\s*\(/), -1,
     'epipe-electron-child.js: 安装分支防护前不得 console 输出');
+  assert.match(childSource, /record\('smoke', 'force-exit'\);\s*process\.exit\(0\);/,
+    'epipe-electron-child.js: production smoke 必须保留有界强制退出与生命周期证据');
+  assert.doesNotMatch(childSource, /forceExitTimer\.unref|setTimeout\(\(\) => \{[\s\S]*?record\('smoke', 'force-exit'\)[\s\S]*?\}\s*,\s*5000\)\.unref/,
+    'epipe-electron-child.js: Windows Electron 仅剩原生消息循环时不得 unref 强制退出计时器');
 
   const productionSource = fs.readFileSync(path.resolve(__dirname, '..', 'electron-pink.js'), 'utf8');
   const productionGuardIndex = productionSource.indexOf('process.stdout');
   const productionElectronIndex = productionSource.indexOf("require('electron')");
   assert.ok(productionGuardIndex >= 0 && productionGuardIndex < productionElectronIndex,
     'electron-pink.js: 生产入口必须在加载 Electron 前安装 EPIPE 防护');
+  assert.match(productionSource, /SYNCWATCH_EPIPE_CASE === 'production'\) process\.exit\(0\);/,
+    'electron-pink.js: production EPIPE smoke 必须在 Electron 生命周期阻塞前直接退出');
+  assert.match(productionSource, /setTimeout\(exitSmoke, Math\.max\(500, Number\(process\.env\.SYNCWATCH_SMOKE_EXIT_MS\) \|\| 2000\)\);/,
+    'electron-pink.js: production smoke 退出计时器必须保持引用并实际调度');
+  assert.doesNotMatch(productionSource, /timer = setTimeout\(resolve, 2000\);\s*timer\.unref\?\./,
+    'electron-pink.js: updateSplash 超时计时器必须保持引用并实际调度');
+  const splashExecutionIndex = productionSource.indexOf('splashWindow.webContents.executeJavaScript(script, true)');
+  const splashTimerIndex = productionSource.indexOf('timer = setTimeout(resolve, 2000);');
+  assert.ok(splashTimerIndex >= 0 && splashTimerIndex < splashExecutionIndex,
+    'electron-pink.js: updateSplash 必须在调用渲染器脚本前安排超时计时器');
+  assert.match(productionSource, /if \(SMOKE_MODE\) return;[\s\S]*?const value = Math\.max\(0,\s*Math\.min\(100/,
+    'electron-pink.js: smoke 模式必须跳过隐藏启动页脚本更新');
+  assert.match(productionSource, /const EPIPE_PRODUCTION_SMOKE = SMOKE_MODE && process\.env\.SYNCWATCH_EPIPE_CASE === 'production';[\s\S]*?function createMainWindow\(\) \{[\s\S]*?if \(EPIPE_PRODUCTION_SMOKE\) return;/,
+    'electron-pink.js: EPIPE production smoke 必须跳过可能阻塞的第二个隐藏窗口');
+  assert.match(productionSource, /buildMenu\(\);\s*if \(!SMOKE_MODE\) createTray\(\);/,
+    'electron-pink.js: smoke 模式必须跳过托盘初始化');
   return entryFiles.length;
 }
 

@@ -1,6 +1,13 @@
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
-$version = ([System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '..\package.json')) | ConvertFrom-Json).version
+$packageMetadata = ([System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '..\package.json')) | ConvertFrom-Json)
+$version = [string]$packageMetadata.version
+$versionParts = $version -split '\.'
+$invalidVersionParts = @($versionParts | Where-Object { $_ -notmatch '^\d+$' })
+if ($versionParts.Count -ne 3 -or $invalidVersionParts.Count -gt 0) {
+    throw "package.json version must be a numeric SemVer, got '$version'."
+}
+$expectedVersionCode = ([int]$versionParts[0] * 10000) + ([int]$versionParts[1] * 100) + [int]$versionParts[2]
 
 $NodeMobileVersion = '18.20.4'
 $NodeMobileSourceRevision = 'ff4e063f1f1911047c067335ad0a3d81336236ca'
@@ -532,7 +539,8 @@ try {
     $aaptExitCode = $LASTEXITCODE
     $badging = $badgingOutput | Select-Object -First 1
     if ($aaptExitCode -ne 0 -or $badging -notmatch "name='com\.xuan\.syncwatch'" -or
-        $badging -notmatch "versionCode='20209'" -or $badging -notmatch "versionName='2\.2\.9'") {
+        $badging -notmatch "versionCode='$expectedVersionCode'" -or
+        $badging -notmatch "versionName='$([regex]::Escape($version))'") {
         throw "APK package metadata verification failed: $badging"
     }
 

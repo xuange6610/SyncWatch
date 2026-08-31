@@ -255,6 +255,9 @@ assert.match(androidEmulatorSmoke, /GITHUB_WORKSPACE:\?GITHUB_WORKSPACE is requi
 assert.match(androidEmulatorSmoke, /adb wait-for-device/);
 assert.match(androidEmulatorSmoke, /SyncWatch-Android-v\$\{version\}-universal\.apk/);
 assert.match(androidEmulatorSmoke, /adb install --no-streaming/);
+assert.match(androidEmulatorSmoke, /Broken pipe \(32\)/, 'Android smoke must recognize transient ADB package-service broken pipes');
+assert.match(androidEmulatorSmoke, /adb reconnect device[\s\S]*adb kill-server/, 'Android smoke must re-establish ADB before retrying a broken-pipe install');
+assert.match(androidEmulatorSmoke, /attempt <= 3/, 'Android smoke must bound transient install retries');
 assert.match(workflows.windows, /& \.\\mobile\\build-apk\.ps1/);
 assert.doesNotMatch(workflows.windows, /powershell\.exe[^\r\n]*build-apk\.ps1/i);
 assert.match(androidEmulatorSmoke, /dumpsys package com\.xuan\.syncwatch/);

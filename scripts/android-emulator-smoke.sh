@@ -10,27 +10,48 @@ apk="$smoke_dir/SyncWatch-Android-v${version}-universal.apk"
 test -s "$apk"
 # The emulator action may report a transient post-boot ADB Broken pipe while
 # leaving the device alive. Re-establish the connection before strict checks.
-adb start-server >/dev/null
-timeout 60s adb wait-for-device
-for _ in {1..20}; do
-  if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
-    break
-  fi
-  sleep 2
-done
-test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
-install_output="$(adb install --no-streaming "$apk" 2>&1)" || {
-  printf '%s\n' "$install_output" >&2
-  if grep -q 'INSTALL_FAILED_VERIFICATION_FAILURE: Integrity verification timed out' <<< "$install_output"; then
-    # Large release APKs can exceed the emulator package-verifier window.
-    # Disable ADB verification for this isolated smoke emulator, then retry once.
-    adb shell settings put global package_verifier_enable 0 || true
-    adb shell settings put global verifier_verify_adb_installs 0 || true
-    adb install --no-streaming "$apk"
-  else
-    exit 1
-  fi
+wait_for_android() {
+  adb start-server >/dev/null
+  timeout 60s adb wait-for-device
+  for _ in {1..20}; do
+    if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+  test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
 }
+
+install_apk() {
+  local attempt=1 install_output=''
+  while (( attempt <= 3 )); do
+    if install_output="$(adb install --no-streaming "$apk" 2>&1)"; then
+      printf '%s\n' "$install_output"
+      return 0
+    fi
+    printf '%s\n' "$install_output" >&2
+    if grep -q 'INSTALL_FAILED_VERIFICATION_FAILURE: Integrity verification timed out' <<< "$install_output"; then
+      # Large release APKs can exceed the emulator package-verifier window.
+      # Disable ADB verification for this isolated smoke emulator, then retry.
+      adb shell settings put global package_verifier_enable 0 || true
+      adb shell settings put global verifier_verify_adb_installs 0 || true
+    elif grep -q 'Broken pipe (32)' <<< "$install_output"; then
+      # The package service can briefly lose its ADB transport after boot.
+      # Reconnect and wait for a fully booted device before retrying the install.
+      adb reconnect device >/dev/null 2>&1 || true
+      adb kill-server >/dev/null 2>&1 || true
+      wait_for_android
+    else
+      return 1
+    fi
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+  return 1
+}
+
+wait_for_android
+install_apk
 
 installed_version="$(adb shell dumpsys package com.xuan.syncwatch | sed -n 's/^[[:space:]]*versionName=//p' | head -n 1 | tr -d '\r')"
 test "$installed_version" = "$version"

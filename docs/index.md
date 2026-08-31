@@ -14,7 +14,7 @@
 | 平台说明 | 当前新版本只提供 Windows、Android 和浏览器；历史 macOS 版本仍可在旧 Release 中查看 |
 | 错误、诊断、备份和安全 | [故障排查](troubleshooting.md)、[安全策略](../SECURITY.md) |
 | Release、文件地图和贡献 | [v2.3.0 发布说明](release-notes-v2.3.0.md)、[v2.2.6 发布说明](release-notes-v2.2.6.md)、[发布文件说明](release-artifacts.md)、[仓库文件地图](repository-map.md)、[参与贡献](contributing.html)、[CONTRIBUTING.md](../CONTRIBUTING.md) |
-| Codex 长期维护、版本与交付要求 | [维护者长期要求](maintenance/maintainer-requirements.md)、[Release 固定资产清单](release/release-manifest.md) |
+| Codex 长期维护、版本与交付要求 | [维护者长期要求](maintenance/maintainer-requirements.md)、[发布失败技术手册](maintenance/release-failure-playbook.md)、[Release 固定资产清单](release/release-manifest.md) |
 
 ## 文档分层
 
@@ -26,7 +26,7 @@
 
 ## 当前事实边界
 
-- v2.3.0 目前仍是候选版本；待 PR 合并、最终 Tag 构建和 Release API 核对完成后才会替换 Latest。当前线上正式版仍为 [v2.2.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.2.9)。
+- v2.3.0 已公开为 [Latest](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.0)，当前正按同版本纠正流程覆盖共享性能、音源状态、主题回执和桌面启动修复。新 8 项完成 Windows/Android 启动、10 文件审计与远端 SHA-256 回读后才原子替换旧资产；历史 Release 保持不变。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
 - v2.3.0 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。

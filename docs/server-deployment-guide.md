@@ -1,8 +1,8 @@
 # SyncWatch同步观影 服务器部署与使用教程
 
-适用版本：v2.3.0 候选版（文档更新于 2026-08-31，Release API 与 Actions 待最终发布核验）
+适用版本：v2.3.0 正式版（文档更新于 2026-08-31，Release API、Actions 与下载回读已核验）
 
-本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；当前正式下载仍使用 v2.2.9，v2.3.0 候选文件只有在 Release API 完成核验后才可下载使用。
+本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；当前正式下载为 v2.3.0，文件名、大小和 SHA-256 以 GitHub Release 页面为准。
 
 ## 1. 先理解“程序”和“数据”
 
