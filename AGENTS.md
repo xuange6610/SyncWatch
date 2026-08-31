@@ -340,3 +340,9 @@
 - 原子运行 `33355477589` 的源码、官方文件和 Node.js Mobile 运行时复用通过；Android 已进入构建，Windows 仍在生产 EPIPE smoke 的隐藏渲染器退出阶段超时，未生成应用资产。
 - EPIPE 专用子进程现先保留生产入口的优雅退出请求，并在 5 秒测试兜底后调用 `app.exit(0)`；仅作用于 `tests/epipe-electron-child.js` 的生产 smoke，不改变正常应用和其他 smoke 的关闭路径。修复后本地 `npm run test:epipe` 与原子工作流契约通过。
 - 该运行未替换任何 Release 资产；需将候选标签移动到本修复提交后再触发一次完整原子发布。
+
+### 26. v2.3.0 第四次原子运行 EPIPE 复盘（2026-08-31）
+
+- 原子运行 `33357161907` 使用 `f84b4db` 候选标签；Android 签名构建已通过并进入模拟器验收，Windows 仍在生产 Electron EPIPE smoke 的隐藏渲染器退出阶段超时，整轮在生成/上传应用资产前取消，线上 `v2.2.9` 资产保持不变。
+- 根因仍局限于测试子进程优雅退出请求在无头 Windows runner 中未及时结束；将 `tests/epipe-electron-child.js` 的 5 秒测试专用兜底从 `app.exit(0)` 改为 `process.exit(0)`。该兜底只在 `SYNCWATCH_EPIPE_CASE=production` smoke 生效，不改变正常应用关闭路径，也不跳过 EPIPE 断言。
+- 修复后必须先通过本地 EPIPE、仓库和发布工作流契约，再移动唯一 `v2.3.0` 注释标签并只触发一次完整原子发布；失败运行的候选 artifact 不得作为 Release 资产。
