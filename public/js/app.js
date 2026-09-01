@@ -107,7 +107,7 @@ const ONBOARDING_GUIDE_STEPS = [
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
-  publicConfig: { version: 'v2.3.1', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.3.2', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -352,12 +352,12 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
    authorizeLocationBtn revokeLocationBtn loginCubeScene loginCube loginCubeModel loginCubeTemplateSelect loginCubeDisplayMode loginCubeRotationDirection loginCubeSettingsCard loginCubeAutoRotate loginCubeInertia loginCubeRotationSpeed loginCubeRotationSpeedValue loginCubeSettingsGrid saveLoginCubeSettingsBtn resetLoginCubeSettingsBtn loginCubeSettingsStatus loginCubeModelFile uploadLoginCubeModelBtn deleteLoginCubeModelBtn loginCubeModelUploadProgress loginCubeModelStatus loginBackgroundVideo loginMusicNowPlaying loginMusicPlayPauseBtn loginMusicMuteBtn loginMusicProgressShell loginMusicNowPlayingTitle loginMusicProgressPopover loginMusicProgress loginMusicTime loginMusicClientVolume loginMusicClientVolumeText loginMusicTrackSelect loginMusicPreviousBtn loginMusicNextBtn loginMusicAudio
    usersTab adminTab defaultPasswordWarning managementAuth adminUsername adminPassword loadAdminBtn hostTunnelCard tunnelMode tunnelToken tunnelPublicUrl startTunnelBtn tunnelTutorialBtn tunnelNetworkRepairBtn tunnelBypassProxy tunnelAutoDiagnose stopTunnelBtn tunnelStatus copyTunnelUrlBtn openTunnelUrlBtn tunnelAutoStart saveTunnelStartupBtn tunnelStartupStatus requirePublicRoomPassword savePublicPasswordPolicyBtn publicPasswordPolicyStatus lanAccessCard lanAccessEnabled saveLanAccessBtn lanAccessStatus localPasswordlessCard localPasswordlessManagementEnabled localPasswordlessRoomEnabled saveLocalPasswordlessBtn localPasswordlessStatus downloadAssetSettingsCard openDownloadCenterSettingsBtn downloadAssetUploadProgress downloadAssetUploadStatus windowsServerAssetStatus androidClientAssetStatus serverSettingsLoginBtn serverLogsCard refreshServerLogsBtn serverLogAccountQuery serverLogCategory serverLogLevel serverLogQuery serverLogList roomStorageCard roomStorageSummary pasteSwitchRoomIdBtn pasteSwitchRoomPasswordBtn clearWebShareBtn changeCurrentRoomIdBtn convertTemporaryRoomBtn
   mailSettingsCard mailConfigurationBadge mailHost mailPort mailUser mailRecoveryEmail mailAuthCode mailFromEmail mailFromName mailUseTls mailSecure mailEnabled mailRegistrationVerification mailBindingVerification mailAccountRecovery mailAdminRecovery mailTutorialBtn mailTutorialPanel mailTemplateEvent mailTemplateLanguage mailTemplatePreset applyMailTemplatePresetBtn mailTemplateSubject mailTemplateHtml mailTemplatePreview mailTemplatePreviewSubject previewMailTemplateBtn restoreMailTemplateBtn mailTestTemplate mailTestRecipient saveMailSettingsBtn testConnectionBtn testMailConnectionBtn testMailSettingsBtn mailSettingsStatus refreshVerificationCodesBtn verificationCodeType verificationCodeStatus verificationCodeSearch verificationCodeSelectAll deleteSelectedVerificationCodesBtn verificationCodeList brandingSettingsCard brandingOwner brandingNotice saveBrandingBtn brandingStatus marqueeSettingsCard marqueeEnabled marqueeLoginEnabled marqueeTextInput marqueeColor marqueeSpeed marqueeScope saveMarqueeBtn marqueeStatus f11PromptGlobalEnabled initialPasswordReminderEnabled downloadButtonsVisible locationStatusNoticesEnabled locationAuthorizationRequestsEnabled saveNoticePreferenceSettingsBtn clientModeRequestCard clientModeRequestMode clientModeRequestScope clientModeRequestUserPicker clientModeRequestUserList clientModeRequestReason sendClientModeRequestBtn refreshClientModeRequestsBtn clientModeRequestStatus clientModeRequestList loginMusicSettingsCard loginMusicEnabled loginMusicShowTitle loginMusicTitle loginMusicUrl loginMusicFile loginMusicVolume loginMusicVolumeText loginMusicLoop loginMusicPlaybackMode loginMusicPreview loginMusicUploadProgress loginMusicTrackList previewLoginMusicBtn saveLoginMusicBtn removeLoginMusicBtn loginMusicStatus loginVideoSettingsCard loginVideoEnabled loginVideoFile loginVideoPreview loginVideoUploadProgress saveLoginVideoBtn removeLoginVideoBtn loginVideoStatus roomEntryNoticeSettingsCard roomEntryNoticeScope roomEntryNoticeEnabled roomEntryNoticeText saveRoomEntryNoticeBtn resetRoomEntryNoticeBtn roomEntryNoticeStatus
- roomNameInput maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn roomCopyCard roomCopySourceId roomCopyTargetName roomCopyReason requestRoomCopyBtn roomCopyStatus roomCopyRequestList roomMigrationCard roomMigrationSource roomMigrationTarget migrateRoomBtn roomMigrationStatus uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permSeek permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSkipSettings permSendNotice savePermissionsBtn
+  roomNameInput managementRoomContext maxUsersInput uploadApprovalToggle roomAllowGuests saveRoomBtn roomCopyCard roomCopySourceId roomCopyTargetName roomCopyReason requestRoomCopyBtn roomCopyStatus roomCopyRequestList roomMigrationCard roomMigrationSource roomMigrationTarget migrateRoomBtn roomMigrationStatus uploadLimitMb uploadTimeLimit allowTextUploadsToggle saveUploadLimitsBtn permissionUser permissionGroup permAdministrator permControl permSeek permUpload permDelete permShareScreen permShareAudio permShareWeb permVoiceChat permManageChat permManageRoom permSkipSettings permSendNotice savePermissionsBtn
  permissionGroupList permissionGroupEditor permissionGroupId permissionGroupName groupPermControl groupPermSeek groupPermUpload groupPermDelete groupPermShareScreen groupPermShareAudio groupPermShareWeb groupPermVoiceChat groupPermManageChat groupPermManageRoom groupPermSkipSettings groupPermSendNotice newPermissionGroupBtn cancelPermissionGroupBtn savePermissionGroupBtn dataBackupScopes
  pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus loginLimitRequestCard loginLimitRequestList loginConcurrencyRequestCard loginConcurrencyRequestList accountAdminList refreshAccountsBtn accountViewMode registrationRequestList registrationRequestSelectAll registrationRequestSelectionCount deleteSelectedRegistrationRequestsBtn refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
   passwordPolicyCard usernamePolicyMode usernamePolicyLengthRestricted usernamePolicyMin usernamePolicyMax usernamePolicyStatus passwordPolicyMode passwordPolicyLengthRestricted passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus loginConcurrencyPolicyCard accountSessionLimit guestSessionsPerIp accountSessionWhitelistIps guestIpWhitelistIps saveLoginPolicyBtn refreshAccessRecordsBtn clearAccessRecordsBtn loginPolicyStatus accessRecordsList blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
  toastRegion clearAllToastsBtn reconnectOverlay reconnectMessage reconnectRetryBtn closeReconnectOverlayBtn accountModal closeAccountBtn accountNav accountContent theater guestConvertBtn guestConvertModal closeGuestConvertBtn guestConvertForm guestConvertUsername guestConvertPassword guestConvertPasswordConfirm guestConvertEmail guestConvertEmailCode sendGuestConvertEmailCodeBtn guestConvertStatus
- newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn masterMuteBtn downloadClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
+  newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn shortcutSettingsBtn masterMuteBtn downloadClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
    managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchRoomSearch switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
@@ -1128,7 +1128,10 @@ function renderLoginMusicPicker(music = state.publicConfig.loginMusic || {}) {
   const tracks = Array.isArray(music.tracks) ? music.tracks : [];
   select.innerHTML = tracks.length ? tracks.map((track) => `<option value="${escapeHtml(track.id)}">${escapeHtml(track.title || track.originalName || '登录音乐')}</option>`).join('') : '<option value="">暂无曲目</option>';
   select.value = music.currentTrackId || tracks[0]?.id || '';
-  select.disabled = tracks.length < 2;
+  // Keep the picker openable even with one track so mobile users can always
+  // inspect the available list; navigation buttons still no-op for a single
+  // item.
+  select.disabled = tracks.length === 0;
 }
 
 function selectLoginMusicTrack(trackId, { autoplay = true } = {}) {
@@ -1532,7 +1535,12 @@ async function refreshAllApplications() {
   }
   if (elements.applicationRefreshStatus) elements.applicationRefreshStatus.textContent = '正在同步全部申请…';
   try {
-    await loadAdminSettings({ silent: true });
+    const refreshResult = await loadAdminSettings({ silent: true });
+    if (!refreshResult?.success) {
+      const message = refreshResult?.error || '刷新全部申请失败';
+      if (elements.applicationRefreshStatus) elements.applicationRefreshStatus.textContent = message;
+      return;
+    }
     const admin = state.adminSettings;
     if (!admin) throw new Error('请先验证管理员身份并加载设置');
     const pendingUploads = (admin.pendingFiles || []).filter((item) => !item.status || item.status === 'pending').length;
@@ -2134,6 +2142,10 @@ function bindUiEvents() {
   elements.adminContactBtn?.addEventListener('click', openAdminContact);
   elements.adminProfileBtn?.addEventListener('click', openAdminProfileEditor);
   elements.conciseModeBtn?.addEventListener('click', () => saveAccountViewPreferences({ conciseMode: !state.accountViewPreferences.conciseMode }));
+  elements.shortcutSettingsBtn?.addEventListener('click', () => {
+    if (!state.authenticated) return toast('请先登录后设置快捷键', 'error');
+    void openAccount('security');
+  });
   elements.checkUpdateBtn?.addEventListener('click', () => openDownloadCenter(true));
   elements.downloadCenterBtn?.addEventListener('click', () => openDownloadCenter(false));
   elements.openDownloadCenterLoginBtn?.addEventListener('click', () => openDownloadCenter(false));
@@ -2855,6 +2867,7 @@ function bindUiEvents() {
   elements.myRoomsList?.addEventListener('change', handleLoginRoomSelection);
   elements.loginTemporaryRoomBtn?.addEventListener('click', enterTemporaryRoomFromReminder);
   elements.fileList?.addEventListener('error', handleFileThumbnailError, true);
+  elements.videoManagementList?.addEventListener('error', handleVideoManagementCoverError, true);
   elements.closeAdminContactBtn?.addEventListener('click', () => elements.adminContactModal.classList.add('is-hidden'));
   elements.closeTunnelTutorialBtn?.addEventListener('click', () => elements.tunnelTutorialModal?.classList.add('is-hidden'));
   document.querySelectorAll('[data-editor-close]').forEach((button) => button.addEventListener('click', () => {
@@ -2897,6 +2910,10 @@ function bindUiEvents() {
   document.addEventListener('fullscreenchange', handleFullscreenChange);
   document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
   document.addEventListener('keydown', (event) => {
+    // Mobile web uses the on-screen controls and gestures; browser/Electron
+    // function-key bindings are unavailable on touch-only devices. Keep
+    // Escape for closing overlays when a hardware keyboard is attached.
+    if (usesMobileActionMenu() && event.key !== 'Escape') return;
     const editableTarget = event.target?.matches?.('input, textarea, select, [contenteditable="true"]');
     const shortcuts = state.accountViewPreferences.shortcuts || DEFAULT_ACCOUNT_SHORTCUTS;
     if (shortcutMatches(event, shortcuts.fullscreenLock) && !event.repeat && isPlayerFullscreen() && !editableTarget) {
@@ -5706,10 +5723,10 @@ async function loadPublicConfig(silent = false) {
 
 function applyPublicConfig() {
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.3.1';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.3.2';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.3.1'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.3.2'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -5909,7 +5926,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.3.1';
+    const current = state.publicConfig.version || 'v2.3.2';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -6387,7 +6404,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.3.1.apk';
+    link.download = 'SyncWatch同步观影-v2.3.2.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -6404,7 +6421,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch-Android-v2.3.1-universal.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.3.2-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -6992,10 +7009,28 @@ function renderVideoManagementList() {
   state.selectedManagementFiles = new Set([...state.selectedManagementFiles].filter((id) => manageableMediaFiles().some((file) => file.id === id)));
   elements.videoManagementList.innerHTML = files.length ? files.map((file) => {
     const processing = file.compatibility?.required && !file.compatibility?.ready && ['queued', 'converting'].includes(file.compatibility?.status);
-    const cover = file.thumbnailUrl ? `<img class="video-management-cover" src="${escapeHtml(mediaUrlWithSessionToken(file.thumbnailUrl))}" alt="${escapeHtml(file.originalName)} 封面" loading="lazy" decoding="async">` : `<span class="video-management-icon">${fileIcon(file.category)}</span>`;
+    const cover = file.thumbnailUrl ? `<img class="video-management-cover" data-video-management-cover="true" data-thumbnail-url="${escapeHtml(file.thumbnailUrl)}" src="${escapeHtml(mediaUrlWithSessionToken(file.thumbnailUrl))}" alt="${escapeHtml(file.originalName)} 封面" loading="lazy" decoding="async">` : `<span class="video-management-icon">${fileIcon(file.category)}</span>`;
     return `<article class="video-management-row ${processing ? 'processing' : ''}" data-managed-file="${escapeHtml(file.id)}"><label class="manage-row-check"><input type="checkbox" data-managed-file-select="${escapeHtml(file.id)}" ${state.selectedManagementFiles.has(file.id) ? 'checked' : ''} ${processing ? 'disabled' : ''}><span>选择</span></label>${cover}<div><strong>${escapeHtml(file.originalName)}</strong><p>${escapeHtml(fileCollectionName(file))} · ${formatSize(file.size)} · ${escapeHtml(file.uploadedBy || '')}</p><small>${escapeHtml(file.note || '暂无备注')}${processing ? ` · 正在转换 ${Math.round(Number(file.compatibility.progress) || 0)}%` : ''}</small></div><div class="actions"><button data-video-manage="${processing ? 'processing-progress' : 'play'}" type="button">${processing ? '查看处理进度' : isTimedFile(file) ? '播放' : '查看'}</button><button data-video-manage="preview" type="button" ${processing || !isTimedFile(file) ? 'disabled' : ''}>预览</button><button data-video-manage="rename" type="button" ${processing ? 'disabled' : ''}>重命名</button><button data-video-manage="category" type="button" ${processing ? 'disabled' : ''}>分类</button><button data-video-manage="note" type="button" ${processing ? 'disabled' : ''}>备注</button><button data-video-manage="favorite" type="button" ${processing ? 'disabled' : ''}>收藏</button><button data-video-manage="delete" class="danger-text-button" type="button" ${processing ? 'disabled' : ''}>删除</button></div></article>`;
   }).join('') : '<p class="muted">没有符合条件的上传影片</p>';
   if (elements.videoManagementSelectAll) elements.videoManagementSelectAll.checked = Boolean(files.length) && files.every((file) => state.selectedManagementFiles.has(file.id));
+}
+
+function handleVideoManagementCoverError(event) {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.matches('[data-video-management-cover]')) return;
+  // A long-lived management modal can outlive the session token used when its
+  // rows were first rendered. Retry once with the current token before giving
+  // up, then replace the broken image with the same compact icon used by rows
+  // that do not have a generated cover.
+  if (image.dataset.coverRetried !== '1' && state.token && image.dataset.thumbnailUrl) {
+    image.dataset.coverRetried = '1';
+    image.src = mediaUrlWithSessionToken(image.dataset.thumbnailUrl);
+    return;
+  }
+  const file = state.files.get(image.closest('[data-managed-file]')?.dataset.managedFile);
+  const fallback = document.createElement('span');
+  fallback.className = 'video-management-icon'; fallback.textContent = fileIcon(file?.category || 'video');
+  image.replaceWith(fallback);
 }
 
 function handleVideoManagementSelection(event) {
@@ -11216,6 +11251,12 @@ function startBrowserAudioRelay(stream) {
     const sink = context.createGain(); sink.gain.value = 0;
     processor.onaudioprocess = (event) => {
       if (!canSendScreenFrame() && !state.audioSourceShareActive) return;
+      // Once every screen viewer has a live WebRTC peer, do not also push
+      // 48 kHz PCM through the Socket.IO/tunnel fallback path. Besides being
+      // redundant, that stream can saturate the tunnel and add jitter to the
+      // control and JPEG fallback channels. The server updates this count
+      // whenever a viewer joins or changes transport.
+      if (canSendScreenFrame() && !state.audioSourceShareActive && state.screenFallbackViewerCount <= 0) return;
       if (state.audioSourceShareActive) {
         const expectedPeers = state.users.filter((member) => member.socketId !== state.socket?.id && member.connectionState === 'online').length;
         const connectedPeers = [...state.audioSourcePeers.values()].filter((peer) => peer.connectionState === 'connected').length;
@@ -11231,7 +11272,13 @@ function startBrowserAudioRelay(stream) {
           interleaved[index * channels + channel] = sample < 0 ? Math.round(sample * 32768) : Math.round(sample * 32767);
         }
       }
-      state.socket.volatile.emit('screen-share-audio', { data: interleaved.buffer, sampleRate: event.inputBuffer.sampleRate, channels, sampleFormat: 's16', sequence: ++state.screenAudioSequence });
+      const packet = { data: interleaved.buffer, sampleRate: event.inputBuffer.sampleRate, channels, sampleFormat: 's16', sequence: ++state.screenAudioSequence };
+      // Volatile packets are intentionally lossy and can be discarded by
+      // Engine.IO polling (a common Cloudflare Tunnel fallback). Use the
+      // regular channel there so screen-share audio is not silently dropped;
+      // keep WebSocket transport volatile to avoid backlog under congestion.
+      const emit = screenSocketTransport() === 'websocket' ? state.socket.volatile : state.socket;
+      emit.emit('screen-share-audio', packet);
     };
     source.connect(processor); processor.connect(sink); sink.connect(context.destination);
     state.screenAudioContext = context; state.screenAudioSource = source; state.screenAudioProcessor = processor; state.screenAudioSink = sink;
@@ -11617,7 +11664,9 @@ function queueNativeCaptureAudio(data, sampleRate = 48000, channels = 2, sequenc
       ? Uint8Array.from(atob(data.includes(',') ? data.slice(data.indexOf(',') + 1) : data), (character) => character.charCodeAt(0)).buffer
       : binaryScreenAudio(data);
     if (!bytes) return false;
-    state.socket.volatile.emit('screen-share-audio', { data: bytes, sampleRate: Number(sampleRate) || 48000, channels: Math.max(1, Math.min(2, Number(channels) || 2)), sequence: Number(sequence) || ++state.screenAudioSequence });
+     const packet = { data: bytes, sampleRate: Number(sampleRate) || 48000, channels: Math.max(1, Math.min(2, Number(channels) || 2)), sequence: Number(sequence) || ++state.screenAudioSequence };
+     const emit = screenSocketTransport() === 'websocket' ? state.socket.volatile : state.socket;
+     emit.emit('screen-share-audio', packet);
     return true;
   } catch (_) { return false; }
 }
@@ -13322,11 +13371,18 @@ async function loadAdminSettings({ silent = false } = {}) {
       if (elements.loadAdminBtn) { elements.loadAdminBtn.disabled = false; elements.loadAdminBtn.textContent = buttonText; }
     }
   }
-  const result = await adminAction('get-settings'); if (!result.success) return toast(result.error, 'error'); state.adminSettings = result.admin; setUiCopyEditMode(false); state.uiCopy = normalizedUiCopy(result.admin.uiCopy || state.publicConfig.uiCopy); state.publicConfig.uiCopy = state.uiCopy; applyUiCopy(state.uiCopy); window.SyncWatchUiCopy?.scan?.(document, { legacyDefaults: UI_COPY_DEFAULTS }); hydratePersistentRequests(result.admin);
+  const result = await adminAction('get-settings');
+  if (!result.success) { if (!silent) toast(result.error, 'error'); return result; }
+  state.adminSettings = result.admin; setUiCopyEditMode(false); state.uiCopy = normalizedUiCopy(result.admin.uiCopy || state.publicConfig.uiCopy); state.publicConfig.uiCopy = state.uiCopy; applyUiCopy(state.uiCopy); window.SyncWatchUiCopy?.scan?.(document, { legacyDefaults: UI_COPY_DEFAULTS }); hydratePersistentRequests(result.admin);
   elements.managementAuth?.classList.toggle('is-hidden', Boolean(result.admin.serverAdmin));
   if (result.admin.serverAdmin) {
     if (elements.adminUsername) elements.adminUsername.value = '';
     if (elements.adminPassword) elements.adminPassword.value = '';
+  }
+  if (elements.managementRoomContext) {
+    const roomId = result.admin.roomId || state.room?.id || '--';
+    const roomName = result.admin.roomName || state.room?.name || '当前房间';
+    elements.managementRoomContext.textContent = `当前修改房间：${roomName}（${roomId}）`;
   }
   elements.roomNameInput.value = result.admin.roomName; elements.maxUsersInput.value = result.admin.maxUsers; elements.uploadApprovalToggle.checked = result.admin.requireUploadApproval;
   if (elements.roomAllowGuests) elements.roomAllowGuests.checked = result.admin.allowGuests !== false;
@@ -13468,7 +13524,10 @@ async function loadAdminSettings({ silent = false } = {}) {
     const roomEntryNotice = result.admin.roomEntryNotice || state.publicConfig.roomEntryNotice || {};
     state.publicConfig.roomEntryNotice = roomEntryNotice;
     populateRoomEntryNoticeTargets(result.admin);
-    await loadTunnelStartupSettings({ silent: true });
+     // Background refreshes only need the settings payload and application
+     // lists. Avoid the extra HTTP tunnel-startup request that made opening
+     // the management hub and refreshing requests feel blocked.
+     if (!silent) await loadTunnelStartupSettings({ silent: true });
   }
   if (!result.admin.serverAdmin && elements.registrationAccountNoticeToggle) {
     elements.registrationAccountNoticeToggle.checked = result.admin.registrationAccountNoticeEnabled !== false;
@@ -13483,7 +13542,8 @@ async function loadAdminSettings({ silent = false } = {}) {
   renderRegistrationRequests(result.admin.registrationRequests || []); renderRegistrationWhitelist(result.admin.registrationIpWhitelist || []);
   renderRoomQuotaRequests(result.admin.roomQuotaRequests || []); renderLoginLimitRequests(result.admin.loginLimitRequests || []);
   renderRoomCopyRequests(result.admin.roomCopyRequests || []); renderRoomMigrationControls(result.admin);
-  renderPending(result.admin.pendingFiles); renderBlacklist(result.admin.blacklist); renderAdminAccounts(result.admin.accounts); renderGlobalRooms(result.admin.rooms || []); renderLoginConcurrencyRequests(result.admin.loginConcurrencyRequests || []); renderClientModeRequestControls(result.admin); renderClientModeRequests(result.admin.clientModeRequests || []); applySelectedPermissions(); if (result.admin.serverAdmin) void loadServerLogs(); if (!silent) toast('管理设置已加载', 'success');
+   renderPending(result.admin.pendingFiles); renderBlacklist(result.admin.blacklist); renderAdminAccounts(result.admin.accounts); renderGlobalRooms(result.admin.rooms || []); renderLoginConcurrencyRequests(result.admin.loginConcurrencyRequests || []); renderClientModeRequestControls(result.admin); renderClientModeRequests(result.admin.clientModeRequests || []); applySelectedPermissions(); if (result.admin.serverAdmin && !silent && state.managementSection === 'server') void loadServerLogs(); if (!silent) toast('管理设置已加载', 'success');
+  return result;
 }
 
 async function loadServerLogs() {
@@ -14350,7 +14410,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.3.1'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.3.2'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
@@ -17085,3 +17145,4 @@ function toastWithActions(message, actions = [], duration = 8000, type = '') {
   close.addEventListener('click', () => dismissToast(item)); item.appendChild(close); elements.toastRegion.appendChild(item); updateClearAllToastsVisibility();
   scheduleToastDismiss(item, duration); return item;
 }
+

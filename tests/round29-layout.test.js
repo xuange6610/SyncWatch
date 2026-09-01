@@ -102,6 +102,13 @@ assert.match(html, /id=["']f11PromptGlobalEnabled["'][^>]*checked/);
 assert.match(html, /id=["']initialPasswordReminderEnabled["'][^>]*checked/);
 assert.match(html, /id=["']mediaCompatibilityAutoConvert["'][^>]*checked/);
 assert.match(html, /id=["']theater["'][^>]*data-mobile-module-active=["']watch["']/);
+assert.match(css, /body:not\(\.android-client\) \.theater[\s\S]{0,260}grid-template-areas:\s*"marquee" "status" "mobile-nav" "player" "toolbar" "owner" "chat"/,
+  '手机网页必须先显示视频，再显示选项和房主设置');
+assert.match(css, /\.login-now-playing\s*\{[\s\S]{0,900}overflow:\s*visible/,
+  '手机登录音乐展开层不能被播放器容器裁剪');
+assert.match(css, /\.shortcut-settings-card\s*\{\s*display:\s*none\s*!important/,
+  '手机网页不应展示无法可靠使用的键盘快捷键设置');
+assert.match(app, /usesMobileActionMenu\(\) && event\.key !== ['"]Escape['"]/, '手机网页应停用不可用的键盘快捷键');
 assert.match(html, /id=["']clearAllToastsBtn["'][^>]*class=["'][^"']*is-hidden/);
 assert.match(html, /id=["']roomAllowGuests["'][^>]*checked/);
 assert.doesNotMatch(html, /id=["']mediaProcessingDeleteSource["'][^>]*checked/);

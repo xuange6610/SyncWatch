@@ -5,7 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const packageManifest = JSON.parse(read('package.json'));
-assert.equal(packageManifest.version, '2.3.1');
+assert.equal(packageManifest.version, '2.3.2');
 assert.equal(packageManifest.scripts['build:mac'], undefined);
 for (const file of ['electron-builder-mac-client.json','electron-builder-mac-server.json','electron-builder-mac-full.json','mac-distribution.example.json','server/macos-distribution.js']) {
   assert.equal(fs.existsSync(path.join(root, file)), false, `removed macOS file still exists: ${file}`);

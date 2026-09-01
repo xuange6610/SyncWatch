@@ -92,6 +92,12 @@ assert.match(appSource, /function memberDetailsExpanded\(/,
   '房间成员必须支持逐个展开或折叠明细');
 assert.match(appSource, /function refreshAllApplications\(/,
   '用户申请中心必须提供一键刷新全部申请');
+assert.match(pageSource, /id="shortcutSettingsBtn"[\s\S]{0,240}快捷键/,
+  '选项菜单必须提供快捷键展示和设置入口');
+assert.match(appSource, /shortcutSettingsBtn\?\.addEventListener\(['"]click['"][\s\S]{0,260}openAccount\(['"]security['"]\)/,
+  '快捷键入口必须打开账号安全页进行查看和设置');
+assert.match(appSource, /const refreshResult = await loadAdminSettings\(\{ silent: true \}\);[\s\S]{0,260}if \(!refreshResult\?\.success\)/,
+  '一键刷新全部申请必须在管理设置读取失败时停止，不能使用旧的申请数据');
 assert.match(appSource, /function copyLanAddress\([\s\S]{0,400}function copyPublicAddress\(/,
   '房间号区域必须分别支持复制内网和公网地址');
 assert.match(appSource, /function activeTunnelPublicUrl\(\)\s*\{[\s\S]{0,300}state\s*===\s*'running'[\s\S]{0,180}verified\s*===\s*true/,

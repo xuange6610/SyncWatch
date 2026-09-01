@@ -2707,7 +2707,7 @@ body.electron-server .login-host-shortcuts button {
   align-items: center;
   gap: 7px;
   padding: 8px;
-  overflow: hidden;
+  overflow: visible;
   color: var(--text);
   background: color-mix(in srgb, var(--panel-2, #151b1f) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 42%, var(--line));
@@ -2913,6 +2913,8 @@ body.login-cube-hidden .login-visual { display: none; }
   .login-visual { order: 0; }
   .auth-card { order: 1; }
   .login-now-playing { position: static; order: 2; align-self: center; width: calc(100% - 20px); margin: 12px auto max(16px, env(safe-area-inset-bottom)); }
+  .login-now-playing.is-expanded .login-music-progress-popover,
+  .login-now-playing:focus-within .login-music-progress-popover { max-height: min(58dvh, 420px); }
   .external-login-grid { grid-template-columns: 1fr; }
   .external-login-grid button { min-height: 44px; }
   .login-media-upload-progress { grid-template-columns: 1fr; }
@@ -2929,6 +2931,17 @@ body.login-cube-hidden .login-visual { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .login-now-playing-pulse i { animation: none; }
   .login-music-progress-popover, .login-now-playing-summary > span:last-child { transition: none; }
+}
+
+/* Phone browsers do not expose F-key/Ctrl+0 hardware shortcuts reliably;
+   use the visible touch controls instead of advertising unusable bindings. */
+@media (max-width: 760px) {
+  .shortcut-settings-card { display: none !important; }
+  .f11-prompt-card .shortcut-list li:nth-child(1),
+  .f11-prompt-card .shortcut-list li:nth-child(2),
+  .f11-prompt-card .shortcut-list li:nth-child(3),
+  .f11-prompt-card .shortcut-list li:nth-child(6),
+  .f11-prompt-card .shortcut-list li:nth-child(7) { display: none; }
 }
 
 .login-room-reminder-controls {
@@ -2961,7 +2974,7 @@ body.android-client .side-panel.mobile-open { transform: translateX(0); }
 
 @media (max-width: 924px) {
   main, .main-page, .workspace { height: auto; min-height: calc(100dvh - 58px); }
-  .theater { display: grid; height: auto; min-height: 0; }
+  body:not(.android-client) .theater { display: grid; height: auto; min-height: 0; grid-template-areas: "marquee" "status" "mobile-nav" "player" "toolbar" "owner" "chat"; grid-template-rows: auto auto auto minmax(220px, 43dvh) auto auto minmax(180px, .55fr); }
   .room-marquee, .temporary-room-notice { order: 0; }
   .status-card { order: 1; }
   .mobile-module-nav { position: static; order: 2; background: var(--theme-stage, #090c0e); }

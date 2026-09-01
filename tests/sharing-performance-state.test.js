@@ -42,6 +42,8 @@ assert.match(app, /new AudioContext\(\{ latencyHint: 'interactive', sampleRate: 
 assert.match(app, /createScriptProcessor\(1024,/);
 assert.match(app, /new Int16Array\(/);
 assert.match(app, /sampleFormat:\s*'s16'/);
+assert.match(app, /canSendScreenFrame\(\) && !state\.audioSourceShareActive && state\.screenFallbackViewerCount <= 0/,
+  '屏幕 WebRTC 全部连通后不应继续通过 Socket.IO/tunnel 发送冗余 PCM');
 assert.match(app, /function unlockSharedAudio\(/);
 assert.match(html, /id="audioShareRoomStatus"/);
 assert.match(html, /id="unlockSharedAudioBtn"/);
