@@ -147,7 +147,7 @@ async function launchServer(dataDir, { register = false, ffprobe = ffprobePath, 
       action: 'set-upload-policy', adminPassword: 'admin888', allowedUploadCategories: ['video', 'subtitle']
     });
     assert.equal(uploadPolicy.success, true, uploadPolicy.error);
-    return { server, socket, baseUrl, headers: { Authorization: `Bearer ${login.token}` }, dataDir };
+    return { server, socket, baseUrl, token: login.token, headers: { Authorization: `Bearer ${login.token}` }, dataDir };
   } catch (error) {
     socket.close();
     await server.close().catch(() => {});
@@ -328,6 +328,9 @@ async function testPrimaryMediaFlow(rootDir, serverDataDir, samples) {
     const thumbnail = await fetch(`${session.baseUrl}${nativeFile.thumbnailUrl}`, { headers: session.headers });
     assert.equal(thumbnail.status, 200);
     assert.match(thumbnail.headers.get('content-type') || '', /image\/jpeg/);
+    const nativeImageRequest = await fetch(`${session.baseUrl}${nativeFile.thumbnailUrl}?syncwatch_token=${encodeURIComponent(session.token)}`);
+    assert.equal(nativeImageRequest.status, 200, '原生 img 请求必须能使用查询令牌读取缩略图');
+    assert.match(nativeImageRequest.headers.get('content-type') || '', /image\/jpeg/);
     const thumbnailPath = path.join(serverDataDir, 'thumbnails', path.basename(nativeFile.thumbnailUrl));
     assert.ok(fs.statSync(thumbnailPath).size > 0, '缩略图文件必须非空');
     fs.unlinkSync(thumbnailPath);

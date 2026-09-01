@@ -606,6 +606,11 @@ function normalizeViewPreferences(value = {}) {
   const color = /^#[0-9a-f]{6}$/i.test(String(source.danmakuColor || ''))
     ? String(source.danmakuColor).toLowerCase() : '#ffffff';
   const requestedFontSize = Number(source.danmakuFontSize);
+  const normalizeShortcut = (candidate, fallback) => {
+    const normalized = cleanText(candidate, 48).trim().replace(/\s+/g, '+');
+    return /^[A-Za-z0-9]+(?:\+[A-Za-z0-9]+)*$/.test(normalized) ? normalized : fallback;
+  };
+  const shortcutSource = source.shortcuts && typeof source.shortcuts === 'object' && !Array.isArray(source.shortcuts) ? source.shortcuts : {};
   return {
     conciseMode: source.conciseMode === true,
     chatOnly: source.chatOnly === true,
@@ -613,7 +618,13 @@ function normalizeViewPreferences(value = {}) {
     danmakuFontSize: Math.max(12, Math.min(72, Number.isFinite(requestedFontSize) ? Math.round(requestedFontSize) : 24)),
     libraryCollapsed: source.libraryCollapsed === true,
     membersPanelCollapsed: source.membersPanelCollapsed === true,
-    memberDetailsCollapsed: source.memberDetailsCollapsed === true
+    memberDetailsCollapsed: source.memberDetailsCollapsed === true,
+    shortcuts: {
+      appFullscreen: normalizeShortcut(shortcutSource.appFullscreen, 'F12'),
+      fullscreenChat: normalizeShortcut(shortcutSource.fullscreenChat, 'F2'),
+      fullscreenLock: normalizeShortcut(shortcutSource.fullscreenLock, 'L'),
+      closeOverlay: normalizeShortcut(shortcutSource.closeOverlay, 'Escape')
+    }
   };
 }
 
@@ -5470,7 +5481,7 @@ async function startSyncWatchServer(options = {}) {
     // session token query fallback keeps tunneled/embedded playback working
     // when a reverse proxy drops the HttpOnly session cookie.  It is accepted
     // only for protected media paths, never for JSON APIs.
-    if (/^\/(?:media|compatible-media|host-media)\//i.test(String(req.path || ''))) {
+    if (/^\/(?:media|compatible-media|host-media|thumbnail|avatar|chat-image)\//i.test(String(req.path || ''))) {
       const queryToken = String(req.query?.syncwatch_token || '').trim();
       if (/^[A-Za-z0-9_-]{32,}$/.test(queryToken)) return queryToken;
     }

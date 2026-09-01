@@ -255,7 +255,6 @@ async function main() {
     assert.equal(desktopPlaybackQuality.saved, null, JSON.stringify(desktopPlaybackQuality));
     assert.equal(desktopPlaybackQuality.publicDefault, 'original', JSON.stringify(desktopPlaybackQuality));
     const desktopMenuInteraction = await evaluate(cdp, `(() => {
-      document.body.classList.add('topbar-compact');
       const menu = document.querySelector('.topbar-scroll-actions .topbar-menu');
       menu.open = true;
       const panel = menu.querySelector('.topbar-menu-panel');
@@ -488,7 +487,7 @@ async function main() {
     })()`);
     assert.match(endpointCopyFallback.copied, /127\.0\.0\.1/);
     assert.match(endpointCopyFallback.toast, /局域网地址已复制/);
-    await evaluate(cdp, `document.body.classList.remove('topbar-compact', 'android-client', 'mobile-actions-open'); document.querySelectorAll('.topbar-menu').forEach((menu) => { menu.open = false; }); elements.serverEndpointDetailsModal.classList.add('is-hidden'); true`);
+    await evaluate(cdp, `document.body.classList.remove('android-client', 'mobile-actions-open'); document.querySelectorAll('.topbar-menu').forEach((menu) => { menu.open = false; }); elements.serverEndpointDetailsModal.classList.add('is-hidden'); true`);
     await cdp.send('Emulation.clearDeviceMetricsOverride');
     const defaultPlaybackSource = await evaluate(cdp, `mediaSourceFor({
       url: '/media/compatible-example.mp4',
@@ -1107,7 +1106,7 @@ async function main() {
       switchToRoomDirect = record.originalSwitch; state.profile = record.originalProfile; delete window.__syncWatchOwnedRoomSwitcher; elements.switchRoomModal.classList.add('is-hidden');
       return result;
     })()`);
-    assert.deepEqual(ownedRoomSwitcher.called, { roomId: 'OWNED99', source: '我的房间' }, JSON.stringify(ownedRoomSwitcher));
+    assert.deepEqual(ownedRoomSwitcher.called, { roomId: 'OWNED99', source: '房间目录' }, JSON.stringify(ownedRoomSwitcher));
     assert.equal(ownedRoomSwitcher.currentDisabled, true, JSON.stringify(ownedRoomSwitcher));
     assert.ok(ownedRoomSwitcher.visibleRows >= 2, JSON.stringify(ownedRoomSwitcher));
     assert.equal(ownedRoomSwitcher.modalVisible, true, JSON.stringify(ownedRoomSwitcher));

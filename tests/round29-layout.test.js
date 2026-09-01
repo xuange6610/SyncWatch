@@ -48,8 +48,8 @@ assert.match(html, /id=["']fullscreenLockBtn["'][\s\S]{0,220}快捷键 L/,
   '全屏锁定按钮必须明确显示 L 快捷键');
 assert.match(html, /按 F2 或回车呼出边看边聊/,
   '全屏提示必须同时说明 F2 和回车可以呼出边看边聊');
-assert.match(app, /event\.key\.toLowerCase\(\) === ['"]l['"][\s\S]{0,220}toggleFullscreenInteractionLock\(\)/,
-  '全屏按 L 必须切换画面锁定状态');
+assert.match(app, /const shortcuts = state\.accountViewPreferences\.shortcuts[\s\S]{0,260}shortcutMatches\(event,\s*shortcuts\.fullscreenLock\)[\s\S]{0,260}toggleFullscreenInteractionLock\(\)/,
+  '全屏锁定必须使用当前账号自定义快捷键');
 assert.match(app, /event\.key === ['"]Enter['"][\s\S]{0,220}openFullscreenChat\(\)/,
   '全屏按回车必须打开边看边聊并聚焦输入框');
 for (const [id, label] of [
@@ -150,7 +150,7 @@ assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated
 assert.match(app, /function initializeMiddleMouseScroll\(\)/, '网页端必须注册中键拖动滚动处理');
 assert.match(app, /state\.publicConfig\s*=\s*\{[\s\S]{0,320}maxUploadBytes:[\s\S]{0,240}uploadTimeLimitSeconds:/, '保存上传限制后必须立即同步影片库提示状态');
 assert.match(app, /function saveUploadLimits\(\)[\s\S]{0,1000}applyPublicConfig\(\)/, '上传限制保存完成后必须重新渲染客户端提示');
-assert.match(app, /else elements\.topbarDisplayModeBtn\.textContent\s*=\s*compact\s*\?\s*['"]精简模式['"]\s*:\s*['"]文字模式['"]/, '工具栏模式切换必须兼容直接文本节点');
+assert.doesNotMatch(app, /topbarDisplayModeBtn|topbar-compact/, '精简工具栏模式代码必须移除');
 assert.match(app, /loginMusicNowPlaying\.classList\.toggle\(['"]is-hidden['"],\s*!\(music\.enabled\s*&&\s*music\.url\s*&&\s*!state\.authenticated\)/,
   '登录音乐控制窗口不能因隐藏标题设置而在手机网页消失');
 assert.match(css, /\.login-page\s*>\s*\.login-now-playing\s*\{\s*z-index:\s*180;/,
@@ -169,6 +169,10 @@ assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*body:not\(\.android-clien
   '普通手机网页登录页必须覆盖 540px 断点留下的固定 main 高度');
 assert.match(css, /body:not\(\.android-client\) \.login-page\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;[^}]*touch-action:\s*pan-y;/s,
   '普通手机网页登录页必须把滚动交给文档并允许触摸上下滑动');
+assert.match(proMaxCss, /body:not\(\.android-client\):not\(\.electron-server\)\s*\{[^}]*height:\s*auto\s*!important;[^}]*overflow-y:\s*auto\s*!important;/s,
+  '高级主题不得重新锁住普通网页登录页的文档滚动');
+assert.match(proMaxCss, /body:not\(\.android-client\):not\(\.electron-server\)\s*>\s*main\s*>\s*\.login-page\s*\{[^}]*height:\s*auto\s*!important;[^}]*overflow:\s*visible\s*!important;[^}]*touch-action:\s*pan-y;/s,
+  '网页登录页必须在主题层保持可触摸的自然滚动');
 assert.match(app, /event\.button\s*!==\s*1[\s\S]{0,180}isExcluded\(event\.target\)/, '中键滚动必须避开表单和交互控件');
 assert.match(app, /drag\.container\.scrollTop\s*=\s*drag\.startTop\s*-\s*\(event\.clientY\s*-\s*drag\.startY\)/, '中键拖动必须按垂直位移滚动当前容器');
 assert.match(app, /profile-room-item room-directory-card \$\{room\.pinned \? 'pinned' : ''\} \$\{room\.owned \? 'is-owned' : ''\}/, '我的房间卡片必须带有房主高亮状态类');

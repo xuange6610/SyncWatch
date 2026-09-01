@@ -301,3 +301,37 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .auth-card, .login-cube-scene, .player-container, .management-command, .settings-card { animation: none !important; transition: none !important; }
   .auth-card .primary-button:hover, .management-content .settings-card:hover, .management-content .management-command:hover { transform: none; }
 }
+
+/* Browser login pages must use one document-level scroll container.  This is
+ * intentionally the last rule in the theme stylesheet so the structural
+ * theme cannot reintroduce the fixed 100% body/main pair used by the room
+ * shell.  It also keeps touch scrolling enabled when the login card grows
+ * beyond a short viewport or browser zoom level. */
+body:not(.android-client):not(.electron-server) {
+  height: auto !important;
+  min-height: 100dvh;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto;
+}
+body:not(.android-client):not(.electron-server) > main:has(> .login-page:not(.is-hidden)) {
+  height: auto !important;
+  min-height: calc(100dvh - 64px);
+  overflow: visible !important;
+}
+body:not(.android-client):not(.electron-server) > main > .login-page {
+  height: auto !important;
+  min-height: calc(100dvh - 64px);
+  overflow: visible !important;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Once the login surface is hidden, restore a bounded desktop room viewport
+ * so the theater grid keeps its player/text reader scroll area instead of
+ * expanding to the entire document. */
+body:not(.android-client):not(.electron-server):not(:has(> main > .login-page:not(.is-hidden))) > main {
+  height: calc(100dvh - 64px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}

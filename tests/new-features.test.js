@@ -90,7 +90,8 @@ async function main() {
     assert.deepEqual(topbarOrder, [...topbarOrder].sort((left, right) => left - right));
     assert.equal((pageSource.match(/id="serverSettingsLoginBtn"/g) || []).length, 1);
     assert.doesNotMatch(pageSource, /id="androidBuildSettingsCard"/);
-    assert.ok(pageSource.indexOf('id="topbarDisplayModeBtn"') < pageSource.indexOf('id="androidApkBtn"'));
+    assert.equal(pageSource.includes('id="topbarDisplayModeBtn"'), false, '顶栏不再提供精简/文字模式切换按钮');
+    assert.doesNotMatch(pageSource, /topbar-compact/);
     assert.match(pageSource, /css\/ai-workbench\.css/);
     assert.match(pageSource, /js\/ai-workbench\.js/);
     assert.match(appSource, /initialAdminPasswordSetupSkipped/);
