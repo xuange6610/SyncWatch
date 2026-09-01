@@ -438,7 +438,7 @@ body.ambient-light-on .topbar, body.ambient-light-on .side-panel { background-co
   .room-header { min-width: 200px; gap: 22px; }
   .topbar-actions { gap: 4px; }
   .header-feature-button { flex: 0 0 34px; width: 34px; padding: 6px; justify-content: center; }
-  .header-feature-button .button-label { display: none; }
+  .header-feature-button .button-label { display: inline !important; }
 }
 @media (min-width: 925px) and (max-width: 1120px) { .workspace.files-collapsed { grid-template-columns: 48px minmax(430px, 1fr) 250px; } .workspace.members-panel-collapsed { grid-template-columns: 285px minmax(430px, 1fr) 48px; } .workspace.files-collapsed.members-panel-collapsed { grid-template-columns: 48px minmax(430px, 1fr) 48px; } }
 @media (min-width: 1121px) and (max-width: 1699px) { .workspace.files-collapsed { grid-template-columns: 48px minmax(480px, 1fr) 286px; } .workspace.members-panel-collapsed { grid-template-columns: 285px minmax(480px, 1fr) 48px; } .workspace.files-collapsed.members-panel-collapsed { grid-template-columns: 48px minmax(480px, 1fr) 48px; } }
@@ -454,11 +454,11 @@ body.ambient-light-on .topbar, body.ambient-light-on .side-panel { background-co
   .topbar { gap: 10px; }
   .room-header { display: none; }
   .header-feature-button { min-width: 34px; justify-content: center; }
-  .header-feature-button .button-label { display: none; }
+  .header-feature-button .button-label { display: inline !important; }
 }
 @media (max-width: 924px) {
   body { overflow: auto; overflow-x: hidden; }.topbar { position: sticky; top: 0; min-width: 0; }.brand { flex: 0 1 auto; min-width: 0; }.brand small, .link-button:not(.share-link-button), .status-badge span { display: none; }.share-link-button { flex: 0 0 auto; padding: 7px; font-size: 10px; }.account-button span:nth-child(2) { display: none; }
-  .topbar-actions { min-width: 0; max-width: calc(100vw - 95px); overflow-x: auto; scrollbar-width: none; }.topbar-actions::-webkit-scrollbar { display: none; }.header-feature-button { flex: 0 0 auto; min-width: 34px; padding: 6px; justify-content: center; }.header-feature-button .button-label { display: none; }
+  .topbar-actions { min-width: 0; max-width: calc(100vw - 95px); overflow-x: auto; scrollbar-width: none; }.topbar-actions::-webkit-scrollbar { display: none; }.header-feature-button { flex: 0 0 auto; min-width: max-content; padding: 6px 8px; justify-content: center; }.header-feature-button .button-label { display: inline !important; }
   /* Keep mobile login scrolling on the document instead of a nested fixed-height scroller. */
   main { width: 100%; height: auto; min-height: calc(100dvh - 58px); overflow: visible; }.login-page { display: block; min-height: calc(100dvh - 58px); height: auto; overflow: visible; touch-action: pan-y; -webkit-overflow-scrolling: touch; }.auth-card { margin: 32px auto; }
   .workspace { display: block; position: relative; }.theater { height: 100%; grid-template-rows: auto auto auto auto auto minmax(260px, 48vh) minmax(220px, 1fr); }
@@ -703,10 +703,14 @@ textarea:focus { border-color: var(--pink); box-shadow: 0 0 0 3px #52c7b820; }
   .room-header { grid-template-columns: minmax(0, 1.4fr) minmax(52px, .8fr); gap: 8px; }
   .room-header > span:nth-child(n + 3) { display: none; }
   .topbar > .topbar-actions { max-width: min(56vw, 470px); }
-  .topbar-scroll-actions .header-feature-button .button-label { display: none; }
-  .topbar-scroll-actions .header-feature-button { min-width: 34px; padding-inline: 6px; justify-content: center; }
+  .topbar-scroll-actions .header-feature-button .button-label { display: inline !important; }
+  .topbar-scroll-actions .header-feature-button { min-width: max-content; padding-inline: 6px; justify-content: center; }
 }
 .f11-prompt-card { width: min(450px, 100%); text-align: center; }.f11-prompt-card h2 { margin: 6px 0 8px; }.f11-prompt-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }.f11-prompt-preference { display: grid; gap: 6px; margin-top: 14px; text-align: left; color: var(--muted); font-size: 11px; }.f11-prompt-preference select { width: 100%; }.f11-prompt-card .text-button { width: 100%; margin-top: 8px; }
+.shortcut-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.shortcut-settings-grid input[readonly] { cursor: pointer; text-align: center; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 700; letter-spacing: .04em; }
+.shortcut-settings-grid input[readonly]:focus { border-color: var(--theme-accent, var(--pink)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, transparent); }
+@media (max-width: 560px) { .shortcut-settings-grid { grid-template-columns: 1fr; } }
 .global-room-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .global-room-metrics > span { min-width: 0; display: grid; gap: 3px; padding: 8px; background: #00000018; border: 1px solid var(--line); border-radius: 6px; }.global-room-metrics small { color: var(--muted); font-size: 9px; }.global-room-metrics strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
 .warning-button { display: inline-grid; place-items: center; min-height: 36px; padding: 8px 14px; color: #ffe7ac; background: #e9bd6815; border: 1px solid #e9bd6855; border-radius: 8px; font-weight: 700; }
@@ -1369,13 +1373,8 @@ body.tunnel-task-visible .global-upload-progress { top: 164px; }
 .persistent-request-close { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; padding: 0; color: var(--muted); background: transparent; border: 0; border-radius: 6px; font-size: 18px; }
 .persistent-request-close:hover { color: var(--text); background: #ffffff10; }
 
-/* Text mode remains restrained; compact mode keeps familiar icons and tooltips. */
-.topbar .button-label { font-size: 10px; line-height: 1.2; }
-body.topbar-compact .topbar-actions { gap: 4px; }
-body.topbar-compact .topbar .header-feature-button { width: 36px; min-width: 36px; height: 36px; justify-content: center; padding: 0; }
-body.topbar-compact .topbar .header-feature-button .button-label { display: none; }
-body.topbar-compact .topbar-context-action + .topbar-context-action { margin-left: 0; }
-body.topbar-compact .room-header { gap: clamp(9px, 1.4vw, 20px); }
+/* v2.3.1 keeps one readable text toolbar on every client. */
+.topbar .button-label { display: inline !important; font-size: 10px; line-height: 1.2; white-space: nowrap; }
 .room-header small { font-size: 8px; }
 .room-header strong { font-size: 11px; }
 
@@ -2102,8 +2101,8 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
 #memberProfileModal { z-index: 240; }
 @media (min-width: 1121px) { .room-header:not(.is-hidden) { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(4, minmax(0, 1fr)); flex: 0 1 min(540px, 42vw); min-width: 220px; max-width: 540px; overflow: visible; } }
 @media (min-width: 1451px) {
-  body:not(.topbar-compact) .topbar-scroll-actions .header-feature-button, body:not(.topbar-compact) .topbar-fixed-actions .header-feature-button { width: auto; min-width: max-content; justify-content: flex-start; padding-inline: 8px; }
-  body:not(.topbar-compact) .topbar-scroll-actions .header-feature-button .button-label, body:not(.topbar-compact) .topbar-fixed-actions .header-feature-button .button-label { display: inline; }
+  .topbar-scroll-actions .header-feature-button, .topbar-fixed-actions .header-feature-button { width: auto; min-width: max-content; justify-content: flex-start; padding-inline: 8px; }
+  .topbar-scroll-actions .header-feature-button .button-label, .topbar-fixed-actions .header-feature-button .button-label { display: inline !important; }
 }
 @media (max-width: 924px) { .topbar-scroll-actions, .topbar-fixed-actions { display: contents; } }
 @media (max-width: 720px) {
@@ -2136,6 +2135,8 @@ input[type="checkbox"]:checked::after { margin: 0; transform: translateY(-1px) r
   body.android-client .topbar-actions .topbar-menu-trigger { width: 100%; min-height: 48px; }
   body:not(.android-client) .topbar-actions .topbar-menu-panel,
   body.android-client .topbar-actions .topbar-menu-panel { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; max-height: min(52dvh, 440px); overflow-y: auto; }
+  body:not(.android-client) .topbar-actions .topbar-menu-panel > .topbar-context-action,
+  body.android-client .topbar-actions .topbar-menu-panel > .topbar-context-action { margin-left: 0; }
   body:not(.android-client) .topbar-actions .topbar-menu:not([open]) > .topbar-menu-panel,
   body.android-client .topbar-actions .topbar-menu:not([open]) > .topbar-menu-panel { display: none; }
   body:not(.android-client) .topbar-actions .header-feature-button .button-label,
@@ -2908,7 +2909,10 @@ body.login-cube-hidden .login-visual { display: none; }
 }
 
 @media (max-width: 760px) {
-  .login-now-playing { right: max(10px, env(safe-area-inset-right)); left: max(10px, env(safe-area-inset-left)); bottom: max(72px, calc(env(safe-area-inset-bottom) + 62px)); width: auto; }
+  .login-page { display: flex; flex-direction: column; align-items: stretch; }
+  .login-visual { order: 0; }
+  .auth-card { order: 1; }
+  .login-now-playing { position: static; order: 2; align-self: center; width: calc(100% - 20px); margin: 12px auto max(16px, env(safe-area-inset-bottom)); }
   .external-login-grid { grid-template-columns: 1fr; }
   .external-login-grid button { min-height: 44px; }
   .login-media-upload-progress { grid-template-columns: 1fr; }
@@ -3101,6 +3105,13 @@ body.ui-copy-editable [data-ui-copy-attribute-keys]:hover { --copy-edit-outline:
   .login-page { min-height: calc(100dvh - var(--mobile-web-appbar, 58px)); }
   .login-page #authCard.auth-card { margin-block: 10px 48px; }
 }
+
+/* Browser login pages use the document as the single scroll container, just
+   like the server login window; this prevents the card from being trapped in
+   a clipped nested viewport on short or zoomed pages. */
+body:not(.android-client):not(.electron-server) { overflow-y: auto; }
+body:not(.android-client):not(.electron-server) main { height: auto; min-height: calc(100dvh - 58px); overflow: visible; }
+body:not(.android-client):not(.electron-server) .login-page { height: auto; min-height: calc(100dvh - 58px); overflow: visible; touch-action: pan-y; }
 
 /* Account-scoped distraction controls and fullscreen safety. */
 .danmaku-item {

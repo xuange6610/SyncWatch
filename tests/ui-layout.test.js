@@ -33,8 +33,10 @@ assert.match(styleSource, /\.theater\s*\{[^}]*grid-template-areas:\s*"marquee"\s
 assert.match(styleSource, /\.room-marquee\.is-hidden\s*\{[^}]*display:\s*none/s,
   '关闭顶部播报时应仅隐藏播报区域');
 
-assert.match(pageSource, /class="topbar-scroll-actions"[\s\S]*id="copyrightBtn"[\s\S]*class="topbar-fixed-actions"[\s\S]*id="serverSettingsLoginBtn"[\s\S]*id="copyAddressBtn"[\s\S]*id="connectionBadge"[\s\S]*id="accountMenuBtn"/,
-  '服务器设置、分享房间、连接状态和头像必须位于顶部固定区，不能进入功能滑动栏');
+assert.match(pageSource, /class="topbar-scroll-actions"[\s\S]*id="copyrightBtn"[\s\S]*class="topbar-fixed-actions"[\s\S]*id="serverSettingsLoginBtn"[\s\S]*id="connectionBadge"[\s\S]*id="accountMenuBtn"/,
+  '服务器设置、连接状态和头像必须位于顶部固定区，不能进入功能滑动栏');
+const roomActionsMenu = pageSource.match(/<details class="topbar-menu"[^>]*>[\s\S]*?<summary[^>]*title="房间操作"[\s\S]*?<\/details>/)?.[0] || '';
+assert.match(roomActionsMenu, /id="copyAddressBtn"/, '分享房间必须位于房间操作菜单内');
 assert.match(appSource, /function bindTopbarAutoCollapse\([\s\S]{0,3200}pointerenter[\s\S]{0,900}pointerleave[\s\S]{0,900}menuPinned/,
   '桌面顶部菜单必须支持悬停临时展开、离开收起和点击固定');
 assert.match(styleSource, /@media \(max-width: 540px\)[\s\S]{0,1800}\.topbar-actions \.topbar-menu[\s\S]{0,500}grid-column:\s*1 \/ -1[\s\S]{0,900}grid-template-columns:\s*minmax\(0, 1fr\)/,
@@ -62,8 +64,7 @@ assert.match(styleSource, /input\[type="checkbox"\]\s*\{[^}]*display:\s*inline-g
   '复选框必须保持紧凑尺寸并在格子中央绘制勾选标记');
 assert.match(styleSource, /#memberProfileModal\s*\{[^}]*z-index:\s*240/s,
   '从位置清单打开的成员资料必须绘制在位置清单上方');
-assert.match(appSource, /topbarDisplayMode:\s*localStorage\.getItem\('syncwatchTopbarDisplayModeV2'\)\s*===\s*'compact'\s*\?\s*'compact'\s*:\s*'text'/,
-  '升级后的工具栏必须默认使用文字模式，旧版精简模式缓存不能覆盖新默认值');
+assert.doesNotMatch(appSource, /topbarDisplayModeBtn|topbar-compact/, '顶栏精简模式代码必须完全移除');
 assert.match(pageSource, /id="playbackQualitySelect"[^>]*>[\s\S]*<option value="original" selected>原画<\/option>/,
   '播放器清晰度选择器必须在首帧标记原画为默认选项');
 assert.match(appSource, /playbackQuality:\s*\['auto',\s*'smooth',\s*'original'\]\.includes\(localStorage\.getItem\('syncwatchPlaybackQuality'\)\)\s*\?\s*localStorage\.getItem\('syncwatchPlaybackQuality'\)\s*:\s*'original'/,
@@ -121,8 +122,8 @@ assert.match(styleSource, /\.workspace\.members-panel-collapsed \.user-panel \.m
   '成员面板收起后必须保留可见的展开按钮');
 assert.match(appSource, /function trySystemPaste\([\s\S]{0,1800}execCommand\('paste'\)[\s\S]{0,1000}Ctrl\+V/,
   '原生桥不可用时必须聚焦输入框并提供系统粘贴降级，不能直接报错终止');
-assert.match(appSource, /function renderSwitchOwnedRooms\(rooms[\s\S]{0,3200}renderRoomDirectoryDetails\(room\)[\s\S]{0,700}data-switch-owned-room/,
-  '更换房间弹窗必须复用账号资料中的本人房间并提供一键进入');
+assert.match(appSource, /function renderSwitchOwnedRooms\(rooms[\s\S]{0,5200}data-switch-owned-room/,
+  '更换房间弹窗必须展示所有房间并提供一键进入');
 assert.match(appSource, /function renderSwitchOwnedRooms\(rooms[\s\S]{0,3200}data-switch-owned-select[\s\S]{0,900}data-switch-room-action="delete-selected"/,
   'Switch-room owned-room cards must support item selection and batch deletion.');
 assert.match(appSource, /switchOwnedRoomQuery[\s\S]{0,900}visibleRooms[\s\S]{0,900}ownerName[\s\S]{0,400}ownerUsername/,

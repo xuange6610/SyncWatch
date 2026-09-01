@@ -40,8 +40,8 @@ assert.match(css, /body\.fullscreen-open\s+\.modal[\s\S]{0,350}display:\s*none\s
 assert.match(css, /player-container:(?:fullscreen|fullscreen-active)[\s\S]{0,500}danmaku-container[\s\S]{0,260}display:\s*block\s*!important/,
   '弹幕层在原生与伪全屏中都必须可见');
 
-assert.match(app, /event\.key\s*===\s*['"]F12['"][\s\S]{0,300}togglePlayerFullscreen\(\)/,
-  'F12 必须能切换观影画面全屏');
+assert.match(app, /shortcutMatches\(event,\s*shortcuts\.appFullscreen\)[\s\S]{0,220}togglePlayerFullscreen\(\)/,
+  '应用全屏必须使用当前账号自定义快捷键');
 assert.match(css, /fullscreen-chat-card[\s\S]{0,450}max-width:\s*calc\(100vw\s*-/,
   '边看边聊在浏览器缩放或低分辨率时不得溢出视口');
 assert.match(css, /fullscreen-actions[\s\S]{0,420}overflow-(?:x|y|block):\s*auto/,

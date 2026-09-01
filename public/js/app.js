@@ -70,7 +70,8 @@ const LOGIN_ROOM_REMINDER_KEY_PREFIX = 'syncwatchLoginRoomReminder:';
 const ACCOUNT_VIEW_PREFERENCE_KEY_PREFIX = 'syncwatchAccountViewPreferences:';
 const FULLSCREEN_CHAT_HINT_KEY_PREFIX = 'syncwatchFullscreenChatHint:';
 const LOGIN_MUSIC_PREFERENCE_KEY = 'syncwatchLoginMusicPreferenceV1';
-const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20, libraryCollapsed: false, membersPanelCollapsed: false, memberDetailsCollapsed: false });
+const DEFAULT_ACCOUNT_SHORTCUTS = Object.freeze({ appFullscreen: 'F12', fullscreenChat: 'F2', fullscreenLock: 'L', closeOverlay: 'Escape' });
+const DEFAULT_ACCOUNT_VIEW_PREFERENCES = Object.freeze({ conciseMode: false, chatOnly: false, danmakuColor: '#ffffff', danmakuFontSize: 20, libraryCollapsed: false, membersPanelCollapsed: false, memberDetailsCollapsed: false, shortcuts: { ...DEFAULT_ACCOUNT_SHORTCUTS } });
 const ACCOUNT_CHAT_FILTER_KEY_PREFIX = 'syncwatchChatFilter:';
 const ACCOUNT_VOICE_COLLAPSED_KEY_PREFIX = 'syncwatchVoiceCollapsed:';
 const DEFAULT_DESKTOP_SHARE_SETTINGS = Object.freeze({ resolution: 'native', fps: 'device', quality: 'ultra', systemAudio: true });
@@ -147,7 +148,6 @@ const state = {
   syncDriftNotice: localStorage.getItem('syncwatchSyncDriftNotice') !== '0',
   uiTheme: localStorage.getItem('syncwatchUiTheme') || 'silver-screen',
   uiFont: localStorage.getItem('syncwatchUiFont') || '',
-  topbarDisplayMode: localStorage.getItem('syncwatchTopbarDisplayModeV2') === 'compact' ? 'compact' : 'text',
   mobileChatCollapsed: localStorage.getItem('syncwatchMobileChatCollapsed') !== '0',
   fullscreenHideTimer: null, fullscreenRevealTimer: null, fullscreenPlaybackGestureTimer: null, fullscreenGestureBlockUntil: 0, fullscreenHintTimer: null, fullscreenGestureIndicatorTimer: null, fullscreenActive: false, fullscreenInteractionLocked: false, fullscreenBrightness: 1, fullscreenGesture: null, f11PromptTimer: null, f11PromptEndsAt: 0, playbackRatePromptTimer: null, lastShownPlaybackRate: 0, appliedPlaybackRate: null, pseudoFullscreen: false, fullscreenMessageId: '', chatContextMessageId: '',
   chatContextMenuHomeParent: null, chatContextMenuHomeNextSibling: null, lightsInFlight: false, roomSwitchSuccessTimer: null,
@@ -339,7 +339,7 @@ localStorage.setItem('syncwatchDeviceId', deviceId);
 
 const elements = {};
 const ids = `connectionBadge copyAddressBtn copyrightBtn closeCopyrightBtn copyrightModal versionText loginPage mainPage mobileMenuBtn mobileMenuBackdrop serverEndpointBadge serverEndpointAddress serverEndpointState checkUpdateBtn downloadCenterBtn adminProfileBtn conciseModeBtn openOnboardingGuideBtn onboardingGuideModal closeOnboardingGuideBtn onboardingGuideDescription onboardingGuideProgress onboardingGuideStep onboardingGuideSkipBtn onboardingGuideBackBtn onboardingGuideNextBtn
- loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn guestLoginBtn authCard
+ loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo enterOwnRoomBtn myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn guestLoginBtn authCard
  loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword loginRoomPasswordState onlineRoomSearch onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountRoomSettingsBtn accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
  filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn collapseMembersPanelBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
@@ -357,7 +357,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  pendingList refreshPendingBtn applicationRefreshCard refreshAllApplicationsBtn applicationRefreshStatus loginLimitRequestCard loginLimitRequestList loginConcurrencyRequestCard loginConcurrencyRequestList accountAdminList refreshAccountsBtn accountViewMode registrationRequestList registrationRequestSelectAll registrationRequestSelectionCount deleteSelectedRegistrationRequestsBtn refreshRegistrationBtn registrationViewMode roomQuotaRequestList refreshRoomQuotaBtn registrationWhitelistInput registrationWhitelistList addRegistrationWhitelistBtn accessPassword setAccessPasswordBtn dissolveRoomCard dissolveRoomBtn newAdminPassword changeAdminPasswordBtn blacklistContent refreshBlacklistBtn
   passwordPolicyCard usernamePolicyMode usernamePolicyLengthRestricted usernamePolicyMin usernamePolicyMax usernamePolicyStatus passwordPolicyMode passwordPolicyLengthRestricted passwordPolicyMin passwordPolicyMax passwordPolicyExpiryDays adminMaxConcurrentSessions savePasswordPolicyBtn passwordPolicyStatus loginConcurrencyPolicyCard accountSessionLimit guestSessionsPerIp accountSessionWhitelistIps guestIpWhitelistIps saveLoginPolicyBtn refreshAccessRecordsBtn clearAccessRecordsBtn loginPolicyStatus accessRecordsList blockedWordsCard blockedWordsInput saveBlockedWordsBtn blockedWordsStatus roomIdPolicyCard roomIdPolicyEnabled roomIdPolicyMin roomIdPolicyMax roomIdPolicyMode roomIdPolicyPatternLabel roomIdPolicyPattern saveRoomIdPolicyBtn roomIdPolicyStatus accountNumberPolicyCard accountIdPolicyPrefix accountIdPolicySeparator accountIdPolicyDigits accountIdPolicyNextNumber saveAccountIdPolicyBtn accountIdPolicyStatus accountTierCard accountTierList accountTierEditor accountTierId accountTierName accountTierUploadGb accountTierRoomQuota accountTierDescription newAccountTierBtn cancelAccountTierBtn saveAccountTierBtn watchLevelSettingsCard watchLevelSettingsList experiencePerMinute saveExperiencePolicyBtn experiencePolicyStatus androidBuildSettingsCard adminContactSettingsCard adminContactLabel adminContactQq adminContactWechat adminContactEmail adminContactPhone adminContactNote saveAdminContactBtn adminContactStatus legalAgreementSettingsCard legalAgreementVersion legalAgreementTitle legalAgreementText saveLegalAgreementBtn legalAgreementStatus accountAdminSearch accountAdminPresence accountAdminSort showSuperAdminAccountsBtn uploadLimitTutorialBtn accountAuditLogBtn
  toastRegion clearAllToastsBtn reconnectOverlay reconnectMessage reconnectRetryBtn closeReconnectOverlayBtn accountModal closeAccountBtn accountNav accountContent theater guestConvertBtn guestConvertModal closeGuestConvertBtn guestConvertForm guestConvertUsername guestConvertPassword guestConvertPasswordConfirm guestConvertEmail guestConvertEmailCode sendGuestConvertEmailCodeBtn guestConvertStatus
- newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn topbarDisplayModeBtn masterMuteBtn downloadClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
+ newRoomBtn switchRoomBtn lanScanBtn managementHubBtn androidApkBtn operationHistoryBtn chatManageBtn conversionProgressBtn noticeCenterBtn quickDissolveRoomBtn webShareBtn themeBtn masterMuteBtn downloadClientMainBtn createRoomModal closeCreateRoomBtn createRoomForm newRoomName newRoomPassword newRoomMaxUsers roomQuotaStatus requestRoomQuotaBtn persistentRequestCenter
  mediaBatchModal closeMediaBatchBtn mediaBatchCount mediaBatchSearch mediaBatchSelectAll mediaBatchList mediaBatchCategory mediaBatchConfirmBtn videoManagementModal closeVideoManagementBtn exportVideoManagementBtn importVideoManagementBtn importVideoManagementInput videoManagementSearch videoManagementCategory videoManagementSelectAll videoManagementBatchCategoryBtn videoManagementBatchNoteBtn videoManagementBatchDeleteBtn videoManagementList desktopShareModal closeDesktopShareBtn desktopShareResolution desktopShareFps desktopShareQuality desktopShareSystemAudio desktopShareStartBtn friendChatModal closeFriendChatBtn friendChatTitle friendChatFloatingBtn friendChatHistory friendChatForm friendChatInput friendChatEmojiBtn friendChatEmojiBar friendChatEmojiCategory friendChatEmojiCollapseBtn clearFriendChatBtn manageFriendChatBtn friendChatBatchBar friendChatSelectAll deleteFriendChatSelectedBtn friendChatReplyPreview friendChatReplyText cancelFriendChatReplyBtn friendChatImageBtn friendChatImageInput friendChatContextMenu
  managementChatManageBtn managementOperationHistoryBtn
    managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchRoomSearch switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
@@ -415,7 +415,7 @@ async function initialize() {
   hydrateAccountViewPreferences(null, { serverAuthoritative: false });
   loadControlSuppressions();
   applyUiTheme(state.uiTheme);
-  applyTopbarDisplayMode(state.topbarDisplayMode);
+  applyTextTopbarMode();
   renderThemeChoices();
   applyMasterMute();
   applyMemberDetailsCollapsed();
@@ -440,11 +440,66 @@ async function initialize() {
   void loadRoomInfo();
 }
 
+function normalizeShortcutKey(value, fallback) {
+  const normalized = String(value || '').trim().replace(/\s+/g, '+');
+  return /^[A-Za-z0-9]+(?:\+[A-Za-z0-9]+)*$/.test(normalized) ? normalized : fallback;
+}
+
+function normalizeShortcuts(value = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    appFullscreen: normalizeShortcutKey(source.appFullscreen, DEFAULT_ACCOUNT_SHORTCUTS.appFullscreen),
+    fullscreenChat: normalizeShortcutKey(source.fullscreenChat, DEFAULT_ACCOUNT_SHORTCUTS.fullscreenChat),
+    fullscreenLock: normalizeShortcutKey(source.fullscreenLock, DEFAULT_ACCOUNT_SHORTCUTS.fullscreenLock),
+    closeOverlay: normalizeShortcutKey(source.closeOverlay, DEFAULT_ACCOUNT_SHORTCUTS.closeOverlay)
+  };
+}
+
+function shortcutDisplay(value) {
+  return String(value || '').replace(/\bCtrl\b/gi, 'Ctrl').replace(/\bAlt\b/gi, 'Alt').replace(/\bShift\b/gi, 'Shift').replace(/\bMeta\b/gi, '⌘');
+}
+
+function eventShortcut(event) {
+  const key = String(event.key || '').length === 1 ? String(event.key).toUpperCase() : String(event.key || '');
+  const parts = [];
+  if (event.ctrlKey) parts.push('Ctrl');
+  if (event.altKey) parts.push('Alt');
+  if (event.shiftKey) parts.push('Shift');
+  if (event.metaKey) parts.push('Meta');
+  if (key) parts.push(key);
+  return parts.join('+');
+}
+
+function shortcutMatches(event, configured) {
+  return normalizeShortcutKey(eventShortcut(event), '') === normalizeShortcutKey(configured, '__never__');
+}
+
+function updateShortcutLabels(shortcuts = state.accountViewPreferences.shortcuts) {
+  const normalized = normalizeShortcuts(shortcuts);
+  const lockLabel = elements.fullscreenLockBtn?.querySelector('span:last-child');
+  if (lockLabel) lockLabel.textContent = `锁定（快捷键 ${shortcutDisplay(normalized.fullscreenLock)}）`;
+  if (elements.fullscreenShortcutHint) {
+    const strong = elements.fullscreenShortcutHint.querySelector('strong');
+    const small = elements.fullscreenShortcutHint.querySelector('small');
+    if (strong) strong.textContent = `按 ${shortcutDisplay(normalized.fullscreenChat)} 呼出边看边聊`;
+    if (small) small.textContent = `全屏中随时可以打开聊天；按 ${shortcutDisplay(normalized.fullscreenLock)} 锁定画面，左侧上下滑动调亮度，右侧上下滑动调音量。`;
+  }
+}
+
+function captureShortcutInput(event) {
+  const input = event.target.closest('[data-shortcut-input]');
+  if (!input) return;
+  event.preventDefault();
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) return;
+  const value = eventShortcut(event);
+  if (value) input.value = value;
+}
+
 function normalizeAccountViewPreferences(value = {}) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const color = /^#[0-9a-f]{6}$/i.test(String(source.danmakuColor || '')) ? String(source.danmakuColor).toLowerCase() : DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuColor;
   const fontSize = Math.max(14, Math.min(42, Math.round(Number(source.danmakuFontSize) || DEFAULT_ACCOUNT_VIEW_PREFERENCES.danmakuFontSize)));
-  return { conciseMode: source.conciseMode === true, chatOnly: source.chatOnly === true, danmakuColor: color, danmakuFontSize: fontSize, libraryCollapsed: source.libraryCollapsed === true, membersPanelCollapsed: source.membersPanelCollapsed === true, memberDetailsCollapsed: source.memberDetailsCollapsed === true };
+  return { conciseMode: source.conciseMode === true, chatOnly: source.chatOnly === true, danmakuColor: color, danmakuFontSize: fontSize, libraryCollapsed: source.libraryCollapsed === true, membersPanelCollapsed: source.membersPanelCollapsed === true, memberDetailsCollapsed: source.memberDetailsCollapsed === true, shortcuts: normalizeShortcuts(source.shortcuts) };
 }
 
 function accountViewPreferenceStorageKey(username = state.user?.username) {
@@ -533,6 +588,7 @@ function applyAccountViewPreferences(preferences = state.accountViewPreferences)
   elements.conciseModeBtn?.classList.toggle('active', normalized.conciseMode);
   if (elements.conciseModeBtn) elements.conciseModeBtn.title = normalized.conciseMode ? '退出简洁模式' : '只保留核心观影功能';
   if (elements.chatOnlyToggle) elements.chatOnlyToggle.checked = normalized.chatOnly;
+  updateShortcutLabels(normalized.shortcuts);
   applyDanmakuPreferences(normalized);
   applyLibraryCollapsed();
   applyMembersPanelCollapsed();
@@ -566,7 +622,8 @@ async function saveAccountViewPreferences(patch = {}) {
     danmakuFontSize: next.danmakuFontSize,
     libraryCollapsed: next.libraryCollapsed,
     membersPanelCollapsed: next.membersPanelCollapsed,
-    memberDetailsCollapsed: next.memberDetailsCollapsed
+    memberDetailsCollapsed: next.memberDetailsCollapsed,
+    shortcuts: next.shortcuts
   });
   if (!result.success) {
     applyAccountViewPreferences(previous); cacheAccountViewPreferences(previous);
@@ -2066,6 +2123,7 @@ function bindUiEvents() {
     if (!state.authenticated && !document.hidden) void loadOnlineRooms();
   }, 15000);
   elements.myRoomsLoginBtn?.addEventListener('click', loadMyRoomsBeforeLogin);
+  elements.enterOwnRoomBtn?.addEventListener('click', enterOwnRoomBeforeLogin);
   elements.serverAdminLoginBtn?.addEventListener('click', () => loginAsServerAdmin('management'));
   elements.serverAdminRoomLoginBtn?.addEventListener('click', () => loginAsServerAdmin('room'));
   elements.managementLogoutBtn?.addEventListener('click', logoutManagementSession);
@@ -2346,6 +2404,7 @@ function bindUiEvents() {
   elements.accountContent.addEventListener('dblclick', handleAccountDoubleClick);
   elements.accountContent.addEventListener('change', handleAccountSelectionChange);
   elements.accountContent.addEventListener('input', handleAccountFilterInput);
+  elements.accountContent.addEventListener('keydown', captureShortcutInput);
   elements.closeAccountBtn.addEventListener('click', () => elements.accountModal.classList.add('is-hidden'));
   elements.closeFriendChatBtn?.addEventListener('click', closeFriendChat);
   elements.friendChatFloatingBtn?.addEventListener('click', toggleFriendChatFloatingNotice);
@@ -2699,7 +2758,6 @@ function bindUiEvents() {
     elements.themeModal?.classList.remove('is-hidden');
     toast('已打开主题风格设置', 'success', 2600);
   });
-  elements.topbarDisplayModeBtn?.addEventListener('click', toggleTopbarDisplayMode);
   elements.themeFontSearch?.addEventListener('input', () => renderThemeFontOptions(elements.themeFontSearch.value));
   elements.applyThemeFontBtn?.addEventListener('click', applySelectedThemeFont);
   elements.resetThemeFontBtn?.addEventListener('click', () => applyUiFont('', { notify: true }));
@@ -2840,27 +2898,23 @@ function bindUiEvents() {
   document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
   document.addEventListener('keydown', (event) => {
     const editableTarget = event.target?.matches?.('input, textarea, select, [contenteditable="true"]');
-    if (event.key.toLowerCase() === 'l' && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey && isPlayerFullscreen() && !editableTarget) {
+    const shortcuts = state.accountViewPreferences.shortcuts || DEFAULT_ACCOUNT_SHORTCUTS;
+    if (shortcutMatches(event, shortcuts.fullscreenLock) && !event.repeat && isPlayerFullscreen() && !editableTarget) {
       event.preventDefault();
       toggleFullscreenInteractionLock();
       return;
     }
-    if (event.key === 'Enter' && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey && isPlayerFullscreen() && !editableTarget) {
+    if ((shortcutMatches(event, shortcuts.fullscreenChat) || (event.key === 'Enter' && !event.ctrlKey && !event.altKey && !event.metaKey)) && !event.repeat && isPlayerFullscreen() && !editableTarget) {
       event.preventDefault();
       openFullscreenChat();
       return;
     }
-    if (event.key === 'F2' && !event.ctrlKey && !event.altKey && !event.metaKey && isPlayerFullscreen() && !editableTarget) {
-      event.preventDefault();
-      openFullscreenChat();
-      return;
-    }
-    if (event.key === 'F12' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    if (shortcutMatches(event, shortcuts.appFullscreen) && !event.repeat) {
       event.preventDefault();
       void togglePlayerFullscreen();
       return;
     }
-    if (event.key !== 'Escape') return;
+    if (!shortcutMatches(event, shortcuts.closeOverlay) && event.key !== 'Escape') return;
     if (!elements.serverEndpointDetailsModal?.classList.contains('is-hidden')) { closeServerEndpointDetails(); return; }
     if (!elements.permissionGroupEditor?.classList.contains('is-hidden')) closePermissionGroupEditor();
     else if (!elements.accountTierEditor?.classList.contains('is-hidden')) closeAccountTierEditor();
@@ -3858,6 +3912,31 @@ async function loadMyRoomsBeforeLogin() {
   finally { elements.myRoomsLoginBtn.disabled = false; }
 }
 
+async function enterOwnRoomBeforeLogin() {
+  const button = elements.enterOwnRoomBtn;
+  if (!button) return;
+  button.disabled = true;
+  try {
+    const result = await requestLoginRooms();
+    if (!result.success) return setLoginStatus(loginErrorMessage(result));
+    const ownRoom = (result.rooms || []).find((room) => room.owned && !room.banned);
+    if (!ownRoom) {
+      applyLoginRooms(result, { prompt: true });
+      return setLoginStatus('当前账号没有可直接进入的自有房间，请先创建或选择房间');
+    }
+    elements.roomIdInput.value = String(ownRoom.id || '').toUpperCase();
+    if (ownRoom.passwordRequired && !ownRoom.accessRemembered) {
+      applyLoginRooms(result, { prompt: true });
+      return setLoginStatus('该房间需要密码，请在房间列表中选择后输入密码');
+    }
+    await login({ preventDefault() {} });
+  } catch (error) {
+    setLoginStatus(localizedError(error, '进入自己的房间失败'));
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function maybeShowLoginRoomReminder() {
   const username = elements.username.value.trim();
   if (!username || !loginRoomReminderEnabled(username)) return false;
@@ -4632,37 +4711,38 @@ function openSwitchRoom(roomId = '') {
 function renderSwitchOwnedRooms(rooms = [], { loading = false, error = '' } = {}) {
   if (!elements.switchOwnedRoomList) return;
   const currentRoomId = String(state.room?.id || '').toUpperCase();
-  const ownedRooms = (Array.isArray(rooms) ? rooms : [])
-    .filter((room) => room?.owned)
-    .sort((left, right) => Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) || String(left.name || left.id).localeCompare(String(right.name || right.id), 'zh-CN'));
+  const allRooms = (Array.isArray(rooms) ? rooms : [])
+    .filter((room) => room?.id)
+    .sort((left, right) => Number(Boolean(right.id === currentRoomId)) - Number(Boolean(left.id === currentRoomId)) || Number(right.online || 0) - Number(left.online || 0) || String(left.name || left.id).localeCompare(String(right.name || right.id), 'zh-CN'));
   const query = String(state.switchOwnedRoomQuery || '').trim().toLocaleLowerCase();
   const visibleRooms = query
-    ? ownedRooms.filter((room) => [room.name, room.id, room.ownerName, room.ownerUsername].some((value) => String(value || '').toLocaleLowerCase().includes(query)))
-    : ownedRooms;
+    ? allRooms.filter((room) => [room.name, room.id, room.ownerName, room.ownerUsername].some((value) => String(value || '').toLocaleLowerCase().includes(query)))
+    : allRooms;
   if (elements.switchOwnedRoomStatus) {
     elements.switchOwnedRoomStatus.textContent = loading
       ? '正在刷新…'
       : error
         ? '刷新失败，可使用已有列表'
-        : query ? `显示 ${visibleRooms.length}/${ownedRooms.length} 个` : `共 ${ownedRooms.length} 个`;
+        : query ? `显示 ${visibleRooms.length}/${allRooms.length} 个` : `共 ${allRooms.length} 个`;
   }
-  state.switchOwnedRoomSnapshot = ownedRooms;
-  state.selectedSwitchOwnedRooms = new Set([...state.selectedSwitchOwnedRooms].filter((id) => ownedRooms.some((room) => room.id === id)));
-  if (!ownedRooms.length) {
-    elements.switchOwnedRoomList.innerHTML = `<div class="switch-owned-room-empty"><p>${loading ? '正在读取我的房间…' : error ? escapeHtml(error) : '还没有自己拥有的正式房间。'}</p><button data-switch-room-action="create" class="primary-button" type="button">创建正式房间</button></div>`;
+  state.switchOwnedRoomSnapshot = allRooms;
+  state.selectedSwitchOwnedRooms = new Set([...state.selectedSwitchOwnedRooms].filter((id) => allRooms.some((room) => room.id === id && room.owned)));
+  if (!allRooms.length) {
+    elements.switchOwnedRoomList.innerHTML = `<div class="switch-owned-room-empty"><p>${loading ? '正在读取所有房间…' : error ? escapeHtml(error) : '当前没有可加入的房间。'}</p></div>`;
     return;
   }
   if (!visibleRooms.length) {
     elements.switchOwnedRoomList.innerHTML = `<div class="switch-owned-room-empty"><p>没有匹配“${escapeHtml(state.switchOwnedRoomQuery)}”的房间。</p><small>可搜索房主名字、房间号或房间名字。</small></div>`;
     return;
   }
-  const allVisibleSelected = visibleRooms.every((room) => state.selectedSwitchOwnedRooms.has(String(room.id || '').toUpperCase()));
+  const ownedVisibleRooms = visibleRooms.filter((room) => room.owned);
+  const allVisibleSelected = ownedVisibleRooms.length > 0 && ownedVisibleRooms.every((room) => state.selectedSwitchOwnedRooms.has(String(room.id || '').toUpperCase()));
   elements.switchOwnedRoomList.innerHTML = `<div class="room-directory-toolbar switch-room-toolbar"><label class="check-line"><input data-switch-owned-select-all type="checkbox" ${allVisibleSelected ? 'checked' : ''}> 全选</label><button data-switch-room-action="delete-selected" class="danger-button" type="button" ${state.selectedSwitchOwnedRooms.size ? '' : 'disabled'}>删除所选（${state.selectedSwitchOwnedRooms.size}）</button></div>${visibleRooms.map((room) => {
     const id = String(room.id || '').toUpperCase();
     const current = id === currentRoomId;
     const disabled = current || room.banned;
     const selected = state.selectedSwitchOwnedRooms.has(id) ? 'checked' : '';
-    return `<article class="switch-owned-room ${current ? 'current' : ''}"><label class="global-room-select"><input data-switch-owned-select type="checkbox" value="${escapeHtml(id)}" ${selected}><span>选择</span></label><div><strong>${room.pinned ? '★ ' : ''}${escapeHtml(room.name || '私人影院')}</strong><small>${escapeHtml(id)} · ${escapeHtml(roomDirectoryStateText(room, currentRoomId))} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人</small></div>${renderRoomDirectoryDetails(room)}<div class="actions"><button data-switch-owned-room="${escapeHtml(id)}" class="${current ? 'secondary-button' : 'primary-button'}" type="button" ${disabled ? 'disabled' : ''}>${current ? '当前房间' : '一键进入'}</button><button data-switch-room-action="delete" data-room-id="${escapeHtml(id)}" class="danger-button" type="button">永久删除</button></div></article>`;
+    return `<article class="switch-owned-room ${current ? 'current' : ''}"><label class="global-room-select ${room.owned ? '' : 'is-hidden'}"><input data-switch-owned-select type="checkbox" value="${escapeHtml(id)}" ${selected} ${room.owned ? '' : 'disabled'}><span>选择</span></label><div><strong>${room.pinned ? '★ ' : ''}${escapeHtml(room.name || '私人影院')}</strong><small>${escapeHtml(id)} · 房主：${escapeHtml(room.ownerName || room.ownerUsername || '未知')} · ${escapeHtml(roomDirectoryStateText(room, currentRoomId))} · ${Number(room.online) || 0}/${Number(room.maxUsers) || 0} 人${room.passwordRequired ? ' · 有密码' : ' · 无密码'}</small></div>${renderRoomDirectoryDetails(room)}<div class="actions"><button data-switch-owned-room="${escapeHtml(id)}" class="${current ? 'secondary-button' : 'primary-button'}" type="button" ${disabled ? 'disabled' : ''}>${current ? '当前房间' : '进入房间'}</button>${room.owned ? `<button data-switch-room-action="delete" data-room-id="${escapeHtml(id)}" class="danger-button" type="button">永久删除</button>` : ''}</div></article>`;
   }).join('')}`;
 }
 
@@ -4673,21 +4753,24 @@ async function refreshSwitchOwnedRooms(announce = false) {
     elements.switchOwnedRoomRefreshBtn.disabled = true;
     elements.switchOwnedRoomRefreshBtn.textContent = '正在刷新…';
   }
-  renderSwitchOwnedRooms(state.profile?.recentRooms || [], { loading: true });
+  renderSwitchOwnedRooms(state.switchOwnedRoomSnapshot || [], { loading: true });
   try {
-    const profile = await refreshProfile();
-    if (!profile) throw new Error('服务器没有返回房间资料');
-    renderSwitchOwnedRooms(profile.recentRooms || []);
-    if (announce) toast('我的房间列表已刷新', 'success');
+    const response = await fetchWithTimeout('/api/online-rooms', { headers: authHeaders() }, 15000);
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || '服务器没有返回房间列表');
+    const ownedIds = new Set((state.profile?.recentRooms || []).filter((room) => room.owned).map((room) => String(room.id || '').toUpperCase()));
+    const rooms = (result.rooms || []).map((room) => ({ ...room, owned: ownedIds.has(String(room.id || '').toUpperCase()) || String(room.ownerUsername || '').toLowerCase() === String(state.user?.username || '').toLowerCase() }));
+    renderSwitchOwnedRooms(rooms);
+    if (announce) toast('所有房间列表已刷新', 'success');
   } catch (error) {
-    const message = localizedError(error, '读取我的房间失败');
-    renderSwitchOwnedRooms(state.profile?.recentRooms || [], { error: message });
+    const message = localizedError(error, '读取所有房间失败');
+    renderSwitchOwnedRooms(state.switchOwnedRoomSnapshot || [], { error: message });
     if (announce) toast(`刷新失败：${message}`, 'error');
   } finally {
     state.switchOwnedRoomsLoading = false;
     if (elements.switchOwnedRoomRefreshBtn) {
       elements.switchOwnedRoomRefreshBtn.disabled = false;
-      elements.switchOwnedRoomRefreshBtn.textContent = '刷新我的房间';
+      elements.switchOwnedRoomRefreshBtn.textContent = '刷新所有房间';
     }
   }
 }
@@ -4705,7 +4788,7 @@ async function handleSwitchOwnedRoomAction(event) {
   if (!button || button.disabled) return;
   const roomId = String(button.dataset.switchOwnedRoom || '').toUpperCase();
   button.disabled = true; button.textContent = '正在进入…';
-  const switched = await switchToRoomDirect(roomId, { source: '我的房间' });
+  const switched = await switchToRoomDirect(roomId, { source: '房间目录' });
   if (switched) elements.switchRoomModal.classList.add('is-hidden');
   else renderSwitchOwnedRooms(state.profile?.recentRooms || []);
 }
@@ -4713,9 +4796,9 @@ async function handleSwitchOwnedRoomAction(event) {
 function handleSwitchOwnedRoomSelection(event) {
   if (event.target.matches('[data-switch-owned-select-all]')) {
     const query = String(state.switchOwnedRoomQuery || '').trim().toLocaleLowerCase();
-    const visibleRooms = query
+    const visibleRooms = (query
       ? state.switchOwnedRoomSnapshot.filter((room) => [room.name, room.id, room.ownerName, room.ownerUsername].some((value) => String(value || '').toLocaleLowerCase().includes(query)))
-      : state.switchOwnedRoomSnapshot;
+      : state.switchOwnedRoomSnapshot).filter((room) => room.owned);
     if (event.target.checked) visibleRooms.forEach((room) => state.selectedSwitchOwnedRooms.add(String(room.id || '').toUpperCase()));
     else visibleRooms.forEach((room) => state.selectedSwitchOwnedRooms.delete(String(room.id || '').toUpperCase()));
   } else if (event.target.matches('[data-switch-owned-select]')) {
@@ -5879,27 +5962,8 @@ function applyUiTheme(themeId) {
   if (elements.managementThemeStatus) elements.managementThemeStatus.textContent = `当前主题：${theme[3] || '00'} ${theme[1]}`;
 }
 
-function applyTopbarDisplayMode(mode) {
-  const nextMode = mode === 'compact' ? 'compact' : 'text';
-  state.topbarDisplayMode = nextMode;
-  document.body.classList.toggle('topbar-compact', nextMode === 'compact');
-  if (!elements.topbarDisplayModeBtn) return;
-  const compact = nextMode === 'compact';
-  elements.topbarDisplayModeBtn.setAttribute('aria-pressed', String(compact));
-  elements.topbarDisplayModeBtn.title = compact ? '切换为文字模式' : '切换为精简模式';
-  const label = elements.topbarDisplayModeBtn.querySelector('.button-label');
-  if (label) label.textContent = compact ? '精简模式' : '文字模式';
-  else elements.topbarDisplayModeBtn.textContent = compact ? '精简模式' : '文字模式';
-}
-
-function toggleTopbarDisplayMode() {
-  const nextMode = state.topbarDisplayMode === 'compact' ? 'text' : 'compact';
-  applyTopbarDisplayMode(nextMode);
-  localStorage.setItem('syncwatchTopbarDisplayModeV2', nextMode);
-  const message = nextMode === 'compact' ? '已切换精简模式，顶部只显示功能图标' : '已切换文字模式，顶部显示功能名称';
-  const existing = findMatchingToast(message, 'success');
-  if (existing) dismissToast(existing);
-  toast(message, 'success');
+function applyTextTopbarMode() {
+  try { localStorage.removeItem('syncwatchTopbarDisplayModeV2'); } catch (_) {}
 }
 
 function renderThemeChoices() {
@@ -6644,7 +6708,7 @@ function renderFileCard(file) {
     const quality = metadata.height ? `${metadata.height}P` : ({ video: '视频', audio: '音频', subtitle: '字幕', text: '文本', document: '文档' }[file.category] || '文件');
     const codec = metadata.videoCodec || metadata.audioCodec || '';
     const duration = metadata.duration ? formatTime(metadata.duration) : '';
-    const thumbnail = file.thumbnailUrl ? `<img class="file-thumb" src="${escapeHtml(file.thumbnailUrl)}" alt="${escapeHtml(file.originalName)} 缩略图">` : `<div class="file-thumb">${fileIcon(file.category)}</div>`;
+    const thumbnail = file.thumbnailUrl ? `<img class="file-thumb" src="${escapeHtml(mediaUrlWithSessionToken(file.thumbnailUrl))}" alt="${escapeHtml(file.originalName)} 缩略图" loading="lazy" decoding="async">` : `<div class="file-thumb">${fileIcon(file.category)}</div>`;
     const manageable = state.capabilities.owner || state.permissions.delete || file.uploadedBy === state.user?.username;
     const timed = isTimedFile(file); const approved = file.status === 'approved';
     const processing = compatibility.required && !compatibility.ready && ['queued', 'converting'].includes(compatibility.status);
@@ -6928,7 +6992,7 @@ function renderVideoManagementList() {
   state.selectedManagementFiles = new Set([...state.selectedManagementFiles].filter((id) => manageableMediaFiles().some((file) => file.id === id)));
   elements.videoManagementList.innerHTML = files.length ? files.map((file) => {
     const processing = file.compatibility?.required && !file.compatibility?.ready && ['queued', 'converting'].includes(file.compatibility?.status);
-    const cover = file.thumbnailUrl ? `<img class="video-management-cover" src="${escapeHtml(file.thumbnailUrl)}" alt="${escapeHtml(file.originalName)} 封面" loading="lazy">` : `<span class="video-management-icon">${fileIcon(file.category)}</span>`;
+    const cover = file.thumbnailUrl ? `<img class="video-management-cover" src="${escapeHtml(mediaUrlWithSessionToken(file.thumbnailUrl))}" alt="${escapeHtml(file.originalName)} 封面" loading="lazy" decoding="async">` : `<span class="video-management-icon">${fileIcon(file.category)}</span>`;
     return `<article class="video-management-row ${processing ? 'processing' : ''}" data-managed-file="${escapeHtml(file.id)}"><label class="manage-row-check"><input type="checkbox" data-managed-file-select="${escapeHtml(file.id)}" ${state.selectedManagementFiles.has(file.id) ? 'checked' : ''} ${processing ? 'disabled' : ''}><span>选择</span></label>${cover}<div><strong>${escapeHtml(file.originalName)}</strong><p>${escapeHtml(fileCollectionName(file))} · ${formatSize(file.size)} · ${escapeHtml(file.uploadedBy || '')}</p><small>${escapeHtml(file.note || '暂无备注')}${processing ? ` · 正在转换 ${Math.round(Number(file.compatibility.progress) || 0)}%` : ''}</small></div><div class="actions"><button data-video-manage="${processing ? 'processing-progress' : 'play'}" type="button">${processing ? '查看处理进度' : isTimedFile(file) ? '播放' : '查看'}</button><button data-video-manage="preview" type="button" ${processing || !isTimedFile(file) ? 'disabled' : ''}>预览</button><button data-video-manage="rename" type="button" ${processing ? 'disabled' : ''}>重命名</button><button data-video-manage="category" type="button" ${processing ? 'disabled' : ''}>分类</button><button data-video-manage="note" type="button" ${processing ? 'disabled' : ''}>备注</button><button data-video-manage="favorite" type="button" ${processing ? 'disabled' : ''}>收藏</button><button data-video-manage="delete" class="danger-text-button" type="button" ${processing ? 'disabled' : ''}>删除</button></div></article>`;
   }).join('') : '<p class="muted">没有符合条件的上传影片</p>';
   if (elements.videoManagementSelectAll) elements.videoManagementSelectAll.checked = Boolean(files.length) && files.every((file) => state.selectedManagementFiles.has(file.id));
@@ -7947,7 +8011,10 @@ function updateControlAccess() {
   }
   if (elements.playerSeekSlider) elements.playerSeekSlider.disabled = !timedMedia || state.screenShareActive || !canSeek;
   elements.addCurrentQueueBtn.disabled = !canControl || !isTimedFile(state.currentFile) || state.currentFile.status !== 'approved';
-  if (state.currentFile?.category === 'text') updateTextReaderControls();
+  if (state.currentFile?.category === 'text') {
+    const reading = state.room?.textReading || state.textReading;
+    updateTextReaderControls(reading?.position, reading?.characterOffset, reading?.page);
+  }
 }
 
 function canControlPlayback() { return Boolean(state.capabilities.owner || state.permissions.control); }
@@ -8083,8 +8150,8 @@ function loadFile(file) {
     } else { state.activeTimedFileId = file.id; attachSubtitleTracks(file); }
     if (state.screenShareActive) suspendMediaForScreenShare();
     if (!state.screenShareActive && !state.webShare.active) elements.videoPlayer.classList.remove('is-hidden');
-  } else if (file.category === 'image') { elements.imageViewer.src = file.url; if (!state.screenShareActive && !state.webShare.active) elements.imageViewer.classList.remove('is-hidden'); }
-  else if (file.category === 'pdf') { if (changed || elements.documentViewer.getAttribute('src') !== file.url) elements.documentViewer.src = file.url; if (!state.screenShareActive && !state.webShare.active) elements.documentViewer.classList.remove('is-hidden'); }
+  } else if (file.category === 'image') { elements.imageViewer.src = mediaUrlWithSessionToken(file.url); if (!state.screenShareActive && !state.webShare.active) elements.imageViewer.classList.remove('is-hidden'); }
+  else if (file.category === 'pdf') { const documentUrl = mediaUrlWithSessionToken(file.url); if (changed || elements.documentViewer.getAttribute('src') !== documentUrl) elements.documentViewer.src = documentUrl; if (!state.screenShareActive && !state.webShare.active) elements.documentViewer.classList.remove('is-hidden'); }
   else if (file.category === 'text') {
     if (changed || elements.textViewer.dataset.fileId !== file.id) void loadTextPreview(file);
     else if (!state.screenShareActive && !state.webShare.active) {
@@ -8103,7 +8170,7 @@ function mediaUrlWithSessionToken(value) {
   if (!raw || !state.token) return raw;
   try {
     const url = new URL(raw, location.href);
-    if (!['media', 'compatible-media'].includes(url.pathname.split('/')[1])) return raw;
+    if (!['media', 'compatible-media', 'thumbnail', 'avatar', 'chat-image'].includes(url.pathname.split('/')[1])) return raw;
     url.searchParams.set('syncwatch_token', state.token);
     return url.href;
   } catch (_) { return raw; }
@@ -9180,7 +9247,7 @@ function renderUsers() {
       ? `<div class="user-actions${detailsExpanded ? '' : ' is-hidden'}">${canManage ? `<button data-user-action="${user.permissions.control ? 'revoke' : 'grant'}">${user.permissions.control ? '收回控制' : '授权控制'}</button><button data-user-action="quality">申请切换清晰度</button>` : ''}<button data-user-action="private">私聊</button><button data-user-action="voice">语音呼叫</button>${canManage && !targetProtected ? '<button data-user-action="kick">移出</button><button data-user-action="ban">封禁</button>' : ''}</div>`
       : `<div class="user-actions${detailsExpanded ? '' : ' is-hidden'}"></div>`;
     const locationText = formatMemberAddress(user.location);
-    const avatar = user.avatar ? `<img src="${escapeHtml(user.avatar)}" alt="">` : escapeHtml(String(user.displayName || user.username || '?').slice(0, 1).toUpperCase());
+    const avatar = user.avatar ? `<img src="${escapeHtml(mediaUrlWithSessionToken(user.avatar))}" alt="">` : escapeHtml(String(user.displayName || user.username || '?').slice(0, 1).toUpperCase());
     const level = Number(user.level) > 0 ? ` · ${levelEmoji(user.level)} Lv.${Number(user.level)} ${escapeHtml(user.levelName || '')}` : '';
     const detailId = `memberDetails-${index}`;
     const qualityStatus = reconnecting ? '<small>连接中断 · 正在重新连接…</small>'
@@ -9312,7 +9379,7 @@ function stopMemberProfileRefreshTimerOnly() {
 
 function renderMemberProfileContent(profile = {}, loading = false) {
   const name = profile.displayName || profile.username || '成员';
-  const avatar = profile.avatar ? `<img src="${escapeHtml(profile.avatar)}" alt="">` : escapeHtml(String(name).slice(0, 1).toUpperCase());
+  const avatar = profile.avatar ? `<img src="${escapeHtml(mediaUrlWithSessionToken(profile.avatar))}" alt="">` : escapeHtml(String(name).slice(0, 1).toUpperCase());
   const stats = profile.stats || {};
   const tier = profile.tier?.name || profile.tierName || '';
   const progress = Math.max(0, Math.min(100, Number(profile.progressPercent) || 0));
@@ -9858,7 +9925,7 @@ function createChatMessageNode(message) {
   if (message.type === 'voice') { const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'; audio.src = message.voiceUrl || ''; if (state.masterMuted) muteMediaElement(audio); bubble.appendChild(audio); }
   else if (message.type === 'image' && message.imageUrl) {
     if (message.text) { const text = document.createElement('p'); text.textContent = message.text; bubble.appendChild(text); }
-    const image = document.createElement('img'); image.className = 'chat-image'; image.loading = 'lazy'; image.src = message.imageUrl; image.alt = message.imageName || '聊天图片'; image.addEventListener('click', () => window.open(message.imageUrl, '_blank', 'noopener')); bubble.appendChild(image);
+    const image = document.createElement('img'); image.className = 'chat-image'; image.loading = 'lazy'; image.src = mediaUrlWithSessionToken(message.imageUrl); image.alt = message.imageName || '聊天图片'; image.addEventListener('click', () => window.open(mediaUrlWithSessionToken(message.imageUrl), '_blank', 'noopener')); bubble.appendChild(image);
   } else { const text = document.createElement('p'); text.textContent = message.text || ''; bubble.appendChild(text); }
   item.append(avatar, bubble); return item;
 }
@@ -10249,9 +10316,10 @@ function setFullscreenInteractionLocked(locked) {
     elements.playerSeekSlider.setAttribute('aria-disabled', 'true');
   }
   if (elements.fullscreenLockBtn) {
+    const lockShortcut = shortcutDisplay(state.accountViewPreferences.shortcuts?.fullscreenLock || DEFAULT_ACCOUNT_SHORTCUTS.fullscreenLock);
     elements.fullscreenLockBtn.title = state.fullscreenInteractionLocked
-      ? '当前已锁定：点击解锁（快捷键 L）'
-      : '当前未锁定：点击锁定，防止误触暂停和拖动进度（快捷键 L）';
+      ? `当前已锁定：点击解锁（快捷键 ${lockShortcut}）`
+      : `当前未锁定：点击锁定，防止误触暂停和拖动进度（快捷键 ${lockShortcut}）`;
   }
 }
 
@@ -16015,6 +16083,7 @@ function renderAccountPage(page) {
   }
   else if (page === 'security') elements.accountContent.innerHTML = `<h2>账号安全</h2><div class="settings-card"><p>密码只保存不可逆哈希，管理员也无法查看。</p><label>当前密码<input id="currentAccountPassword" type="password"></label><label>新密码<input id="newAccountPassword" type="password"></label><button data-profile-action="change-password" class="secondary-button">修改登录密码</button></div><div class="settings-card"><h3>位置授权提示</h3><p>${state.locationPromptDisabled ? '您已选择永久不再显示位置授权提示。重新开启后，可立即再次向浏览器申请位置权限。' : '位置授权提示当前已开启；拒绝后仍可随时重新授权。'}</p><div class="manage-actions"><button data-profile-action="enable-location-prompt" class="secondary-button" ${state.locationPromptDisabled ? '' : 'disabled'}>重新开启提示</button><button data-profile-action="request-location" class="primary-button">立即重新授权</button><button data-profile-action="revoke-location" class="danger-text-button" type="button">取消位置授权数据</button></div><small class="form-hint">浏览器权限需在地址栏中关闭；此按钮会立即清除服务器保存的位置并停止本次位置共享。</small></div><div class="settings-card"><h3>房间成员定位</h3><p>本人会排在房主和超级管理员之后，开启高亮后可在长列表中快速找到自己。</p><label class="check-line"><input data-profile-setting="self-member-highlight" type="checkbox" ${state.selfMemberHighlight ? 'checked' : ''}> 持续高亮闪烁我的成员卡片</label></div><div class="settings-card"><h3>成员位置状态通知</h3><p>${state.locationStatusNoticeNever ? '已永久关闭成员位置状态通知。' : state.locationStatusNoticeMuteUntil > Date.now() ? `通知已暂停至 ${formatDate(new Date(state.locationStatusNoticeMuteUntil).toISOString())}。` : '成员同意或拒绝位置授权时，管理员会收到状态通知。'}</p><div class="manage-actions"><button data-profile-action="configure-location-status-notices" class="secondary-button">设置免打扰</button><button data-profile-action="restore-location-status-notices" class="primary-button" ${state.locationStatusNoticeNever || state.locationStatusNoticeMuteUntil > Date.now() ? '' : 'disabled'}>恢复通知</button></div></div><div class="settings-card"><h3>已关闭提示管理</h3><p>这里可以恢复曾经选择“永久不再提示”或“本房间不再提示”的提醒。</p><div class="manage-actions"><button data-profile-action="restore-f11-prompt" class="secondary-button">恢复全屏提示</button><button data-profile-action="restore-playback-rate-prompt" class="secondary-button">恢复倍速提示</button><button data-profile-action="restore-control-prompts" class="secondary-button">恢复控制申请提示</button><button data-profile-action="restore-all-prompts" class="primary-button">恢复全部提示</button></div></div><div class="settings-card"><h3>登录状态</h3><p>可在“设备管理”中取消任意设备的记住密码授权。</p></div>`;
   if (page === 'security') {
+    elements.accountContent.insertAdjacentHTML('afterbegin', `<div class="settings-card shortcut-settings-card"><h3>快捷键自定义</h3><p>每个账号可以单独设置快捷键。点击输入框后按下组合键即可录入；浏览器保留的 F11、F5 和 Ctrl+0 不参与覆盖。</p><div class="shortcut-settings-grid"><label>应用内全屏<input data-shortcut-input="appFullscreen" type="text" readonly value="${escapeHtml(shortcutDisplay(state.accountViewPreferences.shortcuts.appFullscreen))}"></label><label>全屏边看边聊<input data-shortcut-input="fullscreenChat" type="text" readonly value="${escapeHtml(shortcutDisplay(state.accountViewPreferences.shortcuts.fullscreenChat))}"></label><label>全屏锁定<input data-shortcut-input="fullscreenLock" type="text" readonly value="${escapeHtml(shortcutDisplay(state.accountViewPreferences.shortcuts.fullscreenLock))}"></label><label>关闭弹窗/菜单<input data-shortcut-input="closeOverlay" type="text" readonly value="${escapeHtml(shortcutDisplay(state.accountViewPreferences.shortcuts.closeOverlay))}"></label></div><div class="manage-actions"><button data-profile-action="reset-shortcuts" class="secondary-button" type="button">恢复默认快捷键</button><button data-profile-action="save-shortcuts" class="primary-button" type="button">保存快捷键</button></div><p class="form-hint">默认：F12 全屏、F2 边看边聊、L 锁定、Esc 关闭。</p></div>`);
     const preferences = state.profile.notificationPreferences || state.profile.notificationSettings || { registrationNotices: true, allNotifications: true };
     elements.accountContent.insertAdjacentHTML('afterbegin', `<div class="settings-card notification-preferences-card"><h3>通知偏好</h3><p>普通通知可以关闭；申请、好友消息和安全提示仍会保留。关闭全部通知需要输入文字确认。</p><div class="manage-actions"><button data-profile-action="save-notification-preferences" data-registration-notices="0" class="secondary-button" type="button" ${preferences.registrationNotices === false ? 'disabled' : ''}>关闭新账号注册提醒</button><button data-profile-action="save-notification-preferences" data-registration-notices="1" class="secondary-button" type="button" ${preferences.registrationNotices === false ? '' : 'disabled'}>开启新账号注册提醒</button><button data-profile-action="save-notification-preferences" data-disable-all="1" class="danger-button" type="button" ${preferences.allNotifications === false ? 'disabled' : ''}>关闭全部普通通知</button><button data-profile-action="save-notification-preferences" data-disable-all="0" class="primary-button" type="button" ${preferences.allNotifications !== false ? 'disabled' : ''}>恢复普通通知</button></div></div>`);
     const roomReminder = readLoginRoomReminder(p.username);
@@ -16515,6 +16584,24 @@ async function handleAccountAction(event) {
     saveLoginRoomReminderPreference(username, button.dataset.enabled === '1' ? 'never' : 'next');
     toast(button.dataset.enabled === '1' ? '已关闭登录房间提醒' : '已开启登录房间提醒', 'success');
     renderAccountPage('security');
+    return;
+  }
+  if (action === 'reset-shortcuts') {
+    elements.accountContent.querySelectorAll('[data-shortcut-input]').forEach((input) => {
+      input.value = shortcutDisplay(DEFAULT_ACCOUNT_SHORTCUTS[input.dataset.shortcutInput] || '');
+    });
+    return;
+  }
+  if (action === 'save-shortcuts') {
+    const shortcuts = {};
+    elements.accountContent.querySelectorAll('[data-shortcut-input]').forEach((input) => {
+      shortcuts[input.dataset.shortcutInput] = input.value;
+    });
+    const normalized = normalizeShortcuts(shortcuts);
+    const values = Object.values(normalized);
+    if (new Set(values).size !== values.length) return toast('快捷键不能重复，请为每个功能设置不同按键', 'error');
+    const saved = await saveAccountViewPreferences({ shortcuts: normalized });
+    if (saved) { renderAccountPage('security'); toast('快捷键已保存到当前账号', 'success'); }
     return;
   }
   if (action === 'save-notification-preferences') {
