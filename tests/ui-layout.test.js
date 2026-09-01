@@ -92,6 +92,20 @@ assert.match(appSource, /function memberDetailsExpanded\(/,
   '房间成员必须支持逐个展开或折叠明细');
 assert.match(appSource, /function refreshAllApplications\(/,
   '用户申请中心必须提供一键刷新全部申请');
+assert.match(appSource, /refreshAllApplications[\s\S]{0,900}adminAction\('get-application-requests'\)/,
+  '一键刷新全部申请必须调用轻量申请接口，避免重新加载完整管理设置');
+assert.match(pageSource, /id="autoLandscapeViewBtn"[^>]*>自动横屏<\/button>/,
+  '手机全屏必须提供自动横屏方向按钮');
+assert.match(appSource, /viewOrientationMode:\s*'portrait'/,
+  '手机进入全屏不得默认切换为自动横屏');
+assert.match(appSource, /function setPlayerOrientation\([\s\S]{0,900}auto-landscape/,
+  '全屏方向切换必须支持自动横屏并尝试锁定系统方向');
+assert.doesNotMatch(appSource, /if \(entering && \(document\.body\.classList\.contains\('android-client'\) \|\| window\.matchMedia\('\(max-width: 540px\)'\)\.matches\)\)[\s\S]{0,180}setPlayerOrientation\('auto-landscape'/,
+  '手机进入全屏不得自动切换横屏');
+assert.match(pageSource, /id="shortcutSettingsBtn"[\s\S]{0,240}快捷键/,
+  '选项菜单必须提供快捷键展示和设置入口');
+assert.match(appSource, /shortcutSettingsBtn\?\.addEventListener\(['"]click['"][\s\S]{0,260}openAccount\(['"]security['"]\)/,
+  '快捷键入口必须打开账号安全页进行查看和设置');
 assert.match(appSource, /function copyLanAddress\([\s\S]{0,400}function copyPublicAddress\(/,
   '房间号区域必须分别支持复制内网和公网地址');
 assert.match(appSource, /function activeTunnelPublicUrl\(\)\s*\{[\s\S]{0,300}state\s*===\s*'running'[\s\S]{0,180}verified\s*===\s*true/,
@@ -185,5 +199,9 @@ assert.match(pageSource, /id="friendChatFloatingBtn"[^>]*>关闭悬浮提示</,
   '好友对话框必须提供按好友关闭画面悬浮提示的按钮');
 assert.match(appSource, /floatingNoticeMuted[\s\S]{0,600}showDanmaku\(\{ text: `\[私聊\]/,
   '好友私聊必须能以仅收件人可见的私聊弹幕显示，并遵守持久化悬浮开关');
+assert.match(styleSource, /body\.android-client \.chat-panel:not\(\.mobile-chat-collapsed\)[\s\S]{0,260}overflow:\s*visible[\s\S]{0,220}grid-template-rows:/,
+  '安卓聊天展开时必须按内容自然增高，表情栏不能覆盖或裁掉下方控件');
+assert.match(styleSource, /body\.android-client \.emoji-toolbar > \.emoji-bar[\s\S]{0,420}max-height:\s*min\(44dvh,\s*340px\)[\s\S]{0,180}overflow-y:\s*auto/,
+  '安卓表情栏必须限制高度并独立滚动');
 
 console.log('影院顶部播报布局回归检查通过');

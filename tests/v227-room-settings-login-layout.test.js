@@ -21,6 +21,11 @@ assert.match(app, /resumeHistory/, '客户端必须接收账户级观看进度')
 assert.match(app, /pagehide[\s\S]{0,180}reportWatchProgress\(\)/, '关闭或异常退出前必须尽量冲刷最新观看进度');
 assert.match(app, /videoManagementBatchCoverBtn/, '视频管理必须提供批量随机封面入口');
 assert.match(app, /\/api\/files\/cover\/batch/, '批量封面必须调用服务器生成接口');
+assert.match(html, /id="managementRoomContext"[^>]*>当前修改房间：--/, '房间管理设置必须显示当前操作房间上下文');
+assert.match(app, /elements\.managementRoomContext[\s\S]{0,260}result\.admin\.roomId[\s\S]{0,180}result\.admin\.roomName/, '房间管理上下文必须同时显示房间名称和房间号');
+assert.match(app, /handleVideoManagementCoverError[\s\S]{0,900}coverRetried/, '视频管理封面加载失败时必须使用当前会话令牌重试并提供图标回退');
+assert.match(app, /videoManagementList\?\.addEventListener\(['"]error['"], handleVideoManagementCoverError/, '视频管理列表必须监听封面图片加载错误');
+assert.match(server, /roomId:\s*currentRoomId\(\), roomName: state\.room\.name, roomOwnerUsername:/, '管理设置响应必须返回当前操作房间标识');
 assert.match(server, /onSafe\(['"]web-share-start['"]/, '服务端必须提供网页共享启动事件');
 assert.match(server, /fileId:\s*null[\s\S]{0,240}playbackRate:\s*1/, '网页共享启动必须清空原播放状态');
 assert.match(html, /同步观影网址（实时画面）|同步网址.*各端独立浏览/, '网页共享必须明确实时画面或兼容预览边界');

@@ -145,6 +145,9 @@ async function main() {
     assert.equal((await ack(admin, 'admin-action', {
       action: 'set-upload-limits', uploadLimitBytes: 0, uploadTimeLimitSeconds: 0
     })).success, true);
+    const unlimitedPublicConfig = await (await fetch(`${baseUrl}/api/public-config`)).json();
+    assert.equal(unlimitedPublicConfig.maxUploadBytes, 0, '关闭上传大小限制后，公开配置必须保留 0（不限），不能回退到 10GB');
+    assert.equal(unlimitedPublicConfig.uploadTimeLimitSeconds, 0, '关闭上传时长限制后，公开配置必须保留 0（不限）');
     const serverInfo = await (await fetch(`${baseUrl}/api/server-info`, { headers: { Authorization: `Bearer ${adminLogin.token}` } })).json();
     const currentUsage = serverInfo.room.storage.originalBytes;
     const setLimit = await ack(admin, 'admin-action', { action: 'set-room-storage-limit', storageLimitBytes: currentUsage + 4 });

@@ -286,6 +286,64 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .auth-card { width: min(100%, 470px); max-height: none; overflow: visible; margin: 8px auto; padding: 20px 15px 18px; }
 }
 
+/* SyncWatch Android WebView final layout contract.  pro-max is loaded after
+   style.css, so these rules intentionally close the cascade for real phones:
+   no off-screen player margin, no nested room scroller, and fixed-height
+   module buttons that cannot stretch when a side panel is opened. */
+body.android-client .theater {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 !important;
+  overflow: visible !important;
+  align-content: start;
+}
+body.android-client .player-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 !important;
+}
+body.android-client .mobile-module-nav {
+  align-self: start;
+  grid-auto-rows: max-content;
+}
+body.android-client .mobile-module-button {
+  align-self: start;
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+body.android-client .theater-toolbar {
+  display: grid !important;
+  width: auto;
+  max-width: 100%;
+  overflow: visible !important;
+  grid-template-columns: minmax(0, 1fr);
+}
+body.android-client .theater-toolbar .toolbar-module {
+  flex: none !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+body.android-client .side-panel:not(.mobile-open) { display: none; }
+body.android-client .side-panel.mobile-open { display: block; }
+body.android-client .emoji-toolbar > .emoji-bar {
+  height: min(44dvh, 340px);
+  max-height: min(44dvh, 340px);
+  min-height: 200px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  touch-action: pan-y;
+  padding-bottom: 18px;
+}
+body.android-client .player-container.fullscreen-active,
+body.android-client .player-container:fullscreen {
+  margin: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  background: var(--theme-stage, #0b1113) !important;
+}
+
 @media (max-width: 540px) {
   body:not(.android-client) .topbar-scroll-actions,
   body:not(.android-client) .topbar-fixed-actions,
@@ -334,4 +392,221 @@ body:not(.android-client):not(.electron-server):not(:has(> main > .login-page:no
   height: calc(100dvh - 64px) !important;
   min-height: 0 !important;
   overflow: hidden !important;
+}
+
+/* Mobile room pages must keep the document as the scroll container.  The
+ * bounded desktop rule above is intentionally overridden here; otherwise an
+ * expanded chat/emoji area grows below a clipped <main> and cannot be reached
+ * by touch scrolling.  When a single module is active, collapse the hidden
+ * grid tracks as well so Chat does not inherit an empty player-sized row. */
+@media (max-width: 924px) {
+  body:not(.android-client):not(.electron-server):not(:has(> main > .login-page:not(.is-hidden))) > main,
+  body.android-client > main {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:not(.android-client) .theater[data-mobile-module-active="chat"],
+  body.android-client .theater[data-mobile-module-active="chat"] {
+    grid-template-areas: "marquee" "mobile-nav" "chat";
+    grid-template-rows: auto auto minmax(0, 1fr);
+    min-height: 0;
+  }
+  body:not(.android-client) .theater[data-mobile-module-active="library"],
+  body:not(.android-client) .theater[data-mobile-module-active="members"],
+  body.android-client .theater[data-mobile-module-active="library"],
+  body.android-client .theater[data-mobile-module-active="members"] {
+    grid-template-areas: "marquee" "mobile-nav";
+    grid-template-rows: auto auto;
+    min-height: 0;
+  }
+  body:not(.android-client) .theater[data-mobile-module-active="chat"] .chat-panel,
+  body.android-client .theater[data-mobile-module-active="chat"] .chat-panel {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    margin-inline: 10px;
+    min-height: 0;
+    overflow-x: hidden;
+  }
+
+  /* Android WebView inherits an older landscape rule that clips .workspace
+     and the document at the viewport edge.  Keep one scroll owner for every
+     mobile orientation so the playback tools and fullscreen action remain
+     reachable after the room grows. */
+  body.android-client {
+    height: auto !important;
+    min-height: 100dvh;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  body.android-client > main,
+  body.android-client .main-page,
+  body.android-client .theater {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  body.android-client .workspace {
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: 100vw;
+    /* clip only the horizontal axis without creating a nested vertical
+       scroller; the document remains the owner of touch scrolling. */
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+  }
+
+  /* A grid row can stretch its children to the height of the whole theater
+     when the chat/player tracks are rebuilt.  Pin the module strip and each
+     touch target to one stable row instead of allowing 120px+ buttons. */
+  body:not(.electron-server) .mobile-module-nav,
+  body.android-client .mobile-module-nav {
+    height: auto !important;
+    min-height: 58px;
+    grid-template-rows: 48px;
+    grid-auto-rows: 48px;
+    align-items: start;
+    align-content: start;
+    box-sizing: border-box;
+  }
+  body:not(.electron-server) .mobile-module-button,
+  body.android-client .mobile-module-button {
+    height: 48px !important;
+    max-height: 48px !important;
+    min-height: 48px !important;
+    align-self: start;
+    box-sizing: border-box;
+  }
+
+  /* Keep the composer predictable on both mobile Web and Android WebView.
+     The desktop six-column form made the recipient trigger and message field
+     share a row at 360–420px, which visually covered the field and pushed Send
+     onto a second line. */
+  body:not(.electron-server) .chat-panel:not(.mobile-chat-collapsed) .chat-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 9px;
+  }
+  body:not(.electron-server) .chat-panel:not(.mobile-chat-collapsed) .chat-form > .select-shell,
+  body:not(.electron-server) .chat-panel:not(.mobile-chat-collapsed) .chat-form > select,
+  body:not(.electron-server) .chat-panel:not(.mobile-chat-collapsed) .chat-form > input:not(.visually-hidden) {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+  body:not(.electron-server) .chat-panel:not(.mobile-chat-collapsed) .chat-form > .select-shell .select-trigger {
+    width: 100%;
+  }
+  body:not(.electron-server) .chat-panel:not(.mobile-chat-collapsed) .chat-form > button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Fullscreen controls stay in a dedicated hit-test layer on touch browsers.
+   A transparent transition or a child label must never steal the tap from
+   the button itself.  Use the theme stage instead of a pure black canvas for
+   the empty/letterboxed state so the control surface remains legible. */
+body .player-container:fullscreen,
+body .player-container.fullscreen-active {
+  background: var(--theme-stage, #0b1113) !important;
+  isolation: isolate;
+}
+body .player-container:fullscreen .fullscreen-overlay,
+body .player-container.fullscreen-active .fullscreen-overlay {
+  isolation: isolate;
+}
+body .player-container:fullscreen .fullscreen-actions button,
+body .player-container.fullscreen-active .fullscreen-actions button {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+body .player-container:fullscreen .fullscreen-exit-button,
+body .player-container.fullscreen-active .fullscreen-exit-button {
+  flex: 0 0 auto;
+}
+@media (max-width: 924px), (pointer: coarse) {
+  /* Do not fade the hit-test surface on touch devices.  During the 200 ms
+     opacity transition Android WebView can paint the last action button but
+     keep it out of the compositor hit map, making the first tap appear lost. */
+  body .player-container:fullscreen .fullscreen-overlay,
+  body .player-container.fullscreen-active .fullscreen-overlay {
+    transition: none !important;
+  }
+}
+
+/* Keep the Android chat header compact after repeated module switches.  The
+ * legacy WebView rule used a two-column grid and made the action group a
+ * one-column grid; every action then occupied a full row and stretched the
+ * header to roughly 200px.  Two explicit horizontal rows preserve all
+ * controls without pushing the history/composer below the viewport. */
+@media (max-width: 924px) {
+  body.android-client .chat-panel:not(.mobile-chat-collapsed) .chat-head,
+  body:not(.electron-server) .chat-panel:not(.mobile-chat-collapsed) .chat-head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    align-items: center !important;
+    align-content: start !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: 122px;
+    gap: 4px !important;
+    padding: 4px 8px 6px !important;
+    overflow: hidden !important;
+    box-sizing: border-box;
+  }
+  body.android-client .chat-head .chat-modes,
+  body:not(.electron-server) .chat-head .chat-modes {
+    grid-column: 1 / -1;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    max-height: 50px;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+  body.android-client .chat-head .chat-modes::-webkit-scrollbar,
+  body:not(.electron-server) .chat-head .chat-modes::-webkit-scrollbar { display: none; }
+  body.android-client .chat-head .chat-head-actions,
+  body:not(.electron-server) .chat-head .chat-head-actions {
+    grid-column: 1 / -1;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    max-height: 50px;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 4px !important;
+    scrollbar-width: none;
+  }
+  body.android-client .chat-head .chat-head-actions::-webkit-scrollbar,
+  body:not(.electron-server) .chat-head .chat-head-actions::-webkit-scrollbar { display: none; }
+  body.android-client .chat-head .chat-modes > *,
+  body.android-client .chat-head .chat-head-actions > *,
+  body:not(.electron-server) .chat-head .chat-modes > *,
+  body:not(.electron-server) .chat-head .chat-head-actions > * {
+    flex: 0 0 auto !important;
+    align-self: center !important;
+  }
+  body.android-client .chat-head .chat-head-actions > button,
+  body.android-client .chat-head .chat-head-actions > .chat-only-toggle,
+  body:not(.electron-server) .chat-head .chat-head-actions > button,
+  body:not(.electron-server) .chat-head .chat-head-actions > .chat-only-toggle {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    white-space: nowrap;
+  }
 }

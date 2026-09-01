@@ -46,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.3.1';
+const APP_VERSION = 'v2.3.4';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -2228,10 +2228,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.1.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.4.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.1-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.1-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.4-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.4-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
@@ -6640,11 +6640,15 @@ async function startSyncWatchServer(options = {}) {
       configuredPublicAddress: activeTunnelPublicUrl || configuredPublicUrl,
       lanAddresses: advertisedNetworkAddresses()
     });
+    const uploadLimitBytes = Number(state.admin.uploadLimitBytes);
     return res.json({
     name: 'SyncWatch同步观影', version: APP_VERSION, roomName: roomConfig(state.defaultRoomId).name, roomId: state.defaultRoomId,
     defaultRoomId: state.defaultRoomId, roomsEnabled: true,
     accessPasswordRequired: Boolean(roomConfig(state.defaultRoomId).passwordHash), defaultAdminPassword: Boolean(state.admin.mustChangePassword),
-    maxUploadBytes: state.admin.uploadLimitBytes || DEFAULT_USER_UPLOAD_LIMIT_BYTES, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
+    // Zero explicitly means unlimited. Do not fall back to the basic tier's
+    // 10 GiB hint, otherwise clients keep showing a limit after the admin
+    // disabled both upload guards.
+    maxUploadBytes: Number.isFinite(uploadLimitBytes) && uploadLimitBytes >= 0 ? uploadLimitBytes : DEFAULT_USER_UPLOAD_LIMIT_BYTES, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
     allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false,
     supportedExtensions: [...FILE_TYPES.keys()].map((extension) => extension.slice(1)), port: actualPort,
     addresses: addressState.addresses, publicAddress: addressState.shareAddress,
@@ -6719,7 +6723,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.1-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.4-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6806,7 +6810,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.1-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.4-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -13108,7 +13112,7 @@ async function startSyncWatchServer(options = {}) {
         'set-account-number-policy', 'set-account-number', 'get-verification-codes', 'delete-verification-codes', 'set-verification-code-policy', 'unblock-verification-device', 'set-login-music', 'delete-login-music', 'set-login-video', 'delete-login-video', 'set-notice-preferences',
         'delete-room-files', 'set-media-upload-ban', 'get-ui-copy', 'set-ui-copy', 'import-ui-copy', 'export-ui-copy', 'reset-ui-copy',
         'resolve-login-limit-request', 'login-concurrency-policy', 'resolve-login-concurrency-request', 'revoke-login-concurrency', 'get-access-records', 'set-access-record-policy',
-        'send-client-mode-request', 'cancel-client-mode-request', 'migrate-room', 'delete-registration-request', 'delete-registration-requests', 'get-account-overview'
+        'send-client-mode-request', 'cancel-client-mode-request', 'migrate-room', 'delete-registration-request', 'delete-registration-requests', 'get-account-overview', 'get-application-requests'
       ]);
       // Audit records and super-admin grants are account-wide operations and
       // require an actual logged-in super-admin. Email overrides retain the
@@ -13158,6 +13162,14 @@ async function startSyncWatchServer(options = {}) {
         io.emit('ui-copy-state', snapshot);
         return acknowledgement?.({ success: true, ...snapshot, message: '界面文案已恢复默认并同步' });
       }
+      const onlineSessionsByUsername = new Map();
+      for (const member of users.values()) {
+        const list = onlineSessionsByUsername.get(member.username) || [];
+        list.push({ roomId: member.roomId, socketId: member.socketId, deviceName: member.deviceName, platform: member.platform,
+          browser: member.browser, ipAddress: member.ipAddress, joinedAt: member.joinedAt, connectionState: member.connectionState,
+          latency: member.latency, syncPercent: member.syncPercent, location: member.location || null });
+        onlineSessionsByUsername.set(member.username, list);
+      }
       if (action === 'get-account-overview') {
         if (!serverAdmin) return acknowledgement?.({ success: false, error: '只有服务器管理员可以查看账号总览' });
         const limit = Math.max(1, Math.min(1000, Number(payload.limit) || 500));
@@ -13171,11 +13183,7 @@ async function startSyncWatchServer(options = {}) {
             registrationIp: account.registrationIp || '', lastIp: latestLogin.ip || '',
             deviceName: latestDevice.name || latestLogin.device || '', platform: latestDevice.platform || '', browser: latestDevice.browser || '',
             loginHistory: Array.isArray(account.loginHistory) ? account.loginHistory.slice(0, 20) : [],
-            onlineSessions: [...users.values()].filter((member) => member.username === username).map((member) => ({
-              roomId: member.roomId, socketId: member.socketId, deviceName: member.deviceName, platform: member.platform,
-              browser: member.browser, ipAddress: member.ipAddress, joinedAt: member.joinedAt, connectionState: member.connectionState,
-              latency: member.latency, syncPercent: member.syncPercent
-            })),
+             onlineSessions: onlineSessionsByUsername.get(username) || [],
             adminRemark: cleanText(account.adminRemark, 80),
             passwordStatus: {
               configured: Boolean(account.passwordHash), changedAt: account.passwordChangedAt || account.createdAt || '',
@@ -13188,7 +13196,24 @@ async function startSyncWatchServer(options = {}) {
         });
         return acknowledgement?.({ success: true, accounts });
       }
-      if (action === 'get-settings') return acknowledgement?.({ success: true, admin: {
+      if (action === 'get-application-requests') {
+        if (!serverAdmin) return acknowledgement?.({ success: false, error: '只有服务器管理员可以读取全部申请' });
+        const currentRoom = currentRoomId();
+        return acknowledgement?.({ success: true, applications: {
+          pendingFiles: state.files.filter((file) => file.roomId === currentRoom && file.status === 'pending').map(publicFile),
+          registrationRequests: state.admin.registrationRequests.map(normalizeRegistrationRequestCounts).reverse(),
+          roomQuotaRequests: state.admin.roomQuotaRequests.slice().reverse(),
+          loginLimitRequests: user.username === 'admin' ? state.admin.loginLimitRequests.slice().reverse() : [],
+          loginConcurrencyRequests: user.username === 'admin' ? (state.admin.loginConcurrencyRequests || []).slice().reverse() : [],
+          uploadPolicyRequests: state.admin.uploadPolicyRequests.filter((entry) => serverAdmin || entry.roomId === currentRoom).slice().reverse(),
+          storageQuotaRequests: state.admin.storageQuotaRequests.filter((entry) => serverAdmin || entry.roomId === currentRoom).slice().reverse(),
+          mediaManagementRequests: state.admin.mediaManagementRequests.filter((entry) => serverAdmin || entry.roomId === currentRoom).slice().reverse(),
+          roomCopyRequests: state.admin.roomCopyRequests.filter((entry) => serverAdmin || entry.sourceOwner === user.username || entry.requestedBy === user.username).slice().reverse(),
+          clientModeRequests: (state.admin.clientModeRequests || []).slice().reverse().map(clientModeRequestPayload)
+        }});
+      }
+      if (action === 'get-settings') {
+       return acknowledgement?.({ success: true, admin: {
         serverAdmin, superAdmin, roomOwner, roomAdministrator, canManageSuperAdmins: user.username === 'admin',
         uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
         allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false, blockedWords: serverAdmin ? normalizeBlockedWords(state.admin.blockedWords) : [], roomStorageLimitBytes: Math.max(0, Number(state.room.storageLimitBytes) || 0),
@@ -13217,7 +13242,7 @@ async function startSyncWatchServer(options = {}) {
         mediaCompatibilityConcurrency: mediaCompatibilityConcurrency(),
         mail: serverAdmin ? publicMailSettings() : { enabled: mailRecoveryAvailable('account') || mailRecoveryAvailable('admin'), configured: mailRecoveryAvailable('account') || mailRecoveryAvailable('admin'), user: '', fromName: '' },
         defaultPermissions: state.admin.defaultPermissions, requireUploadApproval: state.room.requireUploadApproval,
-        roomName: state.room.name, maxUsers: state.room.maxUsers, allowGuests: state.room.allowGuests !== false, roomPasswordRequired: Boolean(state.room.passwordHash),
+         roomId: currentRoomId(), roomName: state.room.name, roomOwnerUsername: state.room.ownerUsername || '', maxUsers: state.room.maxUsers, allowGuests: state.room.allowGuests !== false, roomPasswordRequired: Boolean(state.room.passwordHash),
         blacklist: serverAdmin ? state.blacklist : [], permissions: state.permissions,
         permissionGroups: state.room.permissionGroups, memberGroups: state.room.memberGroups,
          registrationIpWhitelist: serverAdmin ? state.admin.registrationIpWhitelist : [],
@@ -13253,11 +13278,7 @@ async function startSyncWatchServer(options = {}) {
               registrationIp: account.registrationIp || '', lastIp: latestLogin.ip || '',
               deviceName: latestDevice.name || latestLogin.device || '', platform: latestDevice.platform || '', browser: latestDevice.browser || '',
               loginHistory: Array.isArray(account.loginHistory) ? account.loginHistory.slice(0, 20) : [],
-              onlineSessions: [...users.values()].filter((member) => member.username === username).map((member) => ({
-                roomId: member.roomId, socketId: member.socketId, deviceName: member.deviceName, platform: member.platform,
-                browser: member.browser, ipAddress: member.ipAddress, joinedAt: member.joinedAt, connectionState: member.connectionState,
-                latency: member.latency, syncPercent: member.syncPercent, location: member.location || null
-              })),
+               onlineSessions: onlineSessionsByUsername.get(username) || [],
               adminRemark: cleanText(account.adminRemark, 80),
               passwordStatus: serverAdmin ? {
                 configured: Boolean(account.passwordHash), changedAt: account.passwordChangedAt || account.createdAt || '',
@@ -13268,7 +13289,8 @@ async function startSyncWatchServer(options = {}) {
               roomQuota: account.roomQuota, ownedRoomCount: ownedRooms(username).length, multiDeviceLogin: concurrentLoginAllowed(username), loginSessionLimit: accountSessionLimit(username)
             };
           })
-      } });
+       } });
+      }
       if (action === 'migrate-room') {
         if (!serverAdmin) return acknowledgement?.({ success: false, error: '只有服务器主机或超级管理员可以迁移覆盖房间' });
         const sourceRoomId = normalizeRoomId(payload.sourceRoomId);

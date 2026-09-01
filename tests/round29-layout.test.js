@@ -102,6 +102,13 @@ assert.match(html, /id=["']f11PromptGlobalEnabled["'][^>]*checked/);
 assert.match(html, /id=["']initialPasswordReminderEnabled["'][^>]*checked/);
 assert.match(html, /id=["']mediaCompatibilityAutoConvert["'][^>]*checked/);
 assert.match(html, /id=["']theater["'][^>]*data-mobile-module-active=["']watch["']/);
+assert.match(css, /body:not\(\.android-client\) \.theater[\s\S]{0,260}grid-template-areas:\s*"marquee" "status" "mobile-nav" "player" "toolbar" "owner" "chat"/,
+  '手机网页必须先显示视频，再显示选项和房主设置');
+assert.match(css, /\.login-now-playing\s*\{[\s\S]{0,900}overflow:\s*visible/,
+  '手机登录音乐展开层不能被播放器容器裁剪');
+assert.match(css, /\.shortcut-settings-card\s*\{\s*display:\s*none\s*!important/,
+  '手机网页不应展示无法可靠使用的键盘快捷键设置');
+assert.match(app, /usesMobileActionMenu\(\) && event\.key !== ['"]Escape['"]/, '手机网页应停用不可用的键盘快捷键');
 assert.match(html, /id=["']clearAllToastsBtn["'][^>]*class=["'][^"']*is-hidden/);
 assert.match(html, /id=["']roomAllowGuests["'][^>]*checked/);
 assert.doesNotMatch(html, /id=["']mediaProcessingDeleteSource["'][^>]*checked/);
@@ -198,8 +205,20 @@ assert.match(css, /\.live-voice-bar:not\(\.is-collapsed\)\s+\.voice-fold-button\
   '移动端语音折叠按钮必须保持横向完整触控区域');
 assert.match(css, /:fullscreen:not\(\.controls-visible\)\s+\.player-progress-bar[^}]*visibility:\s*hidden/s,
   '全屏隐藏界面时不能残留播放进度条');
+assert.match(proMaxCss, /body\.android-client \.workspace[\s\S]{0,260}overflow-x:\s*clip[\s\S]{0,120}overflow-y:\s*visible/,
+  'Android 横屏必须保留文档纵向滚动，同时裁剪横向溢出');
+assert.match(proMaxCss, /mobile-module-nav[\s\S]{0,260}grid-template-rows:\s*48px[\s\S]{0,120}grid-auto-rows:\s*48px/,
+  '移动端模块栏必须固定为稳定的 48px 触控行，不能被网格拉高');
+assert.match(proMaxCss, /body\.android-client \.chat-panel:not\(\.mobile-chat-collapsed\) \.chat-head[\s\S]{0,420}grid-template-rows:\s*auto auto/s,
+  'Android 展开聊天时标题必须使用两行紧凑网格布局');
+assert.match(proMaxCss, /body\.android-client \.chat-head \.chat-head-actions[\s\S]{0,260}display:\s*flex\s*!important/s,
+  'Android 聊天操作按钮必须保持横向 flex 布局，不能纵向撑高');
+assert.match(app, /function openMobileModule\(module\)\s*\{[\s\S]{0,260}module === ['"]chat['"] && state\.mobileChatCollapsed/,
+  '打开聊天模块时应先展开折叠状态再应用活动模块');
 assert.match(app, /LOGIN_ROOM_REMINDER_KEY_PREFIX/);
 assert.match(app, /dataset\.mobileModuleActive\s*=\s*module/);
+assert.match(app, /classList\.toggle\(['"]chat-expanded['"][\s\S]{0,140}module\s*===\s*['"]chat['"]/,
+  '离开移动端聊天模块后必须清除聊天展开状态，恢复播放器工具栏和全屏按钮');
 assert.match(app, /if \(isPlayerFullscreen\(\)\)\s*\{?\s*showFullscreenControls\(\);[\s\S]{0,180}(?:openFullscreenChat\(\);)?[\s\S]{0,80}\}?\s*else void togglePlayerFullscreen\(\);/,
   '全屏双击必须重新显示聊天与控件');
 assert.match(app, /state\.room\.playback\.isPlaying\s*=\s*action === ['"]play['"][\s\S]{0,120}syncPlayPauseButton/,

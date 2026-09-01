@@ -628,6 +628,7 @@ textarea:focus { border-color: var(--pink); box-shadow: 0 0 0 3px #52c7b820; }
 .fullscreen-transform-controls { display: flex; align-items: center; gap: 4px; padding: 4px; background: #080b0dcc; border: 1px solid #ffffff20; border-radius: 8px; box-shadow: 0 10px 30px #0007; }
 .fullscreen-transform-controls button { min-width: 40px; min-height: 34px; padding: 6px 9px; background: transparent; border: 0; box-shadow: none; }
 .fullscreen-transform-controls button:hover, .fullscreen-transform-controls button:focus-visible { background: #ffffff15; outline: none; }
+.fullscreen-transform-controls button.active { color: var(--pink-2, #ff8fbe); background: color-mix(in srgb, var(--pink, #ec6698) 22%, transparent); }
 .fullscreen-transform-controls output { min-width: 48px; color: #fff; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
 .notice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
 .notice-options label { min-width: 0; }
@@ -1676,7 +1677,15 @@ body.android-client .toast { width: 100%; max-width: none; }
 body.android-client .theater {
   gap: 8px;
   padding: 8px 0 max(12px, env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
   background: var(--theme-stage, #090c0e);
+  /* The room is part of the document flow on Android.  A nested scroll
+     container makes scrollIntoView() move the module bar off-screen and
+     leaves fixed fullscreen controls clipped behind the compositor. */
+  overflow: visible;
+  align-content: start;
   grid-template-rows: auto auto auto minmax(0, auto) auto auto auto;
 }
 body.android-client .theater.mobile-chat-collapsed {
@@ -1694,6 +1703,8 @@ body.android-client .mobile-module-nav {
   background: var(--theme-toolbar, #151c20);
   border: 1px solid var(--line);
   border-radius: 10px;
+  align-self: start;
+  grid-auto-rows: max-content;
 }
 body.android-client .mobile-module-button {
   display: grid;
@@ -1707,6 +1718,9 @@ body.android-client .mobile-module-button {
   border: 0;
   border-radius: 7px;
   font-size: 1.05rem;
+  align-self: start;
+  height: 48px;
+  box-sizing: border-box;
 }
 body.android-client .mobile-module-button small { font-size: .68rem; line-height: 1; }
 body.android-client .mobile-module-button.active,
@@ -1835,6 +1849,22 @@ body.android-client .chat-panel {
   border-radius: 10px;
 }
 body.android-client .chat-panel.mobile-chat-collapsed { min-height: 58px; }
+/* Expanded mobile chat must participate in normal document flow.  The old
+   min-height/overflow combination let the emoji grid paint over the controls
+   below it and clipped the last rows inside Android WebView. */
+body.android-client .chat-panel:not(.mobile-chat-collapsed) {
+  min-height: max-content;
+  height: auto;
+  overflow: visible;
+  align-self: start;
+  grid-template-rows: auto auto auto auto minmax(160px, 42dvh) auto auto auto;
+}
+body.android-client .chat-panel:not(.mobile-chat-collapsed) .chat-history {
+  min-height: 160px;
+  height: clamp(160px, 42dvh, 420px);
+  max-height: 420px;
+  overflow-y: auto;
+}
 body.android-client .chat-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1858,6 +1888,19 @@ body.android-client .chat-form > select.is-hidden + input { grid-column: 1 / -1;
 body.android-client .chat-form button { min-width: 0; min-height: 48px; padding-inline: 5px; }
 body.android-client .reaction-bar { min-height: 54px; padding: 4px 9px 8px; gap: 7px; overflow-x: auto; }
 body.android-client .reaction-bar button { min-width: 44px; min-height: 44px; }
+body.android-client .emoji-toolbar { min-width: 0; align-items: center; padding-inline: 9px; }
+body.android-client .emoji-toolbar > label { min-width: 0; flex: 0 0 auto; }
+body.android-client .emoji-toolbar > .emoji-bar {
+  flex: 1 1 100%;
+  min-width: 0;
+  height: min(44dvh, 340px);
+  max-height: min(44dvh, 340px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-bottom: 18px;
+}
 body.android-client .side-panel { top: 0; bottom: 0; width: 100vw; max-width: none; padding-top: max(12px, env(safe-area-inset-top)); border-radius: 0; }
 
 @media (orientation: landscape) and (max-height: 560px) and (max-width: 1000px) {
@@ -2707,7 +2750,7 @@ body.electron-server .login-host-shortcuts button {
   align-items: center;
   gap: 7px;
   padding: 8px;
-  overflow: hidden;
+  overflow: visible;
   color: var(--text);
   background: color-mix(in srgb, var(--panel-2, #151b1f) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 42%, var(--line));
@@ -2913,6 +2956,8 @@ body.login-cube-hidden .login-visual { display: none; }
   .login-visual { order: 0; }
   .auth-card { order: 1; }
   .login-now-playing { position: static; order: 2; align-self: center; width: calc(100% - 20px); margin: 12px auto max(16px, env(safe-area-inset-bottom)); }
+  .login-now-playing.is-expanded .login-music-progress-popover,
+  .login-now-playing:focus-within .login-music-progress-popover { max-height: min(58dvh, 420px); }
   .external-login-grid { grid-template-columns: 1fr; }
   .external-login-grid button { min-height: 44px; }
   .login-media-upload-progress { grid-template-columns: 1fr; }
@@ -2929,6 +2974,17 @@ body.login-cube-hidden .login-visual { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .login-now-playing-pulse i { animation: none; }
   .login-music-progress-popover, .login-now-playing-summary > span:last-child { transition: none; }
+}
+
+/* Phone browsers do not expose F-key/Ctrl+0 hardware shortcuts reliably;
+   use the visible touch controls instead of advertising unusable bindings. */
+@media (max-width: 760px) {
+  .shortcut-settings-card { display: none !important; }
+  .f11-prompt-card .shortcut-list li:nth-child(1),
+  .f11-prompt-card .shortcut-list li:nth-child(2),
+  .f11-prompt-card .shortcut-list li:nth-child(3),
+  .f11-prompt-card .shortcut-list li:nth-child(6),
+  .f11-prompt-card .shortcut-list li:nth-child(7) { display: none; }
 }
 
 .login-room-reminder-controls {
@@ -2957,11 +3013,13 @@ body.android-client .side-panel {
 }
 body.android-client .file-panel { left: 0; transform: translateX(-105%); }
 body.android-client .user-panel { right: 0; transform: translateX(105%); }
+body.android-client .side-panel:not(.mobile-open) { display: none; }
+body.android-client .side-panel.mobile-open { display: block; }
 body.android-client .side-panel.mobile-open { transform: translateX(0); }
 
 @media (max-width: 924px) {
   main, .main-page, .workspace { height: auto; min-height: calc(100dvh - 58px); }
-  .theater { display: grid; height: auto; min-height: 0; }
+  body:not(.android-client) .theater { display: grid; height: auto; min-height: 0; grid-template-areas: "marquee" "status" "mobile-nav" "player" "toolbar" "owner" "chat"; grid-template-rows: auto auto auto minmax(220px, 43dvh) auto auto minmax(180px, .55fr); }
   .room-marquee, .temporary-room-notice { order: 0; }
   .status-card { order: 1; }
   .mobile-module-nav { position: static; order: 2; background: var(--theme-stage, #090c0e); }
@@ -2986,6 +3044,12 @@ body.android-client .side-panel.mobile-open { transform: translateX(0); }
     border-radius: 6px;
     background: color-mix(in srgb, var(--theme-panel-2) 88%, transparent);
   }
+  /* Keep the mobile control stack below the player in document flow; never
+     let an expanded chat or emoji picker cover the playback toolbar. */
+  .theater:not(.chat-expanded) .theater-toolbar,
+  .theater:not(.chat-expanded) .owner-controls,
+  .theater:not(.chat-expanded) .chat-panel { position: relative; z-index: 1; }
+  .theater:not(.chat-expanded) .player-container { z-index: 0; }
 }
 
 body.android-client .theater[data-mobile-module-active="library"] .chat-panel,
@@ -3204,6 +3268,127 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .chat-only-toggle { order: -1; }
   .fullscreen-chat-card { font-size: .78rem; }
   .fullscreen-chat-history { font-size: .74rem; }
+}
+/* v2.3.4 mobile interaction hardening.  Android WebView can retain a
+   compositor layer for a fixed overlay after the controls auto-hide.  Keep
+   the small affordance alive on touch devices and make the interactive layer
+   explicitly hit-testable while it is open. */
+@media (max-width: 924px), (pointer: coarse) {
+  .player-container:fullscreen,
+  .player-container.fullscreen-active {
+    background: var(--theme-stage, #090c0e);
+  }
+  .player-container:fullscreen .fullscreen-overlay,
+  .player-container.fullscreen-active .fullscreen-overlay {
+    touch-action: manipulation;
+  }
+  .player-container:fullscreen.controls-visible .fullscreen-overlay,
+  .player-container.fullscreen-active.controls-visible .fullscreen-overlay {
+    pointer-events: auto;
+  }
+  .player-container:fullscreen .fullscreen-show-button:not(.is-hidden),
+  .player-container.fullscreen-active .fullscreen-show-button:not(.is-hidden) {
+    animation: none;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+  .player-container:fullscreen .fullscreen-actions,
+  .player-container.fullscreen-active .fullscreen-actions {
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
+    overflow-y: auto;
+    align-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+  .player-container:fullscreen .fullscreen-chat-card,
+  .player-container.fullscreen-active .fullscreen-chat-card {
+    max-width: calc(100vw - 16px);
+    background: color-mix(in srgb, var(--theme-panel, #151b1f) 94%, transparent);
+    -webkit-overflow-scrolling: touch;
+  }
+  .player-container:fullscreen .media-view,
+  .player-container.fullscreen-active .media-view {
+    background-color: transparent;
+  }
+}
+
+/* Let the complete emoji catalog be browsed on a phone without clipping the
+   last rows inside the chat grid or Android WebView viewport. */
+@media (max-width: 924px), (pointer: coarse) {
+  .emoji-toolbar > .emoji-bar {
+    max-height: min(42dvh, 320px);
+    min-height: 180px;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  body.android-client .emoji-toolbar > .emoji-bar {
+    max-height: min(44dvh, 340px);
+    min-height: 200px;
+  }
+}
+
+/* The Android module switcher and chat view must stay inside the viewport when
+   opening Chat repeatedly; long message content may not establish a wider
+   grid track. */
+body.android-client .theater,
+body.android-client .mobile-module-nav,
+body.android-client .chat-panel,
+body.android-client .chat-panel > * {
+  min-width: 0;
+  max-width: 100%;
+}
+body.android-client .mobile-module-nav {
+  width: calc(100% - 20px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+body.android-client .mobile-module-button {
+  min-width: 0;
+  width: 100%;
+}
+body.android-client .chat-panel {
+  width: calc(100% - 20px);
+  margin-inline: 10px;
+  overflow-x: hidden;
+}
+body.android-client .chat-panel .chat-history,
+body.android-client .chat-panel .chat-form,
+body.android-client .chat-panel .emoji-toolbar,
+body.android-client .chat-panel .reaction-bar {
+  min-width: 0;
+  max-width: 100%;
+}
+/* Native and pseudo fullscreen both live inside the room page.  Remove the
+   surrounding app chrome from the hit-test/paint order so it cannot sit above
+   the player on Android WebView. */
+body.fullscreen-open > .topbar,
+body.fullscreen-open .side-panel,
+body.fullscreen-open .mobile-module-nav,
+body.fullscreen-open .theater-toolbar,
+body.fullscreen-open .owner-controls {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Final Android override: the legacy compact-mobile rule above changes the
+   toolbar to a horizontal flex strip.  That rule is appropriate for browser
+   phones but makes the Android room wider than the viewport and pushes the
+   fullscreen button off-screen. */
+body.android-client .theater-toolbar {
+  display: grid;
+  width: auto;
+  max-width: 100%;
+  overflow: visible;
+  grid-template-columns: minmax(0, 1fr);
+}
+body.android-client .theater-toolbar .toolbar-module {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 /* v2.2.8 usability refinements */
 .management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }

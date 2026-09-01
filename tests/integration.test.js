@@ -272,7 +272,7 @@ async function main() {
     const config = await json(await fetch(`${baseUrl}/api/public-config`));
     assert.equal(config.response.status, 200); assert.equal(config.payload.version, `v${require('../package.json').version}`);
     assert.equal(config.payload.downloadButtonsVisible, true);
-    assert.equal(config.payload.maxUploadBytes, 10 * 1024 * 1024 * 1024); assert.equal(config.payload.uploadTimeLimitSeconds, 0);
+    assert.equal(config.payload.maxUploadBytes, 0); assert.equal(config.payload.uploadTimeLimitSeconds, 0);
     assert.equal(config.payload.defaultPlaybackQuality, 'original');
     const tunnelHealthResponse = await fetch(`${baseUrl}/api/tunnel-health`);
     const tunnelHealthBody = await tunnelHealthResponse.text();
