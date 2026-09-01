@@ -1292,19 +1292,21 @@ async function main() {
     await delay(3150);
     const fullscreenControlsHidden = await evaluate(cdp, `(() => {
       const style = getComputedStyle(elements.fullscreenShowBtn);
-      return { controls: elements.playerContainer.classList.contains('controls-visible'), classHidden: elements.fullscreenShowBtn.classList.contains('is-hidden'), visibility: style.visibility, pointerEvents: style.pointerEvents };
+      const overlayStyle = getComputedStyle(elements.fullscreenOverlay);
+      return { controls: elements.playerContainer.classList.contains('controls-visible'), classHidden: elements.fullscreenShowBtn.classList.contains('is-hidden'), visibility: style.visibility, pointerEvents: style.pointerEvents, overlayPointerEvents: overlayStyle.pointerEvents };
     })()`);
     assert.equal(fullscreenControlsHidden.controls, false, JSON.stringify(fullscreenControlsHidden));
     assert.equal(fullscreenControlsHidden.classHidden, false, JSON.stringify(fullscreenControlsHidden));
     assert.equal(fullscreenControlsHidden.visibility, 'visible', JSON.stringify(fullscreenControlsHidden));
+    assert.equal(fullscreenControlsHidden.pointerEvents, 'auto', JSON.stringify(fullscreenControlsHidden));
     await delay(3100);
     const fullscreenButtonTimedOut = await evaluate(cdp, `(() => { const style = getComputedStyle(elements.fullscreenShowBtn); return { opacity: Number(style.opacity), visibility: style.visibility, pointerEvents: style.pointerEvents }; })()`);
-    assert.ok(fullscreenButtonTimedOut.opacity <= 0.01, JSON.stringify(fullscreenButtonTimedOut));
-    assert.equal(fullscreenButtonTimedOut.visibility, 'hidden', JSON.stringify(fullscreenButtonTimedOut));
-    assert.equal(fullscreenButtonTimedOut.pointerEvents, 'none', JSON.stringify(fullscreenButtonTimedOut));
+    assert.ok(fullscreenButtonTimedOut.opacity >= 0.99, JSON.stringify(fullscreenButtonTimedOut));
+    assert.equal(fullscreenButtonTimedOut.visibility, 'visible', JSON.stringify(fullscreenButtonTimedOut));
+    assert.equal(fullscreenButtonTimedOut.pointerEvents, 'auto', JSON.stringify(fullscreenButtonTimedOut));
     await evaluate(cdp, `elements.playerContainer.dispatchEvent(new MouseEvent('click', { bubbles: true })); true`); await delay(120);
-    const fullscreenRestored = await evaluate(cdp, `({ controls: elements.playerContainer.classList.contains('controls-visible'), showHidden: elements.fullscreenShowBtn.classList.contains('is-hidden'), overlayHidden: elements.fullscreenOverlay.getAttribute('aria-hidden') })`);
-    assert.deepEqual(fullscreenRestored, { controls: true, showHidden: true, overlayHidden: 'false' });
+    const fullscreenRestored = await evaluate(cdp, `({ controls: elements.playerContainer.classList.contains('controls-visible'), showHidden: elements.fullscreenShowBtn.classList.contains('is-hidden'), overlayHidden: elements.fullscreenOverlay.getAttribute('aria-hidden'), overlayPointerEvents: getComputedStyle(elements.fullscreenOverlay).pointerEvents })`);
+    assert.deepEqual(fullscreenRestored, { controls: true, showHidden: true, overlayHidden: 'false', overlayPointerEvents: 'auto' });
     const fullscreenV226Controls = await evaluate(cdp, `(() => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
       const f2Focused = document.activeElement === elements.fullscreenChatInput;
@@ -1520,6 +1522,7 @@ async function main() {
       elements.chatHistory.scrollTop = 0; openMobileModule('chat');
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const history = elements.chatHistory.getBoundingClientRect(); const form = elements.chatForm.getBoundingClientRect();
+      const nav = document.querySelector('.mobile-module-nav').getBoundingClientRect();
       const switchedToBottom = elements.chatHistory.scrollHeight - elements.chatHistory.scrollTop - elements.chatHistory.clientHeight;
       elements.chatHistory.scrollTop = 0;
       addChatMessage({ id: 'mobile-chat-reader', type: 'public', from: 'browser-ui-owner', fromName: '布局测试成员', text: '阅读历史时不抢滚动位置', timestamp: new Date(Date.now() + 100000).toISOString() });
@@ -1527,7 +1530,9 @@ async function main() {
       elements.chatHistory.scrollTop = elements.chatHistory.scrollHeight;
       addChatMessage({ id: 'mobile-chat-latest', type: 'public', from: 'browser-ui-owner', fromName: '布局测试成员', text: '位于底部时跟随最新消息', timestamp: new Date(Date.now() + 101000).toISOString() });
       const latestBottom = elements.chatHistory.scrollHeight - elements.chatHistory.scrollTop - elements.chatHistory.clientHeight;
-      const result = { panelMode: elements.theater.dataset.mobileModuleActive, history: [history.left, history.top, history.right, history.bottom, history.height], form: [form.left, form.top, form.right, form.bottom], scrollHeight: elements.chatHistory.scrollHeight, clientHeight: elements.chatHistory.clientHeight, switchedToBottom, readerTop, latestBottom, overflowY: getComputedStyle(elements.chatHistory).overflowY };
+      toggleEmojiBar(elements.chatEmojiBar, elements.chatEmojiCollapseBtn, elements.chatEmojiCategory);
+      const emoji = elements.chatEmojiBar.getBoundingClientRect();
+      const result = { panelMode: elements.theater.dataset.mobileModuleActive, history: [history.left, history.top, history.right, history.bottom, history.height], form: [form.left, form.top, form.right, form.bottom], nav: [nav.left, nav.top, nav.right, nav.bottom], emoji: [emoji.left, emoji.top, emoji.right, emoji.bottom, emoji.height], emojiScrollable: elements.chatEmojiBar.scrollHeight > elements.chatEmojiBar.clientHeight, scrollHeight: elements.chatHistory.scrollHeight, clientHeight: elements.chatHistory.clientHeight, switchedToBottom, readerTop, latestBottom, overflowY: getComputedStyle(elements.chatHistory).overflowY, bodyWidth: document.body.scrollWidth, viewport: innerWidth };
       return result;
     })()`);
     assert.equal(mobileChatFeed.panelMode, 'chat', JSON.stringify(mobileChatFeed));
@@ -1535,6 +1540,12 @@ async function main() {
     assert.ok(mobileChatFeed.scrollHeight > mobileChatFeed.clientHeight && mobileChatFeed.history[4] <= 421, JSON.stringify(mobileChatFeed));
     assert.ok(Math.abs(mobileChatFeed.form[1] - mobileChatFeed.history[3]) <= 2, JSON.stringify(mobileChatFeed));
     assert.ok(mobileChatFeed.switchedToBottom <= 2 && mobileChatFeed.readerTop <= 2 && mobileChatFeed.latestBottom <= 2, JSON.stringify(mobileChatFeed));
+    assert.ok(mobileChatFeed.nav[0] >= -1 && mobileChatFeed.nav[2] <= mobileChatFeed.viewport + 1, JSON.stringify(mobileChatFeed));
+    assert.ok(mobileChatFeed.emojiScrollable && mobileChatFeed.emoji[4] >= 179, JSON.stringify(mobileChatFeed));
+    assert.ok(mobileChatFeed.bodyWidth <= mobileChatFeed.viewport + 2, JSON.stringify(mobileChatFeed));
+    const mobileChatSwitching = await evaluate(cdp, `(() => { for (const module of ['watch', 'chat', 'watch', 'chat', 'watch']) openMobileModule(module); const nav = document.querySelector('.mobile-module-nav').getBoundingClientRect(); const panel = elements.chatPanel.getBoundingClientRect(); return { active: elements.theater.dataset.mobileModuleActive, nav: [nav.left, nav.right], panel: [panel.left, panel.right], bodyWidth: document.body.scrollWidth, viewport: innerWidth }; })()`);
+    assert.equal(mobileChatSwitching.active, 'watch', JSON.stringify(mobileChatSwitching));
+    assert.ok(mobileChatSwitching.nav[0] >= -1 && mobileChatSwitching.nav[1] <= mobileChatSwitching.viewport + 1 && mobileChatSwitching.bodyWidth <= mobileChatSwitching.viewport + 2, JSON.stringify(mobileChatSwitching));
     await evaluate(cdp, `elements.chatPanel.scrollIntoView({ block: 'start' }); true`); await delay(120);
     const mobileChatPath = path.join(outputDir, 'mobile-chat-scroll.png'); await capture(cdp, mobileChatPath); images.push(mobileChatPath);
     await evaluate(cdp, `(() => { const restore = globalThis.__uiSmokeChatRestore; if (restore) { state.messages = restore.messages; state.chatViewFilter = restore.filter; delete globalThis.__uiSmokeChatRestore; } renderChat(); openMobileModule('watch'); return true; })()`);

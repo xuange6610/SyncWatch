@@ -3249,6 +3249,109 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .fullscreen-chat-card { font-size: .78rem; }
   .fullscreen-chat-history { font-size: .74rem; }
 }
+/* v2.3.4 mobile interaction hardening.  Android WebView can retain a
+   compositor layer for a fixed overlay after the controls auto-hide.  Keep
+   the small affordance alive on touch devices and make the interactive layer
+   explicitly hit-testable while it is open. */
+@media (max-width: 924px), (pointer: coarse) {
+  .player-container:fullscreen,
+  .player-container.fullscreen-active {
+    background: var(--theme-stage, #090c0e);
+  }
+  .player-container:fullscreen .fullscreen-overlay,
+  .player-container.fullscreen-active .fullscreen-overlay {
+    touch-action: manipulation;
+  }
+  .player-container:fullscreen.controls-visible .fullscreen-overlay,
+  .player-container.fullscreen-active.controls-visible .fullscreen-overlay {
+    pointer-events: auto;
+  }
+  .player-container:fullscreen .fullscreen-show-button:not(.is-hidden),
+  .player-container.fullscreen-active .fullscreen-show-button:not(.is-hidden) {
+    animation: none;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+  .player-container:fullscreen .fullscreen-actions,
+  .player-container.fullscreen-active .fullscreen-actions {
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
+    overflow-y: auto;
+    align-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+  .player-container:fullscreen .fullscreen-chat-card,
+  .player-container.fullscreen-active .fullscreen-chat-card {
+    max-width: calc(100vw - 16px);
+    background: color-mix(in srgb, var(--theme-panel, #151b1f) 94%, transparent);
+    -webkit-overflow-scrolling: touch;
+  }
+  .player-container:fullscreen .media-view,
+  .player-container.fullscreen-active .media-view {
+    background-color: transparent;
+  }
+}
+
+/* Let the complete emoji catalog be browsed on a phone without clipping the
+   last rows inside the chat grid or Android WebView viewport. */
+@media (max-width: 924px), (pointer: coarse) {
+  .emoji-toolbar > .emoji-bar {
+    max-height: min(42dvh, 320px);
+    min-height: 180px;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  body.android-client .emoji-toolbar > .emoji-bar {
+    max-height: min(44dvh, 340px);
+    min-height: 200px;
+  }
+}
+
+/* The Android module switcher and chat view must stay inside the viewport when
+   opening Chat repeatedly; long message content may not establish a wider
+   grid track. */
+body.android-client .theater,
+body.android-client .mobile-module-nav,
+body.android-client .chat-panel,
+body.android-client .chat-panel > * {
+  min-width: 0;
+  max-width: 100%;
+}
+body.android-client .mobile-module-nav {
+  width: calc(100% - 20px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+body.android-client .mobile-module-button {
+  min-width: 0;
+  width: 100%;
+}
+body.android-client .chat-panel {
+  width: calc(100% - 20px);
+  margin-inline: 10px;
+  overflow-x: hidden;
+}
+body.android-client .chat-panel .chat-history,
+body.android-client .chat-panel .chat-form,
+body.android-client .chat-panel .emoji-toolbar,
+body.android-client .chat-panel .reaction-bar {
+  min-width: 0;
+  max-width: 100%;
+}
+/* Native and pseudo fullscreen both live inside the room page.  Remove the
+   surrounding app chrome from the hit-test/paint order so it cannot sit above
+   the player on Android WebView. */
+body.fullscreen-open > .topbar,
+body.fullscreen-open .side-panel,
+body.fullscreen-open .mobile-module-nav,
+body.fullscreen-open .theater-toolbar,
+body.fullscreen-open .owner-controls {
+  visibility: hidden;
+  pointer-events: none;
+}
 /* v2.2.8 usability refinements */
 .management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }
 .management-hub-card.management-loading .management-content { content-visibility: auto; contain: layout paint; }
