@@ -201,7 +201,7 @@ assert.match(appSource, /floatingNoticeMuted[\s\S]{0,600}showDanmaku\(\{ text: `
   '好友私聊必须能以仅收件人可见的私聊弹幕显示，并遵守持久化悬浮开关');
 assert.match(styleSource, /body\.android-client \.chat-panel:not\(\.mobile-chat-collapsed\)[\s\S]{0,260}overflow:\s*visible[\s\S]{0,220}grid-template-rows:/,
   '安卓聊天展开时必须按内容自然增高，表情栏不能覆盖或裁掉下方控件');
-assert.match(styleSource, /body\.android-client \.emoji-toolbar > \.emoji-bar[\s\S]{0,220}max-height:\s*144px[\s\S]{0,120}overflow-y:\s*auto/,
+assert.match(styleSource, /body\.android-client \.emoji-toolbar > \.emoji-bar[\s\S]{0,420}max-height:\s*min\(44dvh,\s*340px\)[\s\S]{0,180}overflow-y:\s*auto/,
   '安卓表情栏必须限制高度并独立滚动');
 
 console.log('影院顶部播报布局回归检查通过');

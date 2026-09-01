@@ -13343,11 +13343,14 @@ function openMobileModule(module) {
       try { localStorage.setItem('syncwatchMobileChatCollapsed', '0'); } catch (_) {}
       applyMobileChatCollapsed();
     }
-    elements.chatPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    /* Use an immediate document scroll on touch devices.  Smooth scrolling
+       continues after the next tap and can move the module bar underneath a
+       fixed side panel, making the following button appear unresponsive. */
+    elements.chatPanel?.scrollIntoView({ behavior: 'auto', block: 'start' });
     requestAnimationFrame(() => { elements.chatHistory.scrollTop = elements.chatHistory.scrollHeight; });
     return;
   }
-  elements.theater?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  elements.theater?.scrollIntoView({ behavior: 'auto', block: 'start' });
 }
 
 function toggleMobilePanel(panel) {

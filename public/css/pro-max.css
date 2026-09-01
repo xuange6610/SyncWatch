@@ -286,6 +286,64 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .auth-card { width: min(100%, 470px); max-height: none; overflow: visible; margin: 8px auto; padding: 20px 15px 18px; }
 }
 
+/* SyncWatch Android WebView final layout contract.  pro-max is loaded after
+   style.css, so these rules intentionally close the cascade for real phones:
+   no off-screen player margin, no nested room scroller, and fixed-height
+   module buttons that cannot stretch when a side panel is opened. */
+body.android-client .theater {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 !important;
+  overflow: visible !important;
+  align-content: start;
+}
+body.android-client .player-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 !important;
+}
+body.android-client .mobile-module-nav {
+  align-self: start;
+  grid-auto-rows: max-content;
+}
+body.android-client .mobile-module-button {
+  align-self: start;
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+body.android-client .theater-toolbar {
+  display: grid !important;
+  width: auto;
+  max-width: 100%;
+  overflow: visible !important;
+  grid-template-columns: minmax(0, 1fr);
+}
+body.android-client .theater-toolbar .toolbar-module {
+  flex: none !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+body.android-client .side-panel:not(.mobile-open) { display: none; }
+body.android-client .side-panel.mobile-open { display: block; }
+body.android-client .emoji-toolbar > .emoji-bar {
+  height: min(44dvh, 340px);
+  max-height: min(44dvh, 340px);
+  min-height: 200px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  touch-action: pan-y;
+  padding-bottom: 18px;
+}
+body.android-client .player-container.fullscreen-active,
+body.android-client .player-container:fullscreen {
+  margin: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  background: var(--theme-stage, #0b1113) !important;
+}
+
 @media (max-width: 540px) {
   body:not(.android-client) .topbar-scroll-actions,
   body:not(.android-client) .topbar-fixed-actions,

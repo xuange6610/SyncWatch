@@ -1569,6 +1569,29 @@ async function main() {
     assert.ok(androidFullscreenLayers.danmakuZ >= 2147483643 && androidFullscreenLayers.reactionZ >= 2147483643, JSON.stringify(androidFullscreenLayers));
     assert.deepEqual(androidFullscreenLayers.player.map(Math.round), [0, 0, 390, 844], JSON.stringify(androidFullscreenLayers));
     assert.deepEqual(androidFullscreenLayers.video.map(Math.round), [0, 0, 390, 844], JSON.stringify(androidFullscreenLayers));
+    const androidFullscreenControls = await evaluate(cdp, `(() => {
+      state.pseudoFullscreen = true; handleFullscreenChange(); hideFullscreenControls(true);
+      const center = (element) => { const rect = element.getBoundingClientRect(); return [rect.left + rect.width / 2, rect.top + rect.height / 2]; };
+      const show = elements.fullscreenShowBtn; const showRect = show.getBoundingClientRect(); const showPoint = center(show);
+      const before = { hidden: show.classList.contains('is-hidden'), rect: [showRect.left, showRect.top, showRect.right, showRect.bottom], hit: document.elementFromPoint(...showPoint)?.id || '', playerBackground: getComputedStyle(elements.playerContainer).backgroundColor };
+      show.click();
+      // Let the compositor commit the controls-visible class before checking
+      // hit testing; this matches a real touch frame after tapping the affordance.
+      const frame = new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return frame.then(() => {
+      const actionButtons = [...document.querySelectorAll('.fullscreen-actions button:not(.is-hidden)')].map((button) => { const rect = button.getBoundingClientRect(); return { id: button.id, rect: [rect.left, rect.top, rect.right, rect.bottom], hit: document.elementFromPoint(...center(button))?.id || '' }; });
+      const after = { controlsVisible: elements.playerContainer.classList.contains('controls-visible'), overlayPointerEvents: getComputedStyle(elements.fullscreenOverlay).pointerEvents, overlayVisibility: getComputedStyle(elements.fullscreenOverlay).visibility, overlayOpacity: getComputedStyle(elements.fullscreenOverlay).opacity, overlayInert: elements.fullscreenOverlay.inert, actionsPointerEvents: getComputedStyle(elements.fullscreenOverlay.querySelector('.fullscreen-actions')).pointerEvents, actionButtons };
+      hideFullscreenControls(true); state.pseudoFullscreen = false; handleFullscreenChange();
+      return { before, after };
+      });
+    })()`);
+    assert.equal(androidFullscreenControls.before.hidden, false, JSON.stringify(androidFullscreenControls));
+    assert.equal(androidFullscreenControls.before.hit, 'fullscreenShowBtn', JSON.stringify(androidFullscreenControls));
+    assert.ok(androidFullscreenControls.before.rect[0] >= 0 && androidFullscreenControls.before.rect[1] >= 0 && androidFullscreenControls.before.rect[2] <= 390 && androidFullscreenControls.before.rect[3] <= 844, JSON.stringify(androidFullscreenControls));
+    assert.notEqual(androidFullscreenControls.before.playerBackground, 'rgb(0, 0, 0)', JSON.stringify(androidFullscreenControls));
+    assert.equal(androidFullscreenControls.after.controlsVisible, true, JSON.stringify(androidFullscreenControls));
+    assert.equal(androidFullscreenControls.after.overlayPointerEvents, 'auto', JSON.stringify(androidFullscreenControls));
+    assert.ok(androidFullscreenControls.after.actionButtons.length >= 2 && androidFullscreenControls.after.actionButtons.every((button) => button.rect[0] >= 0 && button.rect[1] >= 0 && button.rect[2] <= 390 && button.rect[3] <= 844 && button.hit === button.id), JSON.stringify(androidFullscreenControls));
     const androidPortraitPath = path.join(outputDir, 'android-portrait.png'); await capture(cdp, androidPortraitPath); images.push(androidPortraitPath);
     await evaluate(cdp, `toggleMobileActionMenu(false); true`);
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 844, height: 390, deviceScaleFactor: 1, mobile: true }); await delay(180);

@@ -1677,7 +1677,15 @@ body.android-client .toast { width: 100%; max-width: none; }
 body.android-client .theater {
   gap: 8px;
   padding: 8px 0 max(12px, env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
   background: var(--theme-stage, #090c0e);
+  /* The room is part of the document flow on Android.  A nested scroll
+     container makes scrollIntoView() move the module bar off-screen and
+     leaves fixed fullscreen controls clipped behind the compositor. */
+  overflow: visible;
+  align-content: start;
   grid-template-rows: auto auto auto minmax(0, auto) auto auto auto;
 }
 body.android-client .theater.mobile-chat-collapsed {
@@ -1695,6 +1703,8 @@ body.android-client .mobile-module-nav {
   background: var(--theme-toolbar, #151c20);
   border: 1px solid var(--line);
   border-radius: 10px;
+  align-self: start;
+  grid-auto-rows: max-content;
 }
 body.android-client .mobile-module-button {
   display: grid;
@@ -1708,6 +1718,9 @@ body.android-client .mobile-module-button {
   border: 0;
   border-radius: 7px;
   font-size: 1.05rem;
+  align-self: start;
+  height: 48px;
+  box-sizing: border-box;
 }
 body.android-client .mobile-module-button small { font-size: .68rem; line-height: 1; }
 body.android-client .mobile-module-button.active,
@@ -1843,6 +1856,7 @@ body.android-client .chat-panel:not(.mobile-chat-collapsed) {
   min-height: max-content;
   height: auto;
   overflow: visible;
+  align-self: start;
   grid-template-rows: auto auto auto auto minmax(160px, 42dvh) auto auto auto;
 }
 body.android-client .chat-panel:not(.mobile-chat-collapsed) .chat-history {
@@ -1879,9 +1893,13 @@ body.android-client .emoji-toolbar > label { min-width: 0; flex: 0 0 auto; }
 body.android-client .emoji-toolbar > .emoji-bar {
   flex: 1 1 100%;
   min-width: 0;
-  max-height: 144px;
+  height: min(44dvh, 340px);
+  max-height: min(44dvh, 340px);
+  box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-bottom: 18px;
 }
 body.android-client .side-panel { top: 0; bottom: 0; width: 100vw; max-width: none; padding-top: max(12px, env(safe-area-inset-top)); border-radius: 0; }
 
@@ -2995,6 +3013,8 @@ body.android-client .side-panel {
 }
 body.android-client .file-panel { left: 0; transform: translateX(-105%); }
 body.android-client .user-panel { right: 0; transform: translateX(105%); }
+body.android-client .side-panel:not(.mobile-open) { display: none; }
+body.android-client .side-panel.mobile-open { display: block; }
 body.android-client .side-panel.mobile-open { transform: translateX(0); }
 
 @media (max-width: 924px) {
@@ -3351,6 +3371,24 @@ body.fullscreen-open .theater-toolbar,
 body.fullscreen-open .owner-controls {
   visibility: hidden;
   pointer-events: none;
+}
+
+/* Final Android override: the legacy compact-mobile rule above changes the
+   toolbar to a horizontal flex strip.  That rule is appropriate for browser
+   phones but makes the Android room wider than the viewport and pushes the
+   fullscreen button off-screen. */
+body.android-client .theater-toolbar {
+  display: grid;
+  width: auto;
+  max-width: 100%;
+  overflow: visible;
+  grid-template-columns: minmax(0, 1fr);
+}
+body.android-client .theater-toolbar .toolbar-module {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 /* v2.2.8 usability refinements */
 .management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }
