@@ -1,6 +1,8 @@
 # SyncWatch 长期维护与交付要求
 
-当前线上正式版本：`v2.3.1`（候选发布，尚未切换 Latest）；完成源码、构建、启动、哈希和远端页面核对后才可公开。
+当前线上正式版本：`v2.3.1`（已公开并为 Latest）。源码、构建、启动、哈希、远端资产和页面核对均已完成。
+
+v2.3.1 原子运行 `33463841839` 已成功完成；Release API 有 8 个维护者资产，页面另含 2 个 GitHub 源码归档，共 10 个可见文件。Android 模拟器安装/启动、Windows 体验版与完整便携版启动、共享音频 smoke、资产哈希和远端下载回读均通过。
 
 v2.3.1 原子运行 `33449575638` 的源码、官方资产、Android 签名构建、Windows 成品和 Defender 前置门禁均通过；模拟器作业失败于 `sys.boot_completed=1` 后 Android `package` 服务尚未就绪（`Can't find service: package`），未进入 Release 上传或资产替换。修复为在安装前进行有界 package-service readiness 检查，并在该错误下重新连接 ADB、等待服务后重试。
 

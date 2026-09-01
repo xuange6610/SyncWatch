@@ -26,7 +26,7 @@
 
 ## 当前事实边界
 
-- v2.3.0 仍为线上 Latest；v2.3.1 已完成本地共享性能、音源状态、主题回执、Android 启动迁移和桌面启动修复，待新 8 项完成远端资产回读后再原子替换；历史 Release 保持不变。
+- v2.3.1 已公开为线上 Latest；共享性能、音源状态、主题回执、Android 启动迁移和桌面启动修复均已完成新 8 项资产的构建、哈希与远端回读，历史 Release 保持不变。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
 - v2.3.1 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。
