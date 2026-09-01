@@ -107,7 +107,7 @@ const ONBOARDING_GUIDE_STEPS = [
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
-  publicConfig: { version: 'v2.3.2', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.3.3', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -120,7 +120,7 @@ const state = {
   serverClockOffset: 0, serverClockReady: false, serverClockAnchor: null, clockSamples: [], autoplayBlocked: false,
   localCapture: null, captureTimer: null, captureVideo: null, captureCanvas: null, captureSession: 0,
   captureInFlight: false, captureSequence: 0, screenShareActive: false, screenShareKey: '', screenShareRequestInFlight: false,
-  screenFrameSendGeneration: 0, screenFrameReliableInFlight: false, screenFrameReliablePending: null, screenFrameReliableLastAt: 0,
+  screenFrameSendGeneration: 0, screenFrameReliableInFlight: false, screenFrameReliablePending: null, screenFrameReliableLastAt: 0, screenFrameAckLatency: 0,
   screenFallbackViewerCount: 0, detectedDisplayFps: 60,
   nativeCapture: null, nativeCaptureSession: 0, nativeCaptureStartTimer: null, nativeCaptureFrameBusy: false, nativeCapturePendingFrame: null,
   captureRestoreTimer: null, captureRestoreInFlight: false,
@@ -168,7 +168,7 @@ const state = {
   memberProfileLastFetchAt: 0, memberProfileHighlightUntil: 0,
   liveVoiceStream: null, liveVoiceMode: '', liveVoiceMuted: false, liveVoicePeers: new Map(), liveVoiceSignalQueues: new Map(), pendingVoiceCallId: '',
   liveVoiceCollapsed: localStorage.getItem('syncwatchLiveVoiceCollapsed') !== '0', liveVoiceFloatingCollapsed: localStorage.getItem('syncwatchVoiceFloatingCollapsed') !== '0', liveVoicePushRestoreMuted: null,
-  roomIdTouched: false, loginRoomPasswordRequired: null, loginRoomPasswordRoomId: '', agreementResolver: null, screenNoticeTimer: null, viewRotation: 0, viewZoom: 1,
+  roomIdTouched: false, loginRoomPasswordRequired: null, loginRoomPasswordRoomId: '', agreementResolver: null, screenNoticeTimer: null, viewRotation: 0, viewZoom: 1, viewOrientationMode: 'portrait',
   webShare: { active: false, mode: 'live', url: '', title: '', updatedAt: 0 }, floatingPlayerActive: false, documentPipWindow: null, pipDanmakuLayer: null, ownerExitResolver: null, recentNoticeKeys: new Map(),
   desktopClosePending: false,
   pendingJoinRoomId: '', mediaCategoryFilter: '', mediaCategories: [], roomMarquee: null,
@@ -362,7 +362,7 @@ roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus 
  managementChatManageBtn managementOperationHistoryBtn
    managementHubModal closeManagementHubBtn managementSessionLogoutBtn managementContentHost uiCopySearch uiCopyEditModeBtn switchRoomModal closeSwitchRoomBtn switchRoomForm switchRoomId switchRoomPassword switchRoomSearch switchOwnedRoomRefreshBtn switchOwnedRoomStatus switchOwnedRoomList lanScanModal closeLanScanBtn refreshLanScanBtn lanRoomSearch lanScanSelectAll deleteSelectedLanRoomsBtn lanRoomList closeRoomSwitchSuccessBtn
  globalRoomDashboardCard refreshGlobalRoomsBtn globalRoomList selectAllRooms batchStopRoomsBtn batchRequireRoomPasswordsBtn batchBanRoomsBtn batchRenameRoomsBtn batchRenameRoomIdsBtn deleteSelectedRoomsBtn factoryResetCard factoryResetBtn resetAdminPasswordBtn restartServerBtn
-  fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown serverEndpointDetailsModal closeServerEndpointDetailsBtn serverEndpointDetailsAddress serverEndpointDetailsState serverEndpointDetailsHint copyServerEndpointDetailsBtn openServerEndpointDetailsBtn roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn
+  fullscreenOverlay fullscreenShowBtn fullscreenHideBtn fullscreenExitBtn fullscreenLockBtn fullscreenGestureIndicator fullscreenShortcutHint dismissFullscreenShortcutHintBtn neverFullscreenShortcutHintBtn portraitViewBtn landscapeViewBtn autoLandscapeViewBtn zoomOutBtn zoomInBtn zoomResetBtn zoomLevel fullscreenChatHistory fullscreenChatForm fullscreenChatMode fullscreenPrivateRecipient fullscreenChatInput fullscreenImageInput fullscreenImageBtn fullscreenEmojiBtn fullscreenEmojiBar fullscreenSendBtn f11PromptModal closeF11PromptBtn enterF11NowBtn ignoreF11OnceBtn saveF11PreferenceBtn f11PromptPreference f11PromptCountdown serverEndpointDetailsModal closeServerEndpointDetailsBtn serverEndpointDetailsAddress serverEndpointDetailsState serverEndpointDetailsHint copyServerEndpointDetailsBtn openServerEndpointDetailsBtn roomEntryNoticeModal closeRoomEntryNoticeBtn roomEntryNoticeTitle roomEntryNoticeMessage roomEntryNoticeCountdown confirmRoomEntryNoticeBtn ignoreRoomEntryNoticeBtn roomEntryNoticePreference saveRoomEntryNoticePreferenceBtn
  chatManageModal closeChatManageBtn chatManageList chatManageUser chatManageType chatManageFullscreenBtn chatManageUsersFilter chatManageUsersSummary chatManageUsers chatManageDateFrom chatManageDateTo chatManageQuery chatClearFiltersBtn chatClearUserBtn chatClearAllBtn chatEmojiCategory fullscreenEmojiCategory
   operationHistoryModal closeOperationHistoryBtn operationHistoryList refreshOperationHistoryBtn operationHistoryQuery operationHistoryScope operationHistorySelectAll deleteSelectedOperationsBtn chatContextMenu chatContextDeleteBtn roomMediaPreviewModal closeRoomMediaPreviewBtn roomMediaPreviewTitle roomMediaPreviewSelectAll roomMediaPreviewBatchDeleteBtn roomMediaPreviewBanUploadBtn roomMediaPreviewActionStatus roomMediaPreviewList roomMediaPreviewPlayer globalRoomStorageLimitMb applyGlobalRoomStorageLimitBtn audioSourceModal closeAudioSourceBtn audioSourcePlatform audioSourceVolume audioSourceVolumeText audioSourceStatus refreshAudioSourcesBtn startAudioSourceBtn stopAudioSourceBtn audioShareRoomStatus audioShareRoomText unlockSharedAudioBtn desktopShareActualStatus
 dataBackupCard dataBackupScope exportDataBtn importDataBtn importDataInput dataBackupStatus dataBackupProgress dataBackupProgressLabel dataBackupProgressPercent dataBackupProgressBar dataBackupProgressDetail
@@ -1535,17 +1535,24 @@ async function refreshAllApplications() {
   }
   if (elements.applicationRefreshStatus) elements.applicationRefreshStatus.textContent = '正在同步全部申请…';
   try {
-    const refreshResult = await loadAdminSettings({ silent: true });
+    const refreshResult = await adminAction('get-application-requests');
     if (!refreshResult?.success) {
       const message = refreshResult?.error || '刷新全部申请失败';
       if (elements.applicationRefreshStatus) elements.applicationRefreshStatus.textContent = message;
       return;
     }
-    const admin = state.adminSettings;
-    if (!admin) throw new Error('请先验证管理员身份并加载设置');
-    const pendingUploads = (admin.pendingFiles || []).filter((item) => !item.status || item.status === 'pending').length;
-    const registrations = (admin.registrationRequests || []).filter((item) => item.status === 'pending').length;
-    const roomQuotas = (admin.roomQuotaRequests || []).filter((item) => item.status === 'pending').length;
+    const applications = refreshResult.applications || {};
+    state.adminSettings = { ...(state.adminSettings || {}), ...applications };
+    renderRegistrationRequests(applications.registrationRequests || []);
+    renderRoomQuotaRequests(applications.roomQuotaRequests || []);
+    renderLoginLimitRequests(applications.loginLimitRequests || []);
+    renderLoginConcurrencyRequests(applications.loginConcurrencyRequests || []);
+    renderRoomCopyRequests(applications.roomCopyRequests || []);
+    renderPending(applications.pendingFiles || []);
+    renderClientModeRequests(applications.clientModeRequests || []);
+    const pendingUploads = (applications.pendingFiles || []).filter((item) => !item.status || item.status === 'pending').length;
+    const registrations = (applications.registrationRequests || []).filter((item) => item.status === 'pending').length;
+    const roomQuotas = (applications.roomQuotaRequests || []).filter((item) => item.status === 'pending').length;
     const summary = `已刷新：上传审核 ${pendingUploads} 项，多账号注册 ${registrations} 项，建房额度 ${roomQuotas} 项`;
     if (elements.applicationRefreshStatus) elements.applicationRefreshStatus.textContent = `${summary} · ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}`;
     toast(summary, 'success');
@@ -2832,6 +2839,7 @@ function bindUiEvents() {
   elements.sendGuestConvertEmailCodeBtn?.addEventListener('click', sendGuestConversionEmailCode);
   elements.portraitViewBtn?.addEventListener('click', () => setPlayerOrientation('portrait'));
   elements.landscapeViewBtn?.addEventListener('click', () => setPlayerOrientation('landscape'));
+  elements.autoLandscapeViewBtn?.addEventListener('click', () => setPlayerOrientation('auto-landscape'));
   elements.zoomOutBtn?.addEventListener('click', () => changePlayerZoom(-0.1));
   elements.zoomInBtn?.addEventListener('click', () => changePlayerZoom(0.1));
   elements.zoomResetBtn?.addEventListener('click', resetPlayerTransform);
@@ -5723,10 +5731,10 @@ async function loadPublicConfig(silent = false) {
 
 function applyPublicConfig() {
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.3.2';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.3.3';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.3.2'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.3.3'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -5926,7 +5934,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.3.2';
+    const current = state.publicConfig.version || 'v2.3.3';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -6404,7 +6412,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.3.2.apk';
+    link.download = 'SyncWatch同步观影-v2.3.3.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -6421,7 +6429,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch-Android-v2.3.2-universal.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.3.3-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -10445,6 +10453,7 @@ function cleanupFullscreenState() {
   hideFullscreenShortcutHint();
   hideChatContextMenu();
   setFullscreenInteractionLocked(false);
+  state.viewOrientationMode = 'portrait';
   state.viewRotation = 0;
   state.viewZoom = 1;
   updatePlayerTransform();
@@ -11018,6 +11027,7 @@ function resetOutgoingScreenFrames() {
   state.screenFrameReliableInFlight = false;
   state.screenFrameReliablePending = null;
   state.screenFrameReliableLastAt = 0;
+  state.screenFrameAckLatency = 0;
 }
 
 function canSendScreenFrame() {
@@ -11045,6 +11055,7 @@ function flushReliableScreenFrame() {
   }
   socket.timeout(SCREEN_FRAME_SEND_ACK_TIMEOUT_MS).emit('screen-share-frame', packet, (error, result) => {
     if (generation !== state.screenFrameSendGeneration || socket !== state.socket) return;
+    state.screenFrameAckLatency = Math.max(0, performance.now() - state.screenFrameReliableLastAt);
     state.screenFrameReliableInFlight = false;
     if (error || !result?.success) state.screenFrameReliableLastAt = 0;
     if (state.screenFrameReliablePending && canSendScreenFrame()) setTimeout(flushReliableScreenFrame, 0);
@@ -11092,7 +11103,10 @@ function desktopShareTargetFps() {
 
 function screenCaptureDelay() {
   const target = Math.round(1000 / Math.min(20, desktopShareTargetFps()));
-  return screenSocketTransport() === 'websocket' ? target : Math.max(target, 120);
+  if (screenSocketTransport() === 'websocket') return target;
+  // Socket.IO polling/Tunnel links are ACK-bound; keep the capture loop
+  // responsive while the latest-frame queue prevents old frames piling up.
+  return Math.max(target, state.screenFrameAckLatency > 900 ? 140 : 90);
 }
 
 function receiveScreenFrame(packet, acknowledgement) {
@@ -11775,12 +11789,28 @@ function configuredCaptureSize() {
   return match ? { width: Number(match[1]), height: Number(match[2]) } : null;
 }
 
-function fallbackScreenCaptureSize(video) {
+function fallbackScreenCaptureProfile(video) {
   const requested = configuredCaptureSize();
   const sourceWidth = requested?.width || video.videoWidth;
   const sourceHeight = requested?.height || video.videoHeight;
-  const scale = Math.min(1, 1280 / sourceWidth, 720 / sourceHeight);
-  return { width: Math.max(1, Math.round(sourceWidth * scale)), height: Math.max(1, Math.round(sourceHeight * scale)) };
+  const polling = screenSocketTransport() !== 'websocket';
+  const latency = Number(state.screenFrameAckLatency) || 0;
+  const maxWidth = polling ? (latency > 900 ? 960 : latency > 500 ? 1120 : 1440) : 1600;
+  const maxHeight = polling ? (latency > 900 ? 540 : latency > 500 ? 630 : 810) : 900;
+  const scale = Math.min(1, maxWidth / sourceWidth, maxHeight / sourceHeight);
+  const qualityBase = ({ balanced: .62, high: .72, ultra: .8 })[state.desktopShareSettings?.quality] || .72;
+  // Keep polling frames below the server's 1.5 MiB guard even on detailed
+  // desktop screens; latency adaptation then trades a little JPEG quality for
+  // a materially smoother tunnel stream instead of dropping oversized frames.
+  const quality = polling ? Math.max(.66, Math.min(.76, qualityBase - (latency > 900 ? .08 : latency > 500 ? .04 : .01))) : qualityBase;
+  return { width: Math.max(1, Math.round(sourceWidth * scale)), height: Math.max(1, Math.round(sourceHeight * scale)), quality };
+}
+
+// Kept as a small compatibility helper for diagnostics and older integrations
+// that only need the negotiated canvas dimensions.
+function fallbackScreenCaptureSize(video) {
+  const { width, height } = fallbackScreenCaptureProfile(video);
+  return { width, height };
 }
 
 async function startBrowserScreenShare() {
@@ -11975,13 +12005,12 @@ async function captureScreenFrame(session) {
   try {
     const video = state.captureVideo; if (!video.videoWidth || !video.videoHeight) return;
     if (state.screenFallbackViewerCount <= 0) return;
-    const fallback = fallbackScreenCaptureSize(video);
+    const fallback = fallbackScreenCaptureProfile(video);
     const canvas = state.captureCanvas; const width = fallback.width; const height = fallback.height;
     if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
     canvas.getContext('2d', { alpha: false }).drawImage(video, 0, 0, width, height); drawLocalScreenPreview(canvas);
     if (state.socketAuthenticated && state.socket.connected && state.screenShareActive) {
-      const quality = ({ balanced: .62, high: .72, ultra: .8 })[state.desktopShareSettings?.quality] || .72;
-      const blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+      const blob = await canvasToBlob(canvas, 'image/jpeg', fallback.quality);
       if (blob && session === state.captureSession && state.localCapture) {
         const data = await blob.arrayBuffer();
         sendCapturedScreenFrame({ sequence: ++state.captureSequence, width, height, data });
@@ -12342,15 +12371,25 @@ function updatePlayerTransform() {
   const transform = `rotate(${state.viewRotation}deg) scale(${state.viewZoom})`;
   transformedPlayerViews().forEach((view) => { view.style.transform = transform; view.style.transformOrigin = 'center center'; });
   elements.zoomLevel.textContent = `${Math.round(state.viewZoom * 100)}%`;
+  const mode = state.viewOrientationMode || 'portrait';
+  [['portraitViewBtn', 'portrait'], ['landscapeViewBtn', 'landscape'], ['autoLandscapeViewBtn', 'auto-landscape']].forEach(([id, value]) => {
+    const button = elements[id];
+    if (!button) return;
+    const selected = mode === value;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
 }
 
-async function setPlayerOrientation(orientation) {
-  state.viewRotation = orientation === 'landscape' ? 90 : 0;
+async function setPlayerOrientation(orientation, { silent = false } = {}) {
+  const mode = ['portrait', 'landscape', 'auto-landscape'].includes(orientation) ? orientation : 'portrait';
+  state.viewOrientationMode = mode;
+  state.viewRotation = mode === 'portrait' ? 0 : 90;
   updatePlayerTransform();
   try {
-    if (document.fullscreenElement && screen.orientation?.lock) await screen.orientation.lock(orientation === 'landscape' ? 'landscape' : 'portrait');
+    if (isPlayerFullscreen() && screen.orientation?.lock) await screen.orientation.lock(mode === 'portrait' ? 'portrait' : 'landscape');
   } catch (_) {}
-  toast(orientation === 'landscape' ? '画面已切换为横屏方向' : '画面已切换为竖屏方向', 'success');
+  if (!silent) toast(mode === 'portrait' ? '画面已切换为竖屏方向' : mode === 'landscape' ? '画面已切换为横屏方向' : '已启用自动横屏', 'success');
 }
 
 function changePlayerZoom(delta) {
@@ -12359,7 +12398,7 @@ function changePlayerZoom(delta) {
 }
 
 function resetPlayerTransform() {
-  state.viewRotation = 0; state.viewZoom = 1; updatePlayerTransform();
+  state.viewOrientationMode = 'portrait'; state.viewRotation = 0; state.viewZoom = 1; updatePlayerTransform();
   try { screen.orientation?.unlock?.(); } catch (_) {}
 }
 
@@ -13349,7 +13388,7 @@ function updateAdministrativeAccess() {
   if (!canManageChat) closeChatManager();
 }
 
-async function adminAction(action, extra = {}) { return emitAck('admin-action', { action, adminPassword: elements.adminPassword.value, ...extra }); }
+async function adminAction(action, extra = {}) { return emitAck('admin-action', { action, adminPassword: elements.adminPassword?.value || '', ...extra }); }
 async function loadAdminSettings({ silent = false } = {}) {
   if (!state.authenticated) {
     if (silent) return;
@@ -14410,7 +14449,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.3.2'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.3.3'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }

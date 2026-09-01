@@ -3,7 +3,7 @@ Set-Location -LiteralPath $PSScriptRoot
 Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 
 $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot 'package.json') | ConvertFrom-Json
-if ([string]$manifest.version -ne '2.3.2') { throw 'package.json version must be 2.3.2.' }
+if ([string]$manifest.version -ne '2.3.3') { throw 'package.json version must be 2.3.3.' }
 $expectedProductName = [string]$manifest.build.productName
 if ([string]::IsNullOrWhiteSpace($expectedProductName)) { throw 'package.json build.productName is required.' }
 
@@ -92,4 +92,4 @@ try {
 Get-ChildItem -LiteralPath $distRoot -File | Sort-Object Name | ForEach-Object {
     Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName
 }
-Write-Host 'Windows and Android v2.3.2 build assets are ready in root dist/.' -ForegroundColor Green
+Write-Host 'Windows and Android v2.3.3 build assets are ready in root dist/.' -ForegroundColor Green

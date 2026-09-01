@@ -628,6 +628,7 @@ textarea:focus { border-color: var(--pink); box-shadow: 0 0 0 3px #52c7b820; }
 .fullscreen-transform-controls { display: flex; align-items: center; gap: 4px; padding: 4px; background: #080b0dcc; border: 1px solid #ffffff20; border-radius: 8px; box-shadow: 0 10px 30px #0007; }
 .fullscreen-transform-controls button { min-width: 40px; min-height: 34px; padding: 6px 9px; background: transparent; border: 0; box-shadow: none; }
 .fullscreen-transform-controls button:hover, .fullscreen-transform-controls button:focus-visible { background: #ffffff15; outline: none; }
+.fullscreen-transform-controls button.active { color: var(--pink-2, #ff8fbe); background: color-mix(in srgb, var(--pink, #ec6698) 22%, transparent); }
 .fullscreen-transform-controls output { min-width: 48px; color: #fff; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
 .notice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
 .notice-options label { min-width: 0; }
@@ -1835,6 +1836,21 @@ body.android-client .chat-panel {
   border-radius: 10px;
 }
 body.android-client .chat-panel.mobile-chat-collapsed { min-height: 58px; }
+/* Expanded mobile chat must participate in normal document flow.  The old
+   min-height/overflow combination let the emoji grid paint over the controls
+   below it and clipped the last rows inside Android WebView. */
+body.android-client .chat-panel:not(.mobile-chat-collapsed) {
+  min-height: max-content;
+  height: auto;
+  overflow: visible;
+  grid-template-rows: auto auto auto auto minmax(160px, 42dvh) auto auto auto;
+}
+body.android-client .chat-panel:not(.mobile-chat-collapsed) .chat-history {
+  min-height: 160px;
+  height: clamp(160px, 42dvh, 420px);
+  max-height: 420px;
+  overflow-y: auto;
+}
 body.android-client .chat-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1858,6 +1874,15 @@ body.android-client .chat-form > select.is-hidden + input { grid-column: 1 / -1;
 body.android-client .chat-form button { min-width: 0; min-height: 48px; padding-inline: 5px; }
 body.android-client .reaction-bar { min-height: 54px; padding: 4px 9px 8px; gap: 7px; overflow-x: auto; }
 body.android-client .reaction-bar button { min-width: 44px; min-height: 44px; }
+body.android-client .emoji-toolbar { min-width: 0; align-items: center; padding-inline: 9px; }
+body.android-client .emoji-toolbar > label { min-width: 0; flex: 0 0 auto; }
+body.android-client .emoji-toolbar > .emoji-bar {
+  flex: 1 1 100%;
+  min-width: 0;
+  max-height: 144px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 body.android-client .side-panel { top: 0; bottom: 0; width: 100vw; max-width: none; padding-top: max(12px, env(safe-area-inset-top)); border-radius: 0; }
 
 @media (orientation: landscape) and (max-height: 560px) and (max-width: 1000px) {
@@ -2999,6 +3024,12 @@ body.android-client .side-panel.mobile-open { transform: translateX(0); }
     border-radius: 6px;
     background: color-mix(in srgb, var(--theme-panel-2) 88%, transparent);
   }
+  /* Keep the mobile control stack below the player in document flow; never
+     let an expanded chat or emoji picker cover the playback toolbar. */
+  .theater:not(.chat-expanded) .theater-toolbar,
+  .theater:not(.chat-expanded) .owner-controls,
+  .theater:not(.chat-expanded) .chat-panel { position: relative; z-index: 1; }
+  .theater:not(.chat-expanded) .player-container { z-index: 0; }
 }
 
 body.android-client .theater[data-mobile-module-active="library"] .chat-panel,

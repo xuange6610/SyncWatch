@@ -66,6 +66,9 @@ async function main() {
     const firstLogin = await acceptAgreement(first, await ack(first, 'host-passwordless-management-login', { hostToken, deviceId: 'admin-one' }));
     assert.equal(firstLogin.success, true, firstLogin.error);
     assert.equal(firstLogin.sessionMode, 'management');
+    const applicationRefresh = await ack(first, 'admin-action', { action: 'get-application-requests' });
+    assert.equal(applicationRefresh.success, true, applicationRefresh.error);
+    assert.ok(applicationRefresh.applications && Array.isArray(applicationRefresh.applications.registrationRequests));
     assert.equal(firstLogin.capabilities.canSetInitialAccountPassword, true);
     assert.equal(firstLogin.capabilities.canSkipInitialAccountPasswordVerification, false,
       '本机免密会话不能跳过首次改密的当前密码校验');

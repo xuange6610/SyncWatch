@@ -34,6 +34,10 @@ assert.match(server, /screenWebrtcViewers:\s*new Set\(\)/);
 assert.match(server, /onSafe\('screen-share-transport-state'/);
 assert.match(server, /screenWebrtcViewers\.has\(targetSocket\.id\)/);
 assert.match(app, /fallbackScreenCaptureSize/);
+assert.match(app, /function fallbackScreenCaptureProfile\([\s\S]{0,1200}screenFrameAckLatency/,
+  'Tunnel fallback must adapt capture dimensions and JPEG quality to measured ACK latency');
+assert.match(app, /function screenCaptureDelay\(\)[\s\S]{0,500}screenFrameAckLatency > 900/,
+  'Tunnel fallback capture cadence must back off only when ACK latency is actually high');
 assert.doesNotMatch(app, /balanced:\s*6_000_000,\s*high:\s*14_000_000,\s*ultra:\s*28_000_000/);
 
 // Audio fallback is interactive, ~20 ms, compact PCM and recoverable after an
