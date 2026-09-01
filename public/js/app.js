@@ -13320,12 +13320,24 @@ function switchSideTab(tab) {
 }
 function setMobileModuleActive(module) {
   if (elements.theater) elements.theater.dataset.mobileModuleActive = module;
+  /* The expanded-chat layout is a module state, not a permanent room state.
+     Clearing it when returning to Watch restores the toolbar (including
+     Fullscreen) after repeated Chat ↔ Watch taps. */
+  elements.theater?.classList.toggle('chat-expanded', module === 'chat' && !state.mobileChatCollapsed);
   document.querySelectorAll('[data-mobile-module]').forEach((button) => {
     button.classList.toggle('active', button.dataset.mobileModule === module);
   });
 }
 
 function openMobileModule(module) {
+  /* Expand chat before applying the active module state.  The previous order
+     left chat-expanded=false when the panel started collapsed, so the first
+     tap could render a half-height panel and make the next tap appear dead. */
+  if (module === 'chat' && state.mobileChatCollapsed) {
+    state.mobileChatCollapsed = false;
+    try { localStorage.setItem('syncwatchMobileChatCollapsed', '0'); } catch (_) {}
+    applyMobileChatCollapsed();
+  }
   setMobileModuleActive(module);
   elements.filePanel?.classList.remove('mobile-open');
   elements.userPanel?.classList.remove('mobile-open');
@@ -13338,11 +13350,6 @@ function openMobileModule(module) {
     return;
   }
   if (module === 'chat') {
-    if (state.mobileChatCollapsed) {
-      state.mobileChatCollapsed = false;
-      try { localStorage.setItem('syncwatchMobileChatCollapsed', '0'); } catch (_) {}
-      applyMobileChatCollapsed();
-    }
     /* Use an immediate document scroll on touch devices.  Smooth scrolling
        continues after the next tap and can move the module bar underneath a
        fixed side panel, making the following button appear unresponsive. */

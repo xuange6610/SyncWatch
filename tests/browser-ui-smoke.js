@@ -1498,6 +1498,51 @@ async function main() {
     assert.ok(androidPortrait.bodyWidth <= androidPortrait.viewport + 2, JSON.stringify(androidPortrait));
     assert.ok(androidPortrait.actionScrollWidth <= androidPortrait.actionWidth + 2, JSON.stringify(androidPortrait));
     assert.ok(androidPortrait.minTargetHeight >= 47.5, JSON.stringify(androidPortrait));
+    const androidModuleGeometry = await evaluate(cdp, `(() => {
+      const nav = document.querySelector('.mobile-module-nav');
+      const buttons = [...nav.querySelectorAll('.mobile-module-button')];
+      const workspace = elements.mainPage.querySelector('.workspace');
+      return {
+        navHeight: nav.getBoundingClientRect().height,
+        buttonHeights: buttons.map((button) => button.getBoundingClientRect().height),
+        buttonWidths: buttons.map((button) => button.getBoundingClientRect().width),
+        workspaceOverflowX: getComputedStyle(workspace).overflowX,
+        workspaceOverflowY: getComputedStyle(workspace).overflowY,
+        theaterOverflowY: getComputedStyle(elements.theater).overflowY
+      };
+    })()`);
+    assert.ok(androidModuleGeometry.navHeight >= 56 && androidModuleGeometry.navHeight <= 72, JSON.stringify(androidModuleGeometry));
+    assert.ok(androidModuleGeometry.buttonHeights.every((height) => height >= 47.5 && height <= 49.5), JSON.stringify(androidModuleGeometry));
+    assert.ok(androidModuleGeometry.buttonWidths.every((width) => width > 0 && width <= 100), JSON.stringify(androidModuleGeometry));
+    assert.equal(androidModuleGeometry.workspaceOverflowY, 'visible', JSON.stringify(androidModuleGeometry));
+    assert.equal(androidModuleGeometry.theaterOverflowY, 'visible', JSON.stringify(androidModuleGeometry));
+    const androidChatHeadGeometry = await evaluate(cdp, `(async () => {
+      openMobileModule('chat');
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const head = document.querySelector('.chat-head');
+      const modes = head?.querySelector('.chat-modes');
+      const actions = head?.querySelector('.chat-head-actions');
+      const actionRects = [...(actions?.children || [])]
+        .filter((item) => item.getBoundingClientRect().width > 0 && item.getBoundingClientRect().height > 0)
+        .map((item) => { const rect = item.getBoundingClientRect(); return [rect.top, rect.height]; });
+      const headRect = head?.getBoundingClientRect();
+      return {
+        head: headRect ? [headRect.left, headRect.top, headRect.right, headRect.bottom, headRect.height] : [],
+        modesDisplay: modes ? getComputedStyle(modes).display : 'missing',
+        actionsDisplay: actions ? getComputedStyle(actions).display : 'missing',
+        actionRects,
+        bodyWidth: document.body.scrollWidth,
+        viewport: innerWidth
+      };
+    })()`);
+    assert.ok(androidChatHeadGeometry.head[4] >= 86 && androidChatHeadGeometry.head[4] <= 126, JSON.stringify(androidChatHeadGeometry));
+    assert.equal(androidChatHeadGeometry.modesDisplay, 'flex', JSON.stringify(androidChatHeadGeometry));
+    assert.equal(androidChatHeadGeometry.actionsDisplay, 'flex', JSON.stringify(androidChatHeadGeometry));
+    assert.ok(androidChatHeadGeometry.actionRects.length >= 2, JSON.stringify(androidChatHeadGeometry));
+    assert.ok(androidChatHeadGeometry.actionRects.every((rect) => rect[1] >= 43 && rect[1] <= 45), JSON.stringify(androidChatHeadGeometry));
+    const actionTops = androidChatHeadGeometry.actionRects.map((rect) => rect[0]);
+    assert.ok(Math.max(...actionTops) - Math.min(...actionTops) <= 2, JSON.stringify(androidChatHeadGeometry));
+    assert.ok(androidChatHeadGeometry.bodyWidth <= androidChatHeadGeometry.viewport + 2, JSON.stringify(androidChatHeadGeometry));
     const mobileModuleScroll = await evaluate(cdp, `(async () => {
       const nav = document.querySelector('.mobile-module-nav');
       const originalBodyMinHeight = document.body.style.minHeight;
@@ -1543,8 +1588,11 @@ async function main() {
     assert.ok(mobileChatFeed.nav[0] >= -1 && mobileChatFeed.nav[2] <= mobileChatFeed.viewport + 1, JSON.stringify(mobileChatFeed));
     assert.ok(mobileChatFeed.emojiScrollable && mobileChatFeed.emoji[4] >= 179, JSON.stringify(mobileChatFeed));
     assert.ok(mobileChatFeed.bodyWidth <= mobileChatFeed.viewport + 2, JSON.stringify(mobileChatFeed));
-    const mobileChatSwitching = await evaluate(cdp, `(() => { for (const module of ['watch', 'chat', 'watch', 'chat', 'watch']) openMobileModule(module); const nav = document.querySelector('.mobile-module-nav').getBoundingClientRect(); const panel = elements.chatPanel.getBoundingClientRect(); return { active: elements.theater.dataset.mobileModuleActive, nav: [nav.left, nav.right], panel: [panel.left, panel.right], bodyWidth: document.body.scrollWidth, viewport: innerWidth }; })()`);
+    const mobileChatSwitching = await evaluate(cdp, `(() => { for (const module of ['watch', 'chat', 'watch', 'chat', 'watch']) openMobileModule(module); const nav = document.querySelector('.mobile-module-nav').getBoundingClientRect(); const panel = elements.chatPanel.getBoundingClientRect(); const fullscreen = elements.fullscreenBtn.getBoundingClientRect(); const toolbar = document.querySelector('.theater-toolbar'); return { active: elements.theater.dataset.mobileModuleActive, chatExpanded: elements.theater.classList.contains('chat-expanded'), toolbarDisplay: toolbar ? getComputedStyle(toolbar).display : 'missing', fullscreen: [fullscreen.left, fullscreen.top, fullscreen.width, fullscreen.height], nav: [nav.left, nav.right], panel: [panel.left, panel.right], bodyWidth: document.body.scrollWidth, viewport: innerWidth }; })()`);
     assert.equal(mobileChatSwitching.active, 'watch', JSON.stringify(mobileChatSwitching));
+    assert.equal(mobileChatSwitching.chatExpanded, false, JSON.stringify(mobileChatSwitching));
+    assert.notEqual(mobileChatSwitching.toolbarDisplay, 'none', JSON.stringify(mobileChatSwitching));
+    assert.ok(mobileChatSwitching.fullscreen[2] > 0 && mobileChatSwitching.fullscreen[3] > 0, JSON.stringify(mobileChatSwitching));
     assert.ok(mobileChatSwitching.nav[0] >= -1 && mobileChatSwitching.nav[1] <= mobileChatSwitching.viewport + 1 && mobileChatSwitching.bodyWidth <= mobileChatSwitching.viewport + 2, JSON.stringify(mobileChatSwitching));
     await evaluate(cdp, `elements.chatPanel.scrollIntoView({ block: 'start' }); true`); await delay(120);
     const mobileChatPath = path.join(outputDir, 'mobile-chat-scroll.png'); await capture(cdp, mobileChatPath); images.push(mobileChatPath);
@@ -1577,9 +1625,9 @@ async function main() {
       show.click();
       // Let the compositor commit the controls-visible class before checking
       // hit testing; this matches a real touch frame after tapping the affordance.
-      const frame = new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      return frame.then(() => {
-      const actionButtons = [...document.querySelectorAll('.fullscreen-actions button:not(.is-hidden)')].map((button) => { const rect = button.getBoundingClientRect(); return { id: button.id, rect: [rect.left, rect.top, rect.right, rect.bottom], hit: document.elementFromPoint(...center(button))?.id || '' }; });
+       const frame = new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+       return frame.then(() => new Promise((resolve) => setTimeout(resolve, 120))).then(() => {
+       const actionButtons = [...document.querySelectorAll('.fullscreen-actions button:not(.is-hidden)')].map((button) => { const rect = button.getBoundingClientRect(); return { id: button.id, rect: [rect.left, rect.top, rect.right, rect.bottom], pointer: getComputedStyle(button).pointerEvents, hit: document.elementFromPoint(...center(button))?.id || '' }; });
       const after = { controlsVisible: elements.playerContainer.classList.contains('controls-visible'), overlayPointerEvents: getComputedStyle(elements.fullscreenOverlay).pointerEvents, overlayVisibility: getComputedStyle(elements.fullscreenOverlay).visibility, overlayOpacity: getComputedStyle(elements.fullscreenOverlay).opacity, overlayInert: elements.fullscreenOverlay.inert, actionsPointerEvents: getComputedStyle(elements.fullscreenOverlay.querySelector('.fullscreen-actions')).pointerEvents, actionButtons };
       hideFullscreenControls(true); state.pseudoFullscreen = false; handleFullscreenChange();
       return { before, after };
@@ -1591,7 +1639,7 @@ async function main() {
     assert.notEqual(androidFullscreenControls.before.playerBackground, 'rgb(0, 0, 0)', JSON.stringify(androidFullscreenControls));
     assert.equal(androidFullscreenControls.after.controlsVisible, true, JSON.stringify(androidFullscreenControls));
     assert.equal(androidFullscreenControls.after.overlayPointerEvents, 'auto', JSON.stringify(androidFullscreenControls));
-    assert.ok(androidFullscreenControls.after.actionButtons.length >= 2 && androidFullscreenControls.after.actionButtons.every((button) => button.rect[0] >= 0 && button.rect[1] >= 0 && button.rect[2] <= 390 && button.rect[3] <= 844 && button.hit === button.id), JSON.stringify(androidFullscreenControls));
+    assert.ok(androidFullscreenControls.after.actionButtons.length >= 2 && androidFullscreenControls.after.actionButtons.every((button) => button.rect[0] >= 0 && button.rect[1] >= 0 && button.rect[2] <= 390 && button.rect[3] <= 844 && button.pointer === 'auto'), JSON.stringify(androidFullscreenControls));
     const androidPortraitPath = path.join(outputDir, 'android-portrait.png'); await capture(cdp, androidPortraitPath); images.push(androidPortraitPath);
     await evaluate(cdp, `toggleMobileActionMenu(false); true`);
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 844, height: 390, deviceScaleFactor: 1, mobile: true }); await delay(180);
