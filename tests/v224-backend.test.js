@@ -138,7 +138,10 @@ async function uploadVideo(baseUrl, token, filename, content) {
     assert.equal(viewPreferences.success, true, viewPreferences.error);
     assert.deepEqual(viewPreferences.profile.viewPreferences, {
       conciseMode: true, chatOnly: true, danmakuColor: '#12abef', danmakuFontSize: 31,
-      libraryCollapsed: true, membersPanelCollapsed: true, memberDetailsCollapsed: true
+      libraryCollapsed: true, membersPanelCollapsed: true, memberDetailsCollapsed: true,
+      shortcuts: {
+        appFullscreen: 'F12', fullscreenChat: 'F2', fullscreenLock: 'L', closeOverlay: 'Escape'
+      }
     });
     let conciseMemberSawScreenNotice = false;
     member.on('screen-notice', () => { conciseMemberSawScreenNotice = true; });
