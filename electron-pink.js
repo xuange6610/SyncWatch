@@ -400,7 +400,10 @@ function normalizeAllowedHosts(value) {
 
 function normalizeServerSettings(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('server-config.json 顶层必须是 JSON 对象');
-  const port = Object.prototype.hasOwnProperty.call(input, 'port') ? validPort(input.port) : DEFAULT_PORT;
+  const rawPort = Object.prototype.hasOwnProperty.call(input, 'port') ? input.port : DEFAULT_PORT;
+  // Older portable profiles could persist 0 after an automatic fallback.
+  // Migrate that legacy marker to the stable default instead of failing boot.
+  const port = rawPort === 0 || String(rawPort).trim() === '0' ? DEFAULT_PORT : validPort(rawPort);
   if (port === null) throw new Error('server-config.json 的 port 必须是 1-65535 之间的整数');
   const publicUrl = normalizePublicUrl(input.publicUrl);
   const allowedHosts = normalizeAllowedHosts(input.allowedHosts);
@@ -535,7 +538,10 @@ function dataFileManifest(root) {
   const walk = (directory) => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
       const absolute = path.join(directory, entry.name);
-      if (entry.isDirectory()) walk(absolute);
+      if (entry.isDirectory()) {
+        if (entry.name === '.syncwatch-instance.lock' || entry.name.startsWith('.syncwatch-instance.lock.')) continue;
+        walk(absolute);
+      }
       else if (entry.isFile()) output.set(path.relative(root, absolute), fs.statSync(absolute).size);
     }
   };
@@ -554,7 +560,16 @@ async function migrateLegacyData() {
   fs.mkdirSync(DEFAULT_DATA_DIR, { recursive: true });
   atomicWriteJson(progressFile, { source: LEGACY_DATA_DIR, destination: DEFAULT_DATA_DIR, startedAt: new Date().toISOString() });
   await fs.promises.cp(LEGACY_DATA_DIR, DEFAULT_DATA_DIR, {
-    recursive: true, force: false, errorOnExist: false, preserveTimestamps: true
+    recursive: true, force: false, errorOnExist: false, preserveTimestamps: true,
+    // Runtime ownership markers must never be copied between data roots. A
+    // lock from a previous profile can otherwise look like a live instance
+    // during the first launch of a portable build with existing data.
+    filter: (source) => {
+      const relative = path.relative(LEGACY_DATA_DIR, source);
+      if (!relative) return true;
+      const first = relative.split(path.sep)[0];
+      return first !== '.syncwatch-instance.lock' && !first.startsWith('.syncwatch-instance.lock.');
+    }
   });
   JSON.parse(fs.readFileSync(portableConfig, 'utf8'));
   const expected = dataFileManifest(LEGACY_DATA_DIR);

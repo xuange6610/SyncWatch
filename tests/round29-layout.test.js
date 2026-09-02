@@ -160,7 +160,7 @@ assert.match(app, /roomActionsRoomSettingsBtn\?\.classList\.toggle\('is-hidden',
 assert.match(html, /id=["']uploadMinValue["'][\s\S]{0,600}id=["']uploadMaxUnit["']/, '上传限制必须提供文件下限、上限和单位选择');
 assert.match(app, /function uploadSizeBytes\(value, unit\)/, '上传限制单位必须转换为字节后提交');
 assert.match(app, /uploadMinBytes, uploadLimitBytes, uploadTimeLimitSeconds/, '上传限制保存必须同时提交上下限');
-assert.match(app, /headerOnline\?\.closest\('\.header-online-stat'\)\?\.addEventListener\('dblclick', editRoomMaxUsers\)/, '在线成员指标双击必须打开人数上限编辑');
+assert.match(app, /headerOnline\?\.closest\('\.header-online-stat'\)\?\.addEventListener\('dblclick', \(event\) => \{[\s\S]{0,180}event\.stopPropagation\(\);[\s\S]{0,120}editRoomMaxUsers\(\)/, '在线成员指标双击必须打开人数上限编辑且不能冒泡到主题窗口');
 assert.match(app, /function editRoomMaxUsers\(\)[\s\S]{0,900}set-room/, '在线成员人数上限编辑必须复用房间设置权限与服务端动作');
 assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stringify\(state\.loginMusicPreference\)\)/,
   '登录音乐播放、静音与音量偏好必须在本机持久化');

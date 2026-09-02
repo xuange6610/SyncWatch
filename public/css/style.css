@@ -3275,7 +3275,7 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .fullscreen-chat-card { font-size: .78rem; }
   .fullscreen-chat-history { font-size: .74rem; }
 }
-/* v2.3.5 mobile interaction hardening.  Android WebView can retain a
+/* v2.3.6 mobile interaction hardening.  Android WebView can retain a
    compositor layer for a fixed overlay after the controls auto-hide.  Keep
    the small affordance alive on touch devices and make the interactive layer
    explicitly hit-testable while it is open. */

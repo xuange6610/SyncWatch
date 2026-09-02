@@ -1,6 +1,6 @@
 # SyncWatch同步观影 技术架构、模块与依赖说明
 
-适用版本：v2.3.5 同版本纠正更新；新资产完成原子覆盖前，线上旧资产仍保持可下载
+适用版本：v2.3.6 同版本纠正更新；新资产完成原子覆盖前，线上旧资产仍保持可下载
 文档日期：2026-08-27
 
 ## 1. 项目定位
@@ -45,7 +45,7 @@ flowchart TD
     L --> M[开始同步播放、聊天和管理操作]
 ```
 
-启动阶段失败会停在对应节点并返回明确错误：数据目录被另一进程占用时拒绝继续写入；端口占用时提示更换端口；Android 原生 Node 运行库缺失时不伪装成“服务器已启动”。
+启动阶段失败会停在对应节点并返回明确错误：数据目录被另一进程占用时拒绝继续写入；端口占用时提示具体端口并停止启动，不随机切换；旧数据目录迁移会跳过运行锁；Android 原生 Node 运行库缺失时不伪装成“服务器已启动”。
 
 ### 2.2 登录与实时同步调用链
 
@@ -225,7 +225,7 @@ Android APK 内嵌与桌面端相同的 `server/index.js`、`public/**` 和生�
 - 网络质量由独立的顺序 `network-ping` 探测判断，4 秒定时器不会与最长 5 秒的在途探测重叠；连续 3 次超过 500 毫秒或超时才从 `online` 降为 `unstable`，连续 2 次健康样本才恢复。页面进入后台后不发起探测，后台返回的旧 ACK 被丢弃，回前台重置状态并立即重新测量。探测带递增 sequence 和连接 epoch，服务端忽略乱序样本，客户端以 volatile 遥测避免重连后回放旧质量数据。HTMLMediaElement 的 `waiting/stalled` 只进入最多 5 次的渐进媒体恢复流程，离线等待不消耗预算，恢复用尽后可降级到已有流畅版；它不直接触发“网络波动”，本机 socket 断开单独显示“连接中断”。
 - 文本/小说阅读使用独立的 `text-reading-update` 与 `text-reading-state` 事件。服务端保存当前文本 `fileId`、UTF-16 `characterOffset`、归一化位置、页码、更新时间、操作者和递增 `revision`，不把正文放进 Socket 消息；晚加入和重连客户端按 `room.textReading` 恢复。
 - 只有房主或被授予控制权的成员可以更新阅读位置；切换/删除文本会重置状态。客户端忽略旧 revision，并始终保留服务端下发或页码计算出的精确逻辑 `characterOffset`。Range 只把该字符所在的本地视觉行滚动到顶部，窗口 resize 后重新校准；桌面与手机的视觉行首可以不同，但不得回写覆盖权威偏移，房间文件、revision、逻辑锚点和锚点字符必须一致。
-- 屏幕共享支持 Electron 桌面捕获、浏览器能力和 Android MediaProjection。v2.3.5 纠正更新优先为每名观看者建立 WebRTC 音视频连接，连接成功后停止向该观看者转发 JPEG；进入 `disconnected` 时恢复有界 Socket.IO 兜底，轮询/Tunnel 根据 ACK 延迟在 960×540–1440×810 之间自适应 JPEG 尺寸、质量与采集节奏，持续断开后重建 Peer。桌面默认请求原生分辨率、检测到的设备刷新率（上限 240 FPS）、极致画质和系统音频，界面展示系统实际授予值。音频帧兜底采用 48 kHz、1024 帧、Int16 PCM 并兼容旧 Float32 数据；同一会话瞬断会迁移 `audioShare.socketId`，停止、断线超时或切房时才原子清空。共享 offer/answer 按共享者/观看者方向校验并限流。
+- 屏幕共享支持 Electron 桌面捕获、浏览器能力和 Android MediaProjection。v2.3.6 纠正更新优先为每名观看者建立 WebRTC 音视频连接，连接成功后停止向该观看者转发 JPEG；进入 `disconnected` 时恢复有界 Socket.IO 兜底，轮询/Tunnel 根据 ACK 延迟在 960×540–1440×810 之间自适应 JPEG 尺寸、质量与采集节奏，持续断开后重建 Peer。桌面默认请求原生分辨率、检测到的设备刷新率（上限 240 FPS）、极致画质和系统音频，界面展示系统实际授予值。音频帧兜底采用 48 kHz、1024 帧、Int16 PCM 并兼容旧 Float32 数据；同一会话瞬断会迁移 `audioShare.socketId`，停止、断线超时或切房时才原子清空。共享 offer/answer 按共享者/观看者方向校验并限流。
 - 网页 URL 共享由服务端校验 HTTP/HTTPS 地址并保存 `url`、标题、操作者、`updatedAt`/revision；晚加入和重连成员通过 `web-share-state` 恢复同一权威 URL。客户端在带 sandbox 的 iframe 中各自加载，Cookie、登录态、地域、CSP、X-Frame-Options、跨域脚本与页面自身状态不由服务器绕过，因此“同步网址”不等于跨域远程控制；需要像素和交互完全一致时使用浏览器标签页或窗口实时共享。
 - 全屏状态支持横屏、竖屏和手机自动横屏选项、手动缩放、聊天、私聊、弹幕和公告；进入全屏保持当前设备方向，不会自动旋转，方向由用户在控制层选择。
 - Electron、网页和 Android 支持悬浮播放；Android 使用系统画中画能力。
@@ -421,5 +421,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build-server-package.ps1
 - 最终 EXE、APK、服务器 ZIP
 
 `SyncWatch同步观影-Data/` 是运行数据，不属于空白源码发布包；重新发布前应删除真实账户、媒体、聊天、密钥、缓存和旧构建产物。
-
 
