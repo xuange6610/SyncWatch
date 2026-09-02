@@ -58,7 +58,9 @@ assert.equal(electronSettings.normalizeServerSettings({}).networkInterface, 'aut
 assert.equal(electronSettings.normalizeServerSettings({ networkInterface: '  Ethernet  ' }).networkInterface, 'Ethernet');
 assert.equal(electronSettings.normalizeServerSettings({ publicUrl: 'http://Example.com:8080/' }).publicUrl, 'http://example.com:8080');
 assert.deepEqual(electronSettings.normalizeServerSettings({ allowedHosts: 'Movie.Example.com\nmovie.example.com:8443' }).allowedHosts, ['movie.example.com', 'movie.example.com:8443']);
-for (const port of [0, 'abc', 70000, undefined]) {
+assert.equal(electronSettings.normalizeServerSettings({ port: 0 }).port, 20311,
+  '历史自动端口标记 0 必须迁移为默认端口 20311');
+for (const port of ['abc', 70000, undefined]) {
   assert.throws(() => electronSettings.normalizeServerSettings({ port }), /port 必须是 1-65535/);
 }
 for (const allowedHost of ['https://example.com/path', 'user@example.com', 'example.com/path', 'https://user:pass@example.com']) {

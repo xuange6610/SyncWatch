@@ -35,6 +35,6 @@
     "requestedExecutionLevel": "asInvoker"
   },
   "portable": {
-    "artifactName": "SyncWatch-v2.3.5-Full-Offline-Portable-${arch}.exe"
+    "artifactName": "SyncWatch-v2.3.6-Full-Offline-Portable-${arch}.exe"
   }
 }
