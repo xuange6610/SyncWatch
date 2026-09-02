@@ -22,7 +22,7 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.3.5 正在完成全量页面/客户端回归和正式构建，发布前保持 pending；本版本只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.3.5 已完成源码回归并进入最终 Windows/Android 构建，发布前保持 pending；本版本只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
 当前正式发布：[v2.3.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.4)；v2.3.5 已完成源码回归，待 GitHub 远端资产验收后再切换 Latest；[v2.3.5 发布说明](docs/release-notes-v2.3.5.md)记录本轮修复范围。
 
