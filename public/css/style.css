@@ -2443,6 +2443,12 @@ body.android-client .topbar-actions .share-link-button .button-label { min-width
 .header-online-value i { font-style: normal; opacity: .7; }
 .header-online-stat[data-density="compact"] .header-online-value { font-size: 10px; }
 .header-online-stat[data-density="tight"] .header-online-value { font-size: 8px; }
+.header-online-stat { cursor: pointer; }
+.upload-size-limit-row { align-items: end; }
+.upload-size-limit-row label { display: flex; flex-wrap: wrap; gap: 8px; }
+.upload-size-limit-row label > input { flex: 1 1 10rem; }
+.upload-size-limit-row input { min-width: 0; }
+.upload-size-limit-row select { min-width: 72px; }
 
 .account-audit-log-card { width: min(980px, 100%); }
 .account-audit-toolbar {
@@ -3269,7 +3275,7 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .fullscreen-chat-card { font-size: .78rem; }
   .fullscreen-chat-history { font-size: .74rem; }
 }
-/* v2.3.4 mobile interaction hardening.  Android WebView can retain a
+/* v2.3.5 mobile interaction hardening.  Android WebView can retain a
    compositor layer for a fixed overlay after the controls auto-hide.  Keep
    the small affordance alive on touch devices and make the interactive layer
    explicitly hit-testable while it is open. */

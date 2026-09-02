@@ -46,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.3.4';
+const APP_VERSION = 'v2.3.5';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -238,6 +238,13 @@ const DEFAULT_USER_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024 * 1024;
 const MAX_ROOM_STORAGE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024 * 1024;
 const SUBTITLE_LIMIT_BYTES = 10 * 1024 * 1024;
 const TEXT_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
+function formatBytesForUploadError(bytes) {
+  const value = Math.max(0, Number(bytes) || 0);
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = value; let index = 0;
+  while (size >= 1024 && index < units.length - 1) { size /= 1024; index += 1; }
+  return `${size.toFixed(size >= 100 || index === 0 ? 0 : 2)}${units[index]}`;
+}
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 const MEMBER_DISCONNECT_GRACE_MS = 10 * 1000;
@@ -1426,7 +1433,7 @@ function freshState() {
     version: 13,
     admin: {
       passwordHash: makePasswordHash('admin888'), accessPasswordHash: '', mustChangePassword: true, passwordChangedAt: new Date().toISOString(),
-      uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, accountTiers: defaultAccountTiers(),
+      uploadMinBytes: 0, uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, accountTiers: defaultAccountTiers(),
       defaultPermissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
       mail: normalizeMailSettings(),
       branding: normalizeBranding(), loginCube: normalizeLoginCubeSettings(), loginMusic: normalizeLoginMusic(), loginVideo: normalizeLoginVideo(), marqueeNotice: normalizeMarqueeNotice(), roomEntryNotice: normalizeRoomEntryNotice(),
@@ -1477,7 +1484,8 @@ function migrateState(input) {
   if (input.admin) {
     next.admin = {
       ...next.admin, ...input.admin,
-      uploadLimitBytes: Math.max(0, Number(input.admin.uploadLimitBytes) || 0),
+      uploadMinBytes: Math.max(0, Math.min(HARD_MEDIA_UPLOAD_LIMIT_BYTES, Math.floor(Number(input.admin.uploadMinBytes) || 0))),
+      uploadLimitBytes: Math.max(0, Math.min(HARD_MEDIA_UPLOAD_LIMIT_BYTES, Math.floor(Number(input.admin.uploadLimitBytes) || 0))),
       uploadTimeLimitSeconds: Math.max(0, Number(input.admin.uploadTimeLimitSeconds) || 0),
       accountTiers: { ...defaultAccountTiers(), ...(input.admin.accountTiers && typeof input.admin.accountTiers === 'object' ? input.admin.accountTiers : {}) },
       defaultPermissions: { ...next.admin.defaultPermissions, ...(input.admin.defaultPermissions || {}) },
@@ -1725,6 +1733,9 @@ function migrateState(input) {
     room.maxUsers = Math.max(2, Math.min(100, Math.floor(Number(room.maxUsers) || 8)));
     room.allowGuests = room.allowGuests !== false;
     room.queue = room.queue.filter((id) => next.files.some((file) => file.id === id && file.roomId === room.id));
+  }
+  if (next.admin.uploadLimitBytes > 0 && next.admin.uploadMinBytes > next.admin.uploadLimitBytes) {
+    next.admin.uploadMinBytes = next.admin.uploadLimitBytes;
   }
   next.version = 13;
   return next;
@@ -2228,10 +2239,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.4.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.5.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.4-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.4-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.5-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.5-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
@@ -6641,6 +6652,7 @@ async function startSyncWatchServer(options = {}) {
       lanAddresses: advertisedNetworkAddresses()
     });
     const uploadLimitBytes = Number(state.admin.uploadLimitBytes);
+    const uploadMinBytes = Number(state.admin.uploadMinBytes);
     return res.json({
     name: 'SyncWatch同步观影', version: APP_VERSION, roomName: roomConfig(state.defaultRoomId).name, roomId: state.defaultRoomId,
     defaultRoomId: state.defaultRoomId, roomsEnabled: true,
@@ -6648,7 +6660,7 @@ async function startSyncWatchServer(options = {}) {
     // Zero explicitly means unlimited. Do not fall back to the basic tier's
     // 10 GiB hint, otherwise clients keep showing a limit after the admin
     // disabled both upload guards.
-    maxUploadBytes: Number.isFinite(uploadLimitBytes) && uploadLimitBytes >= 0 ? uploadLimitBytes : DEFAULT_USER_UPLOAD_LIMIT_BYTES, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
+    minUploadBytes: Number.isFinite(uploadMinBytes) && uploadMinBytes >= 0 ? uploadMinBytes : 0, maxUploadBytes: Number.isFinite(uploadLimitBytes) && uploadLimitBytes >= 0 ? uploadLimitBytes : DEFAULT_USER_UPLOAD_LIMIT_BYTES, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
     allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false,
     supportedExtensions: [...FILE_TYPES.keys()].map((extension) => extension.slice(1)), port: actualPort,
     addresses: addressState.addresses, publicAddress: addressState.shareAddress,
@@ -6723,7 +6735,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.4-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.5-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6810,7 +6822,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.4-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.5-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -7174,6 +7186,15 @@ async function startSyncWatchServer(options = {}) {
       req.off('aborted', cleanupAborted);
       if (timer) clearTimeout(timer);
       if (expired && !error) return next(new Error(`上传超过管理员设置的 ${seconds} 秒限制`));
+      if (!error && req.file && !uploadPolicyExempt(req.syncWatchSession)) {
+        const minimum = Math.max(0, Number(state.admin.uploadMinBytes) || 0);
+        if (minimum > 0 && Number(req.file.size) < minimum) {
+          fs.rmSync(req.file.path, { force: true });
+          const minimumError = new Error(`文件小于管理员设置的最小 ${formatBytesForUploadError(minimum)} 上传限制`);
+          minimumError.code = 'LIMIT_FILE_SIZE_MIN';
+          return next(minimumError);
+        }
+      }
       return next(error);
     });
   }
@@ -12991,11 +13012,11 @@ async function startSyncWatchServer(options = {}) {
           io.to(roomChannel()).emit('access-password-changed', { required: Boolean(undo.before) });
         }
       } else if (undo.kind === 'upload-limits') {
-        const current = { uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds };
+        const current = { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds };
         if (!same(current, undo.after)) changed = false;
         else {
           Object.assign(state.admin, undo.before);
-          for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('upload-limits', { maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds });
+          for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('upload-limits', { minUploadBytes: state.admin.uploadMinBytes, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds });
         }
       } else if (undo.kind === 'room-settings') {
         const current = { name: state.room.name, maxUsers: state.room.maxUsers, requireUploadApproval: state.room.requireUploadApproval, allowGuests: state.room.allowGuests !== false };
@@ -13215,7 +13236,7 @@ async function startSyncWatchServer(options = {}) {
       if (action === 'get-settings') {
        return acknowledgement?.({ success: true, admin: {
         serverAdmin, superAdmin, roomOwner, roomAdministrator, canManageSuperAdmins: user.username === 'admin',
-        uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
+        uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds,
         allowedUploadCategories: allowedUploadCategories(), allowTextUploads: state.admin.allowTextUploads !== false, blockedWords: serverAdmin ? normalizeBlockedWords(state.admin.blockedWords) : [], roomStorageLimitBytes: Math.max(0, Number(state.room.storageLimitBytes) || 0),
         branding: normalizeBranding(state.admin.branding), uiCopy: normalizeUiCopy(state.admin.uiCopy), loginCube: normalizeLoginCubeSettings(state.admin.loginCube), loginMusic: normalizeLoginMusic(state.admin.loginMusic), loginVideo: normalizeLoginVideo(state.admin.loginVideo), marqueeNotice: normalizeMarqueeNotice(state.admin.marqueeNotice),
         f11PromptEnabled: state.admin.f11PromptEnabled !== false,
@@ -13982,17 +14003,19 @@ async function startSyncWatchServer(options = {}) {
         return acknowledgement?.({ success: true, request, granted: approved, message: resultPayload.message });
       }
       if (action === 'set-upload-limits') {
+        const minBytes = payload.uploadMinBytes === undefined ? 0 : Number(payload.uploadMinBytes);
         const bytes = Number(payload.uploadLimitBytes);
         const seconds = Number(payload.uploadTimeLimitSeconds);
-        if (!Number.isFinite(bytes) || bytes < 0 || !Number.isFinite(seconds) || seconds < 0) return acknowledgement?.({ success: false, error: '限制值必须是非负数' });
-        if (bytes > HARD_MEDIA_UPLOAD_LIMIT_BYTES) return acknowledgement?.({ success: false, error: '上传大小不能超过服务器 32GB 安全上限' });
+        if (!Number.isFinite(minBytes) || minBytes < 0 || !Number.isFinite(bytes) || bytes < 0 || !Number.isFinite(seconds) || seconds < 0) return acknowledgement?.({ success: false, error: '限制值必须是非负数' });
+        if (minBytes > HARD_MEDIA_UPLOAD_LIMIT_BYTES || bytes > HARD_MEDIA_UPLOAD_LIMIT_BYTES) return acknowledgement?.({ success: false, error: '上传大小不能超过服务器 32GB 安全上限' });
+        if (bytes > 0 && minBytes > bytes) return acknowledgement?.({ success: false, error: '文件下限不能大于上限' });
         if (seconds > HARD_REQUEST_TIMEOUT_MS / 1000) return acknowledgement?.({ success: false, error: '上传时间不能超过服务器 2 小时安全上限' });
-        const before = { uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds };
-        state.admin.uploadLimitBytes = Math.floor(bytes); state.admin.uploadTimeLimitSeconds = Math.floor(seconds);
+        const before = { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds };
+        state.admin.uploadMinBytes = Math.floor(minBytes); state.admin.uploadLimitBytes = Math.floor(bytes); state.admin.uploadTimeLimitSeconds = Math.floor(seconds);
         persist();
-        recordOperation({ actor: user.username, action: 'upload-limits', summary: '修改服务器上传限制', scope: 'server', undo: { kind: 'upload-limits', before, after: { uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds } } });
-        for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('upload-limits', { maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds });
-        return acknowledgement?.({ success: true, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, message: bytes || seconds ? '上传限制已保存' : '已取消上传大小和时长限制' });
+        recordOperation({ actor: user.username, action: 'upload-limits', summary: '修改服务器上传限制', scope: 'server', undo: { kind: 'upload-limits', before, after: { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds } } });
+        for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('upload-limits', { minUploadBytes: state.admin.uploadMinBytes, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds });
+        return acknowledgement?.({ success: true, minUploadBytes: state.admin.uploadMinBytes, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, message: minBytes || bytes || seconds ? '上传限制已保存' : '已取消上传大小和时长限制' });
       }
       if (action === 'set-room-storage-limit') {
         const targetRoomId = normalizeRoomId(payload.roomId) || currentRoomId();
@@ -15190,6 +15213,9 @@ async function startSyncWatchServer(options = {}) {
       return res.status(415).json({ success: false, code: error.code, error: error.message });
     }
     if (error?.code === 'TEXT_FILE_TOO_LARGE') {
+      return res.status(413).json({ success: false, code: error.code, error: error.message });
+    }
+    if (error?.code === 'LIMIT_FILE_SIZE_MIN') {
       return res.status(413).json({ success: false, code: error.code, error: error.message });
     }
     if (error?.code === 'MEDIA_UPLOAD_BANNED') {

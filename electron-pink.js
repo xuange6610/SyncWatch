@@ -18,7 +18,7 @@ const https = require('https');
 const nodeNet = require('net');
 const os = require('os');
 const path = require('path');
-const { execFile, spawn } = require('child_process');
+const { execFile, execFileSync, spawn } = require('child_process');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { fetch: undiciFetch, EnvHttpProxyAgent } = require('undici');
@@ -415,23 +415,43 @@ function selectableNetworkAdapters(interfaces = os.networkInterfaces() || {}) {
   for (const [name, entries] of Object.entries(interfaces || {})) {
     for (const entry of entries || []) {
       const address = String(entry?.address || '');
-      if (entry?.internal || (entry?.family !== 'IPv4' && entry?.family !== 4)
-        || !address || /^(?:0\.0\.0\.0|127\.|169\.254\.)/.test(address)) continue;
-      adapters.push({ name, address, physical: physical.has(address) });
+      if (!physical.has(address)) continue;
+      adapters.push({ name, address, physical: true });
     }
   }
   return adapters.sort((left, right) => Number(right.physical) - Number(left.physical)
     || left.name.localeCompare(right.name, 'zh-CN') || left.address.localeCompare(right.address));
 }
 
-function resolveLanAddress(settings = {}, interfaces = os.networkInterfaces() || {}) {
+function resolveLanAddress(settings = {}, interfaces) {
+  const providedInterfaces = interfaces !== undefined;
+  interfaces = interfaces || os.networkInterfaces() || {};
   const adapters = selectableNetworkAdapters(interfaces);
   const requested = String(settings.networkInterface || 'auto').trim();
   if (requested && requested !== 'auto') {
     const matched = adapters.find((adapter) => adapter.name === requested);
     if (matched) return matched.address;
   }
+  const automatic = providedInterfaces ? '' : detectDefaultRouteAddress();
+  if (automatic) return automatic;
   return physicalNetworkCandidates(interfaces).selected?.address || adapters[0]?.address || '';
+}
+
+function detectDefaultRouteAddress(interfaces) {
+  // Synthetic interface maps used by tests must remain deterministic. On the
+  // real Windows host, prefer the IPv4 attached to the lowest-metric default
+  // route so VPN/TUN adapters are not selected merely by name or enumeration.
+  if (interfaces !== undefined || process.platform !== 'win32') return '';
+  try {
+    const script = "(Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.IPv4Address } | Sort-Object InterfaceMetric | Select-Object -First 1 -ExpandProperty IPv4Address | Select-Object -First 1 -ExpandProperty IPAddress)";
+    const output = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      windowsHide: true, timeout: 1500, encoding: 'utf8'
+    }).trim();
+    const candidate = output.split(/\r?\n/).map((value) => value.trim()).find((value) => /^\d+\.\d+\.\d+\.\d+$/.test(value));
+    if (!candidate) return '';
+    const physical = physicalNetworkCandidates(os.networkInterfaces() || {}).accepted;
+    return physical.some((entry) => entry.address === candidate) ? candidate : '';
+  } catch (_) { return ''; }
 }
 
 function loadServerSettings({ create = false } = {}) {
@@ -444,7 +464,13 @@ function loadServerSettings({ create = false } = {}) {
     } catch (error) { throw new Error(userFacingDesktopError(error, '旧服务器配置文件无法迁移，请检查配置内容', '迁移服务器配置失败')); }
   }
   if (fs.existsSync(SERVER_SETTINGS_FILE)) {
-    try { settings = normalizeServerSettings(JSON.parse(fs.readFileSync(SERVER_SETTINGS_FILE, 'utf8'))); }
+    try {
+      settings = normalizeServerSettings(JSON.parse(fs.readFileSync(SERVER_SETTINGS_FILE, 'utf8')));
+      if (settings.port === 5000) {
+        settings = { ...settings, port: DEFAULT_PORT };
+        atomicWriteJson(SERVER_SETTINGS_FILE, settings);
+      }
+    }
     catch (error) { throw new Error(userFacingDesktopError(error, '服务器配置文件无法读取，请检查配置内容', '读取服务器配置失败')); }
   } else if (create) atomicWriteJson(SERVER_SETTINGS_FILE, settings);
   return settings;
@@ -2463,7 +2489,7 @@ async function startApplication() {
   });
   await updateSplash(58, '正在启动本机服务…', '准备 HTTP、WebSocket 和媒体 Range 服务');
   serverController = await startSyncWatchServer({
-    host: '0.0.0.0', port: startPort, strictPort: false, dataDir, allowedHosts: configuredHosts,
+    host: '0.0.0.0', port: startPort, strictPort: true, dataDir, allowedHosts: configuredHosts,
     publicUrl: activeServerSettings.publicUrl, lanAddress,
     ...(trustedProxies !== undefined ? { trustedProxies } : {}),
     publicDir: path.join(__dirname, 'public'), hostControlToken: HOST_CONTROL_TOKEN, tunnelManager, androidApkPath, clientDownloadPath,

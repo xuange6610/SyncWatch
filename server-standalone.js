@@ -172,7 +172,15 @@ function loadSettings() {
     atomicWrite(SETTINGS_FILE, `${JSON.stringify(defaults, null, 2)}\n`);
     return defaults;
   }
-  try { return normalizeSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))); }
+  try {
+    const settings = normalizeSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')));
+    if (settings.port === 5000) {
+      const migrated = { ...settings, port: 20311 };
+      atomicWrite(SETTINGS_FILE, `${JSON.stringify(migrated, null, 2)}\n`);
+      return migrated;
+    }
+    return settings;
+  }
   catch (error) { throw new Error(`服务器配置文件无法读取：${error.message}`); }
 }
 
@@ -232,7 +240,7 @@ async function main() {
   ];
   const clientDownloadPath = clientDownloadCandidates.find((candidate) => fs.existsSync(candidate)) || '';
   const controller = await startSyncWatchServer({
-    host: '0.0.0.0', port, strictPort: false, portFallbackCount: 20, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
+    host: '0.0.0.0', port, strictPort: true, portFallbackCount: 0, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
     hostControlToken: token, allowedHosts, publicUrl, androidApkPath, clientDownloadPath, tunnelManager,
     ...(trustedProxies !== undefined ? { trustedProxies } : {})
   });

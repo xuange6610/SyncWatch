@@ -22,9 +22,9 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.3.4 正在完成全量页面/客户端回归和正式构建，发布前保持 pending；本版本只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.3.5 正在完成全量页面/客户端回归和正式构建，发布前保持 pending；本版本只提供 Windows、Android 和 Windows 上需要的辅助工具。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-当前正式发布：[v2.3.1](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.1)；v2.3.4 已完成源码回归，待 GitHub 远端资产验收后再切换 Latest；[v2.3.4 发布说明](docs/release-notes-v2.3.4.md)记录本轮修复范围。
+当前正式发布：[v2.3.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.4)；v2.3.5 已完成源码回归，待 GitHub 远端资产验收后再切换 Latest；[v2.3.5 发布说明](docs/release-notes-v2.3.5.md)记录本轮修复范围。
 
 本版本的目标交付清单是 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件（均为可见文件）；发布前必须完成 Release API、Latest 和下载回读核验。
 
@@ -49,19 +49,19 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 | 下载文件 | 运行角色 | 适合谁 | 作用 |
 | --- | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.3.4-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.4/SyncWatch-Experience-Client-Portable-v2.3.4-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
-| [`SyncWatch-v2.3.4-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.4/SyncWatch-v2.3.4-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
-| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.4/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.4/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
-| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.4/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.4/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
-| [`SyncWatch-Android-v2.3.4-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.4/SyncWatch-Android-v2.3.4-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
+| [`SyncWatch-Experience-Client-Portable-v2.3.5-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.5/SyncWatch-Experience-Client-Portable-v2.3.5-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
+| [`SyncWatch-v2.3.5-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.5/SyncWatch-v2.3.5-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
+| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.5/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.5/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.5/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.5/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
+| [`SyncWatch-Android-v2.3.5-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.3.5/SyncWatch-Android-v2.3.5-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
 | [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 10 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
-| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.3.4.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.3.4.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
+| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.3.5.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.3.5.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
 ## 第一次启动服务器
 
 ### 使用服务器 EXE
 
-1. 从 Releases 下载 `SyncWatch-v2.3.4-Full-Offline-Portable-x64.exe`，双击即可开房。
+1. 从 Releases 下载 `SyncWatch-v2.3.5-Full-Offline-Portable-x64.exe`，双击即可开房。
 2. 安装版按向导选择目录并启动；独立完整版和标准版放进普通文件夹后双击。Windows 防火墙询问时，只按你的实际网络环境允许访问。
 3. 浏览器会打开 `http://127.0.0.1:20311`；如果端口被占用，以软件显示的地址为准。
 4. 使用默认管理员账号 `admin`、密码 `admin888` 登录。
@@ -372,6 +372,7 @@ QQ: 2590813506<br>
 - 登录页在短窗口、浏览器缩放、高 DPI 和手机触摸场景下改为顶部起始并由文档统一滚动，底部客户端下载、其他登录方式和版本信息均可继续向下查看；移动端不会再被固定高度或嵌套滚动拦截手指上下滑动。
 - 修复普通手机浏览器在 540px 以下断点被后置固定高度规则覆盖的问题：网页登录现在由文档统一承接触摸滚动；登录音乐静音区域也收敛为一个可操作按钮，不会再同时显示两枚图标。
 - 登录页背景音乐管理现在按曲目列表保存：上传或更换文件会同步更新音乐名称、当前地址和曲目 ID，旧 HTTPS 地址不会继续作为当前曲目；单独填写 HTTPS 地址时会自动加入列表。
+- 管理中心的上传限制可分别填写文件大小下限和上限，并选择 KB、MB、GB 或 TB；顶部在线成员人数指标支持双击快速修改当前房间人数上限，只有房主、房间管理员或超级管理员可操作。
 - 服务器设备的本机管理快捷入口位于登录操作下方，方便第一次使用时直接找到；顶栏保留房间内的常用操作。桌面“选项 / 房间操作 / 设置 / 账号”只有悬停或点击才展开，未点击固定时离开会自动收起；手机端改为完整单列下拉列表，每个按钮都显示功能名称并可纵向滚动。
 - 左右侧栏都有持续高亮的折叠按钮；右侧“在线成员”按钮固定在标题操作区，不会再被滚动边界裁掉。“折叠明细”只精简成员卡片内容，侧栏箭头用于收起整个成员栏。
 - 局域网服务详情的复制按钮会在浏览器剪贴板不可用时自动尝试 Electron 原生剪贴板和兼容回退；桌面“帮助 → 运行信息”也可直接复制/打开局域网地址与数据目录。
@@ -388,5 +389,3 @@ QQ: 2590813506<br>
 “同步观影网址（实时画面）”会打开目标网页并调用系统选择器，请选择对应浏览器标签页或窗口；共享后所有成员看到同一实时画面。启用网页同步时，房间原有视频画面会自动清空。
 
 本地视频上传后会从视频中段随机生成封面。进入“我的影片 → 上传视频管理系统”后，可勾选多个视频并点击“批量随机封面”重新生成，完成后封面会立即同步到所有客户端。影片播放进度会自动保存；下次选择尚未看完的影片时，确认“继续播放”即可从上次位置恢复。
-
-
