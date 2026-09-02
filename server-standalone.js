@@ -22,6 +22,8 @@ const LEGACY_SETTINGS_FILE = path.join(ROOT_DIR, 'server-config.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'server-config.json');
 const HOST_TOKEN_FILE = path.join(DATA_DIR, '.secrets', 'server-host-token.txt');
 const RUNTIME_INFO_FILE = path.join(DATA_DIR, '服务器运行信息.txt');
+const DEFAULT_PORT = 20311;
+const LEGACY_DEFAULT_PORTS = new Set([2311, 5000]);
 
 function validPort(value) {
   if (!['number', 'string'].includes(typeof value)) return null;
@@ -150,7 +152,9 @@ function normalizeAllowedHosts(value) {
 
 function normalizeSettings(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('server-config.json 顶层必须是 JSON 对象');
-  const port = Object.prototype.hasOwnProperty.call(input, 'port') ? validPort(input.port) : 20311;
+  const rawPort = Object.prototype.hasOwnProperty.call(input, 'port') ? input.port : DEFAULT_PORT;
+  const numericPort = Number(rawPort);
+  const port = LEGACY_DEFAULT_PORTS.has(numericPort) ? DEFAULT_PORT : validPort(rawPort);
   if (port === null) throw new Error('server-config.json 的 port 必须是 1-65535 之间的整数');
   return {
     port,
@@ -173,8 +177,10 @@ function loadSettings() {
     return defaults;
   }
   try {
-    const settings = normalizeSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')));
-    if (settings.port === 5000) {
+    const persisted = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    const persistedPort = Number(persisted?.port);
+    const settings = normalizeSettings(persisted);
+    if (persistedPort === 0 || LEGACY_DEFAULT_PORTS.has(persistedPort)) {
       const migrated = { ...settings, port: 20311 };
       atomicWrite(SETTINGS_FILE, `${JSON.stringify(migrated, null, 2)}\n`);
       return migrated;

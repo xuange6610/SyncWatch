@@ -1,8 +1,8 @@
 # cloudflared 与 Node.js 安装使用教程
 
-这两个工具用途不同。普通用户安装 `SyncWatch-v2.3.6-Full-Offline-Portable-x64.exe` 时，不需要另外安装 Node.js，也不需要另外下载 cloudflared；服务器包已经包含所需运行时。只有手工诊断、公网部署、源码开发或独立服务器才需要本教程。
+这两个工具用途不同。普通用户安装 `SyncWatch-v2.3.7-Full-Offline-Portable-x64.exe` 时，不需要另外安装 Node.js，也不需要另外下载 cloudflared；服务器包已经包含所需运行时。只有手工诊断、公网部署、源码开发或独立服务器才需要本教程。
 
-v2.3.6 正在完成最终构建和 Release 验收。Release 中的 Node.js 2 项和 cloudflared 3 项仍需核对官方来源、版本、平台/架构、非空大小与 SHA-256；它们是第三方官方原始分发文件，不由 SyncWatch 源码构建，也不能描述成 SyncWatch 启动程序。
+v2.3.7 正在完成最终构建和 Release 验收。Release 中的 Node.js 2 项和 cloudflared 3 项仍需核对官方来源、版本、平台/架构、非空大小与 SHA-256；它们是第三方官方原始分发文件，不由 SyncWatch 源码构建，也不能描述成 SyncWatch 启动程序。
 
 ![服务器设置中的公网访问和网络诊断](screenshots/public-access-settings.png)
 
@@ -82,4 +82,5 @@ npm run start:server
 - 不要把 Cloudflare Tunnel Token、管理员密码或 `.secrets/` 上传到 Issue。
 - cloudflared 独立文件没有安装服务时，停止进程后删除文件即可；如果使用 Homebrew，运行 `brew uninstall cloudflared`。
 - Windows Node.js 可在“设置 → 应用 → 已安装的应用”中卸载；卸载 Node.js 不会删除 SyncWatch 数据目录。
+
 

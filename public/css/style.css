@@ -3275,7 +3275,7 @@ body.fullscreen-open #clearAllToastsBtn { display: none !important; }
   .fullscreen-chat-card { font-size: .78rem; }
   .fullscreen-chat-history { font-size: .74rem; }
 }
-/* v2.3.6 mobile interaction hardening.  Android WebView can retain a
+/* v2.3.7 mobile interaction hardening.  Android WebView can retain a
    compositor layer for a fixed overlay after the controls auto-hide.  Keep
    the small affordance alive on touch devices and make the interactive layer
    explicitly hit-testable while it is open. */
@@ -3412,3 +3412,4 @@ body.android-client .theater-toolbar .toolbar-module {
 .download-recommended-badge { display: inline-block; margin-right: 7px; padding: 2px 6px; color: #0b1c16; font-size: .72rem; font-weight: 800; border-radius: 999px; background: var(--theme-accent, var(--pink)); }
 .fullscreen-lock-button[data-lock-state="locked"] span:last-child { color: var(--theme-accent, var(--pink-2)); font-weight: 800; }
 .fullscreen-lock-button[data-lock-state="unlocked"] span:last-child { color: #fff; }
+
