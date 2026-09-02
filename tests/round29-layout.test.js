@@ -160,7 +160,11 @@ assert.match(app, /roomActionsRoomSettingsBtn\?\.classList\.toggle\('is-hidden',
 assert.match(html, /id=["']uploadMinValue["'][\s\S]{0,600}id=["']uploadMaxUnit["']/, '上传限制必须提供文件下限、上限和单位选择');
 assert.match(app, /function uploadSizeBytes\(value, unit\)/, '上传限制单位必须转换为字节后提交');
 assert.match(app, /uploadMinBytes, uploadLimitBytes, uploadTimeLimitSeconds/, '上传限制保存必须同时提交上下限');
-assert.match(app, /headerOnline\?\.closest\('\.header-online-stat'\)\?\.addEventListener\('dblclick', \(event\) => \{[\s\S]{0,180}event\.stopPropagation\(\);[\s\S]{0,120}editRoomMaxUsers\(\)/, '在线成员指标双击必须打开人数上限编辑且不能冒泡到主题窗口');
+assert.match(app, /headerOnline\?\.closest\('\.header-online-stat'\)\?\.addEventListener\('dblclick', \(event\) => \{[\s\S]{0,220}event\.preventDefault\(\);[\s\S]{0,120}event\.stopPropagation\(\);[\s\S]{0,120}editRoomMaxUsers\(\)/, '在线成员指标双击必须打开人数上限编辑且不能冒泡到主题窗口');
+assert.match(app, /const stopRoomHeaderThemeShortcut = \(event\) => \{[\s\S]{0,180}event\.preventDefault\(\);[\s\S]{0,100}event\.stopPropagation\(\);/, '房间状态信息双击必须阻止默认行为和主题事件冒泡');
+assert.match(app, /headerStatus\?\.addEventListener\('dblclick', stopRoomHeaderThemeShortcut\)/, '同步状态双击不得打开主题设置');
+assert.match(app, /headerServerPortGroup\?\.addEventListener\('dblclick', stopRoomHeaderThemeShortcut\)/, '服务端口双击不得打开主题设置');
+assert.match(app, /headerRoomName\?\.addEventListener\('dblclick', \(event\) => \{[\s\S]{0,260}event\.preventDefault\(\);[\s\S]{0,120}event\.stopPropagation\(\);[\s\S]{0,180}renameOwnedRoom\(/, '房间名称双击必须打开重命名且不能冒泡到主题窗口');
 assert.match(app, /function editRoomMaxUsers\(\)[\s\S]{0,900}set-room/, '在线成员人数上限编辑必须复用房间设置权限与服务端动作');
 assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stringify\(state\.loginMusicPreference\)\)/,
   '登录音乐播放、静音与音量偏好必须在本机持久化');

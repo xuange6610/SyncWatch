@@ -10,7 +10,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 const runtimeContracts = [
   ['server/index.js', /const DEFAULT_PORT = 20311;/],
   ['electron-pink.js', /const DEFAULT_PORT = 20311;/],
-  ['server-standalone.js', /\? validPort\(input\.port\) : 20311;/],
+  ['server-standalone.js', /const DEFAULT_PORT = 20311;[\s\S]*const rawPort = Object\.prototype\.hasOwnProperty\.call\(input, 'port'\)/],
   ['server/standalone-tunnel.js', /Number\(getPort\?\.\(\)\) \|\| 20311/],
   ['mobile/app/src/main/java/com/xuan/syncwatch/MobileServerService.java', /SERVER_PORT = 20311;/],
   ['mobile/app/src/main/java/com/xuan/syncwatch/MainActivity.java', /setHint\("20311"\)/],

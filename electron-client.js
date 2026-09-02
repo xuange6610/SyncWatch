@@ -4,7 +4,7 @@ const { pathToFileURL } = require('url');
 const { execFile } = require('child_process');
 const { app, BrowserWindow, clipboard, dialog, shell, session, ipcMain, desktopCapturer } = require('electron');
 
-const APP_VERSION = 'v2.3.6';
+const APP_VERSION = 'v2.3.7';
 const APP_NAME = 'SyncWatch同步观影';
 app.setName(APP_NAME);
 if (process.platform === 'win32') app.setAppUserModelId('com.xuan.syncwatch.client');
@@ -300,3 +300,4 @@ else {
 }
 
 module.exports = { normalizeServerAddress };
+

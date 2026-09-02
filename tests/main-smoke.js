@@ -60,6 +60,8 @@ assert.equal(electronSettings.normalizeServerSettings({ publicUrl: 'http://Examp
 assert.deepEqual(electronSettings.normalizeServerSettings({ allowedHosts: 'Movie.Example.com\nmovie.example.com:8443' }).allowedHosts, ['movie.example.com', 'movie.example.com:8443']);
 assert.equal(electronSettings.normalizeServerSettings({ port: 0 }).port, 20311,
   '历史自动端口标记 0 必须迁移为默认端口 20311');
+assert.equal(electronSettings.normalizeServerSettings({ port: 2311 }).port, 20311,
+  '旧版默认端口 2311 必须迁移为默认端口 20311');
 for (const port of ['abc', 70000, undefined]) {
   assert.throws(() => electronSettings.normalizeServerSettings({ port }), /port 必须是 1-65535/);
 }

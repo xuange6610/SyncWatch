@@ -61,6 +61,9 @@ const EPIPE_PRODUCTION_SMOKE = SMOKE_MODE && process.env.SYNCWATCH_EPIPE_CASE ==
 const HOST_CONTROL_TOKEN = String(process.env.SYNCWATCH_HOST_TOKEN || '').trim()
   || crypto.randomBytes(32).toString('base64url');
 const DEFAULT_PORT = 20311;
+// Ports used by older portable builds as their implicit default. These values
+// are migrated only when read from persisted server configuration.
+const LEGACY_DEFAULT_PORTS = new Set([2311, 5000]);
 const DEFAULT_TUNNEL_BYPASS_PROXY = true;
 const QUICK_TUNNEL_ATTEMPT_TIMEOUT_MS = 25000;
 const QUICK_TUNNEL_MAX_ATTEMPTS = 3;
@@ -403,7 +406,9 @@ function normalizeServerSettings(input = {}) {
   const rawPort = Object.prototype.hasOwnProperty.call(input, 'port') ? input.port : DEFAULT_PORT;
   // Older portable profiles could persist 0 after an automatic fallback.
   // Migrate that legacy marker to the stable default instead of failing boot.
-  const port = rawPort === 0 || String(rawPort).trim() === '0' ? DEFAULT_PORT : validPort(rawPort);
+  const numericPort = Number(rawPort);
+  const port = rawPort === 0 || String(rawPort).trim() === '0' || LEGACY_DEFAULT_PORTS.has(numericPort)
+    ? DEFAULT_PORT : validPort(rawPort);
   if (port === null) throw new Error('server-config.json 的 port 必须是 1-65535 之间的整数');
   const publicUrl = normalizePublicUrl(input.publicUrl);
   const allowedHosts = normalizeAllowedHosts(input.allowedHosts);
@@ -468,8 +473,10 @@ function loadServerSettings({ create = false } = {}) {
   }
   if (fs.existsSync(SERVER_SETTINGS_FILE)) {
     try {
-      settings = normalizeServerSettings(JSON.parse(fs.readFileSync(SERVER_SETTINGS_FILE, 'utf8')));
-      if (settings.port === 5000) {
+      const persisted = JSON.parse(fs.readFileSync(SERVER_SETTINGS_FILE, 'utf8'));
+      const persistedPort = Number(persisted?.port);
+      settings = normalizeServerSettings(persisted);
+      if (persistedPort === 0 || LEGACY_DEFAULT_PORTS.has(persistedPort)) {
         settings = { ...settings, port: DEFAULT_PORT };
         atomicWriteJson(SERVER_SETTINGS_FILE, settings);
       }
