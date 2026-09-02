@@ -40,6 +40,7 @@
 - `INSTALL_FAILED_VERIFICATION_FAILURE` 属于 ADB 包校验超时，可只对隔离模拟器关闭校验并重试一次；其他安装错误必须立即失败。
 - `Failure calling service input: Broken pipe (32)` 可能发生在 action 内部的 ADB 初始化，而不是 APK 崩溃。`reactivecircus/android-emulator-runner` 在 `script` 返回后会清理模拟器，因此不能把 smoke 拆到后置步骤；在同一 `script` 内等待 ADB、`sys.boot_completed`，再安装、启动、抓崩溃日志和截图。
 - 原子运行 `33589690484` 在设备已启动后、仓库 smoke 开始前由 Action 内部的 `adb shell input keyevent 82` 收到同一 Broken pipe，说明仅在仓库脚本内重连无法覆盖 Action 初始化窗口。后续在 `pre-emulator-launch-script` 安装 ADB 包装，仅对该 best-effort 解锁命令重试并最终放行，同时将动画设置关闭；APK 安装、版本、启动和崩溃检查仍由仓库 smoke 严格执行。
+- 重跑 `33591670539` 暴露包装器路径错误：真实 ADB 被移动到 SDK 的 `platform-tools/adb.syncwatch-real`，包装器却按仓库 `scripts/` 目录查找，造成后续命令失效并令 job 长时间挂起。修复为从 `ANDROID_HOME` 解析绝对路径；该轮已取消，未替换 Release 资产。
 - 原子运行 `33367347110` 在设备已启动后于 `adb install --no-streaming` 收到 `cmd: Failure calling service package: Broken pipe (32)`；APK 已成功构建，smoke 尚未进入版本/启动检查。该错误属于安装阶段的瞬态 ADB/package-service 断连：脚本现在最多重试 3 次，先 `adb reconnect device`、重启 ADB 并重新等待 `sys.boot_completed`；非该明确错误仍立即失败。修复后必须从新提交的最终 Tag 重新执行一次完整原子发布。
 
 ### 2.5 第三方文件与 GitHub API
