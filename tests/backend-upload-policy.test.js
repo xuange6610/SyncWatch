@@ -135,6 +135,18 @@ async function main() {
 
     const videoUpload = await upload(baseUrl, memberLogin.token, 'small.mp4', 'video/mp4', Buffer.from('12345678'));
     assert.equal(videoUpload.status, 200, videoUpload.body.error);
+    const rangePolicy = await ack(admin, 'admin-action', {
+      action: 'set-upload-limits', uploadMinBytes: 16, uploadLimitBytes: 32, uploadTimeLimitSeconds: 0
+    });
+    assert.equal(rangePolicy.success, true, rangePolicy.error);
+    assert.equal(rangePolicy.minUploadBytes, 16);
+    const belowMinimum = await upload(baseUrl, memberLogin.token, 'below-minimum.mp4', 'video/mp4', Buffer.from('12345678'));
+    assert.equal(belowMinimum.status, 413);
+    assert.equal(belowMinimum.body.code, 'LIMIT_FILE_SIZE_MIN');
+    const reversedRange = await ack(admin, 'admin-action', {
+      action: 'set-upload-limits', uploadMinBytes: 33, uploadLimitBytes: 32, uploadTimeLimitSeconds: 0
+    });
+    assert.equal(reversedRange.success, false);
     assert.equal((await ack(admin, 'admin-action', {
       action: 'set-upload-limits', uploadLimitBytes: 4, uploadTimeLimitSeconds: 0
     })).success, true);

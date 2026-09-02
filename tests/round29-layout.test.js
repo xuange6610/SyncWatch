@@ -150,6 +150,18 @@ assert.match(css, /body\.electron-server \.login-host-shortcuts button\s*\{[^}]*
 assert.match(app, /function readLoginMusicPreference\(\)/);
 assert.match(app, /function handleLoginMusicEnded\(\)/, '登录音乐结束后必须按播放模式处理下一首');
 assert.match(app, /playbackMode/, '登录音乐配置必须保存播放模式');
+assert.match(html, /id=["']loginMusicTrackSelect["'][\s\S]{0,120}选择登录背景音乐/, '登录页当前曲目必须提供服务器歌曲切换下拉框');
+assert.match(app, /function renderLoginMusicPicker\(music = state\.publicConfig\.loginMusic \|\| \{\}\)/, '登录页必须渲染服务器上传的全部歌曲');
+assert.match(app, /applyLoginMusic\(value = \{\}\)[\s\S]{0,700}renderLoginMusicPicker\(music\)/, '服务器下发音乐列表后必须同步刷新当前曲目选择器');
+assert.match(app, /trackId: typeof stored\?\.trackId === 'string'/, '当前曲目选择必须在本机持久化');
+assert.match(html, /id=["']roomActionsMyRoomsBtn["'][\s\S]{0,240}我的房间/, '房间操作菜单必须提供我的房间入口');
+assert.match(html, /id=["']roomActionsRoomSettingsBtn["'][\s\S]{0,240}房间设置/, '房间操作菜单必须提供房间设置入口');
+assert.match(app, /roomActionsRoomSettingsBtn\?\.classList\.toggle\('is-hidden', !canManageRoomSettings\)/, '房间设置入口必须按房间管理权限显示');
+assert.match(html, /id=["']uploadMinValue["'][\s\S]{0,600}id=["']uploadMaxUnit["']/, '上传限制必须提供文件下限、上限和单位选择');
+assert.match(app, /function uploadSizeBytes\(value, unit\)/, '上传限制单位必须转换为字节后提交');
+assert.match(app, /uploadMinBytes, uploadLimitBytes, uploadTimeLimitSeconds/, '上传限制保存必须同时提交上下限');
+assert.match(app, /headerOnline\?\.closest\('\.header-online-stat'\)\?\.addEventListener\('dblclick', editRoomMaxUsers\)/, '在线成员指标双击必须打开人数上限编辑');
+assert.match(app, /function editRoomMaxUsers\(\)[\s\S]{0,900}set-room/, '在线成员人数上限编辑必须复用房间设置权限与服务端动作');
 assert.match(app, /localStorage\.setItem\(LOGIN_MUSIC_PREFERENCE_KEY, JSON\.stringify\(state\.loginMusicPreference\)\)/,
   '登录音乐播放、静音与音量偏好必须在本机持久化');
 assert.match(app, /const loginHostShortcutsVisible\s*=\s*\(!state\.authenticated \|\| state\.managementOnlyAuth\)/,
@@ -164,6 +176,8 @@ assert.match(css, /\.login-page\s*>\s*\.login-now-playing\s*\{\s*z-index:\s*180;
   '登录音乐控制窗口必须位于登录表单之上');
 assert.match(app, /function initializeOnboardingGuide\(\)/, '首次进入必须注册新手引导');
 assert.match(app, /ONBOARDING_GUIDE_KEY/, '新手引导完成状态必须持久化');
+assert.match(app, /function openOnboardingGuide\([\s\S]{0,500}firstRun\)[\s\S]{0,260}writeOnboardingGuideState\(\{ completed: true, version: 1 \}\)/,
+  '新手引导自动提醒首次打开时必须立即记录已提醒，避免重启重复弹出');
 assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*main \{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,
   '移动端登录页必须使用文档滚动，不能被固定 main 高度截断');
 assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*\.login-page \{[^}]*height:\s*auto;[^}]*overflow:\s*visible;[^}]*touch-action:\s*pan-y;/s,
