@@ -339,14 +339,7 @@ jobs:
           arch: x86_64
           emulator-boot-timeout: 900
           disable-animations: false
-          pre-emulator-launch-script: |
-            adb_path="$ANDROID_HOME/platform-tools/adb"
-            real_adb="$ANDROID_HOME/platform-tools/adb.syncwatch-real"
-            if [ ! -x "$real_adb" ]; then
-              mv "$adb_path" "$real_adb"
-            fi
-            cp scripts/android-emulator-adb-wrapper.sh "$adb_path"
-            chmod +x "$adb_path"
+          pre-emulator-launch-script: bash scripts/android-emulator-prepare.sh
           script: bash scripts/android-emulator-smoke.sh
       - name: Preserve Android startup evidence
         if: always()
