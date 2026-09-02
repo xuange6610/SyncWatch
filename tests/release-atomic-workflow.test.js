@@ -257,6 +257,9 @@ assert.match(workflows.windows, /disable-animations:\s*false/,
 assert.match(workflows.windows, /pre-emulator-launch-script:[\s\S]*android-emulator-adb-wrapper\.sh/,
   'Android smoke must install the transient ADB retry wrapper before emulator launch'
 );
+assert.doesNotMatch(workflows.windows, /pre-emulator-launch-script:[\s\S]*set -o pipefail/,
+  'Android emulator pre-launch scripts run under sh and must not use Bash-only options'
+);
 assert.doesNotMatch(workflows.windows, /script:\s*\|[\s\S]{0,300}apk=/);
 assert.ok(fs.statSync(androidEmulatorSmokePath).isFile(), 'Android emulator smoke script must exist');
 assert.ok(fs.statSync(androidAdbWrapperPath).isFile(), 'Android emulator ADB wrapper must exist');
