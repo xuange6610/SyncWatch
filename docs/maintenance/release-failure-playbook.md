@@ -42,6 +42,7 @@
 - 原子运行 `33589690484` 在设备已启动后、仓库 smoke 开始前由 Action 内部的 `adb shell input keyevent 82` 收到同一 Broken pipe，说明仅在仓库脚本内重连无法覆盖 Action 初始化窗口。后续在 `pre-emulator-launch-script` 安装 ADB 包装，仅对该 best-effort 解锁命令重试并最终放行，同时将动画设置关闭；APK 安装、版本、启动和崩溃检查仍由仓库 smoke 严格执行。
 - 重跑 `33591670539` 暴露包装器路径错误：真实 ADB 被移动到 SDK 的 `platform-tools/adb.syncwatch-real`，包装器却按仓库 `scripts/` 目录查找，造成后续命令失效并令 job 长时间挂起。修复为从 `ANDROID_HOME` 解析绝对路径；该轮已取消，未替换 Release 资产。
 - 重跑 `33593663723` 中模拟器和 APK smoke 实际成功，但 pre-launch 脚本使用 `set -euo pipefail`，第三方 Action 通过 `/bin/sh -c` 执行并报 `Illegal option -o pipefail`，使 job 最终失败。pre-launch 脚本必须只使用 POSIX `sh` 语法；应用安装、主 Activity、无崩溃和截图证据均已生成。
+- 重跑 `33596284469` 中第三方 Action 将 `pre-emulator-launch-script` 按换行拆成独立 shell 命令，多行条件块缺少 `fi` 而失败；模拟器和 APK smoke 均成功。后续必须让 pre-launch 只调用单行 `bash scripts/android-emulator-prepare.sh`，把完整逻辑放在独立脚本中。
 - 原子运行 `33367347110` 在设备已启动后于 `adb install --no-streaming` 收到 `cmd: Failure calling service package: Broken pipe (32)`；APK 已成功构建，smoke 尚未进入版本/启动检查。该错误属于安装阶段的瞬态 ADB/package-service 断连：脚本现在最多重试 3 次，先 `adb reconnect device`、重启 ADB 并重新等待 `sys.boot_completed`；非该明确错误仍立即失败。修复后必须从新提交的最终 Tag 重新执行一次完整原子发布。
 
 ### 2.5 第三方文件与 GitHub API

@@ -15,8 +15,10 @@ const workflows = Object.fromEntries(
 );
 const androidEmulatorSmokePath = path.join(root, 'scripts', 'android-emulator-smoke.sh');
 const androidAdbWrapperPath = path.join(root, 'scripts', 'android-emulator-adb-wrapper.sh');
+const androidEmulatorPreparePath = path.join(root, 'scripts', 'android-emulator-prepare.sh');
 const androidEmulatorSmoke = fs.readFileSync(androidEmulatorSmokePath, 'utf8');
 const androidAdbWrapper = fs.readFileSync(androidAdbWrapperPath, 'utf8');
+const androidEmulatorPrepare = fs.readFileSync(androidEmulatorPreparePath, 'utf8');
 
 function count(text, pattern) {
   return [...text.matchAll(pattern)].length;
@@ -254,11 +256,8 @@ assert.match(
 assert.match(workflows.windows, /disable-animations:\s*false/,
   'Android smoke must avoid non-essential emulator settings that can fail during ADB startup'
 );
-assert.match(workflows.windows, /pre-emulator-launch-script:[\s\S]*android-emulator-adb-wrapper\.sh/,
-  'Android smoke must install the transient ADB retry wrapper before emulator launch'
-);
-assert.doesNotMatch(workflows.windows, /pre-emulator-launch-script:[\s\S]*set -o pipefail/,
-  'Android emulator pre-launch scripts run under sh and must not use Bash-only options'
+assert.match(workflows.windows, /pre-emulator-launch-script:\s*bash scripts\/android-emulator-prepare\.sh/,
+  'Android emulator setup must use a standalone script because the Action splits pre-launch lines'
 );
 assert.doesNotMatch(workflows.windows, /script:\s*\|[\s\S]{0,300}apk=/);
 assert.ok(fs.statSync(androidEmulatorSmokePath).isFile(), 'Android emulator smoke script must exist');
@@ -266,6 +265,9 @@ assert.ok(fs.statSync(androidAdbWrapperPath).isFile(), 'Android emulator ADB wra
 assert.match(androidAdbWrapper, /shell input keyevent 82/);
 assert.match(androidAdbWrapper, /for _ in \{1\.\.5\}/);
 assert.match(androidAdbWrapper, /adb\.syncwatch-real/);
+assert.ok(fs.statSync(androidEmulatorPreparePath).isFile(), 'Android emulator prepare script must exist');
+assert.match(androidEmulatorPrepare, /set -eu/);
+assert.match(androidEmulatorPrepare, /platform-tools\/adb\.syncwatch-real/);
 assert.match(androidEmulatorSmoke, /GITHUB_WORKSPACE:\?GITHUB_WORKSPACE is required/);
 assert.match(androidEmulatorSmoke, /adb wait-for-device/);
 assert.match(androidEmulatorSmoke, /SyncWatch-Android-v\$\{version\}-universal\.apk/);
