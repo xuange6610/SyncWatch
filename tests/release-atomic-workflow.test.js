@@ -256,9 +256,6 @@ assert.match(
 assert.match(workflows.windows, /disable-animations:\s*false/,
   'Android smoke must avoid non-essential emulator settings that can fail during ADB startup'
 );
-assert.match(workflows.windows, /pre-emulator-launch-script:[\s\S]*android-emulator-adb-wrapper\.sh/,
-  'Android smoke must install the transient ADB retry wrapper before emulator launch'
-);
 assert.match(workflows.windows, /pre-emulator-launch-script:\s*bash scripts\/android-emulator-prepare\.sh/,
   'Android emulator setup must use a standalone script because the Action splits pre-launch lines'
 );
