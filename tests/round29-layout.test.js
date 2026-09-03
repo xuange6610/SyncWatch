@@ -189,6 +189,11 @@ assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*\.login-page \{[^}]*heigh
 assert.match(css, /body\.android-client main\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,
   'Android WebView 登录页不能嵌套在固定高度 main 滚动容器中');
 assert.match(css, /body\.android-client \.login-page\s*\{[^}]*overflow:\s*visible;[^}]*touch-action:\s*pan-y/s, 'Android 登录页必须支持手指上下滚动');
+assert.match(css, /body\.android-client \.live-voice-bar[\s\S]{0,180}display:\s*none\s*!important/, 'Android 手机端必须彻底隐藏实时语音栏');
+assert.match(css, /body\.android-client #liveVoiceBar[\s\S]{0,180}visibility:\s*hidden\s*!important/, 'Android 手机端实时语音栏必须有最终隐藏兜底');
+assert.match(css, /body\.android-client \.room-tools-module #fullscreenBtn\s*\{[^}]*grid-row:\s*1/s, 'Android 全屏按钮必须位于第一行');
+assert.match(css, /body\.android-client \.room-tools-module \.fullscreen-auto-lock-toolbar\s*\{[^}]*grid-row:\s*1/s, 'Android 全屏自动锁屏必须位于第一行');
+assert.match(app, /for \(const key of \[['"]liveVoiceBar['"],\s*['"]liveVoiceFloating['"]\]\)[\s\S]{0,180}elements\[key\]\?\.remove\(\)/, 'Android 运行时必须从 DOM 移除实时语音组件');
 assert.match(css, /\.login-music-muted-icon\s*\{[^}]*display:\s*none;/, '登录音乐静音图标默认隐藏，避免同一按钮显示成两个按钮');
 assert.match(css, /@media \(max-width:\s*924px\)[\s\S]*body:not\(\.android-client\) main\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/s,
   '普通手机网页登录页必须覆盖 540px 断点留下的固定 main 高度');
@@ -271,5 +276,12 @@ assert.match(app, /if \(locallyBuffering\)[\s\S]{0,260}正在缓冲，暂停定�
   '本机缓冲时必须暂停强制定位，避免公网 Range 请求被反复重置');
 assert.match(proMaxCss, /input:not\(\[type=["']checkbox["']\]\):not\(\[type=["']radio["']\]\),\s*select,\s*textarea\s*\{/,
   '通用表单样式不得把 checkbox 拉高成文本框');
+assert.match(css, /@media \(max-width:\s*924px\)[\s\S]{0,700}#playPauseBtn[\s\S]{0,180}#floatingPlayerBtn\s*\{\s*display:\s*none\s*!important/,
+  '手机端必须隐藏重复播放按钮和悬浮播放按钮');
+assert.match(css, /@media \(max-width:\s*924px\)[\s\S]{0,1000}\.room-tools-module #fullscreenBtn\s*\{\s*grid-column:\s*1;\s*grid-row:\s*1[\s\S]{0,180}\.room-tools-module \.fullscreen-auto-lock-toolbar\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1/,
+  '手机端全屏与全屏自动锁屏必须固定在第一行');
+assert.match(app, /window\.SyncWatchAndroid\s*\|\|\s*window\.matchMedia\?\.\('\(max-width: 924px\)'\)\.matches[\s\S]{0,260}liveVoiceBar/,
+  '手机端初始化必须移除实时语音栏和悬浮语音控件');
 
 console.log('Round 29 HTML/CSS structure, safe defaults, accessibility hooks, and fullscreen reachability passed.');
+
