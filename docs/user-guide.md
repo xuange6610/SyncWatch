@@ -1,6 +1,6 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.3.8 候选版；正式下载以 [GitHub Release v2.3.8](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.8) 为准。发布完成后应核对 8 个维护者资产，页面另有 2 个源码归档，共 10 个可见文件。
+适用范围：v2.3.8 正式版；下载入口为 [GitHub Release v2.3.8](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.8)。该版本已核对 8 个维护者资产，页面另有 2 个源码归档，共 10 个可见文件。
 
 ## 直接使用
 
@@ -145,4 +145,3 @@ powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
 - [技术架构与依赖说明](architecture.md)：桌面端、服务端、前端、Android、数据、依赖版本、构建和测试的详细说明。
 
 版权所有 © xuan
-
