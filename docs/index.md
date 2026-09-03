@@ -26,7 +26,7 @@
 
 ## 当前事实边界
 
-- v2.3.8 已完成源码回归并进入最终 Windows/Android 构建；发布前保持 pending，历史 Release 保持不变。
+- v2.3.8 已完成源码回归、Windows/Android 构建、启动验收和 Release 资产回读，当前为公开 Latest；历史 Release 保持不变。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
 - v2.3.8 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。
@@ -40,4 +40,3 @@
 - 顶栏“选项 / 房间操作 / 设置”展开后始终显示按钮名称；手机端菜单跨列静态展开，避免按钮被内容裁剪。网页登录页与服务器登录页统一由文档承接上下滚动，短屏和高 DPI 下登录卡片仍可完整访问。
 
 维护文档前请先读根目录 [AGENTS.md](../AGENTS.md)、[维护者长期要求](maintenance/maintainer-requirements.md)、[PRODUCT.md](../PRODUCT.md)、[DESIGN.md](../DESIGN.md) 和 [README.md](../README.md)。
-

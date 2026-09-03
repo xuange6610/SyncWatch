@@ -1,8 +1,8 @@
 # SyncWatch同步观影 服务器部署与使用教程
 
-适用版本：v2.3.8 候选版（文档更新于 2026-09-02；正式资产以 Release API 与下载回读为准）
+适用版本：v2.3.8 正式版（文档更新于 2026-09-03；正式资产已通过 Release API 与下载回读核验）
 
-本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；v2.3.8 正在完成正式资产验收，文件名、大小和 SHA-256 以 GitHub Release 页面为准。
+本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；v2.3.8 的文件名、大小和 SHA-256 已完成核验，以 GitHub Release 页面为准。
 
 ## 1. 先理解“程序”和“数据”
 
@@ -104,7 +104,7 @@ SyncWatch同步观影-Server-vX.Y.Z/
 
 ## 4. 自定义端口和公网地址
 
-默认端口为 `20311`。服务器会严格使用配置端口；如果端口被占用会明确提示启动失败，不会静默改用随机端口。实际监听端口会写入 `SyncWatch同步观影-Data/服务器运行信息.txt`。
+默认端口为 `20311`。如果首选端口被占用，服务器会自动选择可用端口并把实际监听端口写入 `SyncWatch同步观影-Data/服务器运行信息.txt`；需要固定端口时可在服务器启动设置中指定。
 
 ### Windows 桌面服务器的网卡选择
 
@@ -722,7 +722,7 @@ Docker 升级时，先备份宿主机 `SyncWatch同步观影-Data/`，再执行 
 
 ### `EADDRINUSE` 或“端口已被占用”
 
-指定端口已被其他程序占用。停止占用进程或修改端口；SyncWatch同步观影 不会自动换端口。
+首选端口被其他程序占用时，SyncWatch同步观影 会自动切换到可用端口，并在运行信息中显示实际地址。若必须使用固定端口，请停止占用进程或在服务器启动设置中关闭自动切换后重试。
 
 ### 外网能打开页面，但登录、同步或聊天断开
 
@@ -798,4 +798,3 @@ Docker 升级时，先备份宿主机 `SyncWatch同步观影-Data/`，再执行 
 - Cloudflare WebSockets：<https://developers.cloudflare.com/network/websockets/>
 - Cloudflare 413 与上传大小限制：<https://developers.cloudflare.com/support/troubleshooting/http-status-codes/4xx-client-error/error-413/>
 - Cloudflare 支持代理的网络端口：<https://developers.cloudflare.com/fundamentals/reference/network-ports/>
-
