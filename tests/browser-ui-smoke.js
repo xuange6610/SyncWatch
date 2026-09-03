@@ -1222,6 +1222,17 @@ async function main() {
     assert.equal(mobileWebActions.androidDownloadAvailable, expectedAndroidDownloadAvailable, JSON.stringify(mobileWebActions));
     assert.equal(mobileWebActions.androidDownloadIndex, mobileWebActions.clientDownloadIndex + 1, JSON.stringify(mobileWebActions));
     const mobileWebActionsPath = path.join(outputDir, 'mobile-web-actions.png'); await capture(cdp, mobileWebActionsPath); images.push(mobileWebActionsPath);
+    const mobilePlaybackControls = await evaluate(cdp, `(() => {
+      const rect = (selector) => { const node = document.querySelector(selector); const box = node?.getBoundingClientRect(); return { display: node ? getComputedStyle(node).display : 'missing', top: box?.top ?? 0, left: box?.left ?? 0, width: box?.width ?? 0, height: box?.height ?? 0 }; };
+      return {
+        voice: rect('#liveVoiceBar'), floatingVoice: rect('#liveVoiceFloating'), duplicatePlay: rect('#playPauseBtn'), floatingPlay: rect('#floatingPlayerBtn'),
+        fullscreen: rect('#fullscreenBtn'), autoLock: rect('.fullscreen-auto-lock-toolbar'), back: rect('#backBtn'), forward: rect('#forwardBtn'), quality: rect('#playbackQualitySelect'), rate: rect('#playbackRateSelect')
+      };
+    })()`);
+    for (const key of ['voice', 'floatingVoice', 'duplicatePlay', 'floatingPlay']) assert.equal(mobilePlaybackControls[key].display, 'none', `${key} 必须在手机端隐藏：${JSON.stringify(mobilePlaybackControls)}`);
+    assert.ok(Math.abs(mobilePlaybackControls.fullscreen.top - mobilePlaybackControls.autoLock.top) <= 2, JSON.stringify(mobilePlaybackControls));
+    assert.ok(Math.abs(mobilePlaybackControls.back.top - mobilePlaybackControls.forward.top) <= 2, JSON.stringify(mobilePlaybackControls));
+    assert.ok(Math.abs(mobilePlaybackControls.quality.top - mobilePlaybackControls.rate.top) <= 2, JSON.stringify(mobilePlaybackControls));
     await evaluate(cdp, `toggleMobileActionMenu(false); true`);
     await evaluate(cdp, `elements.webShareModal.classList.remove('is-hidden'); true`); await delay(120);
     const mobileWebShare = await evaluate(cdp, `(() => {

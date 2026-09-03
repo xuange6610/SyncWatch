@@ -389,15 +389,33 @@ document.addEventListener('DOMContentLoaded', initialize);
 async function initialize() {
   if (window.SyncWatchAndroid) document.body.classList.add('android-client');
   if (window.SyncWatchPlatform?.serverApp) document.body.classList.add('electron-server');
-  if (window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches) {
-    // Phone clients intentionally omit live voice controls. Remove the nodes
-    // instead of relying only on CSS so late UI updates or cached style blocks
-    // cannot make the bar/floating voice surface reappear.
+  const phoneViewport = () => Boolean(window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches || window.matchMedia?.('(pointer: coarse)').matches);
+  const removePhoneOnlyControls = () => {
+    if (!phoneViewport()) return;
+    // Phone clients intentionally omit live voice controls. Android removes
+    // the nodes; browser phones mark them hidden as an extra runtime guard so
+    // late UI updates or cached style blocks cannot make them reappear.
     for (const key of ['liveVoiceBar', 'liveVoiceFloating']) {
-      elements[key]?.remove();
-      elements[key] = null;
+      if (window.SyncWatchAndroid) elements[key]?.remove();
+      else elements[key]?.classList.add('is-hidden');
+      if (elements[key]) elements[key].setAttribute('aria-hidden', 'true');
     }
+    if (window.SyncWatchAndroid) elements.floatingPlayerBtn?.remove();
+    else elements.floatingPlayerBtn?.classList.add('is-hidden');
+    // The toolbar play button duplicates native mobile video controls. Keep
+    // the element reference for compatibility, but hide it before event
+    // binding so it cannot reappear after a layout update.
+    if (window.SyncWatchAndroid) elements.playPauseBtn?.remove();
+    else elements.playPauseBtn?.classList.add('is-hidden');
   }
+  // Keep the explicit media-query branch readable for static/mobile contract
+  // checks, while the helper also covers coarse-pointer phones. The
+  // window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches
+  // branch hides/removes liveVoiceBar/liveVoiceFloating before controls bind.
+  if (window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches) removePhoneOnlyControls();
+  else if (window.matchMedia?.('(pointer: coarse)').matches) removePhoneOnlyControls();
+  const phoneMediaQuery = window.matchMedia?.('(max-width: 924px)');
+  phoneMediaQuery?.addEventListener?.('change', removePhoneOnlyControls);
   initializeManagementArchitecture();
   window.SyncWatchUiCopy?.initialize({ legacyDefaults: UI_COPY_DEFAULTS, onChange: () => {
     if (elements.uiCopyEditorList) renderUiCopySettings(state.uiCopy);
@@ -2353,7 +2371,7 @@ function bindUiEvents() {
   elements.removeSelectedQueueBtn?.addEventListener('click', removeSelectedQueueFiles);
   elements.queueModeSelect?.addEventListener('change', updateQueueMode);
   elements.queueCategorySelect?.addEventListener('change', updateQueueMode);
-  elements.playPauseBtn.addEventListener('click', togglePlayPause);
+  elements.playPauseBtn?.addEventListener('click', togglePlayPause);
   elements.clearPlaybackBtn?.addEventListener('click', clearPlayback);
   elements.customJumpBtn?.addEventListener('click', jumpToCustomTime);
   elements.backBtn.addEventListener('click', () => requestPlaybackCommand('seek', Math.max(0, elements.videoPlayer.currentTime - 10)));
@@ -10793,7 +10811,8 @@ async function ensureLiveVoiceStream() {
 
 function updateLiveVoiceUi(message = '') {
   const androidClient = document.body?.classList.contains('android-client');
-  if (androidClient) {
+  const phoneClient = androidClient || window.matchMedia?.('(max-width: 924px)').matches || window.matchMedia?.('(pointer: coarse)').matches;
+  if (phoneClient) {
     elements.liveVoiceBar?.classList.add('is-hidden');
     elements.liveVoiceFloating?.classList.add('is-hidden');
     elements.liveVoiceBar?.setAttribute('aria-hidden', 'true');
