@@ -3431,16 +3431,24 @@ body.android-client .theater-toolbar .toolbar-module {
    important fullscreen actions always occupy row one in both Android WebView
    and narrow mobile browsers. */
 @media (max-width: 924px) {
-  body.android-client .live-voice-bar,
+  /* Phone layouts never expose live voice or duplicate playback surfaces. */
   body.android-client #liveVoiceBar,
-  body.android-client .live-voice-floating,
   body.android-client #liveVoiceFloating { display: none !important; visibility: hidden !important; }
+  .live-voice-bar,
+  #liveVoiceBar,
+  .live-voice-floating,
+  #liveVoiceFloating,
+  #playPauseBtn,
+  #floatingPlayerBtn { display: none !important; visibility: hidden !important; }
+  .playback-module #clearPlaybackBtn { grid-column: 1 / -1; }
+  .playback-module #backBtn { grid-column: 1; }
+  .playback-module #forwardBtn { grid-column: 2; }
   body.android-client .room-tools-module { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  body.android-client .room-tools-module #fullscreenBtn { grid-column: 1; grid-row: 1; }
-  body.android-client .room-tools-module .fullscreen-auto-lock-toolbar { grid-column: 2; grid-row: 1; }
-  body.android-client .room-tools-module #screenShareBtn { grid-column: 1; grid-row: 2; }
-  body.android-client .room-tools-module #audioSourceBtn { grid-column: 2; grid-row: 2; }
-  body.android-client .room-tools-module #floatingPlayerBtn { grid-column: 1; grid-row: 3; }
+  .room-tools-module { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .room-tools-module #fullscreenBtn { grid-column: 1; grid-row: 1; }
+  .room-tools-module .fullscreen-auto-lock-toolbar { grid-column: 2; grid-row: 1; }
+  .room-tools-module #screenShareBtn { grid-column: 1; grid-row: 2; }
+  .room-tools-module #audioSourceBtn { grid-column: 2; grid-row: 2; }
 }
 /* v2.2.8 usability refinements */
 .management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }

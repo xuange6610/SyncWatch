@@ -265,3 +265,7 @@ v2.3.1 原子运行 `33449575638` 的源码、官方资产、Android 签名构�
 - 维护者在当前对话明确授权使用仓库管理员权限合并 PR #78。
 - 该授权仅适用于 PR #78 的目标分支 `main`、当前提交及其已通过的自动检查；不构成对其他 PR、分支或历史的永久授权。
 
+### 2026-09-03 v2.3.9 移动端回归补充
+
+- 手机尺寸浏览器实测发现旧版最终 CSS 仍保留 `floatingPlayerBtn`，且实时语音仅按 Android WebView 标识隐藏；v2.3.9 现对 924px 以下手机布局统一移除实时语音、悬浮播放和重复播放按钮，并将全屏/全屏自动锁屏固定第一行、-10/+10 与画质/倍速分别成行。
+- 早期 v2.3.9 候选配置可能已写入 `uploadVideoDurationLimitConfigured=true` 但仍带 300 秒旧值；新增 `uploadVideoDurationLimitPolicyVersion` 迁移标记，无版本标记的旧值统一迁移为 0（不限），当前设置保存后写入版本 1 并在重启后保留。新增 `tests/upload-duration-migration.test.js` 覆盖该回归。

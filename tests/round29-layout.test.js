@@ -276,6 +276,12 @@ assert.match(app, /if \(locallyBuffering\)[\s\S]{0,260}正在缓冲，暂停定�
   '本机缓冲时必须暂停强制定位，避免公网 Range 请求被反复重置');
 assert.match(proMaxCss, /input:not\(\[type=["']checkbox["']\]\):not\(\[type=["']radio["']\]\),\s*select,\s*textarea\s*\{/,
   '通用表单样式不得把 checkbox 拉高成文本框');
+assert.match(css, /@media \(max-width:\s*924px\)[\s\S]{0,700}#playPauseBtn[\s\S]{0,180}#floatingPlayerBtn\s*\{\s*display:\s*none\s*!important/,
+  '手机端必须隐藏重复播放按钮和悬浮播放按钮');
+assert.match(css, /@media \(max-width:\s*924px\)[\s\S]{0,1000}\.room-tools-module #fullscreenBtn\s*\{\s*grid-column:\s*1;\s*grid-row:\s*1[\s\S]{0,180}\.room-tools-module \.fullscreen-auto-lock-toolbar\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1/,
+  '手机端全屏与全屏自动锁屏必须固定在第一行');
+assert.match(app, /window\.SyncWatchAndroid\s*\|\|\s*window\.matchMedia\?\.\('\(max-width: 924px\)'\)\.matches[\s\S]{0,260}liveVoiceBar/,
+  '手机端初始化必须移除实时语音栏和悬浮语音控件');
 
 console.log('Round 29 HTML/CSS structure, safe defaults, accessibility hooks, and fullscreen reachability passed.');
 

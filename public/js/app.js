@@ -389,10 +389,10 @@ document.addEventListener('DOMContentLoaded', initialize);
 async function initialize() {
   if (window.SyncWatchAndroid) document.body.classList.add('android-client');
   if (window.SyncWatchPlatform?.serverApp) document.body.classList.add('electron-server');
-  if (window.SyncWatchAndroid) {
-    // Android clients intentionally omit live voice controls. Remove the
-    // nodes instead of relying only on CSS so late UI updates or cached style
-    // blocks cannot make the bar/floating voice surface reappear.
+  if (window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches) {
+    // Phone clients intentionally omit live voice controls. Remove the nodes
+    // instead of relying only on CSS so late UI updates or cached style blocks
+    // cannot make the bar/floating voice surface reappear.
     for (const key of ['liveVoiceBar', 'liveVoiceFloating']) {
       elements[key]?.remove();
       elements[key] = null;
