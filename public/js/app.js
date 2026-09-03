@@ -392,26 +392,24 @@ async function initialize() {
   const phoneViewport = () => Boolean(window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches || window.matchMedia?.('(pointer: coarse)').matches);
   const removePhoneOnlyControls = () => {
     if (!phoneViewport()) return;
-    // Phone clients intentionally omit live voice controls. Android removes
-    // the nodes; browser phones mark them hidden as an extra runtime guard so
-    // late UI updates or cached style blocks cannot make them reappear.
+    // Phone clients intentionally omit live voice controls and duplicate
+    // playback controls. Remove the nodes before event binding so late UI
+    // updates or cached/overridden CSS cannot make them reappear.
     for (const key of ['liveVoiceBar', 'liveVoiceFloating']) {
-      if (window.SyncWatchAndroid) elements[key]?.remove();
-      else elements[key]?.classList.add('is-hidden');
+      // Remove the nodes on every phone-sized client, including ordinary
+      // mobile browsers. Hiding only by class left the controls available to
+      // late renderers and allowed cached/overridden CSS to resurrect them.
+      elements[key]?.remove();
       if (elements[key]) elements[key].setAttribute('aria-hidden', 'true');
     }
-    if (window.SyncWatchAndroid) elements.floatingPlayerBtn?.remove();
-    else elements.floatingPlayerBtn?.classList.add('is-hidden');
+    elements.floatingPlayerBtn?.remove();
     // The toolbar play button duplicates native mobile video controls. Keep
     // the element reference for compatibility, but hide it before event
     // binding so it cannot reappear after a layout update.
-    if (window.SyncWatchAndroid) elements.playPauseBtn?.remove();
-    else elements.playPauseBtn?.classList.add('is-hidden');
+    elements.playPauseBtn?.remove();
   }
   // Keep the explicit media-query branch readable for static/mobile contract
-  // checks, while the helper also covers coarse-pointer phones. The
-  // window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches
-  // branch hides/removes liveVoiceBar/liveVoiceFloating before controls bind.
+  // checks, while the helper also covers coarse-pointer phones.
   if (window.SyncWatchAndroid || window.matchMedia?.('(max-width: 924px)').matches) removePhoneOnlyControls();
   else if (window.matchMedia?.('(pointer: coarse)').matches) removePhoneOnlyControls();
   const phoneMediaQuery = window.matchMedia?.('(max-width: 924px)');
@@ -17392,4 +17390,3 @@ function toastWithActions(message, actions = [], duration = 8000, type = '') {
   close.addEventListener('click', () => dismissToast(item)); item.appendChild(close); elements.toastRegion.appendChild(item); updateClearAllToastsVisibility();
   scheduleToastDismiss(item, duration); return item;
 }
-

@@ -1229,7 +1229,7 @@ async function main() {
         fullscreen: rect('#fullscreenBtn'), autoLock: rect('.fullscreen-auto-lock-toolbar'), back: rect('#backBtn'), forward: rect('#forwardBtn'), quality: rect('#playbackQualitySelect'), rate: rect('#playbackRateSelect')
       };
     })()`);
-    for (const key of ['voice', 'floatingVoice', 'duplicatePlay', 'floatingPlay']) assert.equal(mobilePlaybackControls[key].display, 'none', `${key} 必须在手机端隐藏：${JSON.stringify(mobilePlaybackControls)}`);
+    for (const key of ['voice', 'floatingVoice', 'duplicatePlay', 'floatingPlay']) assert.ok(['none', 'missing'].includes(mobilePlaybackControls[key].display), `${key} 必须在手机端隐藏或移除：${JSON.stringify(mobilePlaybackControls)}`);
     assert.ok(Math.abs(mobilePlaybackControls.fullscreen.top - mobilePlaybackControls.autoLock.top) <= 2, JSON.stringify(mobilePlaybackControls));
     assert.ok(Math.abs(mobilePlaybackControls.back.top - mobilePlaybackControls.forward.top) <= 2, JSON.stringify(mobilePlaybackControls));
     assert.ok(Math.abs(mobilePlaybackControls.quality.top - mobilePlaybackControls.rate.top) <= 2, JSON.stringify(mobilePlaybackControls));
@@ -1259,7 +1259,7 @@ async function main() {
       document.body.classList.remove('concise-mode');
       elements.chatPanel.classList.remove('mobile-chat-collapsed');
       result.chatRows = getComputedStyle(elements.chatPanel).gridTemplateRows;
-      result.voiceRow = getComputedStyle(elements.liveVoiceBar).gridRow;
+      result.voiceRow = elements.liveVoiceBar ? getComputedStyle(elements.liveVoiceBar).gridRow : '';
       result.historyRow = getComputedStyle(elements.chatHistory).gridRow;
       result.chatDisplay = getComputedStyle(elements.chatPanel).display;
       return result;
@@ -1269,7 +1269,7 @@ async function main() {
     assert.equal(conciseDesktop.userDisplay, 'none', JSON.stringify(conciseDesktop));
     assert.ok(conciseDesktop.theaterWidth >= conciseDesktop.viewport - 24, JSON.stringify(conciseDesktop));
     assert.equal(conciseDesktop.chatRows.trim().split(/\s+/).length, 8, JSON.stringify(conciseDesktop));
-    assert.equal(conciseDesktop.voiceRow, '4', JSON.stringify(conciseDesktop));
+    assert.ok(conciseDesktop.voiceRow === '' || conciseDesktop.voiceRow === '4', JSON.stringify(conciseDesktop));
     assert.equal(conciseDesktop.historyRow, '5', JSON.stringify(conciseDesktop));
     assert.equal(conciseDesktop.chatDisplay, 'grid', JSON.stringify(conciseDesktop));
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 812, height: 375, deviceScaleFactor: 1, mobile: true });

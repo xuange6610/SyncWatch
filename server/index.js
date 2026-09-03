@@ -1454,7 +1454,7 @@ function freshState() {
     version: 13,
     admin: {
       passwordHash: makePasswordHash('admin888'), accessPasswordHash: '', mustChangePassword: true, passwordChangedAt: new Date().toISOString(),
-      uploadMinBytes: 0, uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, uploadVideoDurationLimitSeconds: 0, uploadVideoDurationLimitConfigured: false, uploadVideoDurationLimitPolicyVersion: UPLOAD_DURATION_POLICY_VERSION, accountTiers: defaultAccountTiers(),
+      uploadMinBytes: 0, uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, uploadVideoDurationLimitSeconds: 0, uploadVideoDurationLimitConfigured: false, uploadVideoDurationLimitConfiguredAt: '', uploadVideoDurationLimitPolicyVersion: UPLOAD_DURATION_POLICY_VERSION, accountTiers: defaultAccountTiers(),
       defaultPermissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
       mail: normalizeMailSettings(),
       branding: normalizeBranding(), loginCube: normalizeLoginCubeSettings(), loginMusic: normalizeLoginMusic(), loginVideo: normalizeLoginVideo(), marqueeNotice: normalizeMarqueeNotice(), roomEntryNotice: normalizeRoomEntryNotice(),
@@ -1517,11 +1517,19 @@ function migrateState(input) {
         const configured = input.admin.uploadVideoDurationLimitConfigured === true;
         const policyVersion = Number(input.admin.uploadVideoDurationLimitPolicyVersion) || 0;
         const candidateValue = Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0);
+        const configuredAt = typeof input.admin.uploadVideoDurationLimitConfiguredAt === 'string'
+          && input.admin.uploadVideoDurationLimitConfiguredAt.trim() ? input.admin.uploadVideoDurationLimitConfiguredAt.trim() : '';
         // Candidate builds used policy version 1 (and some had no marker) but
         // still persisted the old five-minute default. Treat that exact value
         // as legacy and migrate it to unlimited. Other explicitly chosen
         // values remain intact across the migration.
-        if (configured && policyVersion < UPLOAD_DURATION_POLICY_VERSION && candidateValue === 300) return 0;
+        // A few mobile candidates wrote policy version 2 before the default
+        // was actually removed. Without a save marker there is no way to
+        // distinguish that legacy default from an administrator choice, so
+        // treat the exact five-minute value as legacy once more. The current
+        // settings action writes configuredAt whenever an administrator
+        // explicitly saves a value (including 300 seconds).
+        if (configured && candidateValue === 300 && (!configuredAt || policyVersion < UPLOAD_DURATION_POLICY_VERSION)) return 0;
         return configured && policyVersion >= 1
           ? Math.max(0, Math.min(HARD_MEDIA_DURATION_LIMIT_SECONDS, candidateValue)) : 0;
       })(),
@@ -1532,8 +1540,14 @@ function migrateState(input) {
       // current settings UI is tagged with the current policy version and is retained.
       uploadVideoDurationLimitConfigured: input.admin.uploadVideoDurationLimitConfigured === true
         && Number(input.admin.uploadVideoDurationLimitPolicyVersion) >= 1
-        && !(Number(input.admin.uploadVideoDurationLimitPolicyVersion) < UPLOAD_DURATION_POLICY_VERSION
-          && Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0) === 300),
+        && !(Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0) === 300
+          && (!String(input.admin.uploadVideoDurationLimitConfiguredAt || '').trim()
+            || Number(input.admin.uploadVideoDurationLimitPolicyVersion) < UPLOAD_DURATION_POLICY_VERSION)),
+      uploadVideoDurationLimitConfiguredAt: typeof input.admin.uploadVideoDurationLimitConfiguredAt === 'string'
+        && input.admin.uploadVideoDurationLimitConfiguredAt.trim()
+        && !(Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0) === 300
+          && Number(input.admin.uploadVideoDurationLimitPolicyVersion) < UPLOAD_DURATION_POLICY_VERSION)
+        ? input.admin.uploadVideoDurationLimitConfiguredAt.trim() : '',
       uploadVideoDurationLimitPolicyVersion: UPLOAD_DURATION_POLICY_VERSION,
       accountTiers: { ...defaultAccountTiers(), ...(input.admin.accountTiers && typeof input.admin.accountTiers === 'object' ? input.admin.accountTiers : {}) },
       defaultPermissions: { ...next.admin.defaultPermissions, ...(input.admin.defaultPermissions || {}) },
@@ -14102,10 +14116,10 @@ async function startSyncWatchServer(options = {}) {
         if (bytes > 0 && minBytes > bytes) return acknowledgement?.({ success: false, error: '文件下限不能大于上限' });
         if (seconds > HARD_REQUEST_TIMEOUT_MS / 1000) return acknowledgement?.({ success: false, error: '上传时间不能超过服务器 2 小时安全上限' });
         if (videoDurationSeconds > HARD_MEDIA_DURATION_LIMIT_SECONDS) return acknowledgement?.({ success: false, error: '视频时长不能超过服务器 30 天安全上限' });
-        const before = { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds, uploadVideoDurationLimitConfigured: state.admin.uploadVideoDurationLimitConfigured === true, uploadVideoDurationLimitPolicyVersion: Number(state.admin.uploadVideoDurationLimitPolicyVersion) || 0 };
-        state.admin.uploadMinBytes = Math.floor(minBytes); state.admin.uploadLimitBytes = Math.floor(bytes); state.admin.uploadTimeLimitSeconds = Math.floor(seconds); state.admin.uploadVideoDurationLimitSeconds = Math.floor(videoDurationSeconds); state.admin.uploadVideoDurationLimitConfigured = true; state.admin.uploadVideoDurationLimitPolicyVersion = UPLOAD_DURATION_POLICY_VERSION;
+        const before = { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds, uploadVideoDurationLimitConfigured: state.admin.uploadVideoDurationLimitConfigured === true, uploadVideoDurationLimitConfiguredAt: state.admin.uploadVideoDurationLimitConfiguredAt || '', uploadVideoDurationLimitPolicyVersion: Number(state.admin.uploadVideoDurationLimitPolicyVersion) || 0 };
+        state.admin.uploadMinBytes = Math.floor(minBytes); state.admin.uploadLimitBytes = Math.floor(bytes); state.admin.uploadTimeLimitSeconds = Math.floor(seconds); state.admin.uploadVideoDurationLimitSeconds = Math.floor(videoDurationSeconds); state.admin.uploadVideoDurationLimitConfigured = true; state.admin.uploadVideoDurationLimitConfiguredAt = new Date().toISOString(); state.admin.uploadVideoDurationLimitPolicyVersion = UPLOAD_DURATION_POLICY_VERSION;
         persist();
-        recordOperation({ actor: user.username, action: 'upload-limits', summary: '修改服务器上传限制', scope: 'server', undo: { kind: 'upload-limits', before, after: { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds, uploadVideoDurationLimitConfigured: true, uploadVideoDurationLimitPolicyVersion: UPLOAD_DURATION_POLICY_VERSION } } });
+        recordOperation({ actor: user.username, action: 'upload-limits', summary: '修改服务器上传限制', scope: 'server', undo: { kind: 'upload-limits', before, after: { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds, uploadVideoDurationLimitConfigured: true, uploadVideoDurationLimitConfiguredAt: state.admin.uploadVideoDurationLimitConfiguredAt, uploadVideoDurationLimitPolicyVersion: UPLOAD_DURATION_POLICY_VERSION } } });
         for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('upload-limits', { minUploadBytes: state.admin.uploadMinBytes, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds });
         return acknowledgement?.({ success: true, minUploadBytes: state.admin.uploadMinBytes, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds, message: minBytes || bytes || seconds || videoDurationSeconds ? '上传限制已保存' : '已取消上传大小和时长限制' });
       }
@@ -15616,4 +15630,3 @@ module.exports = {
     applyNetworkQualitySample
   }
 };
-
