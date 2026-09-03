@@ -33,10 +33,30 @@ async function main() {
     assert.equal(migrated.admin.uploadVideoDurationLimitPolicyVersion, 2);
     await server.close();
 
+    // Some mobile candidates stamped policy version 2 but still persisted the
+    // old default. A missing explicit-save marker must still migrate 300s to
+    // unlimited so the phone client cannot retain the five-minute wall.
+    migrated.admin.uploadVideoDurationLimitSeconds = 300;
+    migrated.admin.uploadVideoDurationLimitConfigured = true;
+    migrated.admin.uploadVideoDurationLimitConfiguredAt = '';
+    migrated.admin.uploadVideoDurationLimitPolicyVersion = 2;
+    fs.writeFileSync(path.join(dataDir, 'config.json'), JSON.stringify(migrated));
+    server = await startSyncWatchServer({
+      host: '127.0.0.1', port: 0, dataDir, publicDir: path.resolve(__dirname, '..', 'public'),
+      ffprobePath: '', ffmpegPath: '', discovery: false, hostControlToken: 'upload-duration-migration'
+    });
+    config = await readPublicConfig(server);
+    assert.equal(config.uploadVideoDurationLimitSeconds, 0, '没有明确保存标记的 300 秒候选配置必须迁移为不限');
+    const stamped = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8'));
+    assert.equal(stamped.admin.uploadVideoDurationLimitConfigured, false);
+    assert.equal(stamped.admin.uploadVideoDurationLimitConfiguredAt, '');
+    await server.close();
+
     // An administrator explicitly saving a limit in the current release must
     // survive a restart and remain enforceable.
     migrated.admin.uploadVideoDurationLimitSeconds = 600;
     migrated.admin.uploadVideoDurationLimitConfigured = true;
+    migrated.admin.uploadVideoDurationLimitConfiguredAt = new Date().toISOString();
     migrated.admin.uploadVideoDurationLimitPolicyVersion = 2;
     fs.writeFileSync(path.join(dataDir, 'config.json'), JSON.stringify(migrated));
     server = await startSyncWatchServer({
