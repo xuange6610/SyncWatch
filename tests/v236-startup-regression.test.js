@@ -38,10 +38,9 @@ async function reservePort() {
     controller = null;
 
     reserved = await reservePort();
-    await assert.rejects(
-      () => startSyncWatchServer({ host: '127.0.0.1', port: reserved.port, strictPort: true, dataDir: path.join(root, 'occupied'), discovery: false, publicDir, ffmpegPath: '', ffprobePath: '', hostControlToken: 'v236-occupied' }),
-      (error) => error.code === 'EADDRINUSE' && /未随机切换端口/.test(error.message)
-    );
+    const fallback = await startSyncWatchServer({ host: '0.0.0.0', port: reserved.port, strictPort: false, portFallbackCount: 3, dataDir: path.join(root, 'occupied'), discovery: false, publicDir, ffmpegPath: '', ffprobePath: '', hostControlToken: 'v236-occupied' });
+    assert.notEqual(fallback.port, reserved.port, '默认端口被占用时必须自动切换到可用端口');
+    await fallback.close();
   } finally {
     await controller?.close().catch(() => {});
     reserved?.server.close();

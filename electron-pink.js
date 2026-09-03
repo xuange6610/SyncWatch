@@ -2511,7 +2511,7 @@ async function startApplication() {
   });
   await updateSplash(58, '正在启动本机服务…', '准备 HTTP、WebSocket 和媒体 Range 服务');
   serverController = await startSyncWatchServer({
-    host: '0.0.0.0', port: startPort, strictPort: true, dataDir, allowedHosts: configuredHosts,
+    host: '0.0.0.0', port: startPort, strictPort: false, portFallbackCount: 20, dataDir, allowedHosts: configuredHosts,
     publicUrl: activeServerSettings.publicUrl, lanAddress,
     ...(trustedProxies !== undefined ? { trustedProxies } : {}),
     publicDir: path.join(__dirname, 'public'), hostControlToken: HOST_CONTROL_TOKEN, tunnelManager, androidApkPath, clientDownloadPath,
