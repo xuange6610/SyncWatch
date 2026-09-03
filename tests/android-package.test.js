@@ -168,6 +168,16 @@ function verifySources() {
     'the Android bootstrap must point download metadata at the current APK');
   assert.doesNotMatch(service, /v2\.1\.7/, 'the Android bootstrap must not retain the previous APK version');
   const activity = read('mobile/app/src/main/java/com/xuan/syncwatch/MainActivity.java');
+  assert.match(activity, /new Intent\(Intent\.ACTION_OPEN_DOCUMENT\)/,
+    'Android uploads must use the document picker flow');
+  assert.match(activity, /startActivityForResult\(intent, REQUEST_FILES\)/,
+    'Android file picker must launch directly without an ACTION_CHOOSER share wrapper');
+  assert.doesNotMatch(activity, /createChooser\(intent, "选择文件/,
+    'the upload picker must not enter OEM share mode');
+  assert.doesNotMatch(activity, /EXTRA_DURATION_LIMIT|MediaStore\.EXTRA_DURATION_LIMIT/,
+    'Android upload picker must never impose a duration limit');
+  assert.match(activity, /ACTION_GET_CONTENT/,
+    'Android uploads need a non-chooser fallback for older DocumentsUI builds');
   assert.match(activity, /STATUS_STOPPED[\s\S]{0,300}leaveStoppedLocalServerPage\("手机服务器已停止"\)/,
     'notification stop broadcasts must immediately leave a stopped local-server page');
   assert.match(activity, /private void leaveStoppedLocalServerPage\(String message\)[\s\S]*?remove\(PREF_SERVER\)[\s\S]*?showConnectionScreen\(message\);/,

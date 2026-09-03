@@ -30,7 +30,7 @@ async function main() {
     assert.equal(config.uploadVideoDurationLimitSeconds, 0, '旧候选配置的 300 秒限制必须迁移为不限');
     const migrated = JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8'));
     assert.equal(migrated.admin.uploadVideoDurationLimitConfigured, false);
-    assert.equal(migrated.admin.uploadVideoDurationLimitPolicyVersion, 2);
+    assert.equal(migrated.admin.uploadVideoDurationLimitPolicyVersion, 3);
     await server.close();
 
     // Some mobile candidates stamped policy version 2 but still persisted the
@@ -52,12 +52,27 @@ async function main() {
     assert.equal(stamped.admin.uploadVideoDurationLimitConfiguredAt, '');
     await server.close();
 
+    // A v2 candidate could include a stale configuredAt marker. It was still
+    // the old default and must not survive the v2.4.0 migration.
+    migrated.admin.uploadVideoDurationLimitSeconds = 300;
+    migrated.admin.uploadVideoDurationLimitConfigured = true;
+    migrated.admin.uploadVideoDurationLimitConfiguredAt = new Date().toISOString();
+    migrated.admin.uploadVideoDurationLimitPolicyVersion = 2;
+    fs.writeFileSync(path.join(dataDir, 'config.json'), JSON.stringify(migrated));
+    server = await startSyncWatchServer({
+      host: '127.0.0.1', port: 0, dataDir, publicDir: path.resolve(__dirname, '..', 'public'),
+      ffprobePath: '', ffmpegPath: '', discovery: false, hostControlToken: 'upload-duration-migration'
+    });
+    config = await readPublicConfig(server);
+    assert.equal(config.uploadVideoDurationLimitSeconds, 0, '旧策略带时间标记的 300 秒默认值也必须迁移为不限');
+    await server.close();
+
     // An administrator explicitly saving a limit in the current release must
     // survive a restart and remain enforceable.
     migrated.admin.uploadVideoDurationLimitSeconds = 600;
     migrated.admin.uploadVideoDurationLimitConfigured = true;
     migrated.admin.uploadVideoDurationLimitConfiguredAt = new Date().toISOString();
-    migrated.admin.uploadVideoDurationLimitPolicyVersion = 2;
+    migrated.admin.uploadVideoDurationLimitPolicyVersion = 3;
     fs.writeFileSync(path.join(dataDir, 'config.json'), JSON.stringify(migrated));
     server = await startSyncWatchServer({
       host: '127.0.0.1', port: 0, dataDir, publicDir: path.resolve(__dirname, '..', 'public'),

@@ -202,7 +202,13 @@ async function run() {
     state.tunnelLastStatus = previousTunnelStatus;
     return copied;
   })()`, true);
-  assert.equal(publicAddressCopy, 'https://example.trycloudflare.com/?room=PUBLIC88');
+  assert.equal(publicAddressCopy, 'https://example.trycloudflare.com/PUBLIC88');
+  const roomAddressVariants = await window.webContents.executeJavaScript(`({
+    path: roomAddressForBase('https://example.com/base?room=OLD&view=1', 'PUBLIC88'),
+    parserAvailable: typeof roomIdFromLocation === 'function'
+  })`, true);
+  assert.equal(roomAddressVariants.path, 'https://example.com/base/PUBLIC88?view=1', JSON.stringify(roomAddressVariants));
+  assert.equal(roomAddressVariants.parserAvailable, true);
   console.log('✓ 复制公网地址会自动携带当前房间号且不会依赖输入框内容');
 
   const closableNotices = await window.webContents.executeJavaScript(`(() => {
@@ -319,7 +325,7 @@ async function run() {
   assert.equal(featureControls.fileMultiple, true);
   assert.equal(featureControls.folderMultiple, true);
   assert.equal(featureControls.folderPicker, true);
-  assert.equal(new URL(featureControls.shareAddress).searchParams.get('room'), featureControls.roomId);
+  assert.equal(new URL(featureControls.shareAddress).pathname.split('/').filter(Boolean).pop(), featureControls.roomId);
   assert.deepEqual({
     apkVisible: featureControls.apkVisible, managementVisible: featureControls.managementVisible,
     directHistoryHidden: featureControls.directHistoryHidden, directChatManagerHidden: featureControls.directChatManagerHidden,

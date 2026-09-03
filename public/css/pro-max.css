@@ -344,6 +344,45 @@ body.android-client .player-container:fullscreen {
   background: var(--theme-stage, #0b1113) !important;
 }
 
+/* Some OEM browsers expose a desktop-width CSS viewport while the device is
+ * touch-only. Keep the room single-column in that case so the player, upload
+ * cards and thumbnails cannot be pushed into a right-side desktop track. */
+@media (pointer: coarse) and (max-width: 1200px), (hover: none) and (max-width: 1200px) {
+  body:not(.electron-server) .workspace,
+  body.android-client .workspace { display: block !important; width: 100% !important; max-width: 100% !important; }
+  body:not(.electron-server) .file-panel,
+  body:not(.electron-server) .user-panel,
+  body.android-client .file-panel,
+  body.android-client .user-panel { display: none !important; }
+  body:not(.electron-server) .theater,
+  body.android-client .theater {
+    display: grid !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "marquee" "status" "mobile-nav" "player" "toolbar" "owner" "chat" !important;
+    grid-template-rows: auto auto auto minmax(220px, 43dvh) auto auto minmax(180px, .55fr) !important;
+    overflow: visible !important;
+  }
+  body:not(.electron-server) .theater-toolbar,
+  body.android-client .theater-toolbar { width: 100% !important; min-width: 0 !important; overflow: visible !important; }
+  body:not(.electron-server) .theater-toolbar .toolbar-buttons,
+  body.android-client .theater-toolbar .toolbar-buttons {
+    display: grid !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+  body:not(.electron-server) .theater-toolbar .toolbar-buttons > *,
+  body.android-client .theater-toolbar .toolbar-buttons > * { min-width: 0 !important; width: 100% !important; }
+  body:not(.electron-server) .player-container,
+  body.android-client .player-container { width: 100% !important; max-width: 100% !important; margin-inline: 0 !important; }
+}
+
 @media (max-width: 540px) {
   body:not(.android-client) .topbar-scroll-actions,
   body:not(.android-client) .topbar-fixed-actions,

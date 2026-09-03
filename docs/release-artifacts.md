@@ -1,6 +1,6 @@
 # 发布文件与下载说明
 
-GitHub Release 是下载成品的地方；仓库里的 Source code 压缩包只是源码，不是双击即用的程序。v2.3.9 已完成最终 Tag 构建和远端验收；Release API 包含 8 个上传文件，页面另有 GitHub 自动生成的 2 个源码归档，共 10 个可见文件。
+GitHub Release 是下载成品的地方；仓库里的 Source code 压缩包只是源码，不是双击即用的程序。v2.4.0 已完成最终 Tag 构建和远端验收；Release API 包含 8 个上传文件，页面另有 GitHub 自动生成的 2 个源码归档，共 10 个可见文件。
 
 ## 文件分类
 
@@ -12,7 +12,7 @@ GitHub Release 是下载成品的地方；仓库里的 Source code 压缩包只�
 | `node-v24.19.0-x64.msi` / `node-v24.19.0-arm64.msi` | 源码或独立服务器用户 | 安装 Node.js 和 npm；完整 EXE 不需要另装 |
 | `cloudflared-windows-x64.exe` / 两个 Windows MSI | 需要公网访问的 Windows 用户 | Cloudflare 官方 Tunnel 工具，不是 SyncWatch 启动程序 |
 
-新版本不再构建或上传 macOS 安装包；历史 Release 仍按历史记录保留。标准版和完整安装版也不在 v2.3.9 下载清单中。
+新版本不再构建或上传 macOS 安装包；历史 Release 仍按历史记录保留。标准版和完整安装版也不在 v2.4.0 下载清单中。
 
 ## 选择流程
 
@@ -26,7 +26,7 @@ GitHub Release 是下载成品的地方；仓库里的 Source code 压缩包只�
 PowerShell 示例：
 
 ```powershell
-Get-FileHash .\SyncWatch-v2.3.9-Full-Offline-Portable-x64.exe -Algorithm SHA256
+Get-FileHash .\SyncWatch-v2.4.0-Full-Offline-Portable-x64.exe -Algorithm SHA256
 ```
 
 文件为空、哈希不一致或版本号对不上时，请删除后重新下载，不要给旧文件改名。

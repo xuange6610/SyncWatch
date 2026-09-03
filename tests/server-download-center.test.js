@@ -22,9 +22,9 @@ assert.match(html, /id="lanScanBtn"[^>]*>[\s\S]*?<svg class="header-line-icon"[\
 assert.doesNotMatch(html, /id="lanScanBtn"[^>]*>[\s\S]{0,120}⌁/);
 assert.match(html, /下载文件[\s\S]*版本[\s\S]*适合谁[\s\S]*简单说明/);
 for (const filename of [
-  'SyncWatch-Experience-Client-Portable-v2.3.9-x64.exe',
-  'SyncWatch-v2.3.9-Full-Offline-Portable-x64.exe',
-  'SyncWatch-Android-v2.3.9-universal.apk',
+  'SyncWatch-Experience-Client-Portable-v2.4.0-x64.exe',
+  'SyncWatch-v2.4.0-Full-Offline-Portable-x64.exe',
+  'SyncWatch-Android-v2.4.0-universal.apk',
   'cloudflared-windows-x64-installer.msi',
   'node-v24.19.0-x64.msi'
 ]) assert.match(html, new RegExp(filename.replace(/[.]/g, '\\.')));
@@ -84,5 +84,4 @@ assert.match(electron, /url\.protocol !== ['"]https:['"][\s\S]*url\.hostname !==
 assert.match(electron, /label: `\$\{label\}（\$\{path\.basename\(target\)\}）`/);
 
 console.log('服务器顶栏、下载中心、本机入口、固定下载上传与 Electron 帮助菜单契约检查通过。');
-
 

@@ -229,7 +229,7 @@ async function main() {
       }
     ` });
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1365, height: 860, deviceScaleFactor: 1, mobile: false });
-    await cdp.send('Page.navigate', { url: `${baseUrl}/?room=${encodeURIComponent(login.room.id)}` });
+    await cdp.send('Page.navigate', { url: `${baseUrl}/${encodeURIComponent(login.room.id)}` });
     try {
       await waitFor(() => evaluate(cdp, `Boolean(
         (document.getElementById('agreementModal') && !document.getElementById('agreementModal').classList.contains('is-hidden')) ||
@@ -239,6 +239,7 @@ async function main() {
         await evaluate(cdp, `document.getElementById('agreementCheck').click(); document.getElementById('acceptAgreementBtn').click(); true`);
       }
       await waitFor(() => evaluate(cdp, `Boolean(typeof state !== 'undefined' && state.authenticated && !document.getElementById('mainPage')?.classList.contains('is-hidden'))`), '浏览器进入主界面');
+      assert.equal(await evaluate(cdp, `document.getElementById('roomIdInput')?.value`), login.room.id, '路径格式房间链接必须自动填入房间号');
     } catch (error) {
       const diagnostic = await evaluate(cdp, `({ href: location.href, token: localStorage.getItem('syncwatchToken'), device: localStorage.getItem('syncwatchDeviceId'), ready: document.readyState, stateReady: typeof state !== 'undefined', socketCreated: typeof state !== 'undefined' && Boolean(state.socket), connected: typeof state !== 'undefined' && Boolean(state.socket?.connected), authenticated: typeof state !== 'undefined' && state.authenticated, socketAuthenticated: typeof state !== 'undefined' && state.socketAuthenticated, lastError: typeof state !== 'undefined' && state.lastConnectionError, errors: window.__syncWatchSmokeErrors, loginStatus: document.getElementById('loginStatus')?.textContent, body: document.body?.innerText?.slice(0, 500) })`);
       throw new Error(`${error.message}: ${JSON.stringify(diagnostic)}`);
