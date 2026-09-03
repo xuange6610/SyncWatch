@@ -111,7 +111,9 @@ async function main() {
     assert.match(appSource, /toast-close/);
     assert.match(appSource, /function toggleVideoMute\(/);
     assert.match(appSource, /function updatePlayerBufferState\(/);
-    assert.match(appSource, /address\.searchParams\.set\(['"]room['"],\s*roomId\)/);
+    assert.match(appSource, /function roomIdFromLocation\(/);
+    assert.match(appSource, /function roomAddressForBase\([\s\S]{0,1200}searchParams\.delete\(['"]room['"]\)/);
+    assert.match(appSource, /roomPathForId\(roomId\)/);
     assert.match(appSource, /copyTunnelUrl[\s\S]{0,260}shareAddressForBase/);
     assert.match(appSource, /openTunnelUrl[\s\S]{0,260}shareAddressForBase/);
     assert.match(appSource, /function refreshOnlineRooms\(/);

@@ -46,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.3.9';
+const APP_VERSION = 'v2.4.0';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -239,7 +239,7 @@ const HARD_MEDIA_DURATION_LIMIT_SECONDS = 30 * 24 * 60 * 60;
 // v2.3.9 shipped a short-lived candidate that persisted the former 300s
 // default as an explicit policy. Keep a migration version so those records
 // are cleared once, while limits saved after this fix remain authoritative.
-const UPLOAD_DURATION_POLICY_VERSION = 2;
+const UPLOAD_DURATION_POLICY_VERSION = 3;
 const MAX_ROOM_STORAGE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024 * 1024;
 const SUBTITLE_LIMIT_BYTES = 10 * 1024 * 1024;
 const TEXT_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
@@ -1523,13 +1523,12 @@ function migrateState(input) {
         // still persisted the old five-minute default. Treat that exact value
         // as legacy and migrate it to unlimited. Other explicitly chosen
         // values remain intact across the migration.
-        // A few mobile candidates wrote policy version 2 before the default
-        // was actually removed. Without a save marker there is no way to
-        // distinguish that legacy default from an administrator choice, so
-        // treat the exact five-minute value as legacy once more. The current
-        // settings action writes configuredAt whenever an administrator
-        // explicitly saves a value (including 300 seconds).
-        if (configured && candidateValue === 300 && (!configuredAt || policyVersion < UPLOAD_DURATION_POLICY_VERSION)) return 0;
+        // v2.3.9 mobile candidates could stamp policy version 2 and a
+        // configuredAt value while still carrying the former five-minute
+        // default. v2.4.0 is the first policy version that can safely retain
+        // an explicit 300-second choice, so every older 300-second value is
+        // migrated to unlimited regardless of its stale marker.
+        if (configured && candidateValue === 300 && policyVersion < UPLOAD_DURATION_POLICY_VERSION) return 0;
         return configured && policyVersion >= 1
           ? Math.max(0, Math.min(HARD_MEDIA_DURATION_LIMIT_SECONDS, candidateValue)) : 0;
       })(),
@@ -1537,12 +1536,11 @@ function migrateState(input) {
       // old five-minute value together with the configured flag. Treat those
       // records as legacy once, so an upgraded mobile server cannot keep
       // rejecting videos longer than five minutes. A value saved through the
-      // current settings UI is tagged with the current policy version and is retained.
+      // v2.4.0 settings UI is tagged with policy version 3 and is retained.
       uploadVideoDurationLimitConfigured: input.admin.uploadVideoDurationLimitConfigured === true
         && Number(input.admin.uploadVideoDurationLimitPolicyVersion) >= 1
         && !(Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0) === 300
-          && (!String(input.admin.uploadVideoDurationLimitConfiguredAt || '').trim()
-            || Number(input.admin.uploadVideoDurationLimitPolicyVersion) < UPLOAD_DURATION_POLICY_VERSION)),
+          && Number(input.admin.uploadVideoDurationLimitPolicyVersion) < UPLOAD_DURATION_POLICY_VERSION),
       uploadVideoDurationLimitConfiguredAt: typeof input.admin.uploadVideoDurationLimitConfiguredAt === 'string'
         && input.admin.uploadVideoDurationLimitConfiguredAt.trim()
         && !(Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0) === 300
@@ -2301,10 +2299,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.9.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.4.0.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.9-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.9-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.4.0-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.4.0-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
@@ -6807,7 +6805,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.9-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.4.0-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6894,7 +6892,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.9-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.4.0-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -6932,6 +6930,10 @@ async function startSyncWatchServer(options = {}) {
   app.get('/thumbnail/:name', requireSession, (req, res) => {
     const name = path.basename(req.params.name);
     if (!state.files.some((file) => file.thumbnailName === name && canSeeFile(req.syncWatchSession, file))) return res.status(404).end();
+    // Thumbnails are generated asynchronously after upload. Prevent a
+    // transient 404/partial response from being cached by Android WebView;
+    // the client can retry once when generation finishes.
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return res.sendFile(path.join(thumbnailsDir, name));
   });
 
@@ -7601,9 +7603,14 @@ async function startSyncWatchServer(options = {}) {
         const thumbnailPath = path.join(thumbnailsDir, thumbnailName);
         try {
           const duration = Math.max(0, Number(record.metadata?.duration) || 0);
-          // Pick a point from the middle 40% of the video so covers avoid
-          // title slates while still varying between uploads/re-generations.
-          const seekSeconds = duration > 8 ? (duration * (0.3 + Math.random() * 0.4)).toFixed(3) : '3';
+          // Pick a safe point from the middle 40% of the video. The old fixed
+          // -ss 3 path failed for short clips and left mobile cards with a
+          // broken/black image, so clamp the seek point inside the stream.
+          const randomPoint = duration * (0.3 + Math.random() * 0.4);
+          const safePoint = duration > 0.5
+            ? Math.min(Math.max(0, duration - 0.1), Math.max(0, randomPoint))
+            : 0;
+          const seekSeconds = safePoint.toFixed(3);
           await captureProcess(ffmpegPath, ['-y', '-ss', seekSeconds, '-i', input, '-frames:v', '1', '-vf', 'scale=480:-2', '-q:v', '4', thumbnailPath], 60000, mediaAnalysisProcesses, { record });
           if (!isActive()) { if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath); return; }
           const thumbnailStats = fs.statSync(thumbnailPath);

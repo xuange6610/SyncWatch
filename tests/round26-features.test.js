@@ -54,11 +54,14 @@ check('email UX', 'verification destinations show account and masked mailbox', (
   assert.match(app, /verificationDestination\(requested/);
 });
 
-check('sharing', 'room QR and copy fallback keep the room query', () => {
+check('sharing', 'room QR and copy fallback use a path room id while accepting legacy queries', () => {
   assert.match(app, /document\.execCommand\(['"]copy['"]\)/);
   const addressBuilder = section(app, 'function shareAddressForBase', 'function publicShareAddress');
-  assert.match(addressBuilder, /searchParams\.set\(['"]room['"],\s*roomId\)/);
-  assert.match(addressBuilder, /room=\$\{encodeURIComponent\(roomId\)\}/);
+  assert.match(addressBuilder, /roomAddressForBase\(base, roomId\)/);
+  assert.match(app, /function roomIdFromLocation\([\s\S]{0,500}URLSearchParams\(location\.search\)/);
+  assert.match(app, /function roomPathSegment\([\s\S]{0,180}SYNCWATCH/);
+  assert.match(app, /function roomPathForId\([\s\S]{0,220}`\/\$\{encodeURIComponent\(normalized\)\}`/);
+  assert.match(app, /function clearRoomLocation\([\s\S]{0,500}searchParams\.delete\(['"]room['"]\)/);
   assert.match(app, /title:\s*['"]生成房间二维码[\s\S]{0,700}value:\s*['"]public['"][\s\S]{0,300}value:\s*['"]lan['"]/);
 });
 

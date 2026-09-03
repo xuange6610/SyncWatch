@@ -290,7 +290,7 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.3.9");
+        settings.setUserAgentString(settings.getUserAgentString() + " SyncWatchAndroid/v2.4.0");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
 
         CookieManager cookieManager = CookieManager.getInstance();
@@ -1630,14 +1630,31 @@ public final class MainActivity extends Activity implements ScreenCaptureService
                     intent.putExtra(Intent.EXTRA_MIME_TYPES, pickerMimeTypes.toArray(new String[0]));
                 }
             }
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
             try {
-                startActivityForResult(Intent.createChooser(intent, "选择文件（可多选）"), REQUEST_FILES);
+                // Avoid ACTION_CHOOSER: some OEM gallery implementations
+                // interpret that wrapper as a share flow and reject videos
+                // longer than five minutes before WebView upload starts.
+                startActivityForResult(intent, REQUEST_FILES);
                 return true;
             } catch (Exception error) {
-                pendingFileCallback = null;
-                callback.onReceiveValue(null);
-                toast("无法打开系统文件选择器");
-                return false;
+                Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
+                fallback.addCategory(Intent.CATEGORY_OPENABLE);
+                fallback.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                fallback.setType(intent.getType());
+                String[] mimeTypes = intent.getStringArrayExtra(Intent.EXTRA_MIME_TYPES);
+                if (mimeTypes != null) fallback.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+                fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                try {
+                    startActivityForResult(fallback, REQUEST_FILES);
+                    return true;
+                } catch (Exception fallbackError) {
+                    pendingFileCallback = null;
+                    callback.onReceiveValue(null);
+                    toast("无法打开系统文件选择器");
+                    return false;
+                }
             }
         }
 
@@ -2348,5 +2365,3 @@ public final class MainActivity extends Activity implements ScreenCaptureService
         super.onDestroy();
     }
 }
-
-
