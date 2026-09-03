@@ -107,7 +107,7 @@ const ONBOARDING_GUIDE_STEPS = [
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
-  publicConfig: { version: 'v2.3.8', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.3.9', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -389,6 +389,15 @@ document.addEventListener('DOMContentLoaded', initialize);
 async function initialize() {
   if (window.SyncWatchAndroid) document.body.classList.add('android-client');
   if (window.SyncWatchPlatform?.serverApp) document.body.classList.add('electron-server');
+  if (window.SyncWatchAndroid) {
+    // Android clients intentionally omit live voice controls. Remove the
+    // nodes instead of relying only on CSS so late UI updates or cached style
+    // blocks cannot make the bar/floating voice surface reappear.
+    for (const key of ['liveVoiceBar', 'liveVoiceFloating']) {
+      elements[key]?.remove();
+      elements[key] = null;
+    }
+  }
   initializeManagementArchitecture();
   window.SyncWatchUiCopy?.initialize({ legacyDefaults: UI_COPY_DEFAULTS, onChange: () => {
     if (elements.uiCopyEditorList) renderUiCopySettings(state.uiCopy);
@@ -1032,9 +1041,10 @@ function normalizedLoginMusic(value = {}) {
   let tracks = (Array.isArray(value.tracks) ? value.tracks : []).map((track) => ({
     id: String(track?.id || '').slice(0, 80), title: String(track?.title || track?.originalName || '登录音乐').slice(0, 100),
     originalName: String(track?.originalName || '').slice(0, 180), storedName: String(track?.storedName || '').slice(0, 180),
-    url: String(track?.url || '').trim(), mimeType: String(track?.mimeType || 'audio/mpeg').slice(0, 120), size: Math.max(0, Number(track?.size) || 0), createdAt: String(track?.createdAt || '')
+    url: String(track?.url || '').trim(), mimeType: String(track?.mimeType || 'audio/mpeg').slice(0, 120), size: Math.max(0, Number(track?.size) || 0),
+    sha256: /^[a-f0-9]{64}$/i.test(String(track?.sha256 || '')) ? String(track.sha256).toLowerCase() : '', createdAt: String(track?.createdAt || '')
   })).filter((track) => track.url);
-  tracks = [...new Map(tracks.map((track) => [track.url, track])).values()];
+  tracks = [...new Map(tracks.map((track) => [track.sha256 ? `sha256:${track.sha256}` : `url:${track.url}`, track])).values()];
   const legacyUrl = String(value.url || '').trim();
   if (!Array.isArray(value.tracks) && legacyUrl && !tracks.some((track) => track.url === legacyUrl)) {
     tracks = [{ id: String(value.currentTrackId || `legacy-${legacyUrl}`).slice(0, 80), title: String(value.title || '登录音乐').slice(0, 100), originalName: '', storedName: '', url: legacyUrl, mimeType: 'audio/mpeg', size: 0, createdAt: '' }, ...tracks];
@@ -1078,9 +1088,19 @@ function currentLoginMusicTitle(music = state.publicConfig.loginMusic || {}) {
 function renderLoginMusicTracks(value = state.publicConfig.loginMusic || {}) {
   if (!elements.loginMusicTrackList) return;
   const tracks = Array.isArray(value.tracks) ? value.tracks : [];
-  elements.loginMusicTrackList.innerHTML = tracks.length ? tracks.map((track) => `<div class="admin-row login-music-track-row" data-login-music-track="${escapeHtml(track.id)}"><label class="check-line"><input type="checkbox" data-login-music-select="${escapeHtml(track.id)}" aria-label="选择 ${escapeHtml(track.title || track.originalName || '登录音乐')}"></label><div><strong>${escapeHtml(track.title || track.originalName || '登录音乐')}</strong><small>${escapeHtml(track.originalName || track.url)}${track.size ? ` · ${formatBytes(track.size)}` : ''}</small></div><button type="button" class="danger-text-button" data-login-music-delete="${escapeHtml(track.id)}">删除</button></div>`).join('') : '<p class="muted">暂无登录音乐</p>';
+  const currentId = String(value.currentTrackId || '');
+  elements.loginMusicTrackList.innerHTML = tracks.length ? tracks.map((track) => `<div class="admin-row login-music-track-row" data-login-music-track="${escapeHtml(track.id)}"><label class="check-line"><input type="checkbox" data-login-music-select="${escapeHtml(track.id)}" aria-label="选择 ${escapeHtml(track.title || track.originalName || '登录音乐')}"></label><input class="login-music-track-title" data-login-music-title="${escapeHtml(track.id)}" value="${escapeHtml(track.title || track.originalName || '登录音乐')}" aria-label="登录音乐显示名称"><label class="login-music-current"><input type="radio" name="loginMusicCurrentTrack" data-login-music-current="${escapeHtml(track.id)}" ${track.id === currentId ? 'checked' : ''}> 当前</label><small>${escapeHtml(track.originalName || track.url)}${track.size ? ` · ${formatBytes(track.size)}` : ''}</small><button type="button" class="danger-text-button" data-login-music-delete="${escapeHtml(track.id)}">删除</button></div>`).join('') : '<p class="muted">暂无登录音乐</p>';
   if (elements.loginMusicSelectAll) elements.loginMusicSelectAll.checked = false;
   if (elements.deleteSelectedLoginMusicBtn) elements.deleteSelectedLoginMusicBtn.disabled = tracks.length === 0;
+}
+
+function collectLoginMusicTrackDrafts() {
+  const current = normalizedLoginMusic(state.publicConfig.loginMusic || {});
+  return current.tracks.map((track) => {
+    const title = elements.loginMusicTrackList?.querySelector(`[data-login-music-title="${CSS.escape(track.id)}"]`)?.value;
+    const currentInput = elements.loginMusicTrackList?.querySelector(`[data-login-music-current="${CSS.escape(track.id)}"]`);
+    return { ...track, title: String(title || track.title || track.originalName || '登录音乐').trim().slice(0, 100), ...(currentInput?.checked ? { _current: true } : {}) };
+  });
 }
 
 function updateLoginMusicSelectionControls() {
@@ -1391,6 +1411,24 @@ function uploadFileWithProgress(url, fieldName, file, container, timeoutMs = 10 
   });
 }
 
+function uploadLoginMusicFilesWithProgress(files, container, timeoutMs = 10 * 60 * 1000) {
+  return new Promise((resolve, reject) => {
+    if (!files.length) return resolve({ tracks: [] });
+    const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/login-music-upload', true); xhr.timeout = timeoutMs;
+    for (const [name, value] of Object.entries(authHeaders())) xhr.setRequestHeader(name, value);
+    const startedAt = performance.now();
+    xhr.upload.addEventListener('progress', (event) => {
+      if (!event.lengthComputable) return setLoginMediaUploadProgress(container, 0, '正在批量上传登录音乐…');
+      const elapsed = Math.max(.1, (performance.now() - startedAt) / 1000);
+      const percent = event.loaded / event.total * 100;
+      setLoginMediaUploadProgress(container, percent, `批量上传 ${Math.round(percent)}% · ${formatSize(event.loaded)}/${formatSize(event.total)} · ${formatSize(event.loaded / elapsed)}/秒`);
+    });
+    xhr.addEventListener('load', () => { let payload = {}; try { payload = JSON.parse(xhr.responseText || '{}'); } catch (_) {} if (xhr.status < 200 || xhr.status >= 300 || !payload.success) return reject(new Error(payload.error || `上传失败（${xhr.status}）`)); setLoginMediaUploadProgress(container, 100, `批量上传完成 · ${files.length} 首`); resolve(payload); });
+    xhr.addEventListener('error', () => reject(new Error('上传连接中断'))); xhr.addEventListener('timeout', () => reject(new Error('上传超时，请检查网络后重试')));
+    const form = new FormData(); files.forEach((file) => form.append('music', file, file.name)); xhr.send(form);
+  });
+}
+
 function updateLoginMusicVolumeLabel() {
   if (elements.loginMusicVolumeText && elements.loginMusicVolume) elements.loginMusicVolumeText.textContent = `${Math.round(Math.max(0, Math.min(1, Number(elements.loginMusicVolume.value) || 0)) * 100)}%`;
   if (elements.loginMusicPreview && elements.loginMusicVolume) elements.loginMusicPreview.volume = Math.max(0, Math.min(1, Number(elements.loginMusicVolume.value) || 0.3));
@@ -1426,22 +1464,17 @@ async function saveLoginMusicSettings() {
   const files = [...(elements.loginMusicFile?.files || [])];
   const uploadedTracks = [];
   setLoginMediaUploadProgress(elements.loginMusicUploadProgress, 0, files.length ? '准备上传…' : '正在保存设置…');
-  for (const file of files) {
-    try {
-      const upload = await uploadFileWithProgress('/api/login-music-upload', 'music', file, elements.loginMusicUploadProgress);
-      const serverTracks = Array.isArray(upload.tracks) ? upload.tracks : [{ id: upload.id || crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`, title: file.name.replace(/\.[^.]+$/, ''), originalName: file.name, storedName: upload.storedName || '', url: String(upload.url || upload.path || '').trim(), mimeType: file.type || 'audio/mpeg', size: file.size, createdAt: new Date().toISOString() }];
-      uploadedTracks.push(...serverTracks); if (!url) url = String(serverTracks[0]?.url || '').trim();
-    } catch (error) { return toast(localizedError(error, '登录音乐上传失败'), 'error'); }
-  }
+  if (files.length) { try { const upload = await uploadLoginMusicFilesWithProgress(files, elements.loginMusicUploadProgress); uploadedTracks.push(...(Array.isArray(upload.tracks) ? upload.tracks : [])); if (!url) url = String(uploadedTracks[0]?.url || '').trim(); } catch (error) { return toast(localizedError(error, '登录音乐上传失败'), 'error'); } }
   if (url && !/^https:\/\//i.test(url) && !url.startsWith('/')) return toast('音乐地址必须是 HTTPS 地址或服务器上传路径', 'error');
-  const existingTracks = normalizedLoginMusic(state.publicConfig.loginMusic || {}).tracks;
+  const existingTracks = collectLoginMusicTrackDrafts();
   const urlTrack = !uploadedTracks.length && /^https:\/\//i.test(enteredUrl)
     ? [{ id: `https-${enteredUrl}`, title: String(elements.loginMusicTitle?.value || '').trim() || enteredUrl.split('/').pop()?.split('?')[0] || '登录音乐', originalName: '', storedName: '', url: enteredUrl, mimeType: 'audio/mpeg', size: 0, createdAt: new Date().toISOString() }]
     : [];
-  const mergedTracks = [...new Map([...existingTracks, ...urlTrack, ...uploadedTracks].map((track) => [track.id || track.url, track])).values()];
+  const mergedTracks = [...new Map([...existingTracks, ...urlTrack, ...uploadedTracks].map((track) => [track.sha256 ? `sha256:${track.sha256}` : `url:${track.url}`, track])).values()];
   // A newly uploaded file is always the current track. This prevents an old
   // HTTPS value left in the form from surviving as the active address/title.
-  const currentTrack = uploadedTracks[0] || urlTrack[0] || mergedTracks.find((track) => track.url === enteredUrl) || mergedTracks[0];
+  const draftedCurrent = existingTracks.find((track) => track._current);
+  const currentTrack = uploadedTracks[0] || urlTrack[0] || draftedCurrent || mergedTracks.find((track) => track.url === enteredUrl) || mergedTracks[0];
   url = currentTrack?.url || '';
   const title = uploadedTracks[0]?.title || String(elements.loginMusicTitle?.value || '').trim() || currentTrack?.title || '';
   const tracksWithCurrentTitle = currentTrack
@@ -5803,10 +5836,10 @@ function applyPublicConfig() {
   const passwordMenuItem = document.querySelector('#accountDropdown [data-account-page="security"]');
   if (passwordMenuItem) { passwordMenuItem.textContent = '修改密码'; passwordMenuItem.dataset.accountFocus = 'password'; }
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.3.8';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.3.9';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.3.8'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.3.9'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -6007,7 +6040,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.3.8';
+    const current = state.publicConfig.version || 'v2.3.9';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -6485,7 +6518,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.3.8.apk';
+    link.download = 'SyncWatch同步观影-v2.3.9.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -6502,7 +6535,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch-Android-v2.3.8-universal.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.3.9-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -10759,6 +10792,14 @@ async function ensureLiveVoiceStream() {
 }
 
 function updateLiveVoiceUi(message = '') {
+  const androidClient = document.body?.classList.contains('android-client');
+  if (androidClient) {
+    elements.liveVoiceBar?.classList.add('is-hidden');
+    elements.liveVoiceFloating?.classList.add('is-hidden');
+    elements.liveVoiceBar?.setAttribute('aria-hidden', 'true');
+    elements.liveVoiceFloating?.setAttribute('aria-hidden', 'true');
+    return;
+  }
   const active = Boolean(state.liveVoiceMode);
   const statusText = message || (state.liveVoiceMode === 'room' ? `全麦语音 · ${state.liveVoicePeers.size + 1} 人` : state.liveVoiceMode === 'private' ? '私聊语音已接通' : '未加入语音');
   if (elements.liveVoiceStatus) elements.liveVoiceStatus.textContent = statusText;
@@ -14553,7 +14594,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.3.8'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.3.9'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }

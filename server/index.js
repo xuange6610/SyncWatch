@@ -46,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.3.8';
+const APP_VERSION = 'v2.3.9';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -795,15 +795,28 @@ function normalizeVerificationCodePolicy(value = {}) {
 function normalizeLoginMusic(value = {}) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const isValidUrl = (url) => url.startsWith('/login-music/') || /^https:\/\//i.test(url);
+  const trackIdentity = (track) => {
+    const digest = /^[a-f0-9]{64}$/i.test(String(track?.sha256 || '')) ? String(track.sha256).toLowerCase() : '';
+    // A local upload keeps its content digest across filename changes. This is
+    // what prevents a repeated upload of the same song from appearing twice
+    // in the login-page picker.
+    if (digest) return `sha256:${digest}`;
+    const storedName = path.basename(String(track?.storedName || ''));
+    if (storedName) return `local:${storedName.toLowerCase()}`;
+    return `url:${String(track?.url || '').trim()}`;
+  };
   let tracks = (Array.isArray(source.tracks) ? source.tracks : []).map((track) => ({
     id: cleanText(track?.id, 80), title: cleanText(track?.title || track?.originalName || '登录音乐', 100),
     originalName: cleanText(track?.originalName, 180), storedName: path.basename(String(track?.storedName || '')),
     url: cleanText(track?.url, 2048), mimeType: cleanText(track?.mimeType || 'audio/mpeg', 120),
-    size: Math.max(0, Math.floor(Number(track?.size) || 0)), createdAt: cleanText(track?.createdAt, 60)
+    size: Math.max(0, Math.floor(Number(track?.size) || 0)),
+    sha256: /^[a-f0-9]{64}$/i.test(String(track?.sha256 || '')) ? String(track.sha256).toLowerCase() : '',
+    createdAt: cleanText(track?.createdAt, 60)
   })).filter((track) => track.id && track.url && isValidUrl(track.url));
   // A repeated save/upload must not create repeated entries in the login
-  // picker. URL is the stable identity for both uploaded and HTTPS tracks.
-  tracks = [...new Map(tracks.map((track) => [track.url, track])).values()].slice(-LOGIN_MUSIC_TRACK_LIMIT);
+  // picker. Local audio uses its SHA-256 identity; HTTPS tracks use the exact
+  // URL, because their query string can be a required signed URL.
+  tracks = [...new Map(tracks.map((track) => [trackIdentity(track), track])).values()].slice(-LOGIN_MUSIC_TRACK_LIMIT);
   const legacyUrl = cleanText(source.url, 2048);
   // Older settings stored only url/title. Promote that value to a real track so
   // the current address and visible name can never drift apart after a save.
@@ -1437,7 +1450,7 @@ function freshState() {
     version: 13,
     admin: {
       passwordHash: makePasswordHash('admin888'), accessPasswordHash: '', mustChangePassword: true, passwordChangedAt: new Date().toISOString(),
-      uploadMinBytes: 0, uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, uploadVideoDurationLimitSeconds: 0, accountTiers: defaultAccountTiers(),
+      uploadMinBytes: 0, uploadLimitBytes: 0, uploadTimeLimitSeconds: 0, uploadVideoDurationLimitSeconds: 0, uploadVideoDurationLimitConfigured: false, accountTiers: defaultAccountTiers(),
       defaultPermissions: { control: false, seek: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
       mail: normalizeMailSettings(),
       branding: normalizeBranding(), loginCube: normalizeLoginCubeSettings(), loginMusic: normalizeLoginMusic(), loginVideo: normalizeLoginVideo(), marqueeNotice: normalizeMarqueeNotice(), roomEntryNotice: normalizeRoomEntryNotice(),
@@ -1491,7 +1504,14 @@ function migrateState(input) {
       uploadMinBytes: Math.max(0, Math.min(HARD_MEDIA_UPLOAD_LIMIT_BYTES, Math.floor(Number(input.admin.uploadMinBytes) || 0))),
       uploadLimitBytes: Math.max(0, Math.min(HARD_MEDIA_UPLOAD_LIMIT_BYTES, Math.floor(Number(input.admin.uploadLimitBytes) || 0))),
       uploadTimeLimitSeconds: Math.max(0, Number(input.admin.uploadTimeLimitSeconds) || 0),
-      uploadVideoDurationLimitSeconds: Math.max(0, Math.min(HARD_MEDIA_DURATION_LIMIT_SECONDS, Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0))),
+      // v2.3.9 introduced an explicit flag for the optional duration policy.
+      // Older state files did not have this flag and some were created with
+      // the former five-minute default; treat those as the new unlimited
+      // default. Once an administrator saves the setting, the flag preserves
+      // the chosen value (including an explicit 0/unlimited value).
+      uploadVideoDurationLimitSeconds: input.admin.uploadVideoDurationLimitConfigured === true
+        ? Math.max(0, Math.min(HARD_MEDIA_DURATION_LIMIT_SECONDS, Math.floor(Number(input.admin.uploadVideoDurationLimitSeconds) || 0))) : 0,
+      uploadVideoDurationLimitConfigured: input.admin.uploadVideoDurationLimitConfigured === true,
       accountTiers: { ...defaultAccountTiers(), ...(input.admin.accountTiers && typeof input.admin.accountTiers === 'object' ? input.admin.accountTiers : {}) },
       defaultPermissions: { ...next.admin.defaultPermissions, ...(input.admin.defaultPermissions || {}) },
       registrationIpWhitelist: Array.isArray(input.admin.registrationIpWhitelist)
@@ -2244,10 +2264,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.8.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.3.9.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.8-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.8-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.3.9-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.3.9-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
@@ -6750,7 +6770,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.8-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.3.9-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6837,7 +6857,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.8-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.3.9-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -7003,7 +7023,8 @@ async function startSyncWatchServer(options = {}) {
     }
     const tracks = (req.files || []).map((file) => ({
       id: crypto.randomUUID(), title: normalizeOriginalName(file.originalname).replace(/\.[^.]+$/, ''), originalName: normalizeOriginalName(file.originalname),
-      storedName: file.filename, url: `/login-music/${encodeURIComponent(file.filename)}`, mimeType: file.mimetype || 'audio/mpeg', size: file.size, createdAt: new Date().toISOString()
+      storedName: file.filename, url: `/login-music/${encodeURIComponent(file.filename)}`, mimeType: file.mimetype || 'audio/mpeg', size: file.size,
+      sha256: crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex'), createdAt: new Date().toISOString()
     }));
     return res.json({ success: true, tracks, url: tracks[0].url, message: `已上传 ${tracks.length} 首登录音乐` });
   });
@@ -14059,7 +14080,7 @@ async function startSyncWatchServer(options = {}) {
         if (seconds > HARD_REQUEST_TIMEOUT_MS / 1000) return acknowledgement?.({ success: false, error: '上传时间不能超过服务器 2 小时安全上限' });
         if (videoDurationSeconds > HARD_MEDIA_DURATION_LIMIT_SECONDS) return acknowledgement?.({ success: false, error: '视频时长不能超过服务器 30 天安全上限' });
         const before = { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds };
-        state.admin.uploadMinBytes = Math.floor(minBytes); state.admin.uploadLimitBytes = Math.floor(bytes); state.admin.uploadTimeLimitSeconds = Math.floor(seconds); state.admin.uploadVideoDurationLimitSeconds = Math.floor(videoDurationSeconds);
+        state.admin.uploadMinBytes = Math.floor(minBytes); state.admin.uploadLimitBytes = Math.floor(bytes); state.admin.uploadTimeLimitSeconds = Math.floor(seconds); state.admin.uploadVideoDurationLimitSeconds = Math.floor(videoDurationSeconds); state.admin.uploadVideoDurationLimitConfigured = true;
         persist();
         recordOperation({ actor: user.username, action: 'upload-limits', summary: '修改服务器上传限制', scope: 'server', undo: { kind: 'upload-limits', before, after: { uploadMinBytes: state.admin.uploadMinBytes, uploadLimitBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds } } });
         for (const id of Object.keys(state.rooms)) io.to(roomChannel(id)).emit('upload-limits', { minUploadBytes: state.admin.uploadMinBytes, maxUploadBytes: state.admin.uploadLimitBytes, uploadTimeLimitSeconds: state.admin.uploadTimeLimitSeconds, uploadVideoDurationLimitSeconds: state.admin.uploadVideoDurationLimitSeconds });
@@ -14666,12 +14687,30 @@ async function startSyncWatchServer(options = {}) {
         return acknowledgement?.({ success: true, ...preferences, message: '提醒设置已保存并同步' });
       }
       if (action === 'set-login-music') {
-        const current = normalizeLoginMusic(state.admin.loginMusic);
+        const currentRaw = normalizeLoginMusic(state.admin.loginMusic);
+        const current = normalizeLoginMusic({ ...currentRaw, tracks: currentRaw.tracks.map((track) => {
+          if (track.sha256 || !track.storedName) return track;
+          const filename = path.basename(track.storedName);
+          const target = path.join(loginMusicDir, filename);
+          try { if (fs.existsSync(target)) return { ...track, sha256: crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex') }; } catch (_) {}
+          return track;
+        }) });
         const incomingTracks = Array.isArray(payload.tracks) ? payload.tracks : [];
         const added = incomingTracks.map((track) => ({
           id: cleanText(track?.id, 80) || crypto.randomUUID(), title: cleanText(track?.title || track?.originalName || '登录音乐', 100), originalName: cleanText(track?.originalName, 180),
-          storedName: path.basename(String(track?.storedName || '')), url: cleanText(track?.url, 2048), mimeType: cleanText(track?.mimeType || 'audio/mpeg', 120), size: Math.max(0, Math.floor(Number(track?.size) || 0)), createdAt: new Date().toISOString()
+          storedName: path.basename(String(track?.storedName || '')), url: cleanText(track?.url, 2048), mimeType: cleanText(track?.mimeType || 'audio/mpeg', 120), size: Math.max(0, Math.floor(Number(track?.size) || 0)),
+          sha256: /^[a-f0-9]{64}$/i.test(String(track?.sha256 || '')) ? String(track.sha256).toLowerCase() : '', createdAt: new Date().toISOString()
         })).filter((track) => track.url && (track.url.startsWith('/login-music/') || /^https:\/\//i.test(track.url)));
+        for (const track of added) {
+          if (!track.storedName) continue;
+          const filename = path.basename(track.storedName);
+          const target = path.join(loginMusicDir, filename);
+          if (!/^[a-f0-9-]+\.[a-z0-9]{2,8}$/i.test(filename) || !fs.existsSync(target)) continue;
+          track.storedName = filename;
+          track.url = `/login-music/${encodeURIComponent(filename)}`;
+          track.size = fs.statSync(target).size;
+          track.sha256 = crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex');
+        }
         const requestedUrl = cleanText(payload.url, 2048);
         if (requestedUrl && !added.some((track) => track.url === requestedUrl)) {
           if (requestedUrl.startsWith('/login-music/')) {
@@ -14699,6 +14738,10 @@ async function startSyncWatchServer(options = {}) {
         const retainedFiles = new Set(next.tracks.map((track) => path.basename(track.storedName || '')).filter(Boolean));
         if (Array.isArray(payload.tracks)) {
           for (const track of current.tracks) {
+            const stored = path.basename(track.storedName || '');
+            if (stored && !retainedFiles.has(stored)) fs.rmSync(path.join(loginMusicDir, stored), { force: true });
+          }
+          for (const track of added) {
             const stored = path.basename(track.storedName || '');
             if (stored && !retainedFiles.has(stored)) fs.rmSync(path.join(loginMusicDir, stored), { force: true });
           }

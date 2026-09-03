@@ -1,10 +1,10 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.3.8 正式版；下载入口为 [GitHub Release v2.3.8](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.8)。该版本已核对 8 个维护者资产，页面另有 2 个源码归档，共 10 个可见文件。
+适用范围：v2.3.9 正式版；下载入口为 [GitHub Release v2.3.9](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.9)。该版本已核对 8 个维护者资产，页面另有 2 个源码归档，共 10 个可见文件。
 
 ## 直接使用
 
-双击 Release 中的 `SyncWatch-v2.3.8-Full-Offline-Portable-x64.exe`。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
+双击 Release 中的 `SyncWatch-v2.3.9-Full-Offline-Portable-x64.exe`。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
 
 程序窗口打开后，从“系统 → 分享内网地址”分享链接。同一 Wi-Fi 或有线网络内的手机、平板、电脑、笔记本和电视浏览器均可访问。
 
@@ -145,3 +145,4 @@ powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
 - [技术架构与依赖说明](architecture.md)：桌面端、服务端、前端、Android、数据、依赖版本、构建和测试的详细说明。
 
 版权所有 © xuan
+

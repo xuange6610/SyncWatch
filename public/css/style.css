@@ -1813,7 +1813,6 @@ body.android-client .room-tools-module .screen-share-hint { display: none; }
 /* Keep Android controls compact and predictable: the native video controls
    own play/pause, while room actions use two-column rows on touch screens. */
 body.android-client .playback-module #playPauseBtn,
-body.android-client .room-tools-module #floatingPlayerBtn,
 body.android-client .live-voice-bar,
 body.android-client #liveVoiceFloating { display: none !important; }
 body.android-client .playback-module { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1853,6 +1852,20 @@ body.android-client .owner-controls {
   border: 1px solid color-mix(in srgb, var(--green) 28%, var(--line));
   border-radius: 10px;
 }
+
+/* Android clients do not expose live voice controls; hide the entire dock so
+   its heading, collapse affordance and floating surface never reserve space. */
+body.android-client .live-voice-bar,
+body.android-client .live-voice-floating,
+body.android-client #liveVoiceBar,
+body.android-client #liveVoiceFloating { display: none !important; }
+
+/* Keep the most important touch actions in a predictable first row. */
+body.android-client .room-tools-module #fullscreenBtn { grid-column: 1; grid-row: 1; }
+body.android-client .room-tools-module .fullscreen-auto-lock-toolbar { grid-column: 2; grid-row: 1; }
+body.android-client .room-tools-module #screenShareBtn { grid-column: 1; grid-row: 2; }
+body.android-client .room-tools-module #audioSourceBtn { grid-column: 2; grid-row: 2; }
+body.android-client .room-tools-module #floatingPlayerBtn { grid-column: 1; grid-row: 3; }
 body.android-client .owner-controls > strong { grid-column: 1 / -1; font-size: .78rem; }
 body.android-client .owner-controls > *, body.android-client .owner-controls button { min-width: 0; min-height: 48px; white-space: normal; }
 body.android-client .owner-controls label { justify-content: flex-start; gap: 8px; padding: 8px; background: #ffffff08; border-radius: 7px; }
@@ -3414,6 +3427,21 @@ body.android-client .theater-toolbar .toolbar-module {
   max-width: 100%;
   min-width: 0;
 }
+/* Final mobile contract: voice is not a mobile feature, and the two most
+   important fullscreen actions always occupy row one in both Android WebView
+   and narrow mobile browsers. */
+@media (max-width: 924px) {
+  body.android-client .live-voice-bar,
+  body.android-client #liveVoiceBar,
+  body.android-client .live-voice-floating,
+  body.android-client #liveVoiceFloating { display: none !important; visibility: hidden !important; }
+  body.android-client .room-tools-module { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.android-client .room-tools-module #fullscreenBtn { grid-column: 1; grid-row: 1; }
+  body.android-client .room-tools-module .fullscreen-auto-lock-toolbar { grid-column: 2; grid-row: 1; }
+  body.android-client .room-tools-module #screenShareBtn { grid-column: 1; grid-row: 2; }
+  body.android-client .room-tools-module #audioSourceBtn { grid-column: 2; grid-row: 2; }
+  body.android-client .room-tools-module #floatingPlayerBtn { grid-column: 1; grid-row: 3; }
+}
 /* v2.2.8 usability refinements */
 .management-hub-card.management-loading .management-content::before { content: "正在加载服务器设置…"; display: block; margin: 0 0 12px; padding: 9px 12px; color: var(--muted); background: color-mix(in srgb, var(--theme-accent, var(--pink)) 8%, transparent); border: 1px solid color-mix(in srgb, var(--theme-accent, var(--pink)) 24%, var(--line)); border-radius: 7px; }
 .management-hub-card.management-loading .management-content { content-visibility: auto; contain: layout paint; }
@@ -3430,4 +3458,3 @@ body.android-client .theater-toolbar .toolbar-module {
 .download-recommended-badge { display: inline-block; margin-right: 7px; padding: 2px 6px; color: #0b1c16; font-size: .72rem; font-weight: 800; border-radius: 999px; background: var(--theme-accent, var(--pink)); }
 .fullscreen-lock-button[data-lock-state="locked"] span:last-child { color: var(--theme-accent, var(--pink-2)); font-weight: 800; }
 .fullscreen-lock-button[data-lock-state="unlocked"] span:last-child { color: #fff; }
-
