@@ -135,6 +135,16 @@ async function main() {
 
     const videoUpload = await upload(baseUrl, memberLogin.token, 'small.mp4', 'video/mp4', Buffer.from('12345678'));
     assert.equal(videoUpload.status, 200, videoUpload.body.error);
+    const uploadHistory = await ack(member, 'chat-history', { limit: 100 });
+    assert.ok(uploadHistory.messages.some((message) => message.systemKind === 'media-upload' && message.actorName === 'PolicyMember' && message.fileName === 'small.mp4'),
+      '房间聊天历史必须记录上传者和视频文件名');
+    const deletedVideo = await fetch(`${baseUrl}/api/files/${encodeURIComponent(videoUpload.body.file.id)}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${adminLogin.token}` }
+    });
+    assert.equal(deletedVideo.status, 200);
+    const deleteHistory = await ack(member, 'chat-history', { limit: 100 });
+    assert.ok(deleteHistory.messages.some((message) => message.systemKind === 'media-delete' && message.actorName === 'admin' && message.fileName === 'small.mp4'),
+      '房间聊天历史必须记录删除者和视频文件名');
     const rangePolicy = await ack(admin, 'admin-action', {
       action: 'set-upload-limits', uploadMinBytes: 16, uploadLimitBytes: 32, uploadTimeLimitSeconds: 0
     });
@@ -200,6 +210,8 @@ async function main() {
     assert.equal(profile.profile.level, 1);
     assert.equal(profile.profile.location.street, 'People Square');
     assert.equal(profile.profile.location.latitude, null);
+    assert.equal(profile.profile.canGrantRoomPermissions, true, '超级管理员资料卡应显示房间权限入口');
+    assert.equal(profile.profile.canGrantSuperAdmin, true, '超级管理员资料卡应显示超级管理员入口');
     const locations = await ack(admin, 'member-location-list');
     assert.equal(locations.success, true, locations.error);
     const locatedMember = locations.members.find((entry) => entry.username === 'PolicyMember');

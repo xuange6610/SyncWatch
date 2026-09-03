@@ -246,7 +246,7 @@ async function main() {
   ];
   const clientDownloadPath = clientDownloadCandidates.find((candidate) => fs.existsSync(candidate)) || '';
   const controller = await startSyncWatchServer({
-    host: '0.0.0.0', port, strictPort: true, portFallbackCount: 0, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
+    host: '0.0.0.0', port, strictPort: false, portFallbackCount: 20, dataDir: DATA_DIR, publicDir: path.join(ROOT_DIR, 'public'),
     hostControlToken: token, allowedHosts, publicUrl, androidApkPath, clientDownloadPath, tunnelManager,
     ...(trustedProxies !== undefined ? { trustedProxies } : {})
   });

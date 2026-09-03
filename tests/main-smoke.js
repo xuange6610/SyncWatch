@@ -87,11 +87,11 @@ assert.equal(electronSettings.resolveLanAddress({ networkInterface: 'missing' },
 assert.deepEqual(electronSettings.selectableNetworkAdapters(networkInterfaces).map(({ name, address }) => ({ name, address })), [
   { name: 'Wi-Fi', address: '192.168.1.23' }
 ]);
-assert.match(electronSource, /host: '0\.0\.0\.0', port: startPort, strictPort: true/,
-  'Electron 正式启动必须固定使用配置端口，不能静默改用随机端口');
+assert.match(electronSource, /host: '0\.0\.0\.0', port: startPort, strictPort: false, portFallbackCount: 20/,
+  'Electron 正式启动在端口占用时必须自动切换到可用端口');
 const standaloneSource = fs.readFileSync(path.resolve(__dirname, '..', 'server-standalone.js'), 'utf8');
-assert.match(standaloneSource, /host: '0\.0\.0\.0', port, strictPort: true/,
-  '独立服务器正式启动必须固定使用配置端口，不能静默改用随机端口');
+assert.match(standaloneSource, /host: '0\.0\.0\.0', port, strictPort: false, portFallbackCount: 20/,
+  '独立服务器正式启动在端口占用时必须自动切换到可用端口');
 console.log('✓ 启动网卡支持自动优选、手动指定与断线回退');
 
 assert.deepEqual(electronSettings.tunnelCommandArgs('quick', 20311), [

@@ -675,8 +675,9 @@ textarea:focus { border-color: var(--pink); box-shadow: 0 0 0 3px #52c7b820; }
 .desktop-close-actions > .primary-button small { color: var(--theme-accent-ink, #251b08); font-weight: 600; }
 .desktop-close-actions > .danger-button { color: var(--red); background: color-mix(in srgb, var(--red) 12%, var(--theme-button, #292721)); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
 .desktop-close-actions > .text-button { min-height: 40px; grid-column: 1 / -1; place-items: center; color: var(--muted); text-align: center; }
+#desktopCloseModal .desktop-close-actions > button:hover, #desktopCloseModal .desktop-close-actions > button:focus { color: var(--theme-accent-ink, #251b08); background: var(--pink) !important; border-color: var(--pink-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pink) 28%, transparent), 0 10px 24px color-mix(in srgb, var(--pink) 20%, transparent); filter: none; outline: none; transform: translateY(-1px); transition: none !important; }
 #desktopCloseModal .desktop-close-actions > button:is(:hover, :focus) { color: var(--theme-accent-ink, #251b08); background: var(--pink) !important; border-color: var(--pink-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pink) 28%, transparent), 0 10px 24px color-mix(in srgb, var(--pink) 20%, transparent); filter: none; outline: none; transform: translateY(-1px); transition: none !important; }
-#desktopCloseModal .desktop-close-actions > button:is(:hover, :focus) strong, #desktopCloseModal .desktop-close-actions > button:is(:hover, :focus) small { color: var(--theme-accent-ink, #251b08); }
+#desktopCloseModal .desktop-close-actions > button:hover strong, #desktopCloseModal .desktop-close-actions > button:focus strong, #desktopCloseModal .desktop-close-actions > button:hover small, #desktopCloseModal .desktop-close-actions > button:focus small { color: var(--theme-accent-ink, #251b08); }
 #desktopCloseModal .desktop-close-actions > button:active { transform: translateY(0); }
 .desktop-close-card .setting-status { min-height: 0; margin: 10px 0 0; color: var(--red); }
 @keyframes recommended-action-breathe { 0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent, var(--pink)) 28%, transparent), 0 8px 22px color-mix(in srgb, var(--theme-accent, var(--pink)) 12%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent, var(--pink)) 70%, transparent), 0 0 24px color-mix(in srgb, var(--theme-accent, var(--pink)) 38%, transparent); } }
@@ -1809,6 +1810,23 @@ body.android-client .room-tools-module { grid-template-columns: repeat(2, minmax
 body.android-client .room-tools-module .toolbar-check,
 body.android-client .room-tools-module #screenShareBtn { grid-column: 1 / -1; }
 body.android-client .room-tools-module .screen-share-hint { display: none; }
+/* Keep Android controls compact and predictable: the native video controls
+   own play/pause, while room actions use two-column rows on touch screens. */
+body.android-client .playback-module #playPauseBtn,
+body.android-client .room-tools-module #floatingPlayerBtn,
+body.android-client .live-voice-bar,
+body.android-client #liveVoiceFloating { display: none !important; }
+body.android-client .playback-module { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.android-client .playback-module #clearPlaybackBtn,
+body.android-client .playback-module #customJumpBtn { grid-column: 1 / -1; }
+body.android-client .playback-module #backBtn,
+body.android-client .playback-module #forwardBtn,
+body.android-client .playback-module .toolbar-select { grid-column: auto; }
+body.android-client .room-tools-module #screenShareBtn,
+body.android-client .room-tools-module #audioSourceBtn,
+body.android-client .room-tools-module #fullscreenBtn,
+body.android-client .room-tools-module .fullscreen-auto-lock-toolbar { grid-column: auto; }
+body.android-client .room-tools-module .toolbar-check:first-of-type { grid-column: 1 / -1; }
 body.android-client .theater-toolbar .compact-button,
 body.android-client .theater-toolbar select,
 body.android-client .toolbar-check {

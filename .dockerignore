@@ -7,8 +7,8 @@ SyncWatch同步观影-Data
 *.exe
 !dist/
 dist/*
-!dist/SyncWatch-Android-v2.3.7-universal.apk
-!dist/SyncWatch-Experience-Client-Portable-v2.3.7-x64.exe
+!dist/SyncWatch-Android-v2.3.8-universal.apk
+!dist/SyncWatch-Experience-Client-Portable-v2.3.8-x64.exe
 *.zip
 .git
 
