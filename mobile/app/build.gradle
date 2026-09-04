@@ -245,8 +245,8 @@ android {
         applicationId 'com.xuan.syncwatch'
         minSdk 23
         targetSdk 35
-        versionCode 20400
-        versionName '2.4.0'
+        versionCode 20401
+        versionName '2.4.1'
 
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'

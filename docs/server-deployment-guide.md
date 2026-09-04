@@ -1,8 +1,8 @@
 # SyncWatch同步观影 服务器部署与使用教程
 
-适用版本：v2.4.0 正式版（文档更新于 2026-09-03；正式资产已通过 Release API 与下载回读核验）
+适用版本：v2.4.1 候选版（文档更新于 2026-09-04；本地构建已完成，正式资产待维护者确认后上传）
 
-本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；v2.4.0 的文件名、大小和 SHA-256 已完成核验，以 GitHub Release 页面为准。
+本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；v2.4.1 候选的文件名、大小和 SHA-256 已在本地 `dist/` 核验，上传后再以 GitHub Release 页面为准。
 
 ## 1. 先理解“程序”和“数据”
 
@@ -798,4 +798,3 @@ Docker 升级时，先备份宿主机 `SyncWatch同步观影-Data/`，再执行 
 - Cloudflare WebSockets：<https://developers.cloudflare.com/network/websockets/>
 - Cloudflare 413 与上传大小限制：<https://developers.cloudflare.com/support/troubleshooting/http-status-codes/4xx-client-error/error-413/>
 - Cloudflare 支持代理的网络端口：<https://developers.cloudflare.com/fundamentals/reference/network-ports/>
-

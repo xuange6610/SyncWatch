@@ -163,6 +163,9 @@ main { height: calc(100% - 58px); }
 .panel-tabs button.active { color: var(--text); border-color: var(--pink); }
 .media-tabs { position: static; margin-bottom: 10px; }
 .upload-button { width: 100%; display: grid; gap: 2px; place-items: center; padding: 14px 8px; color: var(--pink-2); background: #52c7b80b; border: 1px dashed #52c7b855; border-radius: 8px; }
+.wechat-upload-notice { display: grid; gap: 3px; margin-top: 7px; padding: 9px 10px; color: var(--text); background: color-mix(in srgb, #f0bd4f 12%, transparent); border: 1px solid color-mix(in srgb, #f0bd4f 48%, var(--line)); border-radius: 8px; }
+.wechat-upload-notice strong { color: #ffd982; font-size: 11px; }
+.wechat-upload-notice p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .upload-button span { font-size: 24px; }.upload-button small { color: var(--muted); font-size: 10px; }
 .upload-button.needs-first-video { border-style: solid; animation: first-video-upload-attention 1.45s ease-in-out infinite; }
 @keyframes first-video-upload-attention {

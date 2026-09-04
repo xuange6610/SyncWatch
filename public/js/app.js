@@ -107,7 +107,7 @@ const ONBOARDING_GUIDE_STEPS = [
 const state = {
   socket: null, token: localStorage.getItem('syncwatchToken') || '', user: null,
   capabilities: { owner: false, serverHost: false, superAdmin: false, canSetInitialAccountPassword: false, canSkipInitialAccountPasswordVerification: false }, permissions: { control: false, upload: true, delete: false, manageMedia: false, shareScreen: false, shareAudio: false, shareWeb: false, voiceChat: true, manageChat: false, manageRoom: false, skipSettings: false, sendNotice: false },
-  publicConfig: { version: 'v2.4.0', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
+  publicConfig: { version: 'v2.4.1', addresses: [], accessPasswordRequired: false, maxUploadBytes: 10 * 1024 * 1024 * 1024, uploadTimeLimitSeconds: 0, allowTextUploads: true, androidApkAvailable: false, clientDownloadAvailable: false, serverHostLoginAvailable: false, serverHostPasswordlessAvailable: false, serverHostPasswordlessManagementAvailable: false, serverHostPasswordlessRoomAvailable: false, passwordRecoveryAvailable: false, registrationEmailVerificationRequired: false, emailBindingAvailable: false, lanAccessEnabled: true, defaultPlaybackQuality: 'original', usernamePolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: USERNAME_MAX_UTF8_BYTES, maxBytes: USERNAME_MAX_UTF8_BYTES }, passwordPolicy: { mode: 'unrestricted', lengthRestricted: false, minLength: 1, maxLength: PASSWORD_MAX_UTF8_BYTES, maxBytes: PASSWORD_MAX_UTF8_BYTES, expiryDays: 7 }, roomIdPolicy: { enabled: false, mode: 'uppercase_alnum', minLength: 4, maxLength: 32, customPattern: '' }, contact: {}, legalAgreement: {}, branding: { owner: 'xuan', notice: '版权所有 © xuan，保留所有权利。' }, uiCopy: normalizedUiCopy(), f11PromptEnabled: true, initialPasswordReminderEnabled: true, downloadButtonsVisible: true, locationStatusNoticesEnabled: true, locationAuthorizationRequestsEnabled: true, loginMusic: { enabled: false, showTitle: true, title: '', url: '', volume: 0.3, loop: true }, loginVideo: { enabled: false, url: '', originalName: '' }, loginCube: { displayMode: 'cube', rotationDirection: 'right', autoRotate: true, inertia: true, rotationSpeed: 16, faces: LOGIN_CUBE_FACE_DEFAULTS.map((face) => ({ ...face })), model: { url: '', originalName: '', size: 0, sha256: '' } } },
   publicConfigKnown: false, publicConfigRetryTimer: null, roomInfoTimer: null, files: new Map(), users: [], room: null, queue: [], currentFile: null,
   uiCopy: normalizedUiCopy(), uiCopyEditActive: false, uiCopySearch: '',
   applyingPlayback: false, pendingPlayback: null, playbackAnchor: null, playbackRevision: -1, syncSeekCooldownUntil: 0,
@@ -342,7 +342,7 @@ const ids = `connectionBadge copyAddressBtn roomActionsMyRoomsBtn roomActionsRoo
  loginForm registerForm showRegisterBtn showLoginBtn forgotPasswordBtn requestRegistrationBtn authTitle authHint username password togglePasswordBtn toggleRegPasswordBtn toggleRegPasswordConfirmBtn autoLogin loginVersionInfo enterOwnRoomBtn myRoomsLoginBtn serverAdminLoginBtn serverAdminRoomLoginBtn managementLogoutBtn loginHostShortcuts adminContactBtn openDownloadCenterLoginBtn downloadClientBtn downloadLoginApkBtn guestLoginBtn authCard
  loginAccessGroup loginAccessPassword roomIdInput loginRoomPassword loginRoomPasswordState onlineRoomSearch onlineRoomSelect refreshOnlineRoomsBtn roomLookupStatus currentDeviceIp copyDeviceIpBtn registerAccessGroup registerAccessPassword regUsername regEmail regEmailVerificationCode registrationEmailVerificationRow sendRegistrationEmailCodeBtn regPassword regPasswordConfirm loginStatus loginStatusWrap closeLoginStatusBtn requestLoginLimitClearBtn requestLoginConcurrencyBtn createRoomBtn defaultAdminLoginHint fillDefaultAdminCredentialsBtn
 roomHeader headerRoomName headerOnline headerMax headerStatus headerThemeStatus headerServerPortGroup headerServerPort accountMenuBtn accountDropdown accountRoomSettingsBtn accountName accountAvatar logoutKeepCredentialsBtn logoutBtn networkUploadSpeed networkDownloadSpeed
- filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn cancelUploadBtn backgroundUploadBtn collapseFilesBtn collapseMembersPanelBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
+ filePanel userPanel mobileFilesBtn mobileUsersBtn fileInput folderInput chooseFileBtn chooseFolderBtn wechatUploadNotice cancelUploadBtn backgroundUploadBtn collapseFilesBtn collapseMembersPanelBtn uploadLimitText uploadProgress uploadProgressTitle uploadProgressBar uploadProgressText tunnelProgress tunnelProgressTitle tunnelProgressPhase tunnelProgressBar tunnelProgressStep tunnelProgressTime tunnelProgressDetail closeTunnelProgressBtn
   fileList fileCount libraryTab queueTab queueList addCurrentQueueBtn addRemoteVideoBtn queueModeSelect queueCategoryGroup queueCategorySelect mediaCategoryFilter manageMediaCategoriesBtn batchMoveMediaCategoryBtn openVideoManagementBtn libraryQueueSelectAll libraryQueueSelectionCount addSelectedToQueueBtn queueSelectAll queueSelectionCount removeSelectedQueueBtn nowPlayingName userCountCard localLatency syncStatus roomMarquee roomMarqueeText openRoomManagementBtn
   playPauseBtn clearPlaybackBtn customJumpBtn backBtn forwardBtn volumeMuteBtn videoMuteBtn volumeSlider playbackQualitySelect playbackRateSelect playbackRateBadge playbackRatePrompt syncNoticeToggle requestControlBtn screenShareBtn audioSourceBtn floatingPlayerBtn fullscreenBtn skipSettingsBtn skipSettingsModal closeSkipSettingsBtn skipSettingsForm skipSettingsEnabled skipIntroSeconds skipOutroSeconds skipSettingsStatus saveSkipSettingsBtn lightsBtn ownerControls controlLockBtn forceSyncBtn volumeSyncToggle temporaryRoomNotice convertTemporaryRoomPrimaryBtn ignoreTemporaryRoomBtn playerProgressBar playerSeekSlider playerCurrentTime playerDuration
  playerContainer emptyStage emptyStageHint videoPlayer imageViewer documentViewer textViewer textReaderControls textReaderPreviousBtn textReaderPage textReaderPageCount textReaderNextBtn textReaderProgress sharedWebViewer sharedWebEmpty downloadViewer downloadTitle downloadLink screenShareCanvas screenShareVideo screenShareStatus syncNotice resumePlaybackBtn danmakuContainer reactionLayer friendVideoNoticeLayer playerInfo playerResolution playerCodec hardwareDecode
@@ -415,6 +415,7 @@ async function initialize() {
   const phoneMediaQuery = window.matchMedia?.('(max-width: 924px)');
   phoneMediaQuery?.addEventListener?.('change', removePhoneOnlyControls);
   initializeManagementArchitecture();
+  updateWechatUploadNotice();
   window.SyncWatchUiCopy?.initialize({ legacyDefaults: UI_COPY_DEFAULTS, onChange: () => {
     if (elements.uiCopyEditorList) renderUiCopySettings(state.uiCopy);
   } });
@@ -3821,6 +3822,16 @@ function deviceInfo() {
   return { browser, platform, deviceName, deviceId, hostToken: state.hostToken };
 }
 
+function isWechatEmbeddedBrowser() {
+  return /MicroMessenger/i.test(String(navigator.userAgent || ''));
+}
+
+function updateWechatUploadNotice() {
+  const notice = elements.wechatUploadNotice;
+  if (!notice) return;
+  notice.classList.toggle('is-hidden', !isWechatEmbeddedBrowser());
+}
+
 function togglePasswordVisibility() {
   toggleFieldVisibility(elements.password, elements.togglePasswordBtn, '密码');
 }
@@ -5852,10 +5863,10 @@ function applyPublicConfig() {
   const passwordMenuItem = document.querySelector('#accountDropdown [data-account-page="security"]');
   if (passwordMenuItem) { passwordMenuItem.textContent = '修改密码'; passwordMenuItem.dataset.accountFocus = 'password'; }
   applyUiCopy(state.publicConfig.uiCopy || state.uiCopy);
-  elements.versionText.textContent = state.publicConfig.version || 'v2.4.0';
+  elements.versionText.textContent = state.publicConfig.version || 'v2.4.1';
   const branding = state.publicConfig.branding || {};
   if (elements.copyrightNotice) elements.copyrightNotice.textContent = branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`;
-  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.4.0'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
+  if (elements.loginVersionInfo) elements.loginVersionInfo.textContent = `版本 ${state.publicConfig.version || 'v2.4.1'} · ${branding.notice || `版权所有 © ${branding.owner || 'xuan'}，保留所有权利。`}`;
   applyLoginMarquee(state.publicConfig.marqueeNotice || {});
   applyLoginMusic(state.publicConfig.loginMusic || {});
   applyLoginVideo(state.publicConfig.loginVideo || {});
@@ -6056,7 +6067,7 @@ async function checkForUpdates() {
     const response = await fetchWithTimeout('/api/releases/latest', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }, 12000);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `检查服务返回 ${response.status}`);
     const release = await response.json();
-    const current = state.publicConfig.version || 'v2.4.0';
+    const current = state.publicConfig.version || 'v2.4.1';
     const latest = String(release.tag_name || release.tagName || release.version || '').trim();
     const comparison = compareSemver(current, latest);
     elements.downloadUpdateStatus.textContent = comparison < 0
@@ -6534,7 +6545,7 @@ async function downloadAndroidApk() {
   if (window.SyncWatchAndroid) {
     const link = document.createElement('a');
     link.href = new URL('/api/android-apk', location.href).href;
-    link.download = 'SyncWatch同步观影-v2.4.0.apk';
+    link.download = 'SyncWatch同步观影-v2.4.1.apk';
     link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
     toast('已交给安卓下载管理器处理', 'success');
     return;
@@ -6551,7 +6562,7 @@ async function downloadAndroidApk() {
     const blob = await response.blob();
     if (!blob.size) throw new Error('服务器返回的安装包为空');
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = 'SyncWatch-Android-v2.4.0-universal.apk';
+    link.href = url; link.download = 'SyncWatch-Android-v2.4.1-universal.apk';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
     toast('安卓安装包已开始下载', 'success');
   } catch (error) { toast(`安卓安装包下载失败：${localizedError(error, '请稍后重试')}`, 'error'); }
@@ -14668,7 +14679,7 @@ async function exportServerData() {
   try {
     const response = await fetchWithTimeout(`/api/host/data/export?scopes=${encodeURIComponent(scopes.join(','))}${includesMedia ? '&format=binary' : ''}`, { headers: authHeaders() }, includesMedia ? 30 * 60 * 1000 : 2 * 60 * 1000);
     if (!response.ok) throw new Error((await response.text()) || `导出失败（${response.status}）`);
-  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.4.0'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+  const blob = await readBackupResponseWithProgress(response); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `SyncWatch同步观影-${state.publicConfig.version || 'v2.4.1'}-${scope}-${new Date().toISOString().slice(0, 10)}.${includesMedia ? 'swbackup' : 'json'}`; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     elements.dataBackupStatus.textContent = '备份已生成并下载'; toast('数据备份已导出', 'success');
   } catch (error) { elements.dataBackupStatus.textContent = localizedError(error, '导出备份失败'); updateBackupExportProgress({ label: '备份导出失败', failed: true }); if (elements.dataBackupProgressDetail) elements.dataBackupProgressDetail.textContent = elements.dataBackupStatus.textContent; toast(elements.dataBackupStatus.textContent, 'error'); }
   finally { elements.exportDataBtn.disabled = false; }
