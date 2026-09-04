@@ -350,10 +350,19 @@ body.android-client .player-container:fullscreen {
 @media (pointer: coarse) and (max-width: 1200px), (hover: none) and (max-width: 1200px) {
   body:not(.electron-server) .workspace,
   body.android-client .workspace { display: block !important; width: 100% !important; max-width: 100% !important; }
-  body:not(.electron-server) .file-panel,
-  body:not(.electron-server) .user-panel,
-  body.android-client .file-panel,
-  body.android-client .user-panel { display: none !important; }
+  /* Touch layouts collapse the side panels by default, but an explicit
+   * .mobile-open state must win over this coarse-pointer fallback.  The
+   * previous unconditional display:none rule made the Library and Members
+   * buttons appear to do nothing on phones (the JS state changed, the panel
+   * stayed hidden). */
+  body:not(.electron-server) .file-panel:not(.mobile-open),
+  body:not(.electron-server) .user-panel:not(.mobile-open),
+  body.android-client .file-panel:not(.mobile-open),
+  body.android-client .user-panel:not(.mobile-open) { display: none !important; }
+  body:not(.electron-server) .file-panel.mobile-open,
+  body:not(.electron-server) .user-panel.mobile-open,
+  body.android-client .file-panel.mobile-open,
+  body.android-client .user-panel.mobile-open { display: block !important; }
   body:not(.electron-server) .theater,
   body.android-client .theater {
     display: grid !important;
@@ -365,6 +374,22 @@ body.android-client .player-container:fullscreen {
     grid-template-areas: "marquee" "status" "mobile-nav" "player" "toolbar" "owner" "chat" !important;
     grid-template-rows: auto auto auto minmax(220px, 43dvh) auto auto minmax(180px, .55fr) !important;
     overflow: visible !important;
+  }
+  /* The base touch grid has player-sized tracks.  When a module replaces the
+   * player, remove those tracks here as well: this rule must carry the same
+   * priority as the base grid above or the chat is rendered below an empty
+   * 43dvh player row. */
+  body:not(.electron-server) .theater[data-mobile-module-active="chat"],
+  body.android-client .theater[data-mobile-module-active="chat"] {
+    grid-template-areas: "marquee" "mobile-nav" "chat" !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important;
+  }
+  body:not(.electron-server) .theater[data-mobile-module-active="library"],
+  body:not(.electron-server) .theater[data-mobile-module-active="members"],
+  body.android-client .theater[data-mobile-module-active="library"],
+  body.android-client .theater[data-mobile-module-active="members"] {
+    grid-template-areas: "marquee" "mobile-nav" !important;
+    grid-template-rows: auto auto !important;
   }
   body:not(.electron-server) .theater-toolbar,
   body.android-client .theater-toolbar { width: 100% !important; min-width: 0 !important; overflow: visible !important; }

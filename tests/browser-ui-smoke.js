@@ -1528,6 +1528,53 @@ async function main() {
     assert.ok(androidModuleGeometry.buttonWidths.every((width) => width > 0 && width <= 100), JSON.stringify(androidModuleGeometry));
     assert.equal(androidModuleGeometry.workspaceOverflowY, 'visible', JSON.stringify(androidModuleGeometry));
     assert.equal(androidModuleGeometry.theaterOverflowY, 'visible', JSON.stringify(androidModuleGeometry));
+    const mobileModulePanels = await evaluate(cdp, `(async () => {
+      const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const snapshot = (module, panel) => {
+        const rect = panel.getBoundingClientRect();
+        return {
+          active: elements.theater.dataset.mobileModuleActive,
+          open: panel.classList.contains('mobile-open'),
+          display: getComputedStyle(panel).display,
+          rect: [rect.left, rect.top, rect.right, rect.bottom, rect.width, rect.height]
+        };
+      };
+
+      elements.mobileFilesBtn.click(); await settle();
+      const library = snapshot('library', elements.filePanel);
+      document.querySelector('[data-mobile-module="chat"]').click(); await settle();
+      const chatPanel = elements.chatPanel.getBoundingClientRect();
+      const chat = {
+        active: elements.theater.dataset.mobileModuleActive,
+        display: getComputedStyle(elements.chatPanel).display,
+        rect: [chatPanel.left, chatPanel.top, chatPanel.right, chatPanel.bottom, chatPanel.width, chatPanel.height],
+        historyHeight: elements.chatHistory.getBoundingClientRect().height,
+        libraryOpen: elements.filePanel.classList.contains('mobile-open'),
+        membersOpen: elements.userPanel.classList.contains('mobile-open')
+      };
+      elements.mobileUsersBtn.click(); await settle();
+      const members = snapshot('members', elements.userPanel);
+      document.querySelector('[data-mobile-module="watch"]').click(); await settle();
+      return { library, chat, members, restored: elements.theater.dataset.mobileModuleActive };
+    })()`);
+    for (const panel of [mobileModulePanels.library, mobileModulePanels.members]) {
+      assert.equal(panel.open, true, JSON.stringify(mobileModulePanels));
+      assert.equal(panel.display, 'block', JSON.stringify(mobileModulePanels));
+      assert.ok(panel.rect[4] > 0 && panel.rect[5] > 0, JSON.stringify(mobileModulePanels));
+      assert.ok(panel.rect[0] >= -1 && panel.rect[2] <= 391, JSON.stringify(mobileModulePanels));
+    }
+    assert.equal(mobileModulePanels.chat.active, 'chat', JSON.stringify(mobileModulePanels));
+    assert.equal(mobileModulePanels.chat.display, 'grid', JSON.stringify(mobileModulePanels));
+    assert.ok(mobileModulePanels.chat.rect[4] > 0 && mobileModulePanels.chat.rect[5] >= 160, JSON.stringify(mobileModulePanels));
+    assert.ok(mobileModulePanels.chat.rect[1] < 844 && mobileModulePanels.chat.historyHeight >= 160, JSON.stringify(mobileModulePanels));
+    assert.equal(mobileModulePanels.chat.libraryOpen, false, JSON.stringify(mobileModulePanels));
+    assert.equal(mobileModulePanels.chat.membersOpen, false, JSON.stringify(mobileModulePanels));
+    assert.equal(mobileModulePanels.restored, 'watch', JSON.stringify(mobileModulePanels));
+    await evaluate(cdp, `elements.mobileFilesBtn.click(); true`); await delay(120);
+    const mobileLibraryPath = path.join(outputDir, 'mobile-library-390x844.png'); await capture(cdp, mobileLibraryPath); images.push(mobileLibraryPath);
+    await evaluate(cdp, `elements.mobileUsersBtn.click(); true`); await delay(120);
+    const mobileMembersPath = path.join(outputDir, 'mobile-members-390x844.png'); await capture(cdp, mobileMembersPath); images.push(mobileMembersPath);
+    await evaluate(cdp, `document.querySelector('[data-mobile-module="watch"]').click(); true`); await delay(80);
     const androidChatHeadGeometry = await evaluate(cdp, `(async () => {
       openMobileModule('chat');
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

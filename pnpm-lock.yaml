@@ -974,7 +974,7 @@ packages:
   node-api-version@0.2.1:
     resolution: {integrity: sha512-2xP/IGGMmmSQpI1+O/k72jF/ykvZ89JeuKX3TLJAYPDVLUalrshrLHkeVcCCZqG/eEa635cr8IBYzgnDvM2O8Q==}
 
-  node-gyp@12.4.0:
+  node-gyp@12.4.1:
     resolution: {integrity: sha512-OMcPNvqTCFUnNaBlmdgq+lfNqY7gTiSmNRDjY3uAXRyudeKZEZxu3CLtjMQrx4zZxCX2b/mpNqTtwuCJgXhHkw==}
     engines: {node: ^20.17.0 || >=22.9.0}
     hasBin: true
@@ -1585,7 +1585,7 @@ snapshots:
       debug: 4.4.3
       node-abi: 4.33.0
       node-api-version: 0.2.1
-      node-gyp: 12.4.0
+      node-gyp: 12.4.1
       read-binary-file-arch: 1.0.6
     transitivePeerDependencies:
       - supports-color
@@ -2635,7 +2635,7 @@ snapshots:
     dependencies:
       semver: 7.8.5
 
-  node-gyp@12.4.0:
+  node-gyp@12.4.1:
     dependencies:
       env-paths: 2.2.1
       exponential-backoff: 3.1.3

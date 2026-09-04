@@ -22,9 +22,9 @@ assert.match(html, /id="lanScanBtn"[^>]*>[\s\S]*?<svg class="header-line-icon"[\
 assert.doesNotMatch(html, /id="lanScanBtn"[^>]*>[\s\S]{0,120}⌁/);
 assert.match(html, /下载文件[\s\S]*版本[\s\S]*适合谁[\s\S]*简单说明/);
 for (const filename of [
-  'SyncWatch-Experience-Client-Portable-v2.4.0-x64.exe',
-  'SyncWatch-v2.4.0-Full-Offline-Portable-x64.exe',
-  'SyncWatch-Android-v2.4.0-universal.apk',
+  'SyncWatch-Experience-Client-Portable-v2.4.1-x64.exe',
+  'SyncWatch-v2.4.1-Full-Offline-Portable-x64.exe',
+  'SyncWatch-Android-v2.4.1-universal.apk',
   'cloudflared-windows-x64-installer.msi',
   'node-v24.19.0-x64.msi'
 ]) assert.match(html, new RegExp(filename.replace(/[.]/g, '\\.')));
