@@ -54,11 +54,11 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.4.3 已完成媒体格式修复、Windows/Android 真实构建、启动验收和 GitHub Release 发布。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.4.4 候选版本已完成媒体格式与播放时钟修复，正在等待最终 Windows/Android 构建和 Release 验收。线上 Latest 仍是 v2.4.3。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-当前正式发布：[v2.4.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.3)，已完成原子发布并设为 Latest；修复范围记录在 [v2.4.3 发布说明](docs/release-notes-v2.4.3.md)。
+当前正式发布：[v2.4.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.3)，已完成原子发布并设为 Latest；[v2.4.4 发布说明](docs/release-notes-v2.4.4.md) 是待构建候选版本，修复完成后再切换 Latest。
 
-本版本已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件（均为可见文件）；Release API、Latest 和下载回读均已核验。
+v2.4.3 已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；v2.4.4 候选版本尚未上传资产，不能把候选文件当成线上成品。
 
 > v2.3.0 纠正更新范围：更低延迟的画面/音频共享、原生分辨率与设备最高刷新率默认请求、房间实时音源标题和进程状态、停止共享后的即时清理、主题同步接受/拒绝/已应用回执，以及桌面启动等待窗口和本机页面加载重试。原子切换完成前，线上旧资产仍保持可下载；切换完成后只删除被替换的 v2.3.0 旧 8 项，历史版本不受影响。
 
@@ -92,19 +92,19 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 | 下载文件 | 运行角色 | 适合谁 | 作用 |
 | --- | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.4.3-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.3/SyncWatch-Experience-Client-Portable-v2.4.3-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
-| [`SyncWatch-v2.4.3-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.3/SyncWatch-v2.4.3-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
-| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.3/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.3/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
-| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.3/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.3/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
-| [`SyncWatch-Android-v2.4.3-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.3/SyncWatch-Android-v2.4.3-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
+| [`SyncWatch-Experience-Client-Portable-v2.4.4-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.4/SyncWatch-Experience-Client-Portable-v2.4.4-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
+| [`SyncWatch-v2.4.4-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.4/SyncWatch-v2.4.4-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
+| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.4/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.4/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.4/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.4/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
+| [`SyncWatch-Android-v2.4.4-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.4/SyncWatch-Android-v2.4.4-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
 | [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 10 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
-| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.3.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.3.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
+| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.4.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.4.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
 ## 第一次启动服务器
 
 ### 使用服务器 EXE
 
-1. 从 Releases 下载 `SyncWatch-v2.4.3-Full-Offline-Portable-x64.exe`，双击即可开房。
+1. 从 Releases 下载 `SyncWatch-v2.4.4-Full-Offline-Portable-x64.exe`，双击即可开房。
 2. 安装版按向导选择目录并启动；独立完整版和标准版放进普通文件夹后双击。Windows 防火墙询问时，只按你的实际网络环境允许访问。
 3. 浏览器会打开 `http://127.0.0.1:20311`；如果端口被占用，程序会自动切换到可用端口并在运行信息中显示实际地址，也可在“系统 → 服务器启动设置”中固定端口。
 4. 使用默认管理员账号 `admin`、密码 `admin888` 登录。
