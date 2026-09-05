@@ -3507,6 +3507,9 @@ async function startSyncWatchServer(options = {}) {
   function handleMediaSendError(error, res, file) {
     if (!error) return;
     if (res.headersSent) { res.destroy(error); return; }
+    for (const header of ['Accept-Ranges', 'Content-Range', 'Content-Length', 'Content-Type', 'Last-Modified']) {
+      res.removeHeader(header);
+    }
     if (['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', 'EISDIR'].includes(error.code)) {
       sendUnavailableMedia(res, file);
       return;
