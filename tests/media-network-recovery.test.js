@@ -33,6 +33,27 @@ assert.equal(policy.nextStep(policy.MAX_ATTEMPTS, { transportReady: true }), nul
   '联网后恢复额度用完必须进入明确终态，不能再安排第 6 次重载');
 assert.equal(_test.MAX_OPEN_ENDED_MEDIA_RANGE_BYTES, 8 * 1024 * 1024,
   '大文件开放式 Range 应使用 8 MiB 有界分段，减少高延迟链路的周期性断流');
+assert.deepEqual(_test.projectPlayback({
+  fileId: 'movie', isPlaying: true, stalled: false, currentTime: 10,
+  playbackRate: 1.5, updatedAt: 1000
+}, 5000, 60), {
+  fileId: 'movie', isPlaying: true, stalled: false, currentTime: 16,
+  playbackRate: 1.5, updatedAt: 5000, speed: 1.5
+}, '播放快照应按共享倍速推进权威时间');
+assert.deepEqual(_test.projectPlayback({
+  fileId: 'movie', isPlaying: true, stalled: false, currentTime: 2290,
+  playbackRate: 1, updatedAt: 1000
+}, 12000, 2300), {
+  fileId: 'movie', isPlaying: false, stalled: false, currentTime: 2300,
+  playbackRate: 1, updatedAt: 12000, speed: 1
+}, '房间长时间保持播放时，权威时间必须停在媒体时长而不是继续增长');
+assert.deepEqual(_test.projectPlayback({
+  fileId: 'movie', isPlaying: false, stalled: false, currentTime: 34046,
+  playbackRate: 1, updatedAt: 1000
+}, 12000, 2300).currentTime, 2300,
+  '已持久化的越界播放进度也必须在下一个快照中收敛到媒体末尾');
+assert.equal(_test.projectPlayback({ fileId: 'movie', isPlaying: true, currentTime: 34046, updatedAt: 1000 }, 12000).currentTime, 34057,
+  '缺少媒体时长时仍应保留原有播放时钟投影');
 assert.equal(policy.isStillStalled({ currentTime: 20, bufferedAhead: .2 }, { currentTime: 20.1, bufferedAhead: .3, readyState: 2 }), true);
 assert.equal(policy.isStillStalled({ currentTime: 20, bufferedAhead: .2 }, { currentTime: 20.7, bufferedAhead: .3, readyState: 2 }), false,
   '播放时间已经推进时不应该重载');
@@ -75,6 +96,35 @@ assert.match(appSource, /applyRoom\(result\.room\);\s*resumeWaitingMediaRecovery
   '必须等会话认证和权威房间状态恢复后再重载媒体');
 assert.match(appSource, /function mediaRecoveryTransportReady\([\s\S]{0,300}state\.socketAuthenticated/,
   '媒体恢复必须等待 Socket 会话重新认证');
+const mediaSourceStart = appSource.indexOf('function mediaOriginalPlaybackRisk(');
+const mediaSourceEnd = appSource.indexOf('function changePlaybackQuality(', mediaSourceStart);
+assert.ok(mediaSourceStart >= 0 && mediaSourceEnd > mediaSourceStart, '无法提取媒体源选择逻辑');
+{
+  const context = vm.createContext({
+    state: { playbackQuality: 'original', localLatency: 0 },
+    navigator: {},
+    elements: { videoPlayer: { canPlayType: () => '' } }
+  });
+  vm.runInContext(`${appSource.slice(mediaSourceStart, mediaSourceEnd)}\nthis.mediaSourceFor = mediaSourceFor;`, context);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.mediaSourceFor({
+    category: 'video', mimeType: 'video/x-matroska', originalUrl: '/media/source.mkv',
+    url: '/compatible-media/source.mp4', metadata: { videoCodec: 'HEVC', bitDepth: 8 },
+    compatibility: { required: true, ready: true }
+  }))), { url: '/compatible-media/source.mp4', variant: 'smooth' },
+  '原画偏好遇到已就绪的 MKV/HEVC 兼容版时必须自动选择可播放源');
+  assert.deepEqual(JSON.parse(JSON.stringify(context.mediaSourceFor({
+    category: 'video', mimeType: 'video/mp4', originalUrl: '/media/source.mp4',
+    url: '/compatible-media/source.mp4', metadata: { videoCodec: 'H264', bitDepth: 8 },
+    compatibility: { required: true, ready: true }
+  }))), { url: '/media/source.mp4', variant: 'original' },
+  '浏览器可播放的 H.264/MP4 原片仍应遵循原画偏好');
+  assert.deepEqual(JSON.parse(JSON.stringify(context.mediaSourceFor({
+    category: 'video', mimeType: 'video/mp4', originalUrl: '/media/source.mp4',
+    url: '/compatible-media/source.mp4', metadata: { videoCodec: 'H264', pixelFormat: 'yuv420p10le', bitDepth: 10 },
+    compatibility: { required: true, ready: true }
+  }))), { url: '/compatible-media/source.mp4', variant: 'smooth' },
+  'H.264 10-bit 原片必须自动选择 8-bit 兼容版');
+}
 assert.match(appSource, /function resumeWaitingMediaRecovery\([\s\S]{0,900}if \(!scheduleMediaNetworkRecovery\(\{ code: 2 \}\)\) finishMediaNetworkRecovery\(\{ code: 2 \}\)/,
   '恢复额度在离线期间耗尽时，联网后必须降级或进入明确错误终态');
 assert.match(appSource, /function finishMediaNetworkRecovery\([\s\S]{0,900}tryCompatibilityFallback\(recoveryResume\)/,

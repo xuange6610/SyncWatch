@@ -46,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.4.3';
+const APP_VERSION = 'v2.4.4';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -456,6 +456,32 @@ function downloadMimeType(filename) {
 
 function clampMediaRangeEnd(start, end, total, openEnded) {
   return Math.min(end, total - 1);
+}
+
+// Keep a persisted room clock from running past the selected media. A room
+// can remain open for hours after the last client disappears, so wall-clock
+// projection must be bounded by the known media duration before it is sent to
+// another client.
+function projectPlayback(playback = {}, now = Date.now(), duration = 0) {
+  const source = playback && typeof playback === 'object' ? playback : {};
+  const playbackRate = Math.max(0.5, Math.min(3, Number(source.playbackRate ?? source.rate ?? source.speed ?? 1) || 1));
+  const updatedAt = Math.max(0, Number(source.updatedAt) || now);
+  let currentTime = Math.max(0, Number(source.currentTime) || 0);
+  const isPlaying = Boolean(source.isPlaying);
+  const stalled = Boolean(source.stalled);
+  if (isPlaying && !stalled) currentTime += Math.max(0, now - updatedAt) / 1000 * playbackRate;
+  const mediaDuration = Number(duration);
+  const reachedEnd = Number.isFinite(mediaDuration) && mediaDuration > 0 && currentTime >= mediaDuration;
+  if (reachedEnd) currentTime = mediaDuration;
+  return {
+    ...source,
+    playbackRate,
+    speed: playbackRate,
+    currentTime,
+    isPlaying: reachedEnd ? false : isPlaying,
+    stalled: reachedEnd ? false : stalled,
+    updatedAt: now
+  };
 }
 
 // Open-ended video ranges are commonly issued by browsers while the user
@@ -2349,10 +2375,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.4.3.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.4.4.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.4.3-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.4.3-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.4.4-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.4.4-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
@@ -5560,13 +5586,24 @@ async function startSyncWatchServer(options = {}) {
 
   function playbackSnapshot(roomIdValue = currentRoomId()) {
     const now = Date.now();
-    const playback = { ...roomRuntime(roomIdValue).roomState.playback };
-    playback.playbackRate = Math.max(0.5, Math.min(3, Number(playback.playbackRate ?? playback.rate ?? playback.speed ?? 1) || 1));
-    playback.speed = playback.playbackRate;
-    // The source media advances at its shared rate. Returning wall-clock time
-    // here would make every periodic snapshot fall behind clients at >1x.
-    if (playback.isPlaying && !playback.stalled) playback.currentTime += Math.max(0, now - playback.updatedAt) / 1000 * playback.playbackRate;
-    playback.updatedAt = now;
+    const runtime = roomRuntime(roomIdValue);
+    const stored = runtime.roomState.playback;
+    const file = findFile(stored.fileId);
+    const duration = Number(file?.metadata?.duration);
+    const playback = projectPlayback(stored, now, duration);
+    const reachedEnd = Number.isFinite(duration) && duration > 0
+      && playback.currentTime >= duration
+      && (stored.isPlaying || stored.stalled || Number(stored.currentTime) > duration);
+    if (reachedEnd) {
+      // Persist the ended state so a room that stays open cannot keep
+      // projecting an ever-growing timestamp on every sync tick.
+      runtime.roomState.playback = {
+        ...stored, currentTime: duration, isPlaying: false, stalled: false,
+        playbackRate: playback.playbackRate, speed: playback.playbackRate,
+        updatedAt: now, revision: Math.max(0, Number(stored.revision) || 0) + 1
+      };
+      return { ...runtime.roomState.playback };
+    }
     return playback;
   }
 
@@ -6860,7 +6897,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.4.3-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.4.4-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6947,7 +6984,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.4.3-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.4.4-universal.apk');
   });
 
   const mediaRoute = (req, res) => {
@@ -15688,7 +15725,7 @@ module.exports = {
     attachmentContentDisposition, downloadMimeType,
     clampMediaRangeEnd, requestSkipsCompression,
     OPEN_ENDED_MEDIA_RANGE_CHUNK_THRESHOLD_BYTES, MAX_OPEN_ENDED_MEDIA_RANGE_BYTES,
-    resolveFileType, HLS_EXTENSIONS,
+    resolveFileType, HLS_EXTENSIONS, projectPlayback,
     applyNetworkQualitySample
   }
 };

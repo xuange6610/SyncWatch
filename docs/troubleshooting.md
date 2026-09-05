@@ -119,7 +119,7 @@ v2.2.3 对超过 32 MiB 的影片使用 8 MiB 有界开放 Range，并在 12 秒
 按以下顺序区分故障边界：
 
 1. 在云服务器本机打开 `http://127.0.0.1:20311`，用同一房间和同一影片播放一次。若本机也失败，先检查 `SyncWatch同步观影-Data/uploads/`、`compatible-media/` 的文件是否存在且运行账户可读，再在“处理进度”确认兼容版为“已完成”。
-2. 在服务器本机确认 `/api/public-config` 返回当前版本（例如 `v2.4.3`），并重启旧进程；只更新 GitHub Release 不会替换云服务器上正在运行的程序。
+2. 在服务器本机确认 `/api/public-config` 返回当前版本（例如 `v2.4.4`），并重启旧进程；只更新 GitHub Release 不会替换云服务器上正在运行的程序。
 3. 从外网浏览器的网络面板查看影片请求：正常应为 `206`，带 `Accept-Ranges: bytes`、`Content-Range`、正确的 `Content-Length` 和 `video/*` MIME。若请求在返回任何正文前出现 `502`/`ECONNRESET`，而本机播放正常，问题在 NAT/反向代理而不在浏览器解码器。
 4. 将映射改为透明 TCP：公网端口直接转发到 `20311`，保留 URL 查询串、Cookie/Authorization、`Range` 请求头和长连接；关闭响应缓存、压缩/转码、正文大小限制和过短的上游超时。不要使用只支持网页或下载白名单的 URL 转发模式。
 5. 修改映射后先用外网重新登录，再选择同一影片测试首段和拖动后的随机 Range。不要在 Issue、截图或日志中粘贴带 `syncwatch_token` 的完整媒体 URL。
