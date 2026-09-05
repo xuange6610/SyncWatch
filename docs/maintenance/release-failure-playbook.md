@@ -71,6 +71,12 @@
 - Android `mobile/settings.gradle` 现在在 `google()` 后、`mavenCentral()` 前加入 Maven Central 的官方备用主机 `https://repo1.maven.org/maven2`，插件管理和依赖解析同时覆盖；依赖坐标、版本和默认仓库保持不变。`tests/android-package.test.js` 固化该 CI failover 契约。
 - 修复后必须先通过 Android 源码/发布契约和本地可用构建，再将唯一 `v2.4.2` 注释 Tag 移到修复提交并只重新触发一次完整原子发布。不得使用失败运行的候选 artifact 或旧 Android 包替代真实成品。
 
+### 2.9 v2.4.2 原子发布成功记录
+
+- 原子运行 `33942963223` 从最终注释 Tag `v2.4.2`（提交 `1137dd717fcc21ee13eb76691b2a62a44216d7e3`）完成源码门禁、官方文件核验、Node.js Mobile 运行时复用、签名 Android 构建与模拟器安装启动、Windows 体验版和完整离线便携版构建/启动/Defender 验证。
+- 最终收尾 job 通过精确 `dist/` 10 文件审计、远端 SHA-256 回读并公开 Release 为 Latest；Release API 有 8 个维护者资产，页面另有 2 个 GitHub 源码归档。v2.4.2 后续文档同步通过 PR #100 合并，Pages 部署运行 `33945197735` 成功。
+- 该运行证明 Android Maven Central failover 修复有效；后续版本继续先执行源码契约和真实构建，再进行同一套 8+2 文件与页面回读，不得把本记录中的哈希或候选 artifact 复用于新版本。
+
 ## 3. 固定执行顺序
 
 1. 读取根目录 `AGENTS.md`、`docs/maintenance/maintainer-requirements.md` 和受影响的产品/设计/使用文档。
