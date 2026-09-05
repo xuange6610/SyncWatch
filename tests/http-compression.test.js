@@ -131,7 +131,9 @@ async function main() {
       Range: 'bytes=5-12', 'Accept-Encoding': 'gzip, br'
     });
     assert.equal(videoRange.status, 206);
-    assert.equal(videoRange.headers['content-encoding'], 'identity');
+    assert.equal(videoRange.headers['content-encoding'], undefined,
+      '媒体响应不应发送可能被 NAT 转发器误解的 identity 编码');
+    assert.equal(videoRange.headers['x-accel-buffering'], 'no');
     assert.equal(videoRange.headers['content-range'], `bytes 5-12/${videoBody.length}`);
     assert.equal(Number(videoRange.headers['content-length']), 8);
     assert.match(String(videoRange.headers['cache-control'] || ''), /(?:^|,)\s*no-transform\s*(?:,|$)/i);
@@ -141,7 +143,8 @@ async function main() {
       'Accept-Encoding': 'gzip, br'
     });
     assert.equal(fullVideo.status, 200);
-    assert.equal(fullVideo.headers['content-encoding'], 'identity');
+    assert.equal(fullVideo.headers['content-encoding'], undefined);
+    assert.equal(fullVideo.headers['x-accel-buffering'], 'no');
     assert.equal(Number(fullVideo.headers['content-length']), videoBody.length);
     assert.equal(fullVideo.headers['content-range'], undefined);
     assert.deepEqual(fullVideo.body, videoBody);

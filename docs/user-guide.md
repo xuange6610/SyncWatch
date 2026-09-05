@@ -1,10 +1,10 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.4.2 正式版。媒体格式与源码回归、Windows/Android 构建成品、启动验证及 GitHub Release 的 8+2 文件核对均已完成。
+适用范围：v2.4.3 正式版。媒体格式与源码回归、Windows/Android 构建成品、启动验证及 GitHub Release 的 8+2 文件核对均已完成。
 
 ## 直接使用
 
-双击 Release 中的 `SyncWatch-v2.4.2-Full-Offline-Portable-x64.exe`。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
+双击 Release 中的 `SyncWatch-v2.4.3-Full-Offline-Portable-x64.exe`。首次启动时，Windows 防火墙如有提示，请按实际网络允许访问。程序会在 EXE 同目录创建 `SyncWatch同步观影-Data/`，账号、设置、媒体、缩略图、字幕、语音、聊天、缓存和密钥全部保存在这里；把整个程序文件夹移动到另一台电脑或云服务器时，数据会随文件夹一起移动。
 
 程序窗口打开后，从“系统 → 分享内网地址”分享链接。同一 Wi-Fi 或有线网络内的手机、平板、电脑、笔记本和电视浏览器均可访问。
 
