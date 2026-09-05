@@ -83,6 +83,7 @@
 - 根因是模拟器报告系统启动完成早于 `StorageManagerService` binder 和卷列表可用；这不是 APK 构建、版本、签名或应用启动崩溃。失败轮未进入 Full Offline 汇总，也未替换 v2.4.3 Release 资产。
 - 修复 `scripts/android-emulator-smoke.sh`：安装前以 `service check mount` 和 `sm list-volumes all` 有界等待存储服务；安装输出同时包含 `StorageManager` 与 `getVolumes` 时，仅执行现有最多 3 次重试并重新等待 ADB、存储服务和 package 服务。其他安装错误仍立即失败。发布前必须通过对应静态契约，再从修复后的最终 Tag 只触发一次完整原子工作流。
 - 首次重试在 `33978686527` 中因单次 `sm list-volumes all` 没有返回而持续占用模拟器 job，已取消且未替换 Release 资产。所有存储/package 探测现在还必须使用每次 10 秒命令超时，避免“有界次数”被单次 ADB 调用阻塞。
+- 第二次重试仍在模拟器服务恢复循环中超过 27 分钟后取消；普通 `timeout` 不能保证杀死失联的 ADB 子进程，且 30 次探测上限在安装重试时会叠加过长。最终调整为 `timeout -k 2s 10s` 强制终止单次探测，并将每轮存储服务等待默认上限收敛为 12 次，避免单次安装重试无限叠加。
 
 ## 3. 固定执行顺序
 
