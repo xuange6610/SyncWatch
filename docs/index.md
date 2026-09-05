@@ -26,7 +26,7 @@
 
 ## 当前事实边界
 
-- v2.4.2 候选已完成媒体格式与源码回归；Windows/Android 真实成品和启动验收仍待发布流程完成，尚未上传 GitHub，历史 Release 保持不变。
+- v2.4.2 已完成媒体格式与源码回归、Windows/Android 真实成品和启动验收，并已上传 GitHub Release；历史 Release 保持不变。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
 - v2.4.2 新构建仅提供 Windows 与 Android；不再构建或上传 macOS 新包。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。

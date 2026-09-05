@@ -1,6 +1,6 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.4.2 候选版；正式下载入口将在维护者确认并上传后提供。媒体格式与源码回归已完成；v2.4.2 Windows/Android 构建成品及 GitHub Release 的 8+2 文件核对尚未进行。
+适用范围：v2.4.2 正式版。媒体格式与源码回归、Windows/Android 构建成品、启动验证及 GitHub Release 的 8+2 文件核对均已完成。
 
 ## 直接使用
 
