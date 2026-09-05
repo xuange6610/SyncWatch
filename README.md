@@ -54,9 +54,9 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.4.1 候选已完成源码回归、Windows/Android 构建和启动验收；本地 `dist/` 成品等待维护者确认后再上传 GitHub。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.4.2 候选已完成媒体格式与源码回归；Windows/Android 真实成品和启动验收仍待发布流程完成，本地 `dist/` 继续保留已发布版本。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-当前正式发布：[v2.3.0](https://github.com/xuange6610/SyncWatch/releases/tag/v2.3.0)，已发布并设为 Latest；v2.4.1 仍是待发布候选，候选修复范围记录在 [v2.4.1 发布说明](docs/release-notes-v2.4.1.md)。
+当前正式发布：[v2.4.1](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.1)，已发布并设为 Latest；v2.4.2 仍是待发布候选，候选修复范围记录在 [v2.4.2 发布说明](docs/release-notes-v2.4.2.md)。
 
 本版本已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件（均为可见文件）；Release API、Latest 和下载回读均已核验。
 
@@ -92,19 +92,19 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 | 下载文件 | 运行角色 | 适合谁 | 作用 |
 | --- | --- | --- | --- |
-| [`SyncWatch-Experience-Client-Portable-v2.4.1-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.1/SyncWatch-Experience-Client-Portable-v2.4.1-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
-| [`SyncWatch-v2.4.1-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.1/SyncWatch-v2.4.1-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
-| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.1/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.1/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
-| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.1/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.1/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
-| [`SyncWatch-Android-v2.4.1-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.1/SyncWatch-Android-v2.4.1-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
+| [`SyncWatch-Experience-Client-Portable-v2.4.2-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.2/SyncWatch-Experience-Client-Portable-v2.4.2-x64.exe) | **客户端** | 体验版；普通成员 | 输入已有服务器地址加入房间，不启动服务端 |
+| [`SyncWatch-v2.4.2-Full-Offline-Portable-x64.exe`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.2/SyncWatch-v2.4.2-Full-Offline-Portable-x64.exe) | **服务器** | 完整便携版；房主 | 无需安装，下载后直接双击开房 |
+| [`cloudflared-windows-x64-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.2/cloudflared-windows-x64-installer.msi) / [`cloudflared-windows-x86-installer.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.2/cloudflared-windows-x86-installer.msi) | **服务器工具** | 公网访问工具 | 双击 MSI 安装；安装后在终端执行 `cloudflared --version`，再按教程创建 Tunnel；[Cloudflare 官网](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · [官方 Release 下载](https://github.com/cloudflare/cloudflared/releases/latest) |
+| [`node-v24.19.0-x64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.2/node-v24.19.0-x64.msi) / [`node-v24.19.0-arm64.msi`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.2/node-v24.19.0-arm64.msi) | **服务器环境** | 源码/独立服务器环境 | 正式 SyncWatch EXE 无需另装；源码和独立服务端安装后运行 `node --version` 验证；[Node.js 官网](https://nodejs.org/) · [官方下载](https://nodejs.org/en/download) |
+| [`SyncWatch-Android-v2.4.2-universal.apk`](https://github.com/xuange6610/SyncWatch/releases/download/v2.4.2/SyncWatch-Android-v2.4.2-universal.apk) | **客户端** | Android 用户 | 加入已有房间；完整包可在受支持设备上运行手机服务器 |
 | [独立服务器部署教程](docs/server-deployment-guide.md) | Windows/Linux 服务器管理员 | 固定 10 项 Release 不包含额外服务器 ZIP；从源码使用 Node.js 启动，适合长期部署和 Docker |
-| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.1.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.1.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
+| Source code：[ZIP](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.2.zip) / [TAR.GZ](https://github.com/xuange6610/SyncWatch/archive/refs/tags/v2.4.2.tar.gz) | 开发者 | 只用于阅读、修改和自行构建，不是可双击安装包 |
 
 ## 第一次启动服务器
 
 ### 使用服务器 EXE
 
-1. 从 Releases 下载 `SyncWatch-v2.4.1-Full-Offline-Portable-x64.exe`，双击即可开房。
+1. 从 Releases 下载 `SyncWatch-v2.4.2-Full-Offline-Portable-x64.exe`，双击即可开房。
 2. 安装版按向导选择目录并启动；独立完整版和标准版放进普通文件夹后双击。Windows 防火墙询问时，只按你的实际网络环境允许访问。
 3. 浏览器会打开 `http://127.0.0.1:20311`；如果端口被占用，程序会自动切换到可用端口并在运行信息中显示实际地址，也可在“系统 → 服务器启动设置”中固定端口。
 4. 使用默认管理员账号 `admin`、密码 `admin888` 登录。
@@ -177,6 +177,7 @@ Cloudflare Tunnel 从本机回源时，服务器会信任回环地址和服务�
 
 - **同步播放**：房主始终可以控制播放、暂停、进度和共享倍速；其他成员可由权限组授予控制权，快进/拖动可独立授权。跳过片头片尾设置也有独立的 `skipSettings` 权限，可在“成员与权限组”中授予指定成员或权限组。支持指定成员清晰度确认和队列批量添加/删除。
 - **媒体与字幕**：上传影片、音频、字幕、图片和文档，也可添加合法的 HTTPS 媒体直链。
+- **视频格式兼容**：上传入口接受 MP4、AVI、MOV、MKV、FLV、WMV、RM、RMVB、3GP、M4V、ASF、ASX、DAT、VOB、TS、WebM、MPEG、MPG、DivX、XviD、ProRes、AV1、H.264、H.265 和 VP9 扩展名；桌面服务器使用 FFprobe/FFmpeg 生成浏览器兼容版，公网 Range 响应保留真实视频 MIME。具体编码器和浏览器能力仍以实际文件与设备为准。
 - **多房间**：支持正式房间、临时房间、房间密码、人数限制和房主/管理员权限；房主确认后可复制房间配置与媒体，内置 `admin` 可二次确认后覆盖迁移目标房间。
 - **同步阅读**：TXT、Markdown、日志、CSV/TSV、JSON/XML/YAML 和常见配置文本可连续滚动或按页阅读；有控制权限的成员同步 `fileId`、精确 UTF-16 `characterOffset`、归一化位置、页码和 revision。桌面与手机可以因宽度不同显示不同视觉行首，但不会再把本地换行回写成房间锚点；晚加入或重连成员恢复同一逻辑字符和段落。管理员可在“房间与上传 → 上传限制”关闭文本上传。
 - **登录与游客**：账号密码正确但房间号留空时，先列出该账号可用房间，也可选择临时房间；提醒可暂停或在安全设置中关闭。游客只获得普通成员权限，需注册后才能建立正式房间。手机顶栏账号入口会在覆盖式功能菜单内展开“退出登录，保留账号密码”和普通“退出登录”；前者退出后只把本次账号密码恢复到登录表单，二者都会清除登录会话。
