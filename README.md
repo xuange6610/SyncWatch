@@ -6,12 +6,17 @@ SyncWatch 是一个开源、自托管的 Watch Party / 同步观影系统。一�
 
 你的服务器、你的影片、你的数据。无需依赖第三方同步观影平台。
 
-<p style="font-size:22px;font-weight:bold;">
-在线体验使用，无需下载：
+<div align="center">
+
+## 🎬 在线体验 SyncWatch
+
+无需下载，浏览器直接观看：
+
 <a href="http://103.236.93.66:42954/TEST1">
-点击进入在线体验
+<img src="https://img.shields.io/badge/在线体验-立即打开-brightgreen?style=for-the-badge">
 </a>
-</p>
+
+</div>
 
 [![GitHub Release](https://img.shields.io/github/v/release/xuange6610/SyncWatch?display_name=tag)](https://github.com/xuange6610/SyncWatch/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/xuange6610/SyncWatch)](https://github.com/xuange6610/SyncWatch/stargazers)
