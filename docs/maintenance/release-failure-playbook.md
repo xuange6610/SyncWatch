@@ -77,6 +77,12 @@
 - 最终收尾 job 通过精确 `dist/` 10 文件审计、远端 SHA-256 回读并公开 Release 为 Latest；Release API 有 8 个维护者资产，页面另有 2 个 GitHub 源码归档。v2.4.2 后续文档同步通过 PR #100 合并，Pages 部署运行 `33945197735` 成功。
 - 该运行证明 Android Maven Central failover 修复有效；后续版本继续先执行源码契约和真实构建，再进行同一套 8+2 文件与页面回读，不得把本记录中的哈希或候选 artifact 复用于新版本。
 
+### 2.10 v2.4.3 Android StorageManager 服务就绪复盘（2026-09-05）
+
+- 原子运行 `33976684671` 的源码、官方文件、Node.js Mobile 运行时、签名 Android APK 和 Windows 构建前置均通过；失败发生在 Android 模拟器安装阶段。日志显示 `sys.boot_completed=1` 后 `settings`、`input`、`package` 服务仍有瞬态断连，`adb install --no-streaming` 最终在 `StorageManager.getVolumes()` 上触发 `NullPointerException`。
+- 根因是模拟器报告系统启动完成早于 `StorageManagerService` binder 和卷列表可用；这不是 APK 构建、版本、签名或应用启动崩溃。失败轮未进入 Full Offline 汇总，也未替换 v2.4.3 Release 资产。
+- 修复 `scripts/android-emulator-smoke.sh`：安装前以 `service check mount` 和 `sm list-volumes all` 有界等待存储服务；安装输出同时包含 `StorageManager` 与 `getVolumes` 时，仅执行现有最多 3 次重试并重新等待 ADB、存储服务和 package 服务。其他安装错误仍立即失败。发布前必须通过对应静态契约，再从修复后的最终 Tag 只触发一次完整原子工作流。
+
 ## 3. 固定执行顺序
 
 1. 读取根目录 `AGENTS.md`、`docs/maintenance/maintainer-requirements.md` 和受影响的产品/设计/使用文档。
