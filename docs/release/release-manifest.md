@@ -4,13 +4,13 @@ v2.4.3 已正式发布：媒体 NAT/反向代理兼容修复、Windows/Android �
 
 ## v2.4.3 已验收资产
 
-原子发布运行 `33952792359` 锁定最终提交 `4d1b27ef5c0a581189528adc20b77f27e1d82fbd`，完成源码、Android 模拟器、Windows 启动、Defender、10 文件审计、远端哈希回读和 Latest 发布。Release API 有 8 个维护者资产，页面另有 2 个 GitHub 源码归档。
+原子发布运行 `33982257885` 锁定最终 Tag 提交 `4d8e1946437447eaa48c4200129cbb52cd1e498f`，完成源码、Android 模拟器、Windows 启动、Defender、10 文件审计、远端哈希回读和 Latest 发布。Release API 有 8 个维护者资产，页面另有 2 个 GitHub 源码归档；本轮替换了上一轮候选应用资产。
 
 | 维护者资产 | 字节数 | SHA-256 |
 | --- | ---: | --- |
-| `SyncWatch-Experience-Client-Portable-v2.4.3-x64.exe` | 176765331 | `bc9a3129e54bd444502b79281d3e396920d6852f00d9bf2d7d84ceb15144664c` |
-| `SyncWatch-v2.4.3-Full-Offline-Portable-x64.exe` | 402495431 | `2de7b5f6fdd86688c7d20ce45ed59812b200dbaa96711b66a9ee51bb09e07413` |
-| `SyncWatch-Android-v2.4.3-universal.apk` | 161669475 | `b7ec359e96fb316b890c4332f0d680b637021b0bf6ab35a23f2433c1299e0e25` |
+| `SyncWatch-Experience-Client-Portable-v2.4.3-x64.exe` | 176765333 | `c65d6b8de76ed75afb9e0993196b5dbe10b252e40b379ea7f7ab20971b3a0c86` |
+| `SyncWatch-v2.4.3-Full-Offline-Portable-x64.exe` | 402497917 | `5c8d3173a5f6abe0743a2002517a73120d8aaa029e50e5a13c169003dcb296f4` |
+| `SyncWatch-Android-v2.4.3-universal.apk` | 161670381 | `57858aa6e67af24bad898ceb00ed77e2ba890360dcc232576ab13feb8297f9ee` |
 | `node-v24.19.0-x64.msi` | 32972800 | `f0f66c2a80c08a30a5ab5179ee9ea9e45f9b46289436a8cc87ff833b852db351` |
 | `node-v24.19.0-arm64.msi` | 29491200 | `47b16e1b1012b1b9ad62169b3a466adb6bc758b2cb8bd8224683c086836484f8` |
 | `cloudflared-windows-x64.exe` | 54893480 | `c29eee2b121f5436a642eed69fd9767da7e7b8c510fa50aaa130337f931357b5` |
