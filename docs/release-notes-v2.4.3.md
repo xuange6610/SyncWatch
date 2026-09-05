@@ -19,8 +19,9 @@ SyncWatch同步观影 是开源、自托管的跨平台同步观影与实时协�
 ## 更新公告
 
 - 修复 NAT 转发、Nginx/Caddy 等公网代理对媒体响应的兼容性：媒体 Range 响应不再发送可能被误解为压缩编码的 `Content-Encoding: identity`，并增加 `X-Accel-Buffering: no`，继续保留真实 `video/*` MIME、`Accept-Ranges`、`Content-Range` 和 `Content-Length`。
+- 纠正媒体文件打开失败时的响应竞态：服务端会先确认文件描述符成功打开再启动 `pipeline`，存储挂载、权限或文件句柄异常现在返回可诊断的 HTTP 错误，不再把已发出的媒体响应直接重置为 `ECONNRESET`。
 - 保留并验证 MP4、AVI、MOV、MKV、FLV、WMV、RM、RMVB、3GP、M4V、ASF、ASX、DAT、VOB、TS、WebM、MPEG、MPG、DivX、XviD、ProRes、AV1、H.264、H.265 和 VP9 的上传分类；FFprobe/FFmpeg 可用时继续生成浏览器兼容的 H.264/AAC MP4。
-- 新增媒体响应头回归断言，覆盖本机、反向代理语义和 80 次大文件 Range 中止清理；媒体扩展名、上传分类、FFmpeg 兼容转码和播放器恢复测试继续通过。
+- 新增媒体响应头、文件打开失败和 80 次大文件 Range 中止清理回归断言；媒体扩展名、上传分类、FFmpeg 兼容转码和播放器恢复测试继续通过。
 - 同步更新 Windows、Android、Docker、下载中心、Pages、仓库 Wiki、发布清单和版本标识为 v2.4.3；历史 v2.4.2 及更早 Release、Tag 和资产保持不变。
 
 ## 使用说明
