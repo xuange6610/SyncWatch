@@ -624,7 +624,9 @@ async function main() {
     assert.equal(tunneledRange.status, 206);
     assert.equal(Buffer.from(await tunneledRange.arrayBuffer()).toString(), '4567');
     assert.equal(tunneledRange.headers.get('content-range'), 'bytes 4-7/16');
-    assert.equal(tunneledRange.headers.get('content-encoding'), 'identity');
+    assert.equal(tunneledRange.headers.get('content-encoding'), null,
+      '公网媒体不应发送可能被 NAT 转发器误解的 identity 编码');
+    assert.equal(tunneledRange.headers.get('x-accel-buffering'), 'no');
     assert.match(tunneledRange.headers.get('cache-control') || '', /no-transform/);
     assert.equal(tunneledRange.headers.get('location'), null);
     const tunneledHead = await fetch(`${baseUrl}${renamed.payload.file.url}`, {

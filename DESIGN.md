@@ -213,7 +213,7 @@ HTTP 与 Socket.IO 使用同一套客户端 IP 解析：只有 TCP 对端属于�
 
 媒体网络恢复复用单一有限重试状态。`MediaError(code=2)` 与连续 12 秒没有播放时间/缓冲增长的 `waiting/stalled` 都进入同一条最多 5 次、500 毫秒到 12 秒渐进退避的恢复路径；设备或 Socket 离线时以 1 秒间隔等待但不消耗重试预算，重连后唤醒恢复，原画次数用尽且已有流畅版时再降级。恢复后要求至少 3 秒连续健康播放才清空次数；如果 Chromium 在网络切换后继续发送 `timeupdate` 却没有补发 `playing/canplay`，健康进度事件会重建同一个稳定观察点，防止恢复键永久遗留。正常缓冲增长、换片和清空画面会取消计时，避免弱网半开连接永久停帧，也避免健康播放被循环重载。超过 32 MiB 的媒体把开放 Range 限制为 8 MiB，减少高 RTT 链路的续段频率，同时不恢复会在拖动后长期占用传输的无限响应。
 
-v2.4.2 的上传选择器和服务端分类覆盖常见容器与编码器扩展名，包括 MP4、AVI、MOV、MKV、FLV、WMV、RM/RMVB、3GP、M4V、ASF/ASX、DAT、VOB、TS、WebM、MPEG/MPG、DivX/XviD、ProRes、AV1、H.264/H.265 与 VP9。扩展名只决定输入分类，FFprobe 的实际探测结果仍决定是否能生成缩略图或兼容 MP4；服务端向公网返回原始 `video/*` MIME 与 Range 头，避免浏览器在解码前因 `application/octet-stream` 被拒绝。
+v2.4.3 的上传选择器和服务端分类覆盖常见容器与编码器扩展名，包括 MP4、AVI、MOV、MKV、FLV、WMV、RM/RMVB、3GP、M4V、ASF/ASX、DAT、VOB、TS、WebM、MPEG/MPG、DivX/XviD、ProRes、AV1、H.264/H.265 与 VP9。扩展名只决定输入分类，FFprobe 的实际探测结果仍决定是否能生成缩略图或兼容 MP4；服务端向公网返回原始 `video/*` MIME 与 Range 头，避免浏览器在解码前因 `application/octet-stream` 被拒绝。
 
 顶栏“同步正常 / 网络波动 / 连接中断”描述的是 Socket.IO 控制通道，不直接复用视频 `waiting/stalled`。客户端前台每 4 秒发起一个不重叠的顺序探测，单次高延迟或超时不改变状态；连续 3 次超过 500 毫秒或超时才进入 `unstable`，连续 2 次健康样本后恢复。页面进入后台后不启动新探测，已经在途但回调发生于后台的结果直接丢弃；回到前台先重置迟滞状态再立即测量。旧序号、上一连接周期的迟到响应和断线后积压的质量遥测不得覆盖新状态；成员短暂 `reconnecting` 不放大成全房间“网络波动”，本机 socket 真正断开则显示“连接中断”。
 

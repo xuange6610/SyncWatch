@@ -1,5 +1,11 @@
 # Release 资产清单
 
+v2.4.3 正在准备：媒体 NAT/反向代理兼容修复已完成本地源码回归，Windows/Android 成品、启动验收、哈希回读和远端 Release 尚未完成。在全部证据完成前不得上传或宣称发布；v2.4.2 历史资产保持不变。
+
+## v2.4.3 待验收资产
+
+目标仍为 8 个维护者资产（Windows 体验版、Windows 完整便携版、Android APK、2 个 Node.js Windows MSI、3 个 cloudflared Windows 文件）和 GitHub 自动生成的 2 个源码归档。最终 Tag、Actions、Release API、页面、Wiki、大小、SHA-256 和启动/核心流程均需逐项回读。
+
 v2.4.2 已正式发布：媒体格式修复、源码门禁、Windows/Android 真实构建、启动/核心流程、版本/平台/大小/SHA-256、远端 API 回读和公开 Latest 均已完成。原子发布运行 `33942963223` 通过，Release API 返回 8 个维护者资产，页面另含 2 个 GitHub 源码归档。
 
 ## 数量规则

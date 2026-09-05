@@ -1,8 +1,8 @@
 # cloudflared 与 Node.js 安装使用教程
 
-这两个工具用途不同。普通用户安装 `SyncWatch-v2.4.2-Full-Offline-Portable-x64.exe` 时，不需要另外安装 Node.js，也不需要另外下载 cloudflared；服务器包已经包含所需运行时。只有手工诊断、公网部署、源码开发或独立服务器才需要本教程。
+这两个工具用途不同。普通用户安装 `SyncWatch-v2.4.3-Full-Offline-Portable-x64.exe` 时，不需要另外安装 Node.js，也不需要另外下载 cloudflared；服务器包已经包含所需运行时。只有手工诊断、公网部署、源码开发或独立服务器才需要本教程。
 
-v2.4.2 Release 中的 Node.js 2 项和 cloudflared 3 项已完成官方来源、版本、平台/架构、非空大小与 SHA-256 核验；它们是第三方官方原始分发文件，不由 SyncWatch 源码构建，也不能描述成 SyncWatch 启动程序。
+v2.4.3 Release 中的 Node.js 2 项和 cloudflared 3 项已完成官方来源、版本、平台/架构、非空大小与 SHA-256 核验；它们是第三方官方原始分发文件，不由 SyncWatch 源码构建，也不能描述成 SyncWatch 启动程序。
 
 ![服务器设置中的公网访问和网络诊断](screenshots/public-access-settings.png)
 
