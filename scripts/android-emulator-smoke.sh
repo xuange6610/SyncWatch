@@ -28,8 +28,8 @@ wait_for_storage_service() {
   # probe the same service before attempting to install the APK.
   local attempt=1 service_output='' storage_output=''
   while (( attempt <= 30 )); do
-    service_output="$(adb shell service check mount 2>&1 || true)"
-    storage_output="$(adb shell sm list-volumes all 2>&1 || true)"
+    service_output="$(timeout 10s adb shell service check mount 2>&1 || true)"
+    storage_output="$(timeout 10s adb shell sm list-volumes all 2>&1 || true)"
     if grep -q 'Service mount: found' <<< "$service_output" \
       && ! grep -qE 'Can.t find service|Broken pipe|NullPointerException|Exception occurred|Error:' <<< "$storage_output"; then
       return 0
@@ -51,7 +51,7 @@ wait_for_package_service() {
   # this also covers the transient ADB Broken pipe (32) recovery path.
   local attempt=1 package_output=''
   while (( attempt <= 30 )); do
-    if package_output="$(adb shell cmd package list packages 2>&1)" \
+    if package_output="$(timeout 10s adb shell cmd package list packages 2>&1)" \
       && ! grep -q 'Can.t find service: package' <<< "$package_output" \
       && ! grep -q 'Broken pipe' <<< "$package_output"; then
       return 0

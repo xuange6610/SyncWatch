@@ -277,6 +277,9 @@ assert.match(androidEmulatorSmoke, /Can\.t find service: package/, 'Android smok
 assert.match(androidEmulatorSmoke, /wait_for_storage_service/, 'Android smoke must wait for StorageManagerService before installing');
 assert.match(androidEmulatorSmoke, /service check mount/, 'Android smoke must probe the storage binder service after boot');
 assert.match(androidEmulatorSmoke, /sm list-volumes all/, 'Android smoke must probe storage volumes before installing');
+assert.match(androidEmulatorSmoke, /timeout 10s adb shell service check mount/, 'storage service probes must have a per-command timeout');
+assert.match(androidEmulatorSmoke, /timeout 10s adb shell sm list-volumes all/, 'storage volume probes must have a per-command timeout');
+assert.match(androidEmulatorSmoke, /timeout 10s adb shell cmd package list packages/, 'package service probes must have a per-command timeout');
 assert.match(androidEmulatorSmoke, /StorageManager[\s\S]*getVolumes/, 'Android smoke must recognize StorageManager.getVolumes failures');
 assert.match(androidEmulatorSmoke, /attempt <= 30/, 'Android smoke must bound storage-service readiness waits');
 assert.match(androidEmulatorSmoke, /wait_for_package_service/, 'Android smoke must have a bounded package-service readiness probe');
