@@ -7,7 +7,7 @@ SyncWatch 是一个开源、自托管的 Watch Party / 同步观影系统。一�
 你的服务器、你的影片、你的数据。无需依赖第三方同步观影平台。
 
 <div align="center">
-
+       链接失效联系作者哦~
 <h2>🎬 在线体验 SyncWatch</h2>
 
 <p>
