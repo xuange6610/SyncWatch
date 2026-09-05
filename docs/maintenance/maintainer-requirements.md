@@ -2,13 +2,13 @@
 
 ## v2.4.3 当前正式状态
 
-`v2.4.3` 已包含 NAT/反向代理媒体 Range 响应修复和本地回归；原子发布运行 `33952792359` 已完成 Windows/Android 真实构建、启动/核心流程、Defender、10 文件审计、哈希回读和公开 Release。应用包均由最终 Tag `4d1b27ef5c0a581189528adc20b77f27e1d82fbd` 重新构建，不得复用 v2.4.2 应用包。
+`v2.4.3` 已包含 NAT/反向代理媒体 Range 响应修复和本地回归；最终原子发布运行 `33982257885` 已完成 Windows/Android 真实构建、启动/核心流程、Defender、10 文件审计、哈希回读和公开 Release。应用包均由最终 Tag 提交 `4d8e1946437447eaa48c4200129cbb52cd1e498f` 重新构建，不得复用 v2.4.2 应用包。
 
 当前线上正式版本：`v2.4.3`（已完成媒体格式修复、最终 Tag、Release、构建、启动和远端页面验收）。
 
 `v2.4.3` 已完成媒体格式、服务端 Range/MIME、Windows/Android 构建和移动端回归；Release 已公开为 Latest 并完成远端页面回读，v2.4.2 及历史 Release、Tag、资产保持不变。
 
-本轮发布复盘：原子运行 `33951871667` 曾因 `mobile/app/build.gradle` 只更新 `versionName=2.4.3`、未同步 `versionCode=20403` 而在 APK 元数据门禁失败；修复后运行 `33952792359` 全部通过。以后递增 Android 版本时，必须同时验证 `versionName` 和 `major*10000 + minor*100 + patch` 计算出的 `versionCode`，再移动 Tag 和触发原子发布。
+本轮发布复盘：原子运行 `33951871667` 曾因 `mobile/app/build.gradle` 只更新 `versionName=2.4.3`、未同步 `versionCode=20403` 而在 APK 元数据门禁失败；候选运行 `33952792359` 随后通过，但在 Android 模拟器存储服务修复后由最终运行 `33982257885` 重新构建并替换为当前 Release 资产。以后递增 Android 版本时，必须同时验证 `versionName` 和 `major*10000 + minor*100 + patch` 计算出的 `versionCode`，再移动 Tag 和触发原子发布。
 
 公网实例边界：本次回读用户提供的 NAT 转发入口时，公开配置仍返回 v2.4.2；这表明转发链路可达但后端实例尚未部署 v2.4.3。发布仓库不会自动替换用户云服务器，部署后应重新回读 `/api/public-config` 版本，并用已认证媒体请求验证 Range；不得把旧实例的回读结果当作新版本成品证据。
 
@@ -17,7 +17,7 @@
 - 对公网入口 `103.236.93.66:42954` 使用临时游客会话和房间 `ADMIN` 做了脱敏复测：原片与兼容版的 `HEAD Range` 都返回正确的 `206`、`Content-Range`、`Content-Length` 和 `video/*`，但 `GET Range` 在任何正文返回前稳定出现 `ECONNRESET`；登录、Socket.IO、缩略图和 APK 分段下载正常。
 - 根因是服务端在 `fs.createReadStream()` 成功打开文件前就启动 `pipeline()` 并提前提交媒体响应头。云机存储挂载、权限或文件句柄异常时，`pipeline()` 先销毁响应，反向代理只能看到 502/TCP 重置，浏览器显示错误码 4；这不是 MP4/MKV 编码白名单或播放器解码问题。
 - PR #104（提交 `144234e045ce08c580c5a761ec1efd405df0b502`）已让媒体管线等待 `open` 事件、移除路由提前 `flushHeaders()`，并新增 ENOENT 回归；本地媒体流、HTTP Range、57 项集成、仓库和隐私检查均通过。
-- PR #104 通过源码检查但尚未取得当前对话的合并授权；在维护者合并、从修复后的 v2.4.3 Tag 重新完成 Windows/Android/哈希/远端回读并覆盖 Release 前，云服务器仍运行旧代码，不能宣称公网播放已恢复。
+- PR #104 的媒体流修复已随后续合并进入 v2.4.3；最终运行 `33982257885` 已从更新后的 Tag 重新完成 Windows/Android/哈希/远端回读并覆盖 Release。仓库发布不会自动替换用户云服务器，公网入口是否生效仍需在云机后端部署并重启 v2.4.3 后，重新回读 `/api/public-config` 和已认证媒体 Range。
 
 v2.3.1 原子运行 `33463841839` 已成功完成；Release API 有 8 个维护者资产，页面另含 2 个 GitHub 源码归档，共 10 个可见文件。Android 模拟器安装/启动、Windows 体验版与完整便携版启动、共享音频 smoke、资产哈希和远端下载回读均通过。
 
