@@ -40,6 +40,25 @@ async function abortedRequest(port, offset) {
   assert.equal(typeof _test.pipeMediaFileResponse, 'function',
     '服务器应提供会在客户端中止 Range 请求时销毁文件流的媒体管线');
 
+  const missingRequest = new EventEmitter(); missingRequest.aborted = false;
+  const missingResponse = new PassThrough();
+  let missingError = null;
+  _test.pipeMediaFileResponse(
+    missingRequest, missingResponse, path.join(os.tmpdir(), `syncwatch-missing-${process.pid}-${Date.now()}.mp4`), {},
+    (error) => {
+      missingError = error;
+      assert.equal(missingResponse.destroyed, false,
+        '文件流在打开前失败时不能先销毁 HTTP 响应');
+      missingResponse.end('handled');
+    }
+  );
+  await once(missingResponse, 'finish');
+  assert.equal(missingError?.code, 'ENOENT',
+    '文件流打开失败应把原始 ENOENT 交给路由错误处理');
+  assert.equal(missingResponse.destroyed, false,
+    '路由处理文件打开失败后仍应能正常结束响应');
+  console.log('✓ 文件流打开失败时保留 HTTP 响应，避免向 NAT 代理暴露 ECONNRESET');
+
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'syncwatch-media-stream-'));
   const mediaFile = path.join(root, 'large-4k-like-media.bin');
   const fileHandle = fs.openSync(mediaFile, 'w');

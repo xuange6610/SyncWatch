@@ -364,6 +364,9 @@ function pipeMediaFileResponse(req, res, target, options = {}, onError = () => {
   const source = fs.createReadStream(target, options);
   trackedStreams?.add(source);
   let clientAborted = false;
+  let pipelineStarted = false;
+  let settled = false;
+  let sourceError = null;
 
   const abortSource = () => {
     clientAborted = true;
@@ -379,17 +382,55 @@ function pipeMediaFileResponse(req, res, target, options = {}, onError = () => {
       trackedStreams.delete(source);
       if (!trackedStreams.size && tracker.get(trackerKey) === trackedStreams) tracker.delete(trackerKey);
     }
+    source.removeListener('open', startPipeline);
+    source.removeListener('error', handleSourceError);
+    source.removeListener('close', handleSourceClose);
+  };
+
+  const reportError = (error) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    if (!error) return;
+    // Errors raised before the file descriptor opens must remain visible to
+    // the route handler. Starting pipeline() earlier would destroy `res` and
+    // turn ENOENT/EACCES into an opaque ECONNRESET for reverse proxies.
+    const expectedAbort = clientAborted || req.aborted
+      || (!sourceError && ['ABORT_ERR', 'ECONNRESET', 'ERR_STREAM_PREMATURE_CLOSE'].includes(error.code));
+    if (!expectedAbort) onError(error);
+  };
+
+  const handleSourceError = (error) => {
+    sourceError = error;
+    if (!pipelineStarted) reportError(error);
+  };
+
+  const handleSourceClose = () => {
+    if (!pipelineStarted && !settled) {
+      reportError(sourceError || (clientAborted || req.aborted ? null : new Error('媒体文件流在打开前关闭')));
+    }
+  };
+
+  const startPipeline = () => {
+    if (pipelineStarted || settled || source.destroyed) return;
+    pipelineStarted = true;
+    source.removeListener('open', startPipeline);
+    try {
+      lifecycle?.beforePipe?.();
+      pipeline(source, res, (error) => {
+        reportError(sourceError || error);
+      });
+    } catch (error) {
+      source.destroy(error);
+      reportError(error);
+    }
   };
 
   req.once('aborted', abortSource);
   res.once('close', handleResponseClose);
-  pipeline(source, res, (error) => {
-    cleanup();
-    if (!error) return;
-    const expectedAbort = clientAborted || req.aborted
-      || ['ABORT_ERR', 'ECONNRESET', 'ERR_STREAM_PREMATURE_CLOSE'].includes(error.code);
-    if (!expectedAbort) onError(error);
-  });
+  source.once('open', startPipeline);
+  source.once('error', handleSourceError);
+  source.once('close', handleSourceClose);
   return source;
 }
 
@@ -3509,9 +3550,9 @@ async function startSyncWatchServer(options = {}) {
     if (!rangeHeader) {
       res.statusCode = 200; res.setHeader('Content-Length', total);
       if (req.method === 'HEAD') return res.end();
-      // Commit headers before the first disk read so slow reverse proxies can
-      // begin relaying the response without waiting for the read stream.
-      res.flushHeaders?.();
+      // Keep headers uncommitted until the file descriptor opens. If the
+      // storage mount disappears between stat() and createReadStream(), the
+      // handler can then return a useful HTTP error instead of resetting TCP.
       return pipeMediaFileResponse(req, res, target, {},
         (error) => handleMediaSendError(error, res, { originalName: path.basename(target) }),
         { tracker: activeMediaResponseStreams, key: mediaStreamKey });
@@ -3533,7 +3574,6 @@ async function startSyncWatchServer(options = {}) {
     res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
     res.setHeader('Content-Length', end - start + 1);
     if (req.method === 'HEAD') return res.end();
-    res.flushHeaders?.();
     return pipeMediaFileResponse(req, res, target, { start, end },
       (error) => handleMediaSendError(error, res, { originalName: path.basename(target) }),
       { tracker: activeMediaResponseStreams, key: mediaStreamKey });

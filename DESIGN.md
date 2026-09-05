@@ -314,7 +314,7 @@ v2.4.3 的上传选择器和服务端分类覆盖常见容器与编码器扩展�
 1. `electron-pink.js`、`server-standalone.js` 或 Android `MobileServerService` 启动同一份 `server/index.js`。
 2. Express 提供 REST/文件流，Socket.IO 提供房间状态、播放控制、聊天、通知和共享信令；客户端先建立会话再加入房间。
 3. 房主操作发送意图，服务端写入权威房间状态并广播带时间/版本的信息；客户端按服务器时间和缓冲偏差校正播放器。本地 `readyState < 3` 或正在缓冲时暂停硬跳转和加速追赶，先保留已经下载的 Range 数据，恢复后再校正。
-4. 上传写入 `SyncWatch同步观影-Data/uploads/`，FFprobe/FFmpeg 更新媒体索引和兼容产物；客户端默认使用原画，流畅版是网络受限时可手动选择的低带宽 H.264/AAC 兼容版本（目标不高于 854×480、视频约 900 kbps、音频 96 kbps）。HTTP Range 负责媒体读取，Socket.IO 不承载媒体本体。
+4. 上传写入 `SyncWatch同步观影-Data/uploads/`，FFprobe/FFmpeg 更新媒体索引和兼容产物；客户端默认使用原画，流畅版是网络受限时可手动选择的低带宽 H.264/AAC 兼容版本（目标不高于 854×480、视频约 900 kbps、音频 96 kbps）。HTTP Range 负责媒体读取，Socket.IO 不承载媒体本体；服务端先等待媒体文件描述符成功打开再启动响应管线，挂载/权限/句柄错误保留为 HTTP 错误，不把失败响应重置成不可诊断的 TCP 断开。
    缩略图接口同样受会话保护；由于原生图片元素不能附带 `Authorization` 头，客户端为 `/thumbnail/`、`/avatar/`、`/chat-image/`（以及媒体/兼容媒体）资源追加短期会话查询令牌，确保影片库、视频管理封面、头像、聊天图片和静态图片查看在浏览器、Android WebView 与隧道入口一致可见。
 5. 配置、账号、房间、日志和密钥落在数据目录及其 secrets 子目录，写盘使用临时文件/原子替换，并用实例锁阻止同目录并发写入。
 6. `cloudflared` 是可选边缘入口，只转发本地 HTTP、WebSocket 和 Range 请求，不保存 SyncWatch 账号或媒体。
