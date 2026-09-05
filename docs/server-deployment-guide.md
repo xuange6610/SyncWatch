@@ -1,6 +1,6 @@
 # SyncWatch同步观影 服务器部署与使用教程
 
-适用版本：v2.4.4 候选版（文档更新于 2026-09-06；Windows/Android 成品和 Release 仍待最终验收，线上 Latest 为 v2.4.3）
+适用版本：v2.4.4 候选版（文档更新于 2026-09-06；Windows/Android 本地成品和 Windows 核心流程已验收，最终 Release 与云服务器部署仍待完成，线上 Latest 为 v2.4.3）
 
 本文面向需要把 SyncWatch同步观影 放到 Windows Server、Linux 云服务器、Docker 或内网穿透环境长期运行的用户。文中的 `vX.Y.Z` 表示实际部署版本；v2.4.4 文件名、大小和 SHA-256 需在最终 GitHub Release 页面核验后才可对外使用。
 

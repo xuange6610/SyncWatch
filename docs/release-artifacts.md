@@ -1,6 +1,6 @@
 # 发布文件与下载说明
 
-GitHub Release 是下载成品的地方；仓库里的 Source code 压缩包只是源码，不是双击即用的程序。v2.4.4 为待发布候选版本；Windows/Android 构建、启动验收、远端资产和下载回读完成后才会公开为 Latest，线上 Latest 仍为 v2.4.3。
+GitHub Release 是下载成品的地方；仓库里的 Source code 压缩包只是源码，不是双击即用的程序。v2.4.4 的 Windows/Android 本地构建、Windows 核心流程和候选哈希已完成；最终 Tag、远端资产和下载回读完成后才会公开为 Latest，线上 Latest 仍为 v2.4.3。
 
 ## 文件分类
 

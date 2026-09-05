@@ -26,7 +26,7 @@
 
 ## 当前事实边界
 
-- v2.4.4 候选版本已完成媒体格式与播放时钟回归修复；Windows/Android 成品和 Release 仍待最终 Tag 构建验收。线上 Latest 仍为 v2.4.3。
+- v2.4.4 候选版本已完成媒体格式与播放时钟回归修复、Windows/Android 本地成品构建和 Windows 核心流程验收；最终 Tag、Release 与远端页面仍待完成。线上 Latest 仍为 v2.4.3。
 - GitHub Pages 只能提供静态 HTML/CSS/JavaScript，不能执行 Node.js、Socket.IO、文件上传、AI 中转或 Cloudflare Tunnel。
 - v2.4.4 计划仅提供 Windows 与 Android；不再构建或上传 macOS 新包。
 - 运行账号、房间、媒体、聊天和密钥位于服务器旁的 `SyncWatch同步观影-Data/`，迁移和备份必须按完整目录处理。

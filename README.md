@@ -54,11 +54,11 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.4.4 候选版本已完成媒体格式与播放时钟修复，正在等待最终 Windows/Android 构建和 Release 验收。线上 Latest 仍是 v2.4.3。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.4.4 候选版本已完成媒体格式与播放时钟修复、Windows/Android 本地构建和 Windows 核心流程验收，正在等待最终 Tag、Release 与远端页面验收。线上 Latest 仍是 v2.4.3。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-当前正式发布：[v2.4.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.3)，已完成原子发布并设为 Latest；[v2.4.4 发布说明](docs/release-notes-v2.4.4.md) 是待构建候选版本，修复完成后再切换 Latest。
+当前正式发布：[v2.4.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.3)，已完成原子发布并设为 Latest；[v2.4.4 发布说明](docs/release-notes-v2.4.4.md) 是待最终 Tag/Release 验收的候选版本，完成后再切换 Latest。
 
-v2.4.3 已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；v2.4.4 候选版本尚未上传资产，不能把候选文件当成线上成品。
+v2.4.3 已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；v2.4.4 的 8 个本地候选资产已逐项完成大小与 SHA-256 校验，但尚未上传 Release，不能把候选文件当成线上成品。
 
 > v2.3.0 纠正更新范围：更低延迟的画面/音频共享、原生分辨率与设备最高刷新率默认请求、房间实时音源标题和进程状态、停止共享后的即时清理、主题同步接受/拒绝/已应用回执，以及桌面启动等待窗口和本机页面加载重试。原子切换完成前，线上旧资产仍保持可下载；切换完成后只删除被替换的 v2.3.0 旧 8 项，历史版本不受影响。
 
