@@ -6,6 +6,38 @@ SyncWatch 是一个开源、自托管的 Watch Party / 同步观影系统。一�
 
 你的服务器、你的影片、你的数据。无需依赖第三方同步观影平台。
 
+<div align="center">
+
+ --------------------------------------- 
+<div align="center">
+<b>
+<font color="red" size="4">
+⚠️ 在线体验服务器资源有限，仅供临时体验
+<br>
+视频文件会定期清理，请勿存放重要数据
+</font>
+</b>
+
+</div>
+---------------------------------------
+
+<h2>🎬 在线体验 SyncWatch</h2>
+
+<p>
+无需下载，浏览器直接观看：
+</p>
+
+<br>
+
+<a href="http://103.236.93.66:42954/TEST1">
+<img src="https://img.shields.io/badge/🚀%20在线体验-立即打开-brightgreen?style=for-the-badge&labelColor=111111&logo=googlechrome&logoColor=white"
+width="320">
+</a>
+
+<br><br>
+
+</div>
+
 [![GitHub Release](https://img.shields.io/github/v/release/xuange6610/SyncWatch?display_name=tag)](https://github.com/xuange6610/SyncWatch/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/xuange6610/SyncWatch)](https://github.com/xuange6610/SyncWatch/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/xuange6610/SyncWatch)](https://github.com/xuange6610/SyncWatch/network/members)
@@ -29,6 +61,17 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 本版本已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件（均为可见文件）；Release API、Latest 和下载回读均已核验。
 
 > v2.3.0 纠正更新范围：更低延迟的画面/音频共享、原生分辨率与设备最高刷新率默认请求、房间实时音源标题和进程状态、停止共享后的即时清理、主题同步接受/拒绝/已应用回执，以及桌面启动等待窗口和本机页面加载重试。原子切换完成前，线上旧资产仍保持可下载；切换完成后只删除被替换的 v2.3.0 旧 8 项，历史版本不受影响。
+
+🎬 多人同步观影（播放/暂停/跳转同步）
+🎵 音乐同步房间（共享播放列表、同步播放控制）
+🖥️ 屏幕共享房间（实时共享桌面/窗口）
+💬 实时聊天系统
+🎙️ 语音通话（WebRTC）
+🏠 房间管理（创建/加入/离开）
+🔐 密码保护和权限控制
+🔄 自动重连和心跳检测
+📊 服务器统计信息
+🐳 Docker 支持
 
 ## 在线参观
 
