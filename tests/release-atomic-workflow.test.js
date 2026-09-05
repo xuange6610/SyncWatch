@@ -274,6 +274,11 @@ assert.match(androidEmulatorSmoke, /SyncWatch-Android-v\$\{version\}-universal\.
 assert.match(androidEmulatorSmoke, /adb install --no-streaming/);
 assert.match(androidEmulatorSmoke, /Broken pipe \(32\)/, 'Android smoke must recognize transient ADB package-service broken pipes');
 assert.match(androidEmulatorSmoke, /Can\.t find service: package/, 'Android smoke must wait for the package service after boot');
+assert.match(androidEmulatorSmoke, /wait_for_storage_service/, 'Android smoke must wait for StorageManagerService before installing');
+assert.match(androidEmulatorSmoke, /service check mount/, 'Android smoke must probe the storage binder service after boot');
+assert.match(androidEmulatorSmoke, /sm list-volumes all/, 'Android smoke must probe storage volumes before installing');
+assert.match(androidEmulatorSmoke, /StorageManager[\s\S]*getVolumes/, 'Android smoke must recognize StorageManager.getVolumes failures');
+assert.match(androidEmulatorSmoke, /attempt <= 30/, 'Android smoke must bound storage-service readiness waits');
 assert.match(androidEmulatorSmoke, /wait_for_package_service/, 'Android smoke must have a bounded package-service readiness probe');
 assert.match(androidEmulatorSmoke, /adb reconnect device[\s\S]*adb kill-server/, 'Android smoke must re-establish ADB before retrying a broken-pipe install');
 assert.match(androidEmulatorSmoke, /attempt <= 3/, 'Android smoke must bound transient install retries');

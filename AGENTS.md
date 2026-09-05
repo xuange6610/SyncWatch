@@ -415,3 +415,8 @@
 - 原子运行 `33951871667` 的源码门禁、官方文件、Windows 体验版/完整便携版构建和启动均通过；Android Gradle 构建也成功，但 `mobile/build-apk.ps1` 因 `versionCode=20402` 与 `versionName=2.4.3` 不一致而拒绝成品，未上传或替换 Release 资产。
 - 修复为将 `mobile/app/build.gradle` 的 `versionCode` 更新为 `20403`，并通过 Android 源码门禁、仓库门禁、媒体回归和原子工作流契约。PR #103 合并后，唯一注释 Tag `v2.4.3` 移到提交 `4d1b27ef5c0a581189528adc20b77f27e1d82fbd`。
 - 原子运行 `33952792359` 已成功完成 Android 模拟器安装/启动、Windows 两包构建/启动、Defender、10 文件审计、远端 SHA-256 回读和 Latest 发布；后续版本升级必须同步检查 Android `versionName` 与动态 `versionCode`，不得只改显示版本。
+
+### 2026-09-05 v2.4.3 Android StorageManager 服务就绪复盘
+
+- 原子运行 `33976684671` 的源码、官方文件、Node.js Mobile 运行时、签名 Android APK 和 Windows 构建前置均通过；失败发生在 Android 模拟器安装阶段。日志显示 `sys.boot_completed=1` 后 `settings`、`input`、`package` 服务仍有瞬态断连，`adb install --no-streaming` 最终在 `StorageManager.getVolumes()` 上触发 `NullPointerException`。
+- 修复 `scripts/android-emulator-smoke.sh`：安装前通过 `service check mount` 与 `sm list-volumes all` 有界等待存储服务；安装输出同时包含 `StorageManager` 与 `getVolumes` 时，仅执行最多 3 次重试并重新等待 ADB、存储服务和 package 服务。其他安装错误仍立即失败；对应发布契约已补充，失败轮未替换 v2.4.3 Release 资产。

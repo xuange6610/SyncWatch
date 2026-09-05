@@ -284,3 +284,8 @@ v2.3.1 原子运行 `33449575638` 的源码、官方资产、Android 签名构�
 
 - 手机尺寸浏览器实测发现旧版最终 CSS 仍保留 `floatingPlayerBtn`，且实时语音仅按 Android WebView 标识隐藏；v2.3.9 现对 924px 以下手机布局统一移除实时语音、悬浮播放和重复播放按钮，并将全屏/全屏自动锁屏固定第一行、-10/+10 与画质/倍速分别成行。
 - 早期 v2.3.9 候选配置可能已写入 `uploadVideoDurationLimitConfigured=true` 但仍带 300 秒旧值；所有无明确保存时间标记、无标记或旧策略版本的 300 秒值统一迁移为 0（不限），当前设置保存后写入策略版本 2 和 `uploadVideoDurationLimitConfiguredAt` 并在重启后保留。手机端运行时直接移除实时语音、悬浮播放和重复播放节点，避免缓存样式或晚到渲染再次显示。新增 `tests/upload-duration-migration.test.js` 覆盖该回归。
+
+### 2026-09-05 v2.4.3 Android StorageManager 服务就绪复盘
+
+- 原子运行 `33976684671` 的源码、官方文件、Node.js Mobile 运行时、签名 Android APK 和 Windows 构建前置均通过；失败发生在 Android 模拟器安装阶段。日志显示 `sys.boot_completed=1` 后 `settings`、`input`、`package` 服务仍有瞬态断连，`adb install --no-streaming` 最终在 `StorageManager.getVolumes()` 上触发 `NullPointerException`。
+- 修复 `scripts/android-emulator-smoke.sh`：安装前通过 `service check mount` 与 `sm list-volumes all` 有界等待存储服务；安装输出同时包含 `StorageManager` 与 `getVolumes` 时，仅执行最多 3 次重试并重新等待 ADB、存储服务和 package 服务。其他安装错误仍立即失败；对应发布契约已补充，失败轮未替换 v2.4.3 Release 资产。

@@ -22,6 +22,30 @@ wait_for_android() {
   test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
 }
 
+wait_for_storage_service() {
+  # Android can report boot completion before StorageManagerService has a
+  # usable binder. Package installation calls StorageManager.getVolumes(), so
+  # probe the same service before attempting to install the APK.
+  local attempt=1 service_output='' storage_output=''
+  while (( attempt <= 30 )); do
+    service_output="$(adb shell service check mount 2>&1 || true)"
+    storage_output="$(adb shell sm list-volumes all 2>&1 || true)"
+    if grep -q 'Service mount: found' <<< "$service_output" \
+      && ! grep -qE 'Can.t find service|Broken pipe|NullPointerException|Exception occurred|Error:' <<< "$storage_output"; then
+      return 0
+    fi
+    if grep -qE 'Broken pipe|Can.t find service' <<< "$service_output$storage_output"; then
+      adb reconnect device >/dev/null 2>&1 || true
+      adb kill-server >/dev/null 2>&1 || true
+      wait_for_android
+    fi
+    sleep 2
+    attempt=$((attempt + 1))
+  done
+  printf '%s\n%s\n' "$service_output" "$storage_output" >&2
+  return 1
+}
+
 wait_for_package_service() {
   # Android may expose sys.boot_completed before package-manager startup;
   # this also covers the transient ADB Broken pipe (32) recovery path.
@@ -57,12 +81,14 @@ install_apk() {
       # Disable ADB verification for this isolated smoke emulator, then retry.
       adb shell settings put global package_verifier_enable 0 || true
       adb shell settings put global verifier_verify_adb_installs 0 || true
-    elif grep -qE 'Broken pipe \(32\)|Can.t find service: package' <<< "$install_output"; then
+    elif grep -qE 'Broken pipe \(32\)|Can.t find service: package' <<< "$install_output" \
+      || (grep -q 'StorageManager' <<< "$install_output" && grep -q 'getVolumes' <<< "$install_output"); then
       # The package service can briefly lose its ADB transport after boot.
       # Reconnect and wait for a fully booted device before retrying the install.
       adb reconnect device >/dev/null 2>&1 || true
       adb kill-server >/dev/null 2>&1 || true
       wait_for_android
+      wait_for_storage_service
       wait_for_package_service
     else
       return 1
@@ -74,6 +100,7 @@ install_apk() {
 }
 
 wait_for_android
+wait_for_storage_service
 wait_for_package_service
 install_apk
 
