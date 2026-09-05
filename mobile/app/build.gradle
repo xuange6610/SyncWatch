@@ -245,7 +245,7 @@ android {
         applicationId 'com.xuan.syncwatch'
         minSdk 23
         targetSdk 35
-        versionCode 20402
+        versionCode 20403
         versionName '2.4.3'
 
         ndk {
