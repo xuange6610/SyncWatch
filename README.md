@@ -54,9 +54,9 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.4.2 候选已完成媒体格式与源码回归；Windows/Android 真实成品和启动验收仍待发布流程完成，本地 `dist/` 继续保留已发布版本。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.4.2 已完成媒体格式修复、Windows/Android 真实构建、启动验收和 GitHub Release 发布。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-当前正式发布：[v2.4.1](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.1)，已发布并设为 Latest；v2.4.2 仍是待发布候选，候选修复范围记录在 [v2.4.2 发布说明](docs/release-notes-v2.4.2.md)。
+当前正式发布：[v2.4.2](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.2)，已完成原子发布并设为 Latest；修复范围记录在 [v2.4.2 发布说明](docs/release-notes-v2.4.2.md)。
 
 本版本已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件（均为可见文件）；Release API、Latest 和下载回读均已核验。
 

@@ -36,6 +36,6 @@ SyncWatch同步观影 是开源、自托管的跨平台同步观影与实时协�
 
 ## 资产与验收
 
-正式 Release 应包含 8 个维护者资产，GitHub 页面另有 2 个源码归档，共 10 个可见文件。上传前必须从最终 v2.4.2 Tag 真实重建 Windows/Android 应用，并完成启动、版本、平台、大小和 SHA-256 核验；Node.js 与 cloudflared 文件必须按官方来源和固定哈希核验。
+正式 Release 已包含 8 个维护者资产，GitHub 页面另有 2 个源码归档，共 10 个可见文件。原子发布运行 `33942963223` 已从最终 v2.4.2 Tag 真实重建 Windows/Android 应用，并完成启动、版本、平台、大小和 SHA-256 核验；Node.js 与 cloudflared 文件已按官方来源和固定哈希核验。逐项哈希记录见 [Release 资产清单](release/release-manifest.md)。
 
 项目采用 Apache-2.0 许可证，发布时保留原始版权与修改说明。

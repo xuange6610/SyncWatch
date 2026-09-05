@@ -1,6 +1,6 @@
 # Release 资产清单
 
-v2.4.2 当前只是候选：媒体格式修复与源码回归已完成；Windows/Android 真实构建、启动/核心流程、版本/平台/大小/SHA-256 以及远端 API 回读尚未完成。正式发布后才可改写为公开 Latest 并记录 8+2 文件证据。
+v2.4.2 已正式发布：媒体格式修复、源码门禁、Windows/Android 真实构建、启动/核心流程、版本/平台/大小/SHA-256、远端 API 回读和公开 Latest 均已完成。原子发布运行 `33942963223` 通过，Release API 返回 8 个维护者资产，页面另含 2 个 GitHub 源码归档。
 
 ## 数量规则
 
@@ -33,6 +33,19 @@ Release API 的 `assets` 数量必须为 8；页面把两个源码归档也算�
 发现已发布资产有缺陷时，只清理当前版本 Release API 中的维护者资产，不删除历史 Release、历史 tag 或其他版本文件。修复必须先通过 Windows/Android 运行验证；随后一次性恢复本清单的 8 个真实资产，最后再更新 Release 正文并核对页面 10 个可见文件。重传中间状态不是完整发布，不能对外宣称完成。
 
 ## 当前记录
+
+v2.4.2 原子发布运行 `33942963223` 于 2026-09-05 完成。最终 Tag `v2.4.2` 指向提交 `1137dd717fcc21ee13eb76691b2a62a44216d7e3`，Release 已公开为 Latest；Windows 体验版、完整离线便携版和 Android APK 均从该 Tag 真实构建并完成启动验证，第三方 Node.js/cloudflared 文件按官方缓存来源核验。
+
+| 维护者资产 | 字节数 | SHA-256 |
+| --- | ---: | --- |
+| `SyncWatch-Experience-Client-Portable-v2.4.2-x64.exe` | 176765359 | `f7bac4cccd7da47033dcc236e904d84c3221c56bc03b3c62a01abd840c7cf165` |
+| `SyncWatch-v2.4.2-Full-Offline-Portable-x64.exe` | 402492073 | `e0f94693d8283c19821fbd62cdb9f5baa1347242b02ed7ffe0cf78c7f8a1fb3b` |
+| `SyncWatch-Android-v2.4.2-universal.apk` | 161669215 | `d55a47edefa0fcd5508e9fb93154ade2d3e9fefa6364d4e02fedbc235ce3ff5e` |
+| `node-v24.19.0-x64.msi` | 32972800 | `f0f66c2a80c08a30a5ab5179ee9ea9e45f9b46289436a8cc87ff833b852db351` |
+| `node-v24.19.0-arm64.msi` | 29491200 | `47b16e1b1012b1b9ad62169b3a466adb6bc758b2cb8bd8224683c086836484f8` |
+| `cloudflared-windows-x64.exe` | 54893480 | `c29eee2b121f5436a642eed69fd9767da7e7b8c510fa50aaa130337f931357b5` |
+| `cloudflared-windows-x64-installer.msi` | 19357696 | `7067806367266ad66ae8e742b2856827a8ff07e1eb45f8fcbb335d4a28988a23` |
+| `cloudflared-windows-x86-installer.msi` | 19090432 | `c8d16c3cf20106958ec907361844c170cbeafb1f1c8ba24c906f332413381dc5` |
 
 v2.3.0 同版本纠正覆盖于 2026-08-31 完成最终 Tag 构建、哈希回读和 8+2 文件核对，并公开为 Latest。最终注释 Tag 对象为 `d5db7eff01faa57624b7d750f161eba982fb0d0c`，指向提交 `f931bf2097c03712d90d3aa7c30314c675e8d5e7`，原子运行 `33405585536` 成功。下表记录当前 Release API 回读的新 8 项维护者资产。
 
