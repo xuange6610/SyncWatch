@@ -65,6 +65,12 @@
 - 无头 Chromium 可能报告不支持 `(hover: hover) and (pointer: fine)`；只在测试用例内部临时模拟精细指针媒体能力，产品端仍按真实设备能力判断。
 - 浏览器媒体恢复 smoke 的人为断网窗口要有界；过长会耗尽 Chromium 缓冲，导致 Range 恢复进度为 0。保留可观测的恢复进度和 Socket.IO 重认证断言。
 
+### 2.8 Android Gradle 仓库瞬态 403
+
+- 原子运行 `33941562305` 的源码、官方资产、Node.js Mobile 运行时和 Windows 基础包均成功；Android 签名构建在 Gradle 配置阶段失败，`repo.maven.apache.org` 与 `plugins.gradle.org` 对 Kotlin、protobuf、ASM、BouncyCastle、jsr305 等整组依赖返回 HTTP 403。该故障不是 APK 版本、签名或源码问题，未生成 Android 候选资产，也未替换 Release。
+- Android `mobile/settings.gradle` 现在在 `google()` 后、`mavenCentral()` 前加入 Maven Central 的官方备用主机 `https://repo1.maven.org/maven2`，插件管理和依赖解析同时覆盖；依赖坐标、版本和默认仓库保持不变。`tests/android-package.test.js` 固化该 CI failover 契约。
+- 修复后必须先通过 Android 源码/发布契约和本地可用构建，再将唯一 `v2.4.2` 注释 Tag 移到修复提交并只重新触发一次完整原子发布。不得使用失败运行的候选 artifact 或旧 Android 包替代真实成品。
+
 ## 3. 固定执行顺序
 
 1. 读取根目录 `AGENTS.md`、`docs/maintenance/maintainer-requirements.md` 和受影响的产品/设计/使用文档。
