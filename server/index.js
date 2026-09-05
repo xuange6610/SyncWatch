@@ -46,7 +46,7 @@ function resolveDefaultDataDir(root = process.cwd()) {
   catch (_) { return legacy; }
 }
 
-const APP_VERSION = 'v2.4.1';
+const APP_VERSION = 'v2.4.2';
 
 function applyNetworkQualitySample(user, payload = {}) {
   if (!user || user.connectionState === 'reconnecting') {
@@ -499,7 +499,16 @@ const FILE_TYPES = new Map([
   ['.3gp', ['video', 'video/3gpp']], ['.3g2', ['video', 'video/3gpp2']], ['.flv', ['video', 'video/x-flv']],
   ['.wmv', ['video', 'video/x-ms-wmv']], ['.asf', ['video', 'video/x-ms-asf']], ['.vob', ['video', 'video/dvd']],
   ['.f4v', ['video', 'video/x-f4v']], ['.ogm', ['video', 'video/ogg']], ['.rm', ['video', 'application/vnd.rn-realmedia']],
-  ['.rmvb', ['video', 'application/vnd.rn-realmedia-vbr']], ['.divx', ['video', 'video/divx']], ['.mxf', ['video', 'application/mxf']],
+  ['.rmvb', ['video', 'application/vnd.rn-realmedia-vbr']], ['.divx', ['video', 'video/divx']], ['.xvid', ['video', 'video/x-xvid']],
+  ['.mxf', ['video', 'application/mxf']], ['.dat', ['video', 'video/mpeg']], ['.asx', ['video', 'application/x-ms-asx']],
+  // Raw elementary streams and codec-labelled files are accepted as video
+  // inputs so FFmpeg can probe and convert them to the browser-compatible MP4
+  // path when the server has its media toolchain available.
+  ['.m1v', ['video', 'video/mpeg']], ['.m2v', ['video', 'video/mpeg']],
+  ['.h264', ['video', 'video/h264']], ['.264', ['video', 'video/h264']],
+  ['.h265', ['video', 'video/h265']], ['.265', ['video', 'video/h265']], ['.hevc', ['video', 'video/hevc']],
+  ['.av1', ['video', 'video/av1']], ['.ivf', ['video', 'video/x-ivf']], ['.vp9', ['video', 'video/vp9']],
+  ['.prores', ['video', 'video/prores']],
   ['.mp3', ['audio', 'audio/mpeg']], ['.wav', ['audio', 'audio/wav']],
   ['.m4a', ['audio', 'audio/mp4']], ['.aac', ['audio', 'audio/aac']],
   ['.flac', ['audio', 'audio/flac']], ['.ogg', ['audio', 'audio/ogg']],
@@ -2299,10 +2308,10 @@ async function startSyncWatchServer(options = {}) {
   const mailKeyFile = path.join(secretsDir, 'mail.key');
   const hostControlToken = String(options.hostControlToken || '');
   const tunnelManager = options.tunnelManager || null;
-  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.4.1.apk'));
+  const androidApkPath = path.resolve(options.androidApkPath || path.join(__dirname, '..', 'mobile', 'SyncWatch同步观影-v2.4.2.apk'));
   const clientDownloadPath = options.clientDownloadPath ? path.resolve(options.clientDownloadPath) : '';
-  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.4.1-universal.apk');
-  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.4.1-x64.exe');
+  const managedAndroidApkPath = path.join(downloadAssetsDir, 'SyncWatch-Android-v2.4.2-universal.apk');
+  const managedClientDownloadPath = path.join(downloadAssetsDir, 'SyncWatch-Experience-Client-Portable-v2.4.2-x64.exe');
   const activeAndroidApkPath = () => fs.existsSync(managedAndroidApkPath) ? managedAndroidApkPath : androidApkPath;
   const activeClientDownloadPath = () => fs.existsSync(managedClientDownloadPath) ? managedClientDownloadPath : clientDownloadPath;
   const factoryResetHandler = typeof options.onFactoryResetRequested === 'function' ? options.onFactoryResetRequested : null;
@@ -3467,12 +3476,11 @@ async function startSyncWatchServer(options = {}) {
     let stats;
     try { stats = fs.statSync(target); } catch (_) { return res.status(404).end(); }
     const total = Number(stats.size);
-    const hostHeader = requestHostHeader(req);
-    const hostParts = hostHeaderParts(hostHeader);
-    const localMediaHost = Boolean(hostParts && (hostParts.hostname === 'localhost' || hostParts.hostname.endsWith('.local')
-      || hostParts.hostname.endsWith('.lan') || hostParts.hostname.endsWith('.internal') || hostParts.hostname.endsWith('.home.arpa')
-      || (net.isIP(hostParts.hostname) && privateOrLoopbackAddress(hostParts.hostname))));
-    const responseMime = /^video\//i.test(String(mimeType || '')) && !localMediaHost ? 'application/octet-stream' : mimeType;
+    // Keep the detected/container MIME for every host, including HTTPS tunnel
+    // origins. Browsers use this value to decide whether a <video> resource is
+    // playable; application/octet-stream plus nosniff makes valid MP4 files
+    // fail before the Range body is decoded.
+    const responseMime = mimeType;
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Content-Type', responseMime || 'application/octet-stream');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -6805,7 +6813,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/client-download', httpRateLimit('client-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeClientDownloadPath();
     if (!target || !fs.existsSync(target)) return res.status(404).json({ success: false, error: '电脑客户端安装程序尚未放入服务器部署目录' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.4.1-x64.exe');
+    return serveFileDownload(req, res, target, 'SyncWatch-Experience-Client-Portable-v2.4.2-x64.exe');
   });
 
   app.get('/api/lan-rooms', httpRateLimit('lan-rooms', 60, 60 * 1000), (req, res) => res.json({
@@ -6892,7 +6900,7 @@ async function startSyncWatchServer(options = {}) {
   app.get('/api/android-apk', httpRateLimit('android-apk-download', 12, 60 * 60 * 1000), (req, res) => {
     const target = activeAndroidApkPath();
     if (!fs.existsSync(target)) return res.status(404).json({ success: false, error: '安卓安装包尚未生成' });
-    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.4.1-universal.apk');
+    return serveFileDownload(req, res, target, 'SyncWatch-Android-v2.4.2-universal.apk');
   });
 
   const mediaRoute = (req, res) => {

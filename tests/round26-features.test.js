@@ -93,10 +93,10 @@ check('media', 'range-capable media delivery, text/HLS input, and clear-stage co
   assert.match(server, /function uploadPolicyExempt\([\s\S]*isSuperAdmin/);
 });
 
-check('tunnel media', 'public video responses use octet-stream so HTTP tunnels relay Range bodies', () => {
+check('tunnel media', 'public video responses keep their playable MIME while preserving Range bodies', () => {
   const media = section(server, 'function serveMediaRange', 'function normalizeRelativePath');
-  assert.match(media, /localMediaHost/);
-  assert.match(media, /application\/octet-stream/);
+  assert.match(media, /const responseMime = mimeType/);
+  assert.doesNotMatch(media, /localMediaHost/);
   assert.match(media, /Accept-Ranges/);
 });
 
