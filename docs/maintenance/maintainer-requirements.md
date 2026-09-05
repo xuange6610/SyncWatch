@@ -1,12 +1,16 @@
 # SyncWatch 长期维护与交付要求
 
-## v2.4.3 当前准备状态
+## v2.4.3 当前正式状态
 
-`release/v2.4.3` 已包含 NAT/反向代理媒体 Range 响应修复和本地回归；当前线上正式版本仍为 `v2.4.2`。Windows/Android 真实构建、启动/核心流程、哈希回读、Release、Pages 和 Wiki 远端验收完成前，v2.4.3 必须保持 pending，不得复用 v2.4.2 应用包或上传残缺集合。
+`v2.4.3` 已包含 NAT/反向代理媒体 Range 响应修复和本地回归；原子发布运行 `33952792359` 已完成 Windows/Android 真实构建、启动/核心流程、Defender、10 文件审计、哈希回读和公开 Release。应用包均由最终 Tag `4d1b27ef5c0a581189528adc20b77f27e1d82fbd` 重新构建，不得复用 v2.4.2 应用包。
 
-当前线上正式版本：`v2.4.2`（已完成媒体格式修复、最终 Tag、Release、构建、启动和远端页面验收）。
+当前线上正式版本：`v2.4.3`（已完成媒体格式修复、最终 Tag、Release、构建、启动和远端页面验收）。
 
-`v2.4.2` 已完成媒体格式、服务端 Range/MIME、Windows/Android 构建和移动端回归；原子发布运行 `33942963223` 已成功完成，Release 已公开为 Latest 并完成远端页面回读，v2.4.1 及历史 Release、Tag、资产保持不变。
+`v2.4.3` 已完成媒体格式、服务端 Range/MIME、Windows/Android 构建和移动端回归；Release 已公开为 Latest 并完成远端页面回读，v2.4.2 及历史 Release、Tag、资产保持不变。
+
+本轮发布复盘：原子运行 `33951871667` 曾因 `mobile/app/build.gradle` 只更新 `versionName=2.4.3`、未同步 `versionCode=20403` 而在 APK 元数据门禁失败；修复后运行 `33952792359` 全部通过。以后递增 Android 版本时，必须同时验证 `versionName` 和 `major*10000 + minor*100 + patch` 计算出的 `versionCode`，再移动 Tag 和触发原子发布。
+
+公网实例边界：本次回读用户提供的 NAT 转发入口时，公开配置仍返回 v2.4.2；这表明转发链路可达但后端实例尚未部署 v2.4.3。发布仓库不会自动替换用户云服务器，部署后应重新回读 `/api/public-config` 版本，并用已认证媒体请求验证 Range；不得把旧实例的回读结果当作新版本成品证据。
 
 v2.3.1 原子运行 `33463841839` 已成功完成；Release API 有 8 个维护者资产，页面另含 2 个 GitHub 源码归档，共 10 个可见文件。Android 模拟器安装/启动、Windows 体验版与完整便携版启动、共享音频 smoke、资产哈希和远端下载回读均通过。
 
