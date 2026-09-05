@@ -109,6 +109,13 @@ function verifySources() {
     'the generated Android server entrypoint must parse before the embedded runtime starts');
 
   const gradle = read('mobile/app/build.gradle');
+  const settings = read('mobile/settings.gradle');
+  assert.match(settings, /repo1\.maven\.org\/maven2/, 
+    'Android Gradle settings must retain a Maven Central alternate endpoint for CI 403 failover');
+  assert.match(settings, /pluginManagement[\s\S]*repo1\.maven\.org\/maven2[\s\S]*gradlePluginPortal/,
+    'plugin resolution must use the Maven Central alternate before the Gradle Plugin Portal fallback');
+  assert.match(settings, /dependencyResolutionManagement[\s\S]*repo1\.maven\.org\/maven2[\s\S]*mavenCentral/,
+    'Android dependencies must use the Maven Central alternate before the default endpoint');
   assert.match(gradle, /prepareMobileServerAssets/);
   assert.match(gradle, /new File\(repositoryRoot, 'server'\)[\s\S]{0,120}into 'syncwatch\/server'/,
     'Gradle must package the complete server source directory, not only server/index.js');

@@ -1,6 +1,11 @@
 pluginManagement {
     repositories {
         google()
+        // GitHub-hosted runners can temporarily return 403 for the default
+        // Maven Central hostname. Keep its canonical alternate endpoint
+        // ahead of the default repository so plugin resolution can fail over
+        // without changing artifact coordinates or versions.
+        maven { url = uri('https://repo1.maven.org/maven2') }
         mavenCentral()
         gradlePluginPortal()
     }
@@ -10,6 +15,9 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
+        // See pluginManagement above: this is the same Maven Central content
+        // through the alternate Sonatype hostname used by CI failover.
+        maven { url = uri('https://repo1.maven.org/maven2') }
         mavenCentral()
     }
 }
