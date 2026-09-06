@@ -1,10 +1,21 @@
 # Release 资产清单
 
-## v2.4.4 发布准备状态
+## v2.4.4 已验收资产
 
-`v2.4.4` 只包含播放时钟封顶和浏览器兼容源选择修复。该修复已合并到 `main`；正式发布必须从最终 Tag 重新完成 Windows/Android 构建、启动、版本/平台/大小/SHA-256、远端页面回读，并严格上传 8 个维护者资产、保留两个 GitHub 源码归档，共 10 个可见文件。
+`v2.4.4` 只包含播放时钟封顶和浏览器兼容源选择修复。原子发布运行 `34003224268` 已从最终 Tag `33d807947f10c141c9bef7380f71b2032e5dffd7` 重新完成 Windows/Android 构建、启动、Defender、10 文件审计、远端 SHA-256 回读并公开为 Latest。Release API 有 8 个维护者资产，页面另有 2 个 GitHub 源码归档，共 10 个可见文件。
 
-v2.4.3 已正式发布：媒体 NAT/反向代理兼容修复、Windows/Android 成品、启动验收、哈希回读和远端 Release 均已完成；v2.4.2 及历史资产保持不变。
+| 维护者资产 | 字节数 | SHA-256 |
+| --- | ---: | --- |
+| `SyncWatch-Experience-Client-Portable-v2.4.4-x64.exe` | 176762687 | `8187e7af6c25362cf479eec4911edeca8d40ae20c43062bccfd888cbb315b2a5` |
+| `SyncWatch-v2.4.4-Full-Offline-Portable-x64.exe` | 402490989 | `78317bbd09a10c389f34d7ff03d7ab66628bbce487287e0900382c9a825370bd` |
+| `SyncWatch-Android-v2.4.4-universal.apk` | 161671687 | `67da65f01b9437e6a1b452a45cd096a182395fff6d27da73020684352bd7e79e` |
+| `node-v24.19.0-x64.msi` | 32972800 | `f0f66c2a80c08a30a5ab5179ee9ea9e45f9b46289436a8cc87ff833b852db351` |
+| `node-v24.19.0-arm64.msi` | 29491200 | `47b16e1b1012b1b9ad62169b3a466adb6bc758b2cb8bd8224683c086836484f8` |
+| `cloudflared-windows-x64.exe` | 54893480 | `c29eee2b121f5436a642eed69fd9767da7e7b8c510fa50aaa130337f931357b5` |
+| `cloudflared-windows-x64-installer.msi` | 19357696 | `7067806367266ad66ae8e742b2856827a8ff07e1eb45f8fcbb335d4a28988a23` |
+| `cloudflared-windows-x86-installer.msi` | 19090432 | `c8d16c3cf20106958ec907361844c170cbeafb1f1c8ba24c906f332413381dc5` |
+
+v2.4.3 已正式发布：媒体 NAT/反向代理兼容修复、Windows/Android 成品、启动验收、哈希回读和远端 Release 均已完成；历史资产保持不变。
 
 ## v2.4.3 已验收资产
 
