@@ -1,6 +1,6 @@
 {
   "name": "sync-watch-lan",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "description": "SyncWatch同步观影",
   "main": "electron-pink.js",
   "author": "xuan",
@@ -168,7 +168,7 @@
       "requestedExecutionLevel": "asInvoker"
     },
     "portable": {
-      "artifactName": "SyncWatch-v2.4.3-Full-Offline-Portable-${arch}.exe"
+      "artifactName": "SyncWatch-v2.4.4-Full-Offline-Portable-${arch}.exe"
     }
   }
 }
