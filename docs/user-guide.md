@@ -1,6 +1,6 @@
 # SyncWatch同步观影 用户手册
 
-适用范围：v2.4.4 候选版。媒体格式、播放时钟与源码回归已完成；Windows/Android 构建成品、启动验证及 GitHub Release 的 8+2 文件核对待最终 Tag 完成。
+适用范围：v2.4.4。媒体格式、播放时钟与源码回归已完成；正式 Windows/Android 构建、启动验证及 GitHub Release 的 8+2 文件核对以最终 Tag 的原子发布结果为准。
 
 ## 直接使用
 
