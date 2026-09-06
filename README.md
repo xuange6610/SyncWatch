@@ -54,11 +54,11 @@ Windows · Android · Web  ·  同步播放 · 弹幕 · 聊天 · 语音 · 屏
 
 [立即下载](https://github.com/xuange6610/SyncWatch/releases/latest) · [在线预览](https://xuange6610.github.io/SyncWatch/) · [新手快速开始](https://xuange6610.github.io/SyncWatch/quick-start.html) · [部署教程](docs/server-deployment-guide.md) · [GitHub Wiki](https://github.com/xuange6610/SyncWatch/wiki)
 
-> 当前状态：v2.4.4 发布准备已完成源码合并，正式包将从最终 Tag 重新构建并完成 Windows/Android 启动、哈希和远端页面验收；当前线上 Latest 仍是 v2.4.3。许可证：[Apache-2.0](LICENSE) · 作者：xuan
+> 当前状态：v2.4.4 已从最终 Tag 完成 Windows/Android 真实构建、启动、哈希和 Release 验收，并已公开为 Latest。许可证：[Apache-2.0](LICENSE) · 作者：xuan
 
-当前正式发布：[v2.4.3](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.3)，已完成原子发布并设为 Latest；[v2.4.4 发布说明](docs/release-notes-v2.4.4.md) 对应已合并的播放兼容修复，正式包需按发布清单从最终 Tag 生成。
+当前正式发布：[v2.4.4](https://github.com/xuange6610/SyncWatch/releases/tag/v2.4.4)，已完成原子发布并设为 Latest；[v2.4.4 发布说明](docs/release-notes-v2.4.4.md) 记录播放兼容修复和完整验收范围。
 
-v2.4.3 已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；v2.4.4 发布仍以最终 Tag 重新构建并由原子工作流完成 8+2 文件验收为准。
+v2.4.4 已交付 8 个维护者资产，加两个 GitHub 自动生成的源码归档，共 10 个文件；应用包由最终 Tag 重新构建并完成启动、哈希和远端下载回读。
 
 > v2.3.0 纠正更新范围：更低延迟的画面/音频共享、原生分辨率与设备最高刷新率默认请求、房间实时音源标题和进程状态、停止共享后的即时清理、主题同步接受/拒绝/已应用回执，以及桌面启动等待窗口和本机页面加载重试。原子切换完成前，线上旧资产仍保持可下载；切换完成后只删除被替换的 v2.3.0 旧 8 项，历史版本不受影响。
 
