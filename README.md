@@ -29,7 +29,7 @@ SyncWatch 是一个开源、自托管的 Watch Party / 同步观影系统。一�
 
 <br>
 
-<a href="http://103.236.93.66:42954/TEST1">
+<a href="https://tv.vpnapi.cn/">
 <img src="https://img.shields.io/badge/🚀%20在线体验-立即打开-brightgreen?style=for-the-badge&labelColor=111111&logo=googlechrome&logoColor=white"
 width="320">
 </a>
